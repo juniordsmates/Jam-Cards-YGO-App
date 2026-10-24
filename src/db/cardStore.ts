@@ -128,7 +128,9 @@ export async function initCardDb() {
     overlay = savedOverlay;
     if (cards?.length && meta) {
       publish(cards, { status: "ready", meta });
+      // a base é conferida a cada 24 horas; a camada (marcações e combos calculados) a cada abertura
       if (Date.now() - meta.checkedAt > CHECK_INTERVAL) void checkForUpdate();
+      else void refreshOverlay().then((changed) => changed && publish(state.cards));
     } else {
       await download(false);
     }
