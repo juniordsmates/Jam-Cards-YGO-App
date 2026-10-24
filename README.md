@@ -101,6 +101,12 @@ O painel de cada carta mostra, nos dois sentidos, as relações lidas dos nomes 
 
 O alvo pode ser uma carta, um arquétipo ('"Invoked" monster') ou "cartas que citam X". Cada grupo tem **Ver na busca** (só essas cartas) e **Combinar com filtros** (aplica sobre os filtros atuais). Dentro da leitura, cada efeito mostra o que invoca ou busca.
 
+## Combos
+
+A aba Combos mostra **só linhas calculadas**: o pipeline da base (Database-Cards-Ygo, `npm run combos`) joga cada mão inicial no motor de regras do EDOPro (Project Ignis) com decklists reais de torneio da YGOPRODeck. Custos, condições de ativação, "uma vez por turno", travas e o limite de Invocação-Normal vêm dos scripts oficiais das cartas, não da leitura do texto. O app recebe as linhas prontas na camada pública (campo `combos`, só ids e zonas) e mostra as que cabem na mão escolhida ([src/db/motor.ts](src/db/motor.ts), [src/components/VerifiedCombos.tsx](src/components/VerifiedCombos.tsx)).
+
+As linhas escritas pela comunidade ([src/data/combos.ts](src/data/combos.ts)) só aparecem quando o motor as confirma (mesmo id em `maos` de `dados/combos-alvos.json` na base). O motor e os scripts (AGPL-3.0) não vão no app.
+
 ## Testes
 
 ```bash
@@ -108,7 +114,7 @@ npm run dev        # em outro terminal
 npm run test:e2e   # testes de ponta a ponta no WebKit (mesmo motor do app no macOS)
 ```
 
-Os testes bloqueiam as imagens das cartas para não gerar milhares de downloads na YGOPRODeck.
+Os testes bloqueiam as imagens das cartas para não gerar milhares de downloads na YGOPRODeck. Os combos calculados vêm de [tests/fixtures/combos.json](tests/fixtures/combos.json) (um recorte de `dados/combos-motor.json` da base), injetado na camada.
 
 ## Leitura da carta
 

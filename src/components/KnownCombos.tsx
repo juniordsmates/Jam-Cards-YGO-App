@@ -4,6 +4,7 @@ import { legalIn, type GameFormat } from "../db/legality";
 import { displayName, type Card } from "../db/types";
 
 type Props = {
+  title?: string;
   combos: KnownCombo[];
   byName: Map<string, Card>;
   format: GameFormat;
@@ -48,13 +49,15 @@ function Steps({ steps, byName, onHover, start = 1 }: { steps: ComboStep[]; byNa
   );
 }
 
-/** Linhas de combo da comunidade que a mão inicial permite */
-export default function KnownCombos({ combos, byName, format, onHover }: Props) {
+/** Linhas de combo escritas pela comunidade (a tela só mostra as que o motor confirmou) */
+export default function KnownCombos({ title = "Combos conhecidos", combos, byName, format, onHover }: Props) {
   if (!combos.length) return null;
   return (
-    <section className="known-combos" aria-label="Combos conhecidos">
-      <h4>Combos conhecidos ({combos.length})</h4>
-      {combos.map((c, idx) => {
+    <section className="known-combos" aria-label={title}>
+      <h4>
+        {title} ({combos.length})
+      </h4>
+      {combos.map((c) => {
         // cartas da linha que não podem ser usadas no formato escolhido
         const names = new Set([
           ...c.passos.flatMap((s) => [s.card, ...(s.resultado ?? [])]),
@@ -62,7 +65,7 @@ export default function KnownCombos({ combos, byName, format, onHover }: Props) 
         ].filter(Boolean) as string[]);
         const blocked = [...names].map((n) => byName.get(n)).filter((card): card is Card => !!card && !legalIn(card, format));
         return (
-          <details key={c.id} className="kc" open={idx === 0}>
+          <details key={c.id} className="kc">
             <summary>
               <span className="kc-title">{c.titulo}</span>
               <span className="kc-hand">

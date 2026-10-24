@@ -3,6 +3,7 @@
 // Imagens das cartas são bloqueadas para não gerar milhares de downloads na YGOPRODeck.
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { webkit } from "playwright";
 
 const URL = process.env.TEST_URL ?? "http://localhost:1420";
@@ -62,6 +63,12 @@ before(async () => {
       }),
     }),
   );
+  await page.route("**/Database-Cards-Ygo-Camada/main/camada.json", async (r) => {
+    const res = await r.fetch();
+    const camada = await res.json();
+    camada.combos = JSON.parse(readFileSync(new globalThis.URL("./fixtures/combos.json", import.meta.url), "utf8"));
+    await r.fulfill({ response: res, json: camada });
+  });
   page.on("pageerror", (e) => pageErrors.push(e.message));
   await openSearch();
 });
@@ -362,66 +369,65 @@ test("Esc volta ao menu e Sair pede confirmação", async () => {
   assert.equal(await page.$(".dialog"), null);
 });
 
-test("combos: Mitsurugi Prayers no TCG e no OCG, e mão com duas cartas", async () => {
+test("combos: sugestões respeitam o formato e mão sem linha calculada avisa", async () => {
   // tela de combos pelo menu (tecla 2)
   await page.keyboard.press("2");
   await page.waitForSelector(".combos-setup");
-  await page.fill(".hand-search input", "mitsurugi prayers");
-  await page.waitForSelector(".suggestions button");
-  await page.keyboard.press("Enter");
-  await page.waitForSelector(".combo-tree .combo-node", { timeout: 15_000 });
-  const tcg = await page.textContent(".combo-tree");
-  assert.ok(tcg.includes("Mitsurugi no Mikoto, Saji"), "Saji deveria aparecer no TCG");
-  assert.ok(!tcg.includes("Ame no Habakiri"), "Habakiri é proibida no TCG");
   // proibida no TCG aparece desabilitada nas sugestões
   await page.fill(".hand-search input", "ame no habakiri");
   await page.waitForSelector(".suggestions button");
   assert.ok(await page.$eval(".suggestions button", (b) => b.disabled));
   assert.ok((await page.textContent(".suggestions")).includes("proibida"));
-  await page.fill(".hand-search input", "");
-  // OCG: só cartas lançadas no OCG
+  // no OCG ela pode
   await page.click(".format-switch button:has-text('OCG')");
   await page.waitForTimeout(300);
-  const ocg = await page.textContent(".combo-tree");
-  assert.ok(!ocg.includes("Mitsurugi no Mikoto, Saji"), "Saji não foi lançada no OCG");
-  assert.ok(ocg.includes("Ame no Habakiri"));
-  // duas cartas na mão
+  assert.ok(!(await page.$eval(".suggestions button", (b) => b.disabled)));
   await page.click(".format-switch button:has-text('TCG')");
-  await page.fill(".hand-search input", "ame no murakumo");
+  // carta sem combo calculado: nenhuma linha inventada
+  await page.fill(".hand-search input", "pot of greed");
   await page.waitForSelector(".suggestions button");
   await page.keyboard.press("Enter");
-  await page.waitForTimeout(300);
-  assert.equal(await page.$$eval(".hand-card", (e) => e.length), 2);
-  assert.equal(await page.$$eval(".combo-tree > .combo-node", (e) => e.length), 2);
-  assert.ok((await page.textContent(".combos-summary")).includes("só combinando"));
+  await page.waitForSelector(".combos-empty:has-text('Nenhum combo calculado')");
+  assert.equal(await page.$(".verified-combos"), null);
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
 });
 
-test("combos: Centur-Ion Primera mostra combos conhecidos e Sincro por nível na árvore", async () => {
+test("combos: Trudea mostra só linhas jogadas pelo motor, com deck de torneio e linha da comunidade confirmada", async () => {
   await page.keyboard.press("2");
   await page.waitForSelector(".combos-setup");
-  // atalho da tela vazia
-  await page.click(".starter-chips .chip:has-text('Primera')");
-  await page.waitForSelector(".known-combos .kc", { timeout: 15_000 });
-  const first = await page.textContent(".known-combos .kc");
-  assert.ok(first.includes("Avante, Centur-Ião!"), "a linha principal passa pela Stand Up");
-  assert.ok(first.includes("Auxila") && first.includes("End Phase"), first.slice(0, 200));
-  await page.waitForSelector(".combo-tree .combo-node", { timeout: 15_000 });
-  // abre o ramo da Trudea e confere a Sincro
-  const tree = await page.textContent(".combo-tree");
-  assert.ok(!/BUSCA\s*Centur-Ião Legatia/i.test(tree), "Legatia não sai do Deck");
-  await page.click(".combo-tree .combo-node.depth-1:has-text('Trudea') .combo-toggle");
-  await page.waitForTimeout(200);
-  assert.ok(/SINCRO\s*Centur-Ião Auxila/i.test(await page.textContent(".combo-tree")), "Auxila por Sincro");
-  // fonte do combo abre fora do app (na web, aba nova; no desktop, navegador do sistema)
+  // atalhos da tela vazia, por deck
+  await page.click(".starter-chips:has-text('Centur-Ion') .chip:has-text('Trudea')");
+  await page.waitForSelector(".verified-combos .vc", { timeout: 15_000 });
+  const lines = await page.$$eval(".verified-combos .vc", (e) => e.map((x) => x.textContent));
+  assert.ok(lines.every((t) => t.includes("Calculado no motor")));
+  const first = lines[0];
+  assert.ok(first.includes("Invocação-Sincro"), "a linha passa por uma Sincro");
+  assert.ok(first.includes("Auxila"), first.slice(0, 300));
+  // a linha escrita pela comunidade só aparece porque o motor a confirmou
+  assert.ok(lines.some((t) => t.includes("Confirma a linha da comunidade")));
+  assert.ok((await page.textContent(".known-combos:not(.verified-combos)")).includes("conferidas no motor"));
+  // o deck usado no cálculo abre fora do app
   const [popup] = await Promise.all([
     page.context().waitForEvent("page"),
-    page.click(".known-combos .kc a:has-text('YGOPRODeck')"),
+    page.click(".verified-combos .vc[open] .tags-note a"),
   ]);
   assert.ok(popup.url().startsWith("https://ygoprodeck.com/deck/centur-ion"), popup.url());
   await popup.close();
   assert.ok(page.url().startsWith("http://localhost"), "o app não deve navegar para o link");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
+test("combos: Primera sozinha só segue com uma carta para descarte (linha da comunidade)", async () => {
+  await page.keyboard.press("2");
+  await page.waitForSelector(".combos-setup");
+  await page.fill(".hand-search input", "centur-ion primera");
+  await page.waitForSelector(".suggestions button");
+  await page.click(".suggestions button:has-text('Primera'):not(:has-text('Primus'))");
+  await page.waitForSelector(".verified-combos .vc", { timeout: 15_000 });
+  const hands = await page.$$eval(".verified-combos .vc .kc-hand", (e) => e.map((x) => x.textContent));
+  assert.ok(hands.length > 0 && hands.every((h) => h.includes("carta qualquer")), hands.join(" | "));
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
 });

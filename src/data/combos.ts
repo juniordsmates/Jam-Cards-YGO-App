@@ -1,6 +1,7 @@
 // Combos conhecidos (linhas reais da comunidade), passo a passo, com ramificações e fonte.
-// Cartas pelo nome em inglês (o app mostra o nome em português). Para acrescentar um arquétipo,
-// siga o formato abaixo e cite de onde veio cada linha.
+// Cartas pelo nome em inglês (o app mostra o nome em português). A tela só mostra uma linha
+// depois que o motor de regras a confirma: cadastre a mão e as cartas finais com o mesmo id em
+// "maos" de dados/combos-alvos.json (Database-Cards-Ygo). Cite de onde veio cada linha.
 
 export interface ComboStep {
   /** carta que age no passo (nome em inglês); vazio para passos de fase ("End Phase") */
@@ -194,9 +195,3 @@ export const KNOWN_COMBOS: KnownCombo[] = [
     fontes: [YGOPRODECK_CENTURION],
   },
 ];
-
-/** Combos conhecidos que a mão inicial permite (todas as cartas exigidas estão na mão) */
-export function combosForHand(handNames: string[]): KnownCombo[] {
-  const hand = new Set(handNames);
-  return KNOWN_COMBOS.filter((c) => c.mao.every((n) => hand.has(n)));
-}

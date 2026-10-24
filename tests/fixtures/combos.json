@@ -1,0 +1,4677 @@
+{
+ "motor": {
+  "nome": "EDOPro (Project Ignis)",
+  "ocgcore": "ocgcore-wasm 0.1.2",
+  "scripts": "196eb043",
+  "base": "BabelCDB cards.cdb"
+ },
+ "geradoEm": "2026-10-24T23:05:42.256Z",
+ "decks": [
+  {
+   "busca": "Centur-Ion",
+   "nome": "Centur-Ion",
+   "evento": "Hungary National Championship 2025 · Top 4",
+   "url": "https://ygoprodeck.com/deck/centur-ion-617294"
+  }
+ ],
+ "linhas": [
+  {
+   "deck": 0,
+   "mao": [
+    15005145,
+    41371602
+   ],
+   "comunidade": "centurion-primera-with-stand-up",
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 8841431,
+     "de": "campo",
+     "para": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      14558128
+     ]
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      96030710,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     8841431,
+     71858682
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      97698279,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": [
+     41371602,
+     14558127
+    ]
+   },
+   "pontos": 31
+  },
+  {
+   "deck": 0,
+   "mao": [
+    15005145,
+    41371602
+   ],
+   "comunidade": "centurion-primera-with-stand-up",
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 8841431,
+     "de": "campo",
+     "para": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      14558128
+     ]
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     97698279
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      96030710,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": [
+     41371602,
+     14558127
+    ]
+   },
+   "pontos": 29.5
+  },
+  {
+   "deck": 0,
+   "mao": [
+    15005145
+   ],
+   "qualquer": 1,
+   "comunidade": "centurion-primera-stand-up",
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 89631139,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 8841431,
+     "de": "campo",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      41371602
+     ]
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      97698279,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      96030710,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": [
+     41371602,
+     41371602
+    ]
+   },
+   "pontos": 28
+  },
+  {
+   "deck": 0,
+   "mao": [
+    15005145
+   ],
+   "qualquer": 1,
+   "comunidade": "centurion-primera-stand-up",
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 89631139,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 8841431,
+     "de": "campo",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      41371602
+     ]
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      97698279,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      97698279,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": [
+     41371602,
+     41371602
+    ]
+   },
+   "pontos": 28
+  },
+  {
+   "deck": 0,
+   "mao": [
+    15005145,
+    41371602
+   ],
+   "comunidade": "centurion-primera-with-stand-up",
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "invoca",
+     "c": 15982593,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      0
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      48130397
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 29301450,
+     "de": "extra",
+     "m": "link",
+     "mat": [
+      15982593,
+      97698279
+     ]
+    },
+    {
+     "t": "baixa",
+     "c": 48130397
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     29301450
+    ],
+    "magias": [
+     [
+      48130397,
+      true
+     ],
+     [
+      97698279,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 25
+  },
+  {
+   "deck": 0,
+   "mao": [
+    15005145,
+    41371602
+   ],
+   "comunidade": "centurion-primera-with-stand-up",
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "invoca",
+     "c": 15982593,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      0
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      48130397
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 15982593,
+     "de": "campo",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "baixa",
+     "c": 48130397
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     97698279
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      48130397,
+      true
+     ],
+     [
+      96030710,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 24.5
+  },
+  {
+   "deck": 0,
+   "mao": [
+    15005145
+   ],
+   "qualquer": 1,
+   "comunidade": "centurion-primera-stand-up",
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 89631139,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "cemiterio",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "invoca",
+     "c": 15982593,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      0,
+      8841431
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      73642296
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 15982593
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     15982593,
+     97698279
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      96030710,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": [
+     73642296
+    ]
+   },
+   "pontos": 21.5
+  },
+  {
+   "deck": 0,
+   "mao": [
+    15005145
+   ],
+   "qualquer": 1,
+   "comunidade": "centurion-primera-stand-up",
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 89631139,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "cemiterio",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "invoca",
+     "c": 15982593,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      0,
+      8841431
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      73642296
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 15982593
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     15982593,
+     97698279
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      15005145,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": [
+     73642296
+    ]
+   },
+   "pontos": 21.5
+  },
+  {
+   "deck": 0,
+   "mao": [
+    42493140
+   ],
+   "comunidade": "centurion-trudea",
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      0
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      42493140
+     ]
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "cemiterio",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     8841431
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      15005145,
+      false
+     ],
+     [
+      42493140,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 20
+  },
+  {
+   "deck": 0,
+   "mao": [
+    42493140
+   ],
+   "comunidade": "centurion-trudea",
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      0
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      42493140
+     ]
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "cemiterio",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     8841431
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      15005145,
+      false
+     ],
+     [
+      96030710,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 20
+  },
+  {
+   "deck": 0,
+   "mao": [
+    42493140
+   ],
+   "comunidade": "centurion-trudea",
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     96030710
+    ],
+    "magias": [
+     [
+      97698279,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 16.5
+  },
+  {
+   "deck": 0,
+   "mao": [
+    42493140
+   ],
+   "comunidade": "centurion-trudea",
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     96030710
+    ],
+    "magias": [
+     [
+      15005145,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 16.5
+  },
+  {
+   "deck": 0,
+   "mao": [
+    42493140
+   ],
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      0
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      42493140
+     ]
+    },
+    {
+     "t": "invoca",
+     "c": 15982593,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      42493140
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "cemiterio",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 15982593
+    }
+   ],
+   "campo": {
+    "monstros": [
+     15982593,
+     8841431
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      96030710,
+      false
+     ]
+    ],
+    "mao": [
+     42493140,
+     42493140
+    ]
+   },
+   "pontos": 10
+  },
+  {
+   "deck": 0,
+   "mao": [
+    42493140
+   ],
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      0
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      42493140
+     ]
+    },
+    {
+     "t": "invoca",
+     "c": 15982593,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      96030710
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      42493140
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "cemiterio",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 15982593
+    }
+   ],
+   "campo": {
+    "monstros": [
+     15982593,
+     8841431
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      15005145,
+      false
+     ]
+    ],
+    "mao": [
+     42493140,
+     42493140
+    ]
+   },
+   "pontos": 10
+  },
+  {
+   "deck": 0,
+   "mao": [
+    42493140
+   ],
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      0
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 15982593,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      6637331
+     ]
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "cemiterio",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 15982593
+    }
+   ],
+   "campo": {
+    "monstros": [
+     15982593,
+     8841431
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ],
+     [
+      15005145,
+      false
+     ]
+    ],
+    "mao": [
+     6637331,
+     97698279
+    ]
+   },
+   "pontos": 10
+  },
+  {
+   "deck": 0,
+   "mao": [
+    42493140
+   ],
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "normal",
+     "c": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "mao"
+    },
+    {
+     "t": "invoca",
+     "c": 0,
+     "de": "fora",
+     "por": 92907248
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      0
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 8841431,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 77765207,
+     "de": "deck",
+     "para": "mao",
+     "por": 8841431
+    },
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "magia",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 15982593,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      8841431,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      6637331
+     ]
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 92907248,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 92907248,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "deck",
+     "para": "cemiterio",
+     "por": 92907248
+    },
+    {
+     "t": "ativa",
+     "c": 40155014,
+     "de": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 40155014,
+     "de": "cemiterio",
+     "para": "banido"
+    },
+    {
+     "t": "invoca",
+     "c": 8841431,
+     "de": "cemiterio",
+     "por": 40155014
+    },
+    {
+     "t": "ativa",
+     "c": 6637331,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "cemiterio",
+     "para": "banido",
+     "por": 6637331
+    },
+    {
+     "t": "invoca",
+     "c": 6637331,
+     "de": "mao",
+     "por": 6637331
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 15982593,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 15982593
+    }
+   ],
+   "campo": {
+    "monstros": [
+     15982593,
+     8841431,
+     6637331,
+     97698279
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 10
+  },
+  {
+   "deck": 0,
+   "mao": [
+    77765207
+   ],
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "normal",
+     "c": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      33854624
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 33854624,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "cemiterio",
+     "para": "banido",
+     "por": 33854624
+    },
+    {
+     "t": "invoca",
+     "c": 33854624,
+     "de": "mao",
+     "por": 33854624
+    },
+    {
+     "t": "ativa",
+     "c": 33854624,
+     "de": "campo"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 6637331,
+     "de": "deck",
+     "para": "mao"
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     96030710,
+     33854624
+    ],
+    "magias": [
+     [
+      42493140,
+      false
+     ]
+    ],
+    "mao": [
+     6637331,
+     97698279
+    ]
+   },
+   "pontos": 9
+  },
+  {
+   "deck": 0,
+   "mao": [
+    77765207
+   ],
+   "formatos": [
+    "OCG"
+   ],
+   "passos": [
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "normal",
+     "c": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      33854624
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 33854624,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "cemiterio",
+     "para": "banido",
+     "por": 33854624
+    },
+    {
+     "t": "invoca",
+     "c": 33854624,
+     "de": "mao",
+     "por": 33854624
+    },
+    {
+     "t": "ativa",
+     "c": 33854624,
+     "de": "campo"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "banido",
+     "para": "magia",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 6637331,
+     "de": "deck",
+     "para": "mao"
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     96030710,
+     33854624
+    ],
+    "magias": [
+     [
+      15005145,
+      false
+     ]
+    ],
+    "mao": [
+     6637331,
+     97698279
+    ]
+   },
+   "pontos": 9
+  },
+  {
+   "deck": 0,
+   "mao": [
+    77765207
+   ],
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      73642296
+     ]
+    },
+    {
+     "t": "normal",
+     "c": 73642296
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     96030710,
+     73642296
+    ],
+    "magias": [
+     [
+      97698279,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 8
+  },
+  {
+   "deck": 0,
+   "mao": [
+    77765207
+   ],
+   "formatos": [
+    "TCG"
+   ],
+   "passos": [
+    {
+     "t": "ativa",
+     "c": 77765207,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "deck",
+     "para": "magia",
+     "por": 77765207
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 42493140,
+     "de": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 42493140,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "campo",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "deck",
+     "para": "magia",
+     "por": 42493140
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 15005145,
+     "de": "magia",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 15005145,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "deck",
+     "para": "mao",
+     "por": 15005145
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 42493140,
+     "de": "magia",
+     "para": "cemiterio"
+    },
+    {
+     "t": "invoca",
+     "c": 97698279,
+     "de": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "invoca",
+     "c": 71858682,
+     "de": "extra",
+     "m": "sincro",
+     "mat": [
+      15005145,
+      97698279
+     ]
+    },
+    {
+     "t": "ativa",
+     "c": 97698279,
+     "de": "cemiterio"
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 41371602,
+     "de": "deck",
+     "para": "mao",
+     "por": 71858682
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "cemiterio",
+     "para": "mao",
+     "por": 97698279
+    },
+    {
+     "t": "ativa",
+     "c": 41371602,
+     "de": "mao"
+    },
+    {
+     "t": "move",
+     "c": 97698279,
+     "de": "mao",
+     "para": "cemiterio"
+    },
+    {
+     "t": "move",
+     "c": 96030710,
+     "de": "deck",
+     "para": "magia",
+     "por": 41371602
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "magia"
+    },
+    {
+     "t": "invoca",
+     "c": 96030710,
+     "de": "magia",
+     "por": 96030710
+    },
+    {
+     "t": "ativa",
+     "c": 96030710,
+     "de": "campo"
+    },
+    {
+     "t": "compra",
+     "c": [
+      73642296
+     ]
+    },
+    {
+     "t": "normal",
+     "c": 73642296
+    },
+    {
+     "t": "ativa",
+     "c": 71858682,
+     "de": "campo"
+    },
+    {
+     "t": "move",
+     "c": 15005145,
+     "de": "cemiterio",
+     "para": "magia",
+     "por": 71858682
+    }
+   ],
+   "campo": {
+    "monstros": [
+     71858682,
+     96030710,
+     73642296
+    ],
+    "magias": [
+     [
+      15005145,
+      false
+     ],
+     [
+      41371602,
+      false
+     ]
+    ],
+    "mao": []
+   },
+   "pontos": 8
+  }
+ ]
+}
