@@ -48,6 +48,8 @@ const search = async (text) => {
 before(async () => {
   browser = await webkit.launch();
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  // links externos abertos pelos testes não carregam o site de verdade
+  await ctx.route("https://ygoprodeck.com/**", (r) => r.fulfill({ status: 200, contentType: "text/html", body: "<p>ok</p>" }));
   page = await ctx.newPage();
   await page.route("**/images.ygoprodeck.com/**", (r) => r.abort());
   // cotação fixa: US$ 1 = R$ 5,00 e € 1 = R$ 6,00 (deixa os valores em reais previsíveis)
@@ -412,6 +414,14 @@ test("combos: Centur-Ion Primera mostra combos conhecidos e Sincro por nível na
   await page.click(".combo-tree .combo-node.depth-1:has-text('Trudea') .combo-toggle");
   await page.waitForTimeout(200);
   assert.ok(/SINCRO\s*Centur-Ião Auxila/i.test(await page.textContent(".combo-tree")), "Auxila por Sincro");
+  // fonte do combo abre fora do app (na web, aba nova; no desktop, navegador do sistema)
+  const [popup] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.click(".known-combos .kc a:has-text('YGOPRODeck')"),
+  ]);
+  assert.ok(popup.url().startsWith("https://ygoprodeck.com/deck/centur-ion"), popup.url());
+  await popup.close();
+  assert.ok(page.url().startsWith("http://localhost"), "o app não deve navegar para o link");
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
 });

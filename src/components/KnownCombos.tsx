@@ -1,4 +1,5 @@
 import type { ComboStep, KnownCombo } from "../data/combos";
+import ExternalLink from "./ExternalLink";
 import { legalIn, type GameFormat } from "../db/legality";
 import { displayName, type Card } from "../db/types";
 
@@ -106,7 +107,7 @@ export default function KnownCombos({ combos, byName, format, onHover }: Props) 
                 <span key={f.nome}>
                   {i > 0 && " · "}
                   {f.url ? (
-                    <a href={f.url} target="_blank" rel="noreferrer">{f.nome}</a>
+                    <ExternalLink href={f.url}>{f.nome} ↗</ExternalLink>
                   ) : (
                     f.nome
                   )}

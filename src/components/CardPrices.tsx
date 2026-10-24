@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ExternalLink from "./ExternalLink";
 import {
   cachedTcgApi,
   fetchTcgApi,
@@ -156,7 +157,7 @@ export default function CardPrices({ card }: { card: Card }) {
             <div className="tcgapi-key">
               <p className="tags-note">
                 Para ver o preço médio de cada versão, crie uma chave gratuita em{" "}
-                <a href={SIGNUP_URL} target="_blank" rel="noreferrer">tcgapi.dev</a> (100 consultas por dia) e cole aqui. Ela
+                <ExternalLink href={SIGNUP_URL}>tcgapi.dev</ExternalLink> (100 consultas por dia) e cole aqui. Ela
                 fica guardada só neste computador.
               </p>
               <div className="tcgapi-key-row">
@@ -230,7 +231,7 @@ export default function CardPrices({ card }: { card: Card }) {
           {rates
             ? `Valores em reais convertidos pela cotação de ${rates.quotedAt.slice(8, 10)}/${rates.quotedAt.slice(5, 7)} (US$ 1 = ${formatMoney(rates.USD, "BRL")}, € 1 = ${formatMoney(rates.EUR, "BRL")}). `
             : "Sem cotação do dia: valores só na moeda original. "}
-          Preços via YGOPRODeck e <a href="https://tcgapi.dev" target="_blank" rel="noreferrer">TCG API</a>.
+          Preços via YGOPRODeck e <ExternalLink href="https://tcgapi.dev">TCG API</ExternalLink>.
         </p>
       </section>
     </>

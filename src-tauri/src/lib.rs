@@ -101,6 +101,8 @@ async fn tcgapi_search(api_key: String, query: String) -> Result<TcgApiResponse,
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // abre links no navegador padrão (a janela do app não abre janelas novas)
+        .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![tcgapi_search])
         .register_asynchronous_uri_scheme_protocol("ygoimg", |ctx, request, responder| {
             let cache_root = ctx.app_handle().path().app_cache_dir();

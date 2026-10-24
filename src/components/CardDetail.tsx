@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import ExternalLink from "./ExternalLink";
 import { cardImage } from "../db/images";
 import { readCard } from "../db/effects";
 import CardEffects, { readingSummary } from "./CardEffects";
@@ -296,9 +297,9 @@ export default function CardDetail({
       <CardPrices card={card} />
 
 
-      <a className="drawer-source" href={card.url} target="_blank" rel="noreferrer">
+      <ExternalLink className="drawer-source" href={card.url}>
         Ver na YGOPRODeck ↗
-      </a>
+      </ExternalLink>
     </aside>
   );
 }
