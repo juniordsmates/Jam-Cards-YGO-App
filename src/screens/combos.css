@@ -335,6 +335,7 @@
 .via-busca { background: var(--cyan); }
 .via-invoca { background: var(--magenta); }
 .via-material { background: #9b59d0; }
+.via-baixa { background: #0e9f7e; }
 
 .combo-note {
   padding: 0 6px;

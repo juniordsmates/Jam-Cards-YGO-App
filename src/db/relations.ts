@@ -7,7 +7,7 @@ import { categoryOf, type Card } from "./types";
 // O alvo pode ser uma carta citada, um arquétipo, "cartas que citam X" ou uma descrição
 // genérica ("1 monstro Mago de TREVAS"), sempre com as restrições do texto (Nível, tipo…).
 
-export type RelationType = "invoca" | "busca" | "material" | "exclusiva" | "ritual" | "cita";
+export type RelationType = "invoca" | "busca" | "baixa" | "material" | "exclusiva" | "ritual" | "cita";
 
 /** Restrições de uma descrição de carta: "1 Level 3 "Prophecy" monster", "1 DARK Spellcaster monster"… */
 export interface CardQuery {
@@ -16,6 +16,8 @@ export interface CardQuery {
   race?: string;
   /** Tuner, Normal, Fusion, Ritual… */
   monsterType?: string;
+  /** subtipo de Magia/Armadilha: Continuous, Quick-Play, Field, Equip, Counter… */
+  subtype?: string;
   levelMin?: number;
   levelMax?: number;
   atkMin?: number;
@@ -60,6 +62,7 @@ export interface Relation {
 export const RELATION_LABELS: Record<RelationType, { out: string; in: string }> = {
   invoca: { out: "Invoca", in: "Invocada por" },
   busca: { out: "Busca", in: "Buscada por" },
+  baixa: { out: "Baixa no campo", in: "Baixada no campo por" },
   material: { out: "Materiais", in: "Material de" },
   exclusiva: { out: "Só pode ser invocada com", in: "Necessária para invocar" },
   ritual: { out: "Invocada por Ritual com", in: "Invoca por Ritual" },
@@ -74,21 +77,28 @@ const RACES = [
   "Beast", "Fairy", "Fiend", "Plant", "Aqua", "Fish", "Pyro", "Rock", "Wyrm",
 ];
 const MONSTER_TYPES = ["Tuner", "Fusion", "Synchro", "Xyz", "Link", "Ritual", "Pendulum", "Flip", "Gemini", "Spirit", "Toon", "Union"];
-const NOUN = /\b(monsters?|spell\/traps?|spells?|traps?|cards?)\b/i;
+const NOUN = /\b(monsters?|tuners?|spell\/traps?|spells?|traps?|cards?)\b/i;
 
 /** Lê as restrições de um trecho descritivo ("1 Level 3 … monster with 1500 or less ATK from your Deck") */
 export function parseQuery(text: string): CardQuery {
   const q: CardQuery = {};
   const noun = text.match(NOUN)?.[1].toLowerCase();
-  if (noun?.startsWith("monster")) q.category = "monster";
+  if (noun?.startsWith("monster") || noun?.startsWith("tuner")) q.category = "monster";
   else if (noun?.startsWith("spell/trap")) q.category = "spelltrap";
   else if (noun?.startsWith("spell")) q.category = "spell";
   else if (noun?.startsWith("trap")) q.category = "trap";
 
+  const sub = text.match(/\b(Continuous|Quick-Play|Field|Equip|Counter|Ritual) (Spells?|Traps?|Spell\/Traps?)\b/i);
+  if (sub) {
+    q.subtype = sub[1][0].toUpperCase() + sub[1].slice(1);
+    q.category = /trap/i.test(sub[2]) && !/spell/i.test(sub[2]) ? "trap" : /spell\/trap/i.test(sub[2]) ? "spelltrap" : "spell";
+  }
   q.attribute = ATTRIBUTES.find((a) => new RegExp(`\\b${a}\\b`).test(text));
   q.race = RACES.find((r) => new RegExp(`\\b${r}(-Type)?\\b`, "i").test(text));
   q.monsterType =
-    MONSTER_TYPES.find((t) => new RegExp(`\\b${t}\\b(?! Summon)`).test(text)) ?? (/\bNormal Monster/.test(text) ? "Normal" : undefined);
+    q.subtype === "Ritual"
+      ? undefined
+      : MONSTER_TYPES.find((t) => new RegExp(`\\b${t}\\b(?! Summon| Spells?| Traps?)`).test(text)) ?? (/\bNormal Monster/.test(text) ? "Normal" : undefined);
 
   const lv = text.match(/\bLevel (\d+) or (lower|less|higher|more)\b/i);
   if (lv) {
@@ -105,6 +115,8 @@ export function parseQuery(text: string): CardQuery {
   }
   const def = text.match(/\b(\d+) or (less|lower) DEF\b/i);
   if (def) q.defMax = Number(def[1]);
+  const atkEq = !atk && text.match(/\bwith (?:exactly )?(\d+) (?:original )?ATK\b/i);
+  if (atkEq) q.atkMin = q.atkMax = Number(atkEq[1]);
   if (q.category === "monster" && /\bfrom (your|their|either player's) (hand|deck|gy|graveyard)/i.test(text) && !/extra deck/i.test(text)) {
     q.mainDeckOnly = true;
   }
@@ -115,18 +127,22 @@ export function parseQuery(text: string): CardQuery {
   if (/(?<!extra )\bdeck\b/i.test(from)) zones.push("deck");
   if (/\b(gy|graveyard)\b/i.test(from)) zones.push("gy");
   if (/\bbanish/i.test(from) || /\bbanished\b/i.test(text)) zones.push("banished");
+  if (/\bexcavat/i.test(text) && !zones.includes("deck")) zones.push("deck");
   if (zones.length) q.zones = zones;
   for (const k of Object.keys(q) as (keyof CardQuery)[]) if (q[k] === undefined) delete q[k];
   return q;
 }
 
 /** A descrição é específica o bastante para listar cartas? ("1 monstro" sozinho não é) */
-const isSpecific = (q: CardQuery) => !!(q.attribute || q.race || q.monsterType);
+const isSpecific = (q: CardQuery) =>
+  !!(q.attribute || q.race || q.monsterType || q.subtype) ||
+  [q.levelMin, q.levelMax, q.atkMin, q.atkMax, q.defMax].some((v) => v !== undefined);
 
 export function matchesQuery(c: Card, q: CardQuery | undefined): boolean {
   if (!q) return true;
   const cat = categoryOf(c);
   if (q.category === "spelltrap" ? cat !== "spell" && cat !== "trap" : q.category && cat !== q.category) return false;
+  if (q.subtype && c.race !== q.subtype) return false;
   if (q.attribute && c.attribute !== q.attribute) return false;
   if (q.race && c.race !== q.race) return false;
   if (q.monsterType) {
@@ -191,6 +207,12 @@ const ARCHETYPE_WORD =
 const VERB =
   /\b((?:special|ritual|fusion|synchro|xyz|link|pendulum) summon|used to ritual summon|add|send|banish|target|destroy|discard|tribute|reveal|shuffle|return|equip|negate|place)\b/gi;
 
+/** "place … in your Pendulum Zone / face-up in your Field Zone": coloca no campo (não "on top of the Deck") */
+const PLACE_ON_FIELD = /\b(in|to|on) (your|their) (pendulum zone|field zone|spell & trap zone|field)\b|\bface-up (in|on) your\b/i;
+
+/** "You can Set 1 …" logo antes do alvo (e nenhum outro verbo depois) */
+const SET_BEFORE = /\bset (?:up to )?(?:\d+|one|two)\b[^;:."]*$/i;
+
 /** Verbo mais próximo antes do alvo define o tipo da relação */
 const IGNORING = /\bignoring (its|their) summoning conditions\b/i;
 
@@ -210,9 +232,31 @@ function relationType(prefix: string, effectKind: string): RelationType {
   const verbs = [...prefix.matchAll(VERB)];
   const last = verbs[verbs.length - 1]?.[1].toLowerCase();
   // "Special/Ritual/Fusion… Summon <alvo>" invoca; "Special Summon this card" não
-  if (last && / summon$/.test(last) && !/summon this card\b[^"]*$/i.test(prefix)) return "invoca";
+  const lastMatch = verbs[verbs.length - 1];
+  const afterVerb = lastMatch ? prefix.slice(lastMatch.index! + lastMatch[0].length) : "";
+  if (last && / summon$/.test(last) && !/^\s*this card\b/i.test(afterVerb)) return "invoca";
   if (last === "add") return "busca";
+  if (last === "place" && PLACE_ON_FIELD.test(afterVerb)) return "baixa";
+  if (SET_BEFORE.test(prefix) && (!lastMatch || prefix.search(SET_BEFORE) > lastMatch.index!)) return "baixa";
   return "cita";
+}
+
+/**
+ * "Target 1 … in your GY; Special Summon it" / "…; add it to your hand": o que o efeito
+ * faz com o alvo vem depois do ";". Devolve o tipo e as zonas, ou undefined se não for o caso.
+ */
+function targetFollowUp(clause: string, rest: string): { type: RelationType; zones: Zone[] } | undefined {
+  if (!/\btarget\b/i.test(clause)) return undefined;
+  const after = rest.slice(rest.indexOf(";") + 1);
+  if (rest.indexOf(";") < 0) return undefined;
+  const m = after.match(/^[^.]*?\b(special summon|add) (it|them|that (?:target|monster|card)|those (?:targets|monsters|cards))\b/i);
+  if (!m) return undefined;
+  const where = `${clause} ${rest.slice(0, rest.indexOf(";"))}`;
+  const zones: Zone[] = [];
+  if (/\b(gy|graveyard)\b/i.test(where)) zones.push("gy");
+  if (/\bbanish(ed|ment)\b/i.test(where)) zones.push("banished");
+  if (!zones.length) return undefined; // alvo no campo: é devolver/mexer, não recuperar
+  return { type: m[1].toLowerCase() === "add" ? "busca" : "invoca", zones };
 }
 
 /** Trecho descritivo em volta de um nome citado: do último verbo até o nome, e logo depois dele */
@@ -235,6 +279,8 @@ export interface RelationIndex {
 
 export function buildRelations(cards: Card[], archetypes: Set<string>): RelationIndex {
   const names = new Map(cards.map((c) => [c.name, c.id]));
+  // textos antigos às vezes mudam maiúsculas ("Elemental Hero Neos" × "Elemental HERO Neos")
+  const namesLower = new Map(cards.map((c) => [c.name.toLowerCase(), c.id]));
   const index: RelationIndex = { out: new Map(), inCard: new Map(), inArchetype: new Map(), inMentions: new Map(), queries: [] };
   const push = <K>(map: Map<K, Relation[]>, key: K, r: Relation) => {
     const list = map.get(key);
@@ -247,6 +293,7 @@ export function buildRelations(cards: Card[], archetypes: Set<string>): Relation
     const { effects } = readCard(card, false);
     const seen = new Set<string>();
     const add = (r: Relation, key: string) => {
+      key = `${r.effect}|${key}`;
       if (seen.has(key)) return;
       seen.add(key);
       push(index.out, card.id, r);
@@ -263,8 +310,9 @@ export function buildRelations(cards: Card[], archetypes: Set<string>): Relation
       // 1) nomes entre aspas
       for (const m of text.matchAll(/"([^"]+)"/g)) {
         const name = m[1];
-        if (name === card.name) continue;
         const before = text.slice(0, m.index);
+        const mentionsSelf = name === card.name && /\b(lists?|mentions?)( the card)?\s*$/i.test(before);
+        if (name === card.name && !mentionsSelf) continue;
         const after = text.slice(m.index! + m[0].length);
         const clause = before.slice(Math.max(before.lastIndexOf(";"), before.lastIndexOf(":"), before.lastIndexOf(". ")) + 1);
         const query = parseQuery(descriptorAround(clause, after));
@@ -273,41 +321,84 @@ export function buildRelations(cards: Card[], archetypes: Set<string>): Relation
         let target: RelationTarget | undefined;
         if (/\b(lists?|mentions?)( the card)?\s*$/i.test(clause.replace(/"[^"]*"(,| or| and)?\s*/g, ""))) {
           target = { kind: "mentions", name, ...(hasQuery && { query }) };
-        } else if (ARCHETYPE_WORD.test(after) && archetypes.has(name.toLowerCase())) {
+        } else if (ARCHETYPE_WORD.test(after) && (archetypes.has(name.toLowerCase()) || !names.has(name))) {
+          // '"Goblin Biker" Spell/Trap': arquétipo pelo nome, mesmo fora da lista oficial
           target = { kind: "archetype", name, ...(hasQuery && { query }) };
-        } else if (names.has(name)) {
-          target = { kind: "card", id: names.get(name)! };
+        } else if (names.has(name) || namesLower.has(name.toLowerCase())) {
+          target = { kind: "card", id: names.get(name) ?? namesLower.get(name.toLowerCase())! };
         } else if (archetypes.has(name.toLowerCase())) {
           target = { kind: "archetype", name, ...(hasQuery && { query }) };
         }
         if (!target) continue;
 
-        const kind = relationType(clause, effect.kind);
+        let kind = relationType(clause, effect.kind);
+        if (kind === "cita" && /\bplace\b[^;:."]*$/i.test(clause) && PLACE_ON_FIELD.test(after.match(/^[^;:.]*/)?.[0] ?? "")) kind = "baixa";
+        // "target 1 "X" card in your GY; add it to your hand": recuperação, não só citação
+        const follow = kind === "cita" ? targetFollowUp(clause, after) : undefined;
+        if (follow) {
+          kind = follow.type;
+          if (target.kind !== "card") target.query = { ...target.query, zones: follow.zones };
+        }
         // com "cartas que citam X", só faz sentido buscar ou invocar; o resto vira citação
         const type = target.kind === "mentions" && kind !== "busca" && kind !== "invoca" ? "cita" : kind;
         const r: Relation = { type, from: card.id, effect: i, name, target };
         if (type === "invoca") r.method = summonMethod(clause);
         if (type === "invoca" && IGNORING.test(text)) r.ignoreConditions = true;
         add(r, `${type}|${name}|${target.kind}`);
+        if (type === "invoca" && /\badd (it |them )?to your hand,? or special summon\b/i.test(clause)) {
+          add({ type: "busca", from: card.id, effect: i, name, target }, `busca|${name}|${target.kind}`);
+        }
       }
 
       // 2) descrições genéricas sem nome: "Special Summon 1 DARK Spellcaster monster from your hand or Deck"
-      const masked = text.replace(/"[^"]*"/g, "\u0000");
+      // aspas viram \u0000; "Special Summon this card" / "add it" viram marcador, para não esconder o próximo alvo da frase
+      const quotesMasked = text.replace(/"[^"]*"/g, "\u0000");
+      const masked = quotesMasked.replace(/\b(special summon|add) (this card|it|them)\b/gi, "\u0001");
+
+      // 3) "target 1 monster with 0 ATK in your GY; Special Summon it"
+      // (o "Special Summon it" depois do ";" é justamente o que interessa aqui: usa o texto sem o marcador)
+      for (const m of quotesMasked.matchAll(/\btarget (?:up to )?(?:\d+|one|two|three)? ?([^;:.\u0000]*?\b(?:monsters?|cards?|spells?|traps?)\b[^;:.\u0000]*);/gi)) {
+        const follow = targetFollowUp(m[0], quotesMasked.slice(m.index! + m[0].length - 1));
+        if (!follow) continue;
+        const query = { ...parseQuery(m[1]), zones: follow.zones };
+        if (!isSpecific(query)) continue;
+        const r: Relation = { type: follow.type, from: card.id, effect: i, name: "", target: { kind: "query", query } };
+        if (follow.type === "invoca") {
+          r.method = "special";
+          if (IGNORING.test(text)) r.ignoreConditions = true;
+        }
+        add(r, `${follow.type}|t|${JSON.stringify(query)}`);
+      }
+
       for (const m of masked.matchAll(
-        /\b((?:special|ritual|fusion|synchro|xyz|link) summon|add)\b([^;:.\u0000]*?\b(?:monsters?|spell\/traps?|spells?|traps?|cards?)\b[^;:.\u0000]*)/gi,
+        /\b((?:special|ritual|fusion|synchro|xyz|link) summon|add|set|place)\b([^;:.\u0000]*?\b(?:monsters?|tuners?|spell\/traps?|spells?|traps?|cards?)\b[^;:.\u0000]*)/gi,
       )) {
         const phrase = m[2];
         if (/\bthis card\b|\bthat (monster|card|target)\b|\bit\b/i.test(phrase.slice(0, 40))) continue;
         // restrições ("You cannot Special Summon monsters, except FIRE monsters") não são invocação
-        if (/\b(cannot|can't|can only|only)\s*$/i.test(masked.slice(Math.max(0, m.index! - 16), m.index)) || /\bexcept\b/i.test(phrase)) continue;
-        const query = parseQuery(phrase);
-        if (!isSpecific(query)) continue;
+        if (/\b(cannot|can't|can only|only)\s*$/i.test(masked.slice(Math.max(0, m.index! - 16), m.index))) continue;
+        // "…, except "Aratama"": a exceção não faz parte da descrição do alvo
+        const query = parseQuery(phrase.split(/,?\s+except\b/i)[0]);
         const verb = m[1].toLowerCase();
+        const isSetOrPlace = verb === "set" || verb === "place";
+        if (isSetOrPlace) {
+          // "Set 1 excavated Trap": basta ser Magia/Armadilha; "place" só quando vai para o campo
+          if (verb === "place" && !PLACE_ON_FIELD.test(phrase)) continue;
+          if (!/^\s*(?:up to )?(?:\d+|one|two|any number of)\b/i.test(phrase)) continue; // "Set card", "set it" etc.
+          if (query.category === "monster" && !/pendulum/i.test(phrase)) continue; // baixar monstro é outra coisa
+          if (!isSpecific(query) && !query.category) continue;
+          add({ type: "baixa", from: card.id, effect: i, name: "", target: { kind: "query", query } }, `baixa|q|${JSON.stringify(query)}`);
+          continue;
+        }
+        if (!isSpecific(query)) continue;
         const type: RelationType = verb === "add" ? "busca" : "invoca";
         const r: Relation = { type, from: card.id, effect: i, name: "", target: { kind: "query", query } };
         if (type === "invoca") r.method = (verb.split(" ")[0] as SummonMethod) ?? "special";
         if (type === "invoca" && IGNORING.test(text)) r.ignoreConditions = true;
         add(r, `${type}|q|${JSON.stringify(query)}|${r.method ?? ""}`);
+        if (type === "busca" && /^\s*(it |them )?to your hand,? or special summon\b/i.test(phrase)) {
+          add({ type: "invoca", method: "special", from: card.id, effect: i, name: "", target: { kind: "query", query } }, `invoca|q|${JSON.stringify(query)}|special`);
+        }
       }
     });
   }
@@ -331,7 +422,10 @@ const targetAccepts = (r: Relation, c: Card) => {
 
 /** Relações em que a carta é o alvo. `generic` separa as que vêm de descrições sem nome. */
 export function incomingRelations(index: RelationIndex, card: Card): { named: Relation[]; generic: Relation[] } {
-  const byArchetype = card.archetype ? index.inArchetype.get(card.archetype.toLowerCase()) ?? [] : [];
+  // por arquétipo: o oficial da carta e qualquer termo citado que apareça no nome dela
+  const byArchetype = [...index.inArchetype].flatMap(([term, rels]) =>
+    card.archetype?.toLowerCase() === term || card.name.toLowerCase().includes(term) ? rels : [],
+  );
   const quoted = [...new Set([...card.desc.matchAll(/"([^"]+)"/g)].map((m) => m[1]))];
   const byMention = quoted.flatMap((n) => index.inMentions.get(n) ?? []);
   const named = [...(index.inCard.get(card.id) ?? []), ...byArchetype, ...byMention].filter(
@@ -362,7 +456,8 @@ function computeTargetIds(r: Relation, cards: Card[]): number[] {
   return cards
     .filter((c) => {
       if (c.id === r.from || c.frame === "skill" || c.frame === "token") return false;
-      if (t.kind === "archetype" && c.archetype?.toLowerCase() !== t.name.toLowerCase()) return false;
+      // membro do arquétipo: classificado nele ou com o termo no nome (regra do jogo)
+      if (t.kind === "archetype" && c.archetype?.toLowerCase() !== t.name.toLowerCase() && !c.name.includes(t.name)) return false;
       if (t.kind === "mentions" && !c.desc.includes(`"${t.name}"`)) return false;
       return targetAccepts(r, c);
     })
@@ -374,15 +469,20 @@ const ATTRIBUTE_PT: Record<string, string> = { LIGHT: "LUZ", DARK: "TREVAS", EAR
 /** Descrição em português: "monstro Mago de TREVAS de Nível 4 ou menos" (raças traduzidas por quem chama) */
 export function describeQuery(q: CardQuery, raceLabel: (race: string) => string = (r) => r): string {
   const noun = { monster: "monstro", spell: "Magia", trap: "Armadilha", spelltrap: "Magia/Armadilha" }[q.category ?? "monster"];
+  const SUBTYPE_PT: Record<string, string> = { Continuous: "Contínua", "Quick-Play": "Rápida", Field: "de Campo", Equip: "de Equipamento", Counter: "de Resposta", Ritual: "de Ritual" };
   const parts = [noun];
+  if (q.subtype) parts.push(SUBTYPE_PT[q.subtype] ?? q.subtype);
   if (q.monsterType) parts.push(q.monsterType);
   if (q.race) parts.push(raceLabel(q.race));
   if (q.attribute) parts.push(`de ${ATTRIBUTE_PT[q.attribute] ?? q.attribute}`);
   if (q.levelMin !== undefined && q.levelMin === q.levelMax) parts.push(`de Nível ${q.levelMin}`);
   else if (q.levelMax !== undefined) parts.push(`de Nível ${q.levelMax} ou menos`);
   else if (q.levelMin !== undefined) parts.push(`de Nível ${q.levelMin} ou mais`);
-  if (q.atkMax !== undefined) parts.push(`com ${q.atkMax} ou menos de ATK`);
-  if (q.atkMin !== undefined) parts.push(`com ${q.atkMin} ou mais de ATK`);
+  if (q.atkMin !== undefined && q.atkMin === q.atkMax) parts.push(`com ${q.atkMin} de ATK`);
+  else {
+    if (q.atkMax !== undefined) parts.push(`com ${q.atkMax} ou menos de ATK`);
+    if (q.atkMin !== undefined) parts.push(`com ${q.atkMin} ou mais de ATK`);
+  }
   if (q.defMax !== undefined) parts.push(`com ${q.defMax} ou menos de DEF`);
   return parts.join(" ");
 }

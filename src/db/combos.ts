@@ -8,7 +8,7 @@ import { categoryOf, type Card } from "./types";
 // passos de distância, formando uma árvore: o que cada carta faz e onde ela pode chegar.
 // É uma aproximação pelo texto: não simula custos, ordem de Chain nem limites de Invocação.
 
-export type StepKind = "busca" | "invoca" | "material";
+export type StepKind = "busca" | "invoca" | "baixa" | "material";
 
 export interface ComboNode {
   card: Card;
@@ -40,8 +40,8 @@ export interface ExploreOptions {
   rank?: (ids: number[], parent: Card) => number[];
 }
 
-const STEP_OF: Partial<Record<RelationType, StepKind>> = { busca: "busca", invoca: "invoca" };
-const STEP_LABEL: Record<StepKind, string> = { busca: "Busca", invoca: "Invoca", material: "Material de" };
+const STEP_OF: Partial<Record<RelationType, StepKind>> = { busca: "busca", invoca: "invoca", baixa: "baixa" };
+const STEP_LABEL: Record<StepKind, string> = { busca: "Busca", invoca: "Invoca", baixa: "Baixa", material: "Material de" };
 
 /** Exigências do efeito que faz o passo, lidas da leitura da carta */
 export function stepNotes(card: Card, effectIndex: number): string[] {

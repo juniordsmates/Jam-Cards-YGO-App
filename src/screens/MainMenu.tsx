@@ -87,7 +87,7 @@ export default function MainMenu({ active, onSearch, onCombos, onDeck, onExit }:
       <footer className="menu-footer">
         <span>↑ ↓ navegar</span>
         <span>Enter selecionar</span>
-        <span>v0.2.0 · {isDesktop ? "Desktop" : "Web"}</span>
+        <span>v0.2.1 · {isDesktop ? "Desktop" : "Web"}</span>
       </footer>
     </section>
   );

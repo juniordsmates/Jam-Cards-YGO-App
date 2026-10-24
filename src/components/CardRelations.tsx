@@ -28,7 +28,7 @@ type Props = {
 };
 
 // Ordem dos grupos: o que a carta faz primeiro, depois o que fazem com ela
-const ORDER: RelationType[] = ["invoca", "exclusiva", "ritual", "material", "busca", "cita"];
+const ORDER: RelationType[] = ["invoca", "exclusiva", "ritual", "material", "busca", "baixa", "cita"];
 const VISIBLE_CHIPS = 8;
 const LIST_PAGE = 12;
 
