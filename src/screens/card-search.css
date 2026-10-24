@@ -1825,3 +1825,46 @@
 .price-foot {
   margin-top: 10px;
 }
+
+/* ---------- Coleções: raridade em sigla colorida + preço da versão ---------- */
+
+.sets li {
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.set-rarity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+  text-align: right;
+}
+
+.set-rarity .money {
+  min-width: 62px;
+  align-items: flex-end;
+}
+
+.set-rarity .money strong {
+  font-size: 0.8rem;
+}
+
+.set-rarity .money small,
+.set-rarity .money-empty {
+  font-size: 0.66rem;
+}
+
+.rarity {
+  display: inline-block;
+  min-width: 34px;
+  padding: 1px 6px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: #fff;
+  border-radius: 4px;
+  cursor: help;
+}

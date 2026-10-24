@@ -292,6 +292,11 @@ test("preços em reais: conversão pela cotação e TCG API só no desktop", asy
   assert.ok(Math.abs(n(brl) - n(usd) * 5) < 0.02, `${usd} → ${brl}`);
   assert.ok((await page.textContent(".prices-section")).includes("US$ 1 = R$"));
   assert.ok((await page.textContent(".tcgapi")).includes("app desktop"));
+  // Coleções antes de Preços, com raridade em sigla (nome completo no title)
+  const order = await page.$$eval(".drawer .drawer-section h4", (hs) => hs.map((h) => h.textContent));
+  assert.ok(order.findIndex((t) => t.startsWith("Coleções")) < order.indexOf("Preços"), order.join(" / "));
+  const badge = await page.$eval(".sets .rarity", (b) => ({ code: b.textContent, name: b.title }));
+  assert.ok(badge.code.length <= 5 && badge.name.length > badge.code.length, JSON.stringify(badge));
   await page.click(".drawer-close");
   await search("");
 });
@@ -315,6 +320,25 @@ test("TCG API: leitura da resposta fica só com as impressões da carta, da mais
     ["Rarity Collection", 3.1, "USD"],
     ["Maximum Crisis", 12.5, "USD"],
   ]);
+});
+
+test("raridades em sigla e casamento das impressões da TCG API com as coleções", async () => {
+  const r = await page.evaluate(async () => {
+    const { rarityInfo } = await import("/src/db/rarities.ts");
+    const { matchPrinting } = await import("/src/db/prices.ts");
+    const prices = [
+      { set: "Maximum Crisis", rarity: "Secret Rare", median: 9, currency: "USD" },
+      { set: "Rarity Collection", rarity: "Prismatic Secret Rare", median: 3, currency: "USD" },
+    ];
+    return {
+      codes: ["Secret Rare", "Quarter Century Secret Rare", "Starlight Rare", "PLatinum Secret Rare", "New"].map((n) => rarityInfo(n).code),
+      match: matchPrinting(prices, "Maximum Crisis", "Secret Rare")?.median,
+      noMatch: matchPrinting(prices, "Maximum Crisis", "Ultra Rare") ?? null,
+    };
+  });
+  assert.deepEqual(r.codes, ["ScR", "QCSR", "StR", "PlScR", "N"]);
+  assert.equal(r.match, 9);
+  assert.equal(r.noMatch, null);
 });
 
 test("nomes oficiais em português da camada (Yu-Gi-Oh! Wiki)", async () => {

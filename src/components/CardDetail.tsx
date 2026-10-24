@@ -295,20 +295,6 @@ export default function CardDetail({
 
       <CardPrices card={card} />
 
-      {card.sets.length > 0 && (
-        <section className="drawer-section">
-          <h4>Coleções ({card.sets.length})</h4>
-          <ul className="sets">
-            {card.sets.map((s) => (
-              <li key={`${s.code}-${s.rarity}`}>
-                <code>{s.code}</code>
-                <span>{s.name}</span>
-                <em>{s.rarity}</em>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       <a className="drawer-source" href={card.url} target="_blank" rel="noreferrer">
         Ver na YGOPRODeck ↗

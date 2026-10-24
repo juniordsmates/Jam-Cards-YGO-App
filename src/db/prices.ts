@@ -78,6 +78,8 @@ export interface PrintingPrice {
   printing?: string;
   market?: number;
   low?: number;
+  /** preço médio (mediana dos anúncios) */
+  median?: number;
   currency: Currency;
   asOf?: string;
 }
@@ -97,6 +99,7 @@ interface TcgApiItem {
   product_type?: string;
   market_price?: number | string | null;
   low_price?: number | string | null;
+  median_price?: number | string | null;
   market_price_as_of?: string;
   currency?: string;
 }
@@ -116,10 +119,26 @@ export function parseTcgApi(body: string, card: Card): PrintingPrice[] {
       printing: i.printing,
       market: num(i.market_price),
       low: num(i.low_price),
+      median: num(i.median_price),
       currency: (["BRL", "USD", "EUR"].includes(i.currency ?? "") ? i.currency : "USD") as Currency,
       asOf: i.market_price_as_of,
     }))
     .sort((a, b) => (a.market ?? Infinity) - (b.market ?? Infinity));
+}
+
+const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/**
+ * A impressão da TCG API que corresponde a uma coleção da carta: mesma coleção e mesma raridade.
+ * Só quando a TCG API não informa a raridade vale a coleção sozinha (se tiver uma impressão só);
+ * raridades diferentes são versões diferentes, com preços diferentes.
+ */
+export function matchPrinting(prices: PrintingPrice[], setName: string, rarity: string): PrintingPrice | undefined {
+  const sameSet = prices.filter((p) => norm(p.set) === norm(setName));
+  const exact = sameSet.find((p) => norm(p.rarity) === norm(rarity));
+  if (exact) return exact;
+  const noRarity = sameSet.filter((p) => !p.rarity);
+  return sameSet.length === 1 && noRarity.length === 1 ? noRarity[0] : undefined;
 }
 
 /** Resultado guardado da última consulta (vale por 24 horas) */
