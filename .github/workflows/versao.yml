@@ -1,0 +1,76 @@
+name: Versão (Windows e macOS)
+
+# Gera o instalador do Windows (.exe, NSIS) e o do macOS (.dmg universal: Apple Silicon e Intel)
+# e publica os dois no mesmo Release do GitHub.
+# Só a branch "release" gera versão: mudanças chegam lá por Pull Request aprovado pelo dono do
+# projeto. O número vem de package.json/tauri.conf.json; o canal (Alpha, Beta…) vem de CANAL abaixo.
+on:
+  push:
+    branches: [release]
+  workflow_dispatch:
+
+env:
+  CANAL: alpha # minúsculas; vira sufixo da tag (v0.0.1-alpha) e nome do release (Cartas v0.0.1 alpha)
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@action-v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__-${{ env.CANAL }}
+          releaseName: Cartas v__VERSION__ ${{ env.CANAL }}
+          releaseCommitish: release
+          releaseBody: |
+            **Windows:** baixe `Cartas_…_x64-setup.exe` e execute.
+            - Se o Cartas já estiver instalado, o instalador só atualiza o app e mantém seus dados (base de cartas e imagens em cache).
+            - Não pede administrador: instala na sua conta de usuário. Se faltar o WebView2 (Windows antigos), o instalador baixa sozinho.
+            - O app não tem assinatura digital: se aparecer "O Windows protegeu o computador", clique em **Mais informações** → **Executar assim mesmo**.
+
+            **macOS (Apple Silicon e Intel):** baixe `Cartas_…_universal.dmg`, abra e arraste o Cartas para **Aplicativos**.
+            - O app não é assinado pela Apple. Na primeira vez, se o macOS bloquear, vá em **Ajustes do Sistema → Privacidade e Segurança** e clique em **Abrir Mesmo Assim**.
+            - Se aparecer "está danificado", rode no Terminal: `xattr -cr /Applications/Cartas.app` e abra de novo.
+          releaseDraft: false
+          prerelease: true
+          args: --bundles nsis
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@action-v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__-${{ env.CANAL }}
+          releaseName: Cartas v__VERSION__ ${{ env.CANAL }}
+          releaseCommitish: release
+          releaseDraft: false
+          prerelease: true
+          args: --target universal-apple-darwin --bundles dmg

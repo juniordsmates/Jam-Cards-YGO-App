@@ -42,13 +42,16 @@ Versão atual: **0.0.1 Alpha** (número em `package.json`, `src-tauri/tauri.conf
 
 O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **desativado**: o que estiver nele não é aplicado ao projeto.
 
-### Instalador do Windows
+### Instaladores (Windows e macOS)
 
-A GitHub Action [versao-windows.yml](.github/workflows/versao-windows.yml) roda a cada push na `release`, compila numa máquina Windows e publica `Cartas_<versão>_x64-setup.exe` num Release (tag `v<versão>-<canal>`). Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
+A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push na `release` e publica no mesmo Release (tag `v<versão>-<canal>`):
+
+- **Windows:** `Cartas_<versão>_x64-setup.exe`. Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
+- **macOS:** `Cartas_<versão>_universal.dmg` (Apple Silicon e Intel).
 
 Para lançar uma versão: suba o número nos três arquivos acima, junte a `main` na `release` por Pull Request e aprove.
 
-O app não tem assinatura digital: na primeira execução o Windows pode mostrar "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**.
+O app não tem assinatura digital. No Windows, na primeira execução pode aparecer "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**. No macOS: **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**; se aparecer "está danificado", `xattr -cr /Applications/Cartas.app`.
 
 ## Estrutura
 
