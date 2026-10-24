@@ -40,7 +40,7 @@ Versão atual: **0.0.1 Alpha** (número em `package.json`, `src-tauri/tauri.conf
 | `main` | desenvolvimento: mudanças novas, inclusive as do agente agendado |
 | `release` | versão final: só recebe mudanças por **Pull Request aprovado pelo dono do projeto**; cada push nela gera o instalador |
 
-Pedidos de mudança ficam em [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) (qualquer autor). Elas são implementadas na `main` e propostas para a `release` por Pull Request.
+O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **desativado**: o que estiver nele não é aplicado ao projeto.
 
 ### Instalador do Windows
 
