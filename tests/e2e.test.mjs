@@ -50,6 +50,16 @@ before(async () => {
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
   page = await ctx.newPage();
   await page.route("**/images.ygoprodeck.com/**", (r) => r.abort());
+  // cotação fixa: US$ 1 = R$ 5,00 e € 1 = R$ 6,00 (deixa os valores em reais previsíveis)
+  await page.route("**/economia.awesomeapi.com.br/**", (r) =>
+    r.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        USDBRL: { bid: "5.00", create_date: "2026-10-24 12:00:00" },
+        EURBRL: { bid: "6.00", create_date: "2026-10-24 12:00:00" },
+      }),
+    }),
+  );
   page.on("pageerror", (e) => pageErrors.push(e.message));
   await openSearch();
 });
@@ -269,6 +279,42 @@ test("carta referenciada aparece na lista, e Voltar restaura a lista anterior", 
   assert.equal(await page.inputValue(".search-input input"), "cortina de mago negro");
   await page.click(".drawer-close");
   await search("");
+});
+
+test("preços em reais: conversão pela cotação e TCG API só no desktop", async () => {
+  await reset();
+  await search("ash blossom");
+  await page.click(".grid .tile >> nth=0");
+  await page.waitForSelector(".prices-section .money strong");
+  const usd = await page.$eval(".prices-section .price-list div:nth-child(2) .money small", (e) => e.textContent);
+  const brl = await page.$eval(".prices-section .price-list div:nth-child(2) .money strong", (e) => e.textContent);
+  const n = (t) => Number(t.replace(/[^\d,]/g, "").replace(",", "."));
+  assert.ok(Math.abs(n(brl) - n(usd) * 5) < 0.02, `${usd} → ${brl}`);
+  assert.ok((await page.textContent(".prices-section")).includes("US$ 1 = R$"));
+  assert.ok((await page.textContent(".tcgapi")).includes("app desktop"));
+  await page.click(".drawer-close");
+  await search("");
+});
+
+test("TCG API: leitura da resposta fica só com as impressões da carta, da mais barata para a mais cara", async () => {
+  const prices = await page.evaluate(async () => {
+    const { parseTcgApi } = await import("/src/db/prices.ts");
+    const body = JSON.stringify({
+      data: [
+        { name: "Ash Blossom & Joyous Spring", set_name: "Maximum Crisis", rarity: "Secret Rare", printing: "1st Edition", product_type: "Cards", market_price: 12.5, low_price: 10 },
+        { name: "Ash Blossom & Joyous Spring", set_name: "Rarity Collection", rarity: "Prismatic Secret Rare", printing: "Unlimited", market_price: "3.10", low_price: null },
+        { name: "Ash Blossom & Joyous Spring (Alternate Art)", set_name: "Outra", market_price: 1 },
+        { name: "Ash Blossom & Joyous Spring", set_name: "Booster Box", product_type: "Sealed Products", market_price: 90 },
+      ],
+      meta: { total: 4, page: 1, per_page: 50, has_more: false },
+      rate_limit: { daily_limit: 100, daily_remaining: 99 },
+    });
+    return parseTcgApi(body, { name: "Ash Blossom & Joyous Spring" });
+  });
+  assert.deepEqual(prices.map((p) => [p.set, p.market, p.currency]), [
+    ["Rarity Collection", 3.1, "USD"],
+    ["Maximum Crisis", 12.5, "USD"],
+  ]);
 });
 
 test("nomes oficiais em português da camada (Yu-Gi-Oh! Wiki)", async () => {

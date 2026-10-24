@@ -278,6 +278,7 @@ name = "cartas"
 version = "0.0.1"
 dependencies = [
  "reqwest 0.12.28",
+ "serde",
  "tauri",
  "tauri-build",
  "tokio",

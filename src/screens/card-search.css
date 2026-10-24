@@ -1711,3 +1711,117 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* ---------- Preços (em reais) ---------- */
+
+.price-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+
+.price-list dt {
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.price-list dd {
+  margin: 2px 0 0;
+}
+
+.money {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.money strong {
+  font-size: 0.92rem;
+}
+
+.money small,
+.money-empty {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.tcgapi {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.tcgapi-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tcgapi-head small {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.tcgapi-key-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tcgapi-key-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.84rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  user-select: text;
+}
+
+.tcgapi-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.price-table th {
+  padding: 4px 6px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line);
+}
+
+.price-table td {
+  padding: 6px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.price-table td small {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.price-foot {
+  margin-top: 10px;
+}

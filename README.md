@@ -77,6 +77,15 @@ src-tauri/                configuração e código nativo (Rust)
 
 `src/db/tags.ts`, `effects.ts`, `relations.ts`, `types.ts` e `ygoprodeck.ts` são cópias do repositório `Database-Cards-Ygo`, onde fica o original. Correções de cartas e regras novas devem ser feitas lá.
 
+## Preços
+
+O painel da carta mostra os preços **em reais**. Nenhuma fonte traz reais hoje: quando um valor vier em BRL ele é usado direto; senão, é convertido pela cotação do dia ([AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas), guardada por 12 horas).
+
+- **YGOPRODeck:** menor preço no Cardmarket (euro) e no TCGplayer (dólar), sempre visíveis.
+- **[TCG API](https://tcgapi.dev/games/yugioh/):** preço de mercado e menor preço por impressão (coleção, raridade e versão), vindos do TCGplayer. Precisa de uma chave gratuita (100 consultas por dia), colada no painel e guardada só no computador. A consulta é feita pelo Rust (`tcgapi_search` em [src-tauri/src/lib.rs](src-tauri/src/lib.rs)) porque a API só aceita chamadas do próprio site; por isso **só funciona no app desktop**. Cada consulta é manual e o resultado fica guardado por 24 horas.
+
+A licença da TCG API proíbe redistribuir os preços: eles não vão para a camada pública nem para outro lugar fora do app.
+
 ## Relacionamentos entre cartas
 
 O painel de cada carta mostra, nos dois sentidos, as relações lidas dos nomes entre aspas no texto ([src/db/relations.ts](src/db/relations.ts)):

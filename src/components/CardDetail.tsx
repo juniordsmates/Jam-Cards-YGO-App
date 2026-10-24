@@ -4,6 +4,7 @@ import { readCard } from "../db/effects";
 import CardEffects, { readingSummary } from "./CardEffects";
 import CardStats from "./CardStats";
 import CardInfo from "./CardInfo";
+import CardPrices from "./CardPrices";
 import MetaHistory from "./MetaHistory";
 import CardRelations from "./CardRelations";
 import { describeQuery, RELATION_LABELS, relationTargetIds, type RelationIndex } from "../db/relations";
@@ -292,15 +293,7 @@ export default function CardDetail({
 
       {card.archetype && meta && <MetaHistory archetype={card.archetype} meta={meta} />}
 
-      {card.prices && (
-        <section className="drawer-section">
-          <h4>Preço mínimo</h4>
-          <p className="prices">
-            <span>Cardmarket € {card.prices.cardmarket ?? "—"}</span>
-            <span>TCGplayer $ {card.prices.tcgplayer ?? "—"}</span>
-          </p>
-        </section>
-      )}
+      <CardPrices card={card} />
 
       {card.sets.length > 0 && (
         <section className="drawer-section">

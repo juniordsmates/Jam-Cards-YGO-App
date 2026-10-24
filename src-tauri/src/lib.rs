@@ -69,9 +69,39 @@ async fn load_image(cache_root: PathBuf, dir: &str, file: &str) -> Result<Vec<u8
     Ok(bytes)
 }
 
+/// Resposta da TCG API repassada ao app: o corpo JSON e quantas consultas restam hoje.
+#[derive(serde::Serialize)]
+struct TcgApiResponse {
+    status: u16,
+    body: String,
+    remaining: Option<String>,
+}
+
+/// Busca preços na TCG API (tcgapi.dev). Feita aqui no Rust porque a API só aceita chamadas
+/// do próprio site (CORS); a chave é a do usuário, guardada só no computador dele.
+#[tauri::command]
+async fn tcgapi_search(api_key: String, query: String) -> Result<TcgApiResponse, String> {
+    let res = http()
+        .get("https://api.tcgapi.dev/v1/search")
+        .query(&[("q", query.as_str()), ("game", "yugioh"), ("per_page", "50")])
+        .header("X-API-Key", api_key)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = res.status().as_u16();
+    let remaining = res
+        .headers()
+        .get("x-ratelimit-remaining")
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
+    let body = res.text().await.map_err(|e| e.to_string())?;
+    Ok(TcgApiResponse { status, body, remaining })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![tcgapi_search])
         .register_asynchronous_uri_scheme_protocol("ygoimg", |ctx, request, responder| {
             let cache_root = ctx.app_handle().path().app_cache_dir();
             let path = request.uri().path().to_string();
