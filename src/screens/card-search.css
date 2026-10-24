@@ -1868,3 +1868,34 @@
   border-radius: 4px;
   cursor: help;
 }
+
+/* popup: imagem da carta ao lado dos dados */
+.preview {
+  width: 400px;
+}
+
+.preview-top {
+  display: flex;
+  gap: 12px;
+}
+
+.preview-art {
+  flex: none;
+  width: 104px;
+  aspect-ratio: 168 / 246;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--skeleton);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--frame) 50%, transparent);
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.preview-info .stats.compact {
+  flex-wrap: wrap;
+}
