@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./ScreenShell";
 import CardPreview from "../components/CardPreview";
+import KnownCombos from "../components/KnownCombos";
+import { combosForHand, KNOWN_COMBOS } from "../data/combos";
 import { SearchIcon } from "../icons";
 import { initCardDb, useCardDb, useRelationIndex, useTagLookup } from "../db/cardStore";
 import { exploreCombos, type ComboNode } from "../db/combos";
@@ -100,6 +102,11 @@ export default function Combos({ onBack }: { onBack: () => void }) {
   }, [query, db.cards, hand, format]);
 
   const legalHand = hand.filter((c) => legalIn(c, format));
+  const known = combosForHand(hand.map((c) => c.name));
+  // cartas que iniciam combos conhecidos (atalhos na tela vazia)
+  const starters = [...new Set(KNOWN_COMBOS.filter((c) => c.mao.length === 1).map((c) => c.mao[0]))]
+    .map((n) => byName.get(n))
+    .filter((c): c is Card => !!c);
 
   const result = useMemo(() => {
     if (!index || !legalHand.length) return null;
@@ -244,9 +251,19 @@ export default function Combos({ onBack }: { onBack: () => void }) {
               <div className="combos-empty">
                 <p>Escolha uma ou mais cartas para a mão inicial.</p>
                 <small>
-                  A árvore mostra o que cada carta alcança sozinha (busca, invoca, Ritual, Fusão com os materiais à mão) e onde
-                  cada caminho pode chegar. Os ramos vêm ordenados por combo com a mão inicial, uso no metagame e popularidade.
+                  A árvore mostra o que cada carta alcança sozinha (busca, invoca, baixa, Sincro por nível) e onde cada caminho
+                  pode chegar. Os ramos vêm ordenados por combo com a mão inicial, uso no metagame e popularidade.
                 </small>
+                {starters.length > 0 && (
+                  <div className="starter-chips">
+                    <span className="field-label">Com combos conhecidos</span>
+                    {starters.map((c) => (
+                      <button key={c.id} className="chip" onClick={() => addCard(c)}>
+                        {displayName(c)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : !index || !result ? (
               <div className="combos-empty">
@@ -261,6 +278,8 @@ export default function Combos({ onBack }: { onBack: () => void }) {
                     <> · <strong>{[...result.reached.values()].filter((n) => n.needsCombination).length}</strong> só combinando as cartas da mão</>
                   )}
                 </p>
+
+                <KnownCombos combos={known} byName={byName} format={format} onHover={onHover} />
 
                 <div className="combos-columns">
                   <ul className="combo-tree" aria-label="Árvore de combos">

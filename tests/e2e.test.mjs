@@ -396,6 +396,26 @@ test("combos: Mitsurugi Prayers no TCG e no OCG, e mão com duas cartas", async 
   await page.waitForSelector(".menu-btn");
 });
 
+test("combos: Centur-Ion Primera mostra combos conhecidos e Sincro por nível na árvore", async () => {
+  await page.keyboard.press("2");
+  await page.waitForSelector(".combos-setup");
+  // atalho da tela vazia
+  await page.click(".starter-chips .chip:has-text('Primera')");
+  await page.waitForSelector(".known-combos .kc", { timeout: 15_000 });
+  const first = await page.textContent(".known-combos .kc");
+  assert.ok(first.includes("Avante, Centur-Ião!"), "a linha principal passa pela Stand Up");
+  assert.ok(first.includes("Auxila") && first.includes("End Phase"), first.slice(0, 200));
+  await page.waitForSelector(".combo-tree .combo-node", { timeout: 15_000 });
+  // abre o ramo da Trudea e confere a Sincro
+  const tree = await page.textContent(".combo-tree");
+  assert.ok(!/BUSCA\s*Centur-Ião Legatia/i.test(tree), "Legatia não sai do Deck");
+  await page.click(".combo-tree .combo-node.depth-1:has-text('Trudea') .combo-toggle");
+  await page.waitForTimeout(200);
+  assert.ok(/SINCRO\s*Centur-Ião Auxila/i.test(await page.textContent(".combo-tree")), "Auxila por Sincro");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
 test("nenhum erro de JavaScript na página", () => {
   assert.deepEqual(pageErrors, []);
 });

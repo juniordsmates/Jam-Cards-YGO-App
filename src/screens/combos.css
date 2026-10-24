@@ -428,3 +428,148 @@
     overflow-y: auto;
   }
 }
+
+/* ---------- Combos conhecidos ---------- */
+
+.combos-result {
+  overflow-y: auto;
+}
+
+.known-combos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.known-combos > h4,
+.kc-board .field-label {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.kc {
+  padding: 12px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--magenta);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.kc > summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  list-style: none;
+  outline: none;
+}
+
+.kc > summary::-webkit-details-marker,
+.kc-branch > summary::-webkit-details-marker {
+  display: none;
+}
+
+.kc-title {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+}
+
+.kc-hand {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+.kc-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 4px;
+  padding-left: 22px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.kc-steps li::marker {
+  font-weight: 700;
+  color: var(--magenta);
+}
+
+.kc-card {
+  margin-right: 6px;
+  font-weight: 700;
+  border-bottom: 1px dotted var(--text-dim);
+  cursor: default;
+}
+
+.kc-action {
+  color: var(--text);
+}
+
+.kc-result {
+  margin-left: 4px;
+  color: var(--text-dim);
+}
+
+.kc-result .kc-card {
+  margin-right: 0;
+  color: var(--cyan);
+}
+
+.kc-branch {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+
+.kc-branch > summary {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  list-style: none;
+}
+
+.kc-branch > summary::before {
+  content: "▸ ";
+}
+
+.kc-branch[open] > summary::before {
+  content: "▾ ";
+}
+
+.kc-board {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  margin-top: 10px;
+}
+
+.kc-board-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.starter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.combos-columns {
+  min-height: 420px;
+}
+.via-sincro { background: #f2f2f7; color: #1b1830 !important; border: 1px solid #9aa0b8; }

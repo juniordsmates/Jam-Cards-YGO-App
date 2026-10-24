@@ -8,7 +8,7 @@ import { categoryOf, type Card } from "./types";
 // passos de distância, formando uma árvore: o que cada carta faz e onde ela pode chegar.
 // É uma aproximação pelo texto: não simula custos, ordem de Chain nem limites de Invocação.
 
-export type StepKind = "busca" | "invoca" | "baixa" | "material";
+export type StepKind = "busca" | "invoca" | "baixa" | "material" | "sincro";
 
 export interface ComboNode {
   card: Card;
@@ -21,6 +21,8 @@ export interface ComboNode {
   children: ComboNode[];
   /** só alcançável combinando duas ou mais cartas da mão inicial */
   needsCombination?: boolean;
+  /** possibilidades menos relevantes deixadas de fora (descrições genéricas com muitos alvos) */
+  omitted?: number;
 }
 
 export interface ComboResult {
@@ -38,10 +40,62 @@ export interface ExploreOptions {
   maxDepth?: number;
   /** ordena os candidatos de um passo (ex.: combo > metagame > popularidade) */
   rank?: (ids: number[], parent: Card) => number[];
+  /** ramos abertos por relação genérica (os demais só contam em "omitted"); padrão 20 */
+  maxBranch?: number;
 }
 
+/** Materiais Sincro considerados por passo (os mais relevantes já alcançados) */
+const MAX_SYNCHRO_MATERIALS = 60;
+
 const STEP_OF: Partial<Record<RelationType, StepKind>> = { busca: "busca", invoca: "invoca", baixa: "baixa" };
-const STEP_LABEL: Record<StepKind, string> = { busca: "Busca", invoca: "Invoca", baixa: "Baixa", material: "Material de" };
+const STEP_LABEL: Record<StepKind, string> = { busca: "Busca", invoca: "Invoca", baixa: "Baixa", material: "Material de", sincro: "Sincro" };
+
+/** Níveis que a carta pode ter: o impresso e os que o próprio texto permite ("increase its Level by 4") */
+export function levelsOf(c: Card): number[] {
+  if (c.level === undefined) return [];
+  const levels = new Set([c.level]);
+  for (const m of c.desc.matchAll(/\b(increase|reduce) its Level by (\d+)/gi)) {
+    const n = Number(m[2]);
+    const lv = m[1].toLowerCase() === "increase" ? c.level + n : c.level - n;
+    if (lv >= 1) levels.add(lv);
+  }
+  return [...levels];
+}
+
+const isTuner = (c: Card) => c.type.includes("Tuner") && !/\bnon-tuner\b/i.test(c.type);
+/** Regulador que pode ser usado como não-Regulador ("you can treat it as a non-Tuner") */
+const canBeNonTuner = (c: Card) => !isTuner(c) || /treat it as a non-tuner/i.test(c.desc);
+
+/** Materiais Sincro genéricos ("1 Tuner + 1+ non-Tuner monsters"), sem exigir nomes ou tipos */
+const GENERIC_SYNCHRO = /^1 Tuner \+ 1\+ non-Tuner monsters?$/i;
+
+/**
+ * Monstros Sincro alcançáveis com 1 Regulador + 1 não-Regulador já disponíveis, pela soma dos níveis.
+ * Devolve, para cada Sincro, a dupla de materiais que chega mais cedo.
+ */
+function synchroUnlocks(nodes: Map<number, ComboNode>, synchros: Card[], legal: (c: Card) => boolean, depth: number) {
+  // só o que já estava disponível antes deste passo, na ordem de relevância em que foi alcançado
+  const monsters = [...nodes.values()]
+    .filter((n) => n.depth < depth && categoryOf(n.card) === "monster" && n.card.level !== undefined)
+    .slice(0, MAX_SYNCHRO_MATERIALS);
+  const tuners = monsters.filter((n) => isTuner(n.card));
+  const others = monsters.filter((n) => canBeNonTuner(n.card));
+  const found: { card: Card; tuner: ComboNode; other: ComboNode }[] = [];
+  for (const s of synchros) {
+    if (nodes.has(s.id) || !legal(s) || s.level === undefined) continue;
+    let best: { tuner: ComboNode; other: ComboNode; depth: number } | undefined;
+    for (const t of tuners) {
+      for (const o of others) {
+        if (o === t) continue;
+        const fits = levelsOf(t.card).some((lt) => levelsOf(o.card).some((lo) => lt + lo === s.level));
+        const depth = Math.max(t.depth, o.depth);
+        if (fits && (!best || depth < best.depth)) best = { tuner: t, other: o, depth };
+      }
+    }
+    if (best) found.push({ card: s, tuner: best.tuner, other: best.other });
+  }
+  return found;
+}
 
 /** Exigências do efeito que faz o passo, lidas da leitura da carta */
 export function stepNotes(card: Card, effectIndex: number): string[] {
@@ -100,6 +154,7 @@ function materialUnlocks(
 
 function explore(start: Card[], opts: ExploreOptions): ComboResult {
   const { cards, byId, index, format } = opts;
+  const synchros = cards.filter((c) => c.frame.startsWith("synchro") && GENERIC_SYNCHRO.test(c.desc.split(/\r?\n/)[0].trim()));
   const maxDepth = opts.maxDepth ?? 3;
   const legal = (c: Card) => legalIn(c, format);
   const startIds = new Set(start.map((c) => c.id));
@@ -110,20 +165,58 @@ function explore(start: Card[], opts: ExploreOptions): ComboResult {
   let frontier = roots;
   for (let depth = 1; depth <= maxDepth && frontier.length; depth++) {
     const next: ComboNode[] = [];
+    // Invocação-Sincro primeiro (é a forma natural de chegar a um Sincro): Regulador +
+    // não-Regulador dos passos anteriores, pela soma dos níveis
+    const pending = synchroUnlocks(nodes, synchros, legal, depth).sort((a, b) => {
+      if (!opts.rank) return 0;
+      const order = opts.rank([a.card.id, b.card.id], a.tuner.card);
+      return order.indexOf(a.card.id) - order.indexOf(b.card.id);
+    });
+    for (const u of pending) {
+      const parent = u.tuner.depth >= u.other.depth ? u.tuner : u.other;
+      const node: ComboNode = {
+        card: u.card,
+        depth,
+        via: { from: parent.card.id, kind: "sincro", effect: -1, label: STEP_LABEL.sincro },
+        notes: [`${u.tuner.card.namePt ?? u.tuner.card.name} + ${u.other.card.namePt ?? u.other.card.name}`],
+        children: [],
+      };
+      nodes.set(u.card.id, node);
+      parent.children.push(node);
+      next.push(node);
+    }
     for (const parent of frontier) {
-      const rels = (index.out.get(parent.card.id) ?? []).filter((r) => STEP_OF[r.type]);
+      const rels = (index.out.get(parent.card.id) ?? []).filter(
+        (r) =>
+          STEP_OF[r.type] &&
+          // "Synchro/Fusion/Xyz/Link Summon 1 … Monster" genérico depende dos materiais em campo:
+          // fica a cargo de synchroUnlocks (por nível); nome citado ("Fusion Summon "X"") continua valendo
+          !(r.type === "invoca" && r.target.kind !== "card" && r.method && r.method !== "special" && r.method !== "ritual"),
+      );
       for (const r of rels) {
         const kind = STEP_OF[r.type]!;
         let ids = relationTargetIds(r, cards).filter((id) => !nodes.has(id) && legal(byId.get(id)!));
         if (opts.rank) ids = opts.rank(ids, parent.card);
+        // descrição genérica com muitos alvos: abre só os mais relevantes
+        const maxBranch = opts.maxBranch ?? 20;
+        if (r.target.kind !== "card" && ids.length > maxBranch) {
+          parent.omitted = (parent.omitted ?? 0) + ids.length - maxBranch;
+          ids = ids.slice(0, maxBranch);
+        }
         const notes = stepNotes(parent.card, r.effect);
         for (const id of ids) {
           if (nodes.has(id)) continue;
+          const target = byId.get(id)!;
+          // colocada na Zona de Magia/Armadilha e capaz de se Invocar de lá (ex.: Centur-Ion)
+          const fromBackrow =
+            kind === "baixa" && /if this card is a continuous trap: you can special summon this card/i.test(target.desc)
+              ? ["se Invoca da Zona de M/A"]
+              : [];
           const node: ComboNode = {
-            card: byId.get(id)!,
+            card: target,
             depth,
             via: { from: parent.card.id, kind, effect: r.effect, label: STEP_LABEL[kind] },
-            notes,
+            notes: [...notes, ...fromBackrow],
             children: [],
           };
           nodes.set(id, node);
