@@ -31,13 +31,22 @@ npx tauri icon public/app-icon.svg   # gera os ícones em src-tauri/icons (uma v
 
 O instalador de cada sistema precisa ser gerado nesse sistema (ou via CI, como GitHub Actions).
 
-## Versão Windows
+## Versões e branches
 
-O instalador `.exe` é gerado pela GitHub Action [versao-windows.yml](.github/workflows/versao-windows.yml) numa máquina Windows e publicado nos Releases do repositório.
+Versão atual: **0.0.1 Alpha** (número em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`; canal em [src/version.ts](src/version.ts) e na Action).
 
-1. Suba a versão em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`.
-2. Crie a tag e envie: `git tag v0.3.0 && git push --tags`.
-3. Baixe `Cartas_<versão>_x64-setup.exe` no Release e execute. Se o app já estiver instalado, ele só é atualizado, e os dados ficam.
+| Branch | Papel |
+| --- | --- |
+| `main` | desenvolvimento: mudanças novas, inclusive as do agente agendado |
+| `release` | versão final: só recebe mudanças por **Pull Request aprovado pelo dono do projeto**; cada push nela gera o instalador |
+
+Pedidos de mudança ficam em [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) (qualquer autor). Elas são implementadas na `main` e propostas para a `release` por Pull Request.
+
+### Instalador do Windows
+
+A GitHub Action [versao-windows.yml](.github/workflows/versao-windows.yml) roda a cada push na `release`, compila numa máquina Windows e publica `Cartas_<versão>_x64-setup.exe` num Release (tag `v<versão>-<canal>`). Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
+
+Para lançar uma versão: suba o número nos três arquivos acima, junte a `main` na `release` por Pull Request e aprove.
 
 O app não tem assinatura digital: na primeira execução o Windows pode mostrar "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**.
 
