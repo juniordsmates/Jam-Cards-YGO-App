@@ -40,15 +40,18 @@ Versão atual: **0.0.1 Alpha** (número em `package.json`, `src-tauri/tauri.conf
 | `main` | desenvolvimento: mudanças novas, inclusive as do agente agendado |
 | `release` | versão final: só recebe mudanças por **Pull Request aprovado pelo dono do projeto**; cada push nela gera o instalador |
 
-Pedidos de mudança ficam em [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) (qualquer autor). Elas são implementadas na `main` e propostas para a `release` por Pull Request.
+O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **desativado**: o que estiver nele não é aplicado ao projeto.
 
-### Instalador do Windows
+### Instaladores (Windows e macOS)
 
-A GitHub Action [versao-windows.yml](.github/workflows/versao-windows.yml) roda a cada push na `release`, compila numa máquina Windows e publica `Cartas_<versão>_x64-setup.exe` num Release (tag `v<versão>-<canal>`). Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
+A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push na `release` e publica no mesmo Release (tag `v<versão>-<canal>`):
+
+- **Windows:** `Cartas_<versão>_x64-setup.exe`. Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
+- **macOS:** `Cartas_<versão>_universal.dmg` (Apple Silicon e Intel).
 
 Para lançar uma versão: suba o número nos três arquivos acima, junte a `main` na `release` por Pull Request e aprove.
 
-O app não tem assinatura digital: na primeira execução o Windows pode mostrar "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**.
+O app não tem assinatura digital. No Windows, na primeira execução pode aparecer "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**. No macOS: **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**; se aparecer "está danificado", `xattr -cr /Applications/Cartas.app`.
 
 ## Estrutura
 
@@ -77,6 +80,15 @@ src-tauri/                configuração e código nativo (Rust)
 
 `src/db/tags.ts`, `effects.ts`, `relations.ts`, `types.ts` e `ygoprodeck.ts` são cópias do repositório `Database-Cards-Ygo`, onde fica o original. Correções de cartas e regras novas devem ser feitas lá.
 
+## Preços
+
+O painel da carta mostra os preços **em reais**. Nenhuma fonte traz reais hoje: quando um valor vier em BRL ele é usado direto; senão, é convertido pela cotação do dia ([AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas), guardada por 12 horas).
+
+- **YGOPRODeck:** menor preço no Cardmarket (euro) e no TCGplayer (dólar), sempre visíveis.
+- **[TCG API](https://tcgapi.dev/games/yugioh/):** preço de mercado e menor preço por impressão (coleção, raridade e versão), vindos do TCGplayer. Precisa de uma chave gratuita (100 consultas por dia), colada no painel e guardada só no computador. A consulta é feita pelo Rust (`tcgapi_search` em [src-tauri/src/lib.rs](src-tauri/src/lib.rs)) porque a API só aceita chamadas do próprio site; por isso **só funciona no app desktop**. Cada consulta é manual e o resultado fica guardado por 24 horas.
+
+A licença da TCG API proíbe redistribuir os preços: eles não vão para a camada pública nem para outro lugar fora do app.
+
 ## Relacionamentos entre cartas
 
 O painel de cada carta mostra, nos dois sentidos, as relações lidas dos nomes entre aspas no texto ([src/db/relations.ts](src/db/relations.ts)):
@@ -92,6 +104,12 @@ O painel de cada carta mostra, nos dois sentidos, as relações lidas dos nomes 
 
 O alvo pode ser uma carta, um arquétipo ('"Invoked" monster') ou "cartas que citam X". Cada grupo tem **Ver na busca** (só essas cartas) e **Combinar com filtros** (aplica sobre os filtros atuais). Dentro da leitura, cada efeito mostra o que invoca ou busca.
 
+## Combos
+
+A aba Combos mostra **só linhas calculadas**: o pipeline da base (Database-Cards-Ygo, `npm run combos`) joga cada mão inicial no motor de regras do EDOPro (Project Ignis) com decklists reais de torneio da YGOPRODeck. Custos, condições de ativação, "uma vez por turno", travas e o limite de Invocação-Normal vêm dos scripts oficiais das cartas, não da leitura do texto. O app recebe as linhas prontas na camada pública (campo `combos`, só ids e zonas) e mostra as que cabem na mão escolhida ([src/db/motor.ts](src/db/motor.ts), [src/components/VerifiedCombos.tsx](src/components/VerifiedCombos.tsx)).
+
+As linhas escritas pela comunidade ([src/data/combos.ts](src/data/combos.ts)) só aparecem quando o motor as confirma (mesmo id em `maos` de `dados/combos-alvos.json` na base). O motor e os scripts (AGPL-3.0) não vão no app.
+
 ## Testes
 
 ```bash
@@ -99,7 +117,7 @@ npm run dev        # em outro terminal
 npm run test:e2e   # testes de ponta a ponta no WebKit (mesmo motor do app no macOS)
 ```
 
-Os testes bloqueiam as imagens das cartas para não gerar milhares de downloads na YGOPRODeck.
+Os testes bloqueiam as imagens das cartas para não gerar milhares de downloads na YGOPRODeck. Os combos calculados vêm de [tests/fixtures/combos.json](tests/fixtures/combos.json) (um recorte de `dados/combos-motor.json` da base), injetado na camada.
 
 ## Leitura da carta
 

@@ -408,10 +408,17 @@ export function buildRelations(cards: Card[], archetypes: Set<string>): Relation
 /** Tipos de relação que só fazem sentido com monstros como alvo (por arquétipo) */
 const MONSTER_ONLY: RelationType[] = ["invoca", "material", "ritual", "exclusiva"];
 
+const EXTRA_DECK_FRAME = /^(fusion|synchro|xyz|link)/;
+
 const targetAccepts = (r: Relation, c: Card) => {
   // carta citada pelo nome: o texto foi feito para ela (ex.: "Special Summon 1 "Dark Magician"")
   if (r.target.kind === "card") return r.target.id === c.id;
   if (MONSTER_ONLY.includes(r.type) && categoryOf(c) !== "monster") return false;
+  // "from your Deck/hand": monstros do Deck Adicional nunca estão lá (ex.: Primera não busca a Legatia)
+  const zones = r.target.query?.zones;
+  if (zones?.some((z) => z === "deck" || z === "hand") && !zones.includes("extra") && EXTRA_DECK_FRAME.test(c.frame)) {
+    if (!zones.some((z) => z === "gy" || z === "banished")) return false;
+  }
   // alvo descrito ("1 DARK Spellcaster monster"): respeita a condição de invocação do alvo
   if (r.type === "invoca") {
     const ok = r.ignoreConditions ? summonRule(c) !== "never" : canBeSummoned(c, r.method, r.target.query?.zones);

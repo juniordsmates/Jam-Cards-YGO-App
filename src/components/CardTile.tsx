@@ -5,18 +5,22 @@ import { displayName, type Card } from "../db/types";
 
 type Props = {
   card: Card;
+  /** é a carta aberta no painel */
+  selected?: boolean;
   onSelect: (card: Card) => void;
   /** mouse entrou (com o elemento) ou saiu (null) da carta */
   onHover: (card: Card | null, el?: HTMLElement) => void;
 };
 
-function CardTile({ card, onSelect, onHover }: Props) {
+function CardTile({ card, selected, onSelect, onHover }: Props) {
   const [failed, setFailed] = useState(false);
   const ban = card.ban?.tcg;
 
   return (
     <button
-      className="tile"
+      className={`tile ${selected ? "selected" : ""}`}
+      data-card-id={card.id}
+      aria-current={selected || undefined}
       style={{ "--frame": frameColor(card.frame) } as CSSProperties}
       onClick={() => onSelect(card)}
       // só mouse: em tela de toque o "hover" viria junto com o toque e cobriria o painel

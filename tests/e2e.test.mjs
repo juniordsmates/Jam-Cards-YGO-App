@@ -3,6 +3,7 @@
 // Imagens das cartas são bloqueadas para não gerar milhares de downloads na YGOPRODeck.
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { webkit } from "playwright";
 
 const URL = process.env.TEST_URL ?? "http://localhost:1420";
@@ -48,8 +49,26 @@ const search = async (text) => {
 before(async () => {
   browser = await webkit.launch();
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
+  // links externos abertos pelos testes não carregam o site de verdade
+  await ctx.route("https://ygoprodeck.com/**", (r) => r.fulfill({ status: 200, contentType: "text/html", body: "<p>ok</p>" }));
   page = await ctx.newPage();
   await page.route("**/images.ygoprodeck.com/**", (r) => r.abort());
+  // cotação fixa: US$ 1 = R$ 5,00 e € 1 = R$ 6,00 (deixa os valores em reais previsíveis)
+  await page.route("**/economia.awesomeapi.com.br/**", (r) =>
+    r.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        USDBRL: { bid: "5.00", create_date: "2026-10-24 12:00:00" },
+        EURBRL: { bid: "6.00", create_date: "2026-10-24 12:00:00" },
+      }),
+    }),
+  );
+  await page.route("**/Database-Cards-Ygo-Camada/main/camada.json", async (r) => {
+    const res = await r.fetch();
+    const camada = await res.json();
+    camada.combos = JSON.parse(readFileSync(new globalThis.URL("./fixtures/combos.json", import.meta.url), "utf8"));
+    await r.fulfill({ response: res, json: camada });
+  });
   page.on("pageerror", (e) => pageErrors.push(e.message));
   await openSearch();
 });
@@ -129,7 +148,7 @@ test("painel da Aleister: leitura, camada revisada, informações e metagame", a
 
 test("arquétipo no painel abre a busca com cartas de suporte", async () => {
   await page.click(".drawer .tag-btn:has-text('Invoked')");
-  await page.waitForSelector(".drawer", { state: "detached" });
+  await page.waitForTimeout(450); // o painel fica aberto; a lista muda ao lado
   assert.ok((await page.textContent(".active-filters")).includes("Arquétipo: Invoked + suporte"));
   const n = await resultCount();
   assert.ok(n > 20, `Invoked + suporte: ${n}`);
@@ -164,7 +183,7 @@ test("relacionamentos: Cortina invoca Mago Negro e o inverso", async () => {
   assert.ok((await page.textContent(".relation-group.rel-out-invoca")).includes("Mago Negro"));
   // "Ver na busca" mostra só as cartas que ela invoca
   await page.click(".relation-group.rel-out-invoca .link-btn:has-text('Ver na busca')");
-  await page.waitForSelector(".drawer", { state: "detached" });
+  await page.waitForTimeout(450); // o painel fica aberto; a lista muda ao lado
   assert.equal(await resultCount(), 1);
   assert.equal(await page.textContent(".grid .tile-name >> nth=0"), "Mago Negro");
   // no Mago Negro, o sentido inverso
@@ -190,7 +209,7 @@ test("relacionamentos: 'Combinar com filtros' mantém os filtros atuais", async 
   await page.waitForSelector(".drawer .relation-group.rel-in-invoca");
   const all = await page.$eval(".relation-group.rel-in-invoca .relation-count", (e) => Number(e.textContent));
   await page.click(".relation-group.rel-in-invoca .link-btn:has-text('Combinar com filtros')");
-  await page.waitForSelector(".drawer", { state: "detached" });
+  await page.waitForTimeout(450); // o painel fica aberto; a lista muda ao lado
   // Magia + "cortina de mago negro" + invocadoras do Mago Negro = só a Cortina
   assert.ok(all > 5, `invocadoras do Mago Negro: ${all}`);
   assert.equal(await resultCount(), 1);
@@ -229,6 +248,108 @@ test("botão Voltar no painel retorna à carta anterior", async () => {
   await search("");
 });
 
+test("painel à esquerda não bloqueia a lista: clicar em outra carta e ver o popup", async () => {
+  await reset();
+  await search("mago negro");
+  await page.click(".grid .tile >> nth=0");
+  await page.waitForSelector(".left-col .drawer.docked");
+  // a grade continua clicável com o painel aberto
+  const second = await page.textContent(".grid .tile-name >> nth=1");
+  await page.click(".grid .tile >> nth=1");
+  await page.waitForFunction((n) => document.querySelector(".drawer-head h3")?.textContent === n, second);
+  assert.ok(await page.$(".grid .tile.selected"), "carta aberta deveria ficar destacada");
+  // o popup da lista também funciona com o painel aberto
+  await page.hover(".grid .tile >> nth=2");
+  await page.waitForSelector(".preview", { timeout: 3000 });
+  await page.mouse.move(5, 5);
+  // a aba Filtros continua acessível
+  await page.click(".left-tabs button:has-text('Filtros')");
+  await page.waitForSelector(".left-col .filters");
+  await page.click(".left-tabs button:has-text('Carta')");
+  await page.waitForSelector(".left-col .drawer.docked");
+});
+
+test("carta referenciada aparece na lista, e Voltar restaura a lista anterior", async () => {
+  await reset();
+  await search("cortina de mago negro");
+  await page.click(".grid .tile >> nth=0");
+  await page.waitForSelector(".drawer .effect-link");
+  // Mago Negro não está na lista atual: aparece fixado no início da grade, sem mexer nos filtros
+  await page.click(".drawer .effect-link:has-text('Mago Negro')");
+  await page.waitForFunction(() => document.querySelector(".drawer-head h3")?.textContent === "Mago Negro");
+  assert.equal(await page.textContent(".grid .pinned-slot .tile-name"), "Mago Negro");
+  assert.ok(await page.$(".grid .pinned-slot .tile.selected"));
+  assert.equal(await page.inputValue(".search-input input"), "cortina de mago negro");
+  assert.equal(await resultCount(), 1);
+  // Voltar: painel anterior, sem a carta fixada
+  await page.click(".drawer-back");
+  await page.waitForFunction(() => document.querySelector(".drawer-head h3")?.textContent === "Cortina de Mago Negro");
+  assert.equal(await page.$(".grid .pinned-slot"), null);
+  assert.equal(await page.inputValue(".search-input input"), "cortina de mago negro");
+  await page.click(".drawer-close");
+  await search("");
+});
+
+test("preços em reais: conversão pela cotação e TCG API só no desktop", async () => {
+  await reset();
+  await search("ash blossom");
+  await page.click(".grid .tile >> nth=0");
+  await page.waitForSelector(".prices-section .money strong");
+  const usd = await page.$eval(".prices-section .price-list div:nth-child(2) .money small", (e) => e.textContent);
+  const brl = await page.$eval(".prices-section .price-list div:nth-child(2) .money strong", (e) => e.textContent);
+  const n = (t) => Number(t.replace(/[^\d,]/g, "").replace(",", "."));
+  assert.ok(Math.abs(n(brl) - n(usd) * 5) < 0.02, `${usd} → ${brl}`);
+  assert.ok((await page.textContent(".prices-section")).includes("US$ 1 = R$"));
+  assert.ok((await page.textContent(".tcgapi")).includes("app desktop"));
+  // Coleções antes de Preços, com raridade em sigla (nome completo no title)
+  const order = await page.$$eval(".drawer .drawer-section h4", (hs) => hs.map((h) => h.textContent));
+  assert.ok(order.findIndex((t) => t.startsWith("Coleções")) < order.indexOf("Preços"), order.join(" / "));
+  const badge = await page.$eval(".sets .rarity", (b) => ({ code: b.textContent, name: b.title }));
+  assert.ok(badge.code.length <= 5 && badge.name.length > badge.code.length, JSON.stringify(badge));
+  await page.click(".drawer-close");
+  await search("");
+});
+
+test("TCG API: leitura da resposta fica só com as impressões da carta, da mais barata para a mais cara", async () => {
+  const prices = await page.evaluate(async () => {
+    const { parseTcgApi } = await import("/src/db/prices.ts");
+    const body = JSON.stringify({
+      data: [
+        { name: "Ash Blossom & Joyous Spring", set_name: "Maximum Crisis", rarity: "Secret Rare", printing: "1st Edition", product_type: "Cards", market_price: 12.5, low_price: 10 },
+        { name: "Ash Blossom & Joyous Spring", set_name: "Rarity Collection", rarity: "Prismatic Secret Rare", printing: "Unlimited", market_price: "3.10", low_price: null },
+        { name: "Ash Blossom & Joyous Spring (Alternate Art)", set_name: "Outra", market_price: 1 },
+        { name: "Ash Blossom & Joyous Spring", set_name: "Booster Box", product_type: "Sealed Products", market_price: 90 },
+      ],
+      meta: { total: 4, page: 1, per_page: 50, has_more: false },
+      rate_limit: { daily_limit: 100, daily_remaining: 99 },
+    });
+    return parseTcgApi(body, { name: "Ash Blossom & Joyous Spring" });
+  });
+  assert.deepEqual(prices.map((p) => [p.set, p.market, p.currency]), [
+    ["Rarity Collection", 3.1, "USD"],
+    ["Maximum Crisis", 12.5, "USD"],
+  ]);
+});
+
+test("raridades em sigla e casamento das impressões da TCG API com as coleções", async () => {
+  const r = await page.evaluate(async () => {
+    const { rarityInfo } = await import("/src/db/rarities.ts");
+    const { matchPrinting } = await import("/src/db/prices.ts");
+    const prices = [
+      { set: "Maximum Crisis", rarity: "Secret Rare", median: 9, currency: "USD" },
+      { set: "Rarity Collection", rarity: "Prismatic Secret Rare", median: 3, currency: "USD" },
+    ];
+    return {
+      codes: ["Secret Rare", "Quarter Century Secret Rare", "Starlight Rare", "PLatinum Secret Rare", "New"].map((n) => rarityInfo(n).code),
+      match: matchPrinting(prices, "Maximum Crisis", "Secret Rare")?.median,
+      noMatch: matchPrinting(prices, "Maximum Crisis", "Ultra Rare") ?? null,
+    };
+  });
+  assert.deepEqual(r.codes, ["ScR", "QCSR", "StR", "PlScR", "N"]);
+  assert.equal(r.match, 9);
+  assert.equal(r.noMatch, null);
+});
+
 test("nomes oficiais em português da camada (Yu-Gi-Oh! Wiki)", async () => {
   await reset();
   await search('"a" cell breeding device');
@@ -248,38 +369,65 @@ test("Esc volta ao menu e Sair pede confirmação", async () => {
   assert.equal(await page.$(".dialog"), null);
 });
 
-test("combos: Mitsurugi Prayers no TCG e no OCG, e mão com duas cartas", async () => {
+test("combos: sugestões respeitam o formato e mão sem linha calculada avisa", async () => {
   // tela de combos pelo menu (tecla 2)
   await page.keyboard.press("2");
   await page.waitForSelector(".combos-setup");
-  await page.fill(".hand-search input", "mitsurugi prayers");
-  await page.waitForSelector(".suggestions button");
-  await page.keyboard.press("Enter");
-  await page.waitForSelector(".combo-tree .combo-node", { timeout: 15_000 });
-  const tcg = await page.textContent(".combo-tree");
-  assert.ok(tcg.includes("Mitsurugi no Mikoto, Saji"), "Saji deveria aparecer no TCG");
-  assert.ok(!tcg.includes("Ame no Habakiri"), "Habakiri é proibida no TCG");
   // proibida no TCG aparece desabilitada nas sugestões
   await page.fill(".hand-search input", "ame no habakiri");
   await page.waitForSelector(".suggestions button");
   assert.ok(await page.$eval(".suggestions button", (b) => b.disabled));
   assert.ok((await page.textContent(".suggestions")).includes("proibida"));
-  await page.fill(".hand-search input", "");
-  // OCG: só cartas lançadas no OCG
+  // no OCG ela pode
   await page.click(".format-switch button:has-text('OCG')");
   await page.waitForTimeout(300);
-  const ocg = await page.textContent(".combo-tree");
-  assert.ok(!ocg.includes("Mitsurugi no Mikoto, Saji"), "Saji não foi lançada no OCG");
-  assert.ok(ocg.includes("Ame no Habakiri"));
-  // duas cartas na mão
+  assert.ok(!(await page.$eval(".suggestions button", (b) => b.disabled)));
   await page.click(".format-switch button:has-text('TCG')");
-  await page.fill(".hand-search input", "ame no murakumo");
+  // carta sem combo calculado: nenhuma linha inventada
+  await page.fill(".hand-search input", "pot of greed");
   await page.waitForSelector(".suggestions button");
   await page.keyboard.press("Enter");
-  await page.waitForTimeout(300);
-  assert.equal(await page.$$eval(".hand-card", (e) => e.length), 2);
-  assert.equal(await page.$$eval(".combo-tree > .combo-node", (e) => e.length), 2);
-  assert.ok((await page.textContent(".combos-summary")).includes("só combinando"));
+  await page.waitForSelector(".combos-empty:has-text('Nenhum combo calculado')");
+  assert.equal(await page.$(".verified-combos"), null);
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
+test("combos: Trudea mostra só linhas jogadas pelo motor, com deck de torneio e linha da comunidade confirmada", async () => {
+  await page.keyboard.press("2");
+  await page.waitForSelector(".combos-setup");
+  // atalhos da tela vazia, por deck
+  await page.click(".starter-chips:has-text('Centur-Ion') .chip:has-text('Trudea')");
+  await page.waitForSelector(".verified-combos .vc", { timeout: 15_000 });
+  const lines = await page.$$eval(".verified-combos .vc", (e) => e.map((x) => x.textContent));
+  assert.ok(lines.every((t) => t.includes("Calculado no motor")));
+  const first = lines[0];
+  assert.ok(first.includes("Invocação-Sincro"), "a linha passa por uma Sincro");
+  assert.ok(first.includes("Auxila"), first.slice(0, 300));
+  // a linha escrita pela comunidade só aparece porque o motor a confirmou
+  assert.ok(lines.some((t) => t.includes("Confirma a linha da comunidade")));
+  assert.ok((await page.textContent(".known-combos:not(.verified-combos)")).includes("conferidas no motor"));
+  // o deck usado no cálculo abre fora do app
+  const [popup] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.click(".verified-combos .vc[open] .tags-note a"),
+  ]);
+  assert.ok(popup.url().startsWith("https://ygoprodeck.com/deck/centur-ion"), popup.url());
+  await popup.close();
+  assert.ok(page.url().startsWith("http://localhost"), "o app não deve navegar para o link");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
+test("combos: Primera sozinha só segue com uma carta para descarte (linha da comunidade)", async () => {
+  await page.keyboard.press("2");
+  await page.waitForSelector(".combos-setup");
+  await page.fill(".hand-search input", "centur-ion primera");
+  await page.waitForSelector(".suggestions button");
+  await page.click(".suggestions button:has-text('Primera'):not(:has-text('Primus'))");
+  await page.waitForSelector(".verified-combos .vc", { timeout: 15_000 });
+  const hands = await page.$$eval(".verified-combos .vc .kc-hand", (e) => e.map((x) => x.textContent));
+  assert.ok(hands.length > 0 && hands.every((h) => h.includes("carta qualquer")), hands.join(" | "));
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
 });

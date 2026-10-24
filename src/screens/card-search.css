@@ -1584,3 +1584,318 @@
 .ranked-actions .link-btn {
   font-size: 0.72rem;
 }
+
+/* ---------- Painel da carta à esquerda (sem bloquear a lista) ---------- */
+
+.search.has-detail {
+  grid-template-columns: minmax(340px, 440px) minmax(0, 1fr);
+}
+
+.left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.left-col > .filters,
+.left-col > .drawer {
+  flex: 1;
+  min-height: 0;
+}
+
+.left-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.left-tabs button {
+  padding: 6px;
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  outline: none;
+}
+
+.left-tabs button.active {
+  color: var(--on-accent);
+  background: var(--cyan);
+}
+
+.left-tabs button:focus-visible {
+  box-shadow: 0 0 0 3px rgb(0 165 196 / 0.25);
+}
+
+.drawer.docked {
+  width: 100%;
+  height: auto;
+  padding: 20px 20px 28px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--frame);
+  border-left: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: slide-in-left 0.22s ease-out both;
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+
+.drawer.docked .drawer-nav {
+  top: -20px;
+  margin: -10px -8px 6px;
+}
+
+.drawer.docked .drawer-art img,
+.drawer.docked .art-fallback {
+  width: min(230px, 70%);
+}
+
+/* carta aberta no painel, destacada na grade */
+.tile.selected .tile-art {
+  border-color: var(--frame);
+  box-shadow:
+    0 0 0 2px var(--frame),
+    0 8px 22px color-mix(in srgb, var(--frame) 40%, transparent);
+}
+
+.tile.selected .tile-name {
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .search.has-detail {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .search.has-detail .left-col {
+    max-height: 55vh;
+  }
+}
+
+/* carta aberta que não está na lista atual: fixada no início da grade */
+.pinned-slot {
+  position: relative;
+  padding: 22px 8px 8px;
+  background: color-mix(in srgb, var(--cyan) 7%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--cyan) 45%, transparent);
+  border-radius: 10px;
+}
+
+.pinned-label {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  overflow: hidden;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Preços (em reais) ---------- */
+
+.price-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+
+.price-list dt {
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.price-list dd {
+  margin: 2px 0 0;
+}
+
+.money {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.money strong {
+  font-size: 0.92rem;
+}
+
+.money small,
+.money-empty {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.tcgapi {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.tcgapi-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tcgapi-head small {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.tcgapi-key-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tcgapi-key-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.84rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  user-select: text;
+}
+
+.tcgapi-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.price-table th {
+  padding: 4px 6px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line);
+}
+
+.price-table td {
+  padding: 6px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+.price-table td small {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.price-foot {
+  margin-top: 10px;
+}
+
+/* ---------- Coleções: raridade em sigla colorida + preço da versão ---------- */
+
+.sets li {
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.set-rarity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+  text-align: right;
+}
+
+.set-rarity .money {
+  min-width: 62px;
+  align-items: flex-end;
+}
+
+.set-rarity .money strong {
+  font-size: 0.8rem;
+}
+
+.set-rarity .money small,
+.set-rarity .money-empty {
+  font-size: 0.66rem;
+}
+
+.rarity {
+  display: inline-block;
+  min-width: 34px;
+  padding: 1px 6px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: #fff;
+  border-radius: 4px;
+  cursor: help;
+}
+
+/* popup: imagem da carta ao lado dos dados */
+.preview {
+  width: 400px;
+}
+
+.preview-top {
+  display: flex;
+  gap: 12px;
+}
+
+.preview-art {
+  flex: none;
+  width: 104px;
+  aspect-ratio: 168 / 246;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--skeleton);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--frame) 50%, transparent);
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.preview-info .stats.compact {
+  flex-wrap: wrap;
+}

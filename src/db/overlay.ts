@@ -1,5 +1,6 @@
 import { applyTags, TAGS } from "./tags";
 import type { Card } from "./types";
+import type { CombosCalculados } from "./motor";
 import { normalize } from "./search";
 
 // Camada pública de marcações (repositório Database-Cards-Ygo-Camada): tags e ajustes de
@@ -35,6 +36,8 @@ export interface Overlay {
   genesys: Record<string, number>;
   /** nomes oficiais em português (Yu-Gi-Oh! Wiki) que corrigem os da YGOPRODeck: id → nome */
   nomes?: Record<string, string>;
+  /** linhas de combo jogadas pelo motor de regras do EDOPro com decklists de torneio */
+  combos?: CombosCalculados;
 }
 
 const LOCAL_TAG_DEFS: TagDefinition[] = TAGS.map(({ id, label, group, hint }) => ({ id, label, group, hint }));

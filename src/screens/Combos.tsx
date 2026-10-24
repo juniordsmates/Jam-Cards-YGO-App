@@ -1,85 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./ScreenShell";
 import CardPreview from "../components/CardPreview";
+import ExternalLink from "../components/ExternalLink";
+import KnownCombos from "../components/KnownCombos";
+import VerifiedCombos from "../components/VerifiedCombos";
+import { KNOWN_COMBOS } from "../data/combos";
 import { SearchIcon } from "../icons";
-import { initCardDb, useCardDb, useRelationIndex, useTagLookup } from "../db/cardStore";
-import { exploreCombos, type ComboNode } from "../db/combos";
+import { initCardDb, useCardDb } from "../db/cardStore";
 import { legalIn, type GameFormat } from "../db/legality";
-import { rankCandidates } from "../db/ranking";
+import { cardsOfLine, linesForHand, type LinhaCombo } from "../db/motor";
 import { normalize } from "../db/search";
-import { categoryOf, displayName, type Card } from "../db/types";
+import { displayName, type Card } from "../db/types";
 import "./combos.css";
 
 const MAX_SUGGESTIONS = 8;
-const VISIBLE_CHILDREN = 8;
-// tags que fazem de um monstro alcançado um bom ponto de chegada (interrupções no turno do oponente)
-const INTERRUPTIONS = ["omni-negate", "nega-ativacao", "nega-efeito", "nega-invocacao", "board-breaker", "floodgate"];
-
-const fmt = (n: number) => n.toLocaleString("pt-BR");
-
-/** Linha de uma carta na árvore, com os filhos (onde ela pode chegar) */
-function TreeNode({ node, expanded, toggle, onHover }: {
-  node: ComboNode;
-  expanded: Set<number>;
-  toggle: (id: number) => void;
-  onHover: (card: Card | null, el?: HTMLElement) => void;
-}) {
-  const [showAll, setShowAll] = useState(false);
-  const open = expanded.has(node.card.id);
-  const children = showAll ? node.children : node.children.slice(0, VISIBLE_CHILDREN);
-  return (
-    <li className={`combo-node depth-${node.depth}`}>
-      <div className="combo-row">
-        <button
-          className="combo-toggle"
-          onClick={() => toggle(node.card.id)}
-          disabled={!node.children.length}
-          aria-expanded={open}
-          aria-label={open ? "Recolher" : "Expandir"}
-        >
-          {node.children.length ? (open ? "▾" : "▸") : "·"}
-        </button>
-        {node.via && <span className={`via via-${node.via.kind}`}>{node.via.label}</span>}
-        <span
-          className="combo-name"
-          onPointerEnter={(e) => e.pointerType === "mouse" && onHover(node.card, e.currentTarget)}
-          onPointerLeave={() => onHover(null)}
-        >
-          {displayName(node.card)}
-        </span>
-        {node.needsCombination && <span className="combo-flag" title="Nenhuma carta da mão chega aqui sozinha">só combinando</span>}
-        {node.notes.map((n) => (
-          <span key={n} className="combo-note">{n}</span>
-        ))}
-        {node.children.length > 0 && <span className="combo-count">{node.children.length}</span>}
-      </div>
-      {open && node.children.length > 0 && (
-        <ul className="combo-children">
-          {children.map((c) => (
-            <TreeNode key={c.card.id} node={c} expanded={expanded} toggle={toggle} onHover={onHover} />
-          ))}
-          {node.children.length > VISIBLE_CHILDREN && (
-            <li>
-              <button className="link-btn combo-more" onClick={() => setShowAll((v) => !v)}>
-                {showAll ? "mostrar menos" : `+${node.children.length - VISIBLE_CHILDREN} possibilidades`}
-              </button>
-            </li>
-          )}
-        </ul>
-      )}
-    </li>
-  );
-}
 
 export default function Combos({ onBack }: { onBack: () => void }) {
   const db = useCardDb();
-  const index = useRelationIndex();
-  const tagById = useTagLookup();
   const [format, setFormat] = useState<GameFormat>("TCG");
   const [hand, setHand] = useState<Card[]>([]);
-  const [depth, setDepth] = useState(3);
   const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => void initCardDb(), []);
@@ -99,47 +39,37 @@ export default function Combos({ onBack }: { onBack: () => void }) {
       .slice(0, MAX_SUGGESTIONS);
   }, [query, db.cards, hand, format]);
 
-  const legalHand = hand.filter((c) => legalIn(c, format));
+  const combos = db.extras?.combos;
+  const known = useMemo(() => new Map(KNOWN_COMBOS.map((k) => [k.id, k])), []);
 
-  const result = useMemo(() => {
-    if (!index || !legalHand.length) return null;
-    return exploreCombos(legalHand, {
-      cards: db.cards,
-      byId,
-      index,
-      format,
-      maxDepth: depth,
-      // ordem dos ramos: citadas > combo com a mão inicial > metagame > popularidade
-      rank: (ids) => rankCandidates(ids, byId, legalHand[0], { byName, meta: db.extras?.meta }).map((r) => r.card.id),
-    });
-    // legalHand muda de identidade a cada render; as cartas e o formato bastam
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, hand, format, depth, db.cards, byId, byName, db.extras]);
-
-  // abre a mão inicial e o primeiro nível a cada nova exploração
-  useEffect(() => {
-    if (result) setExpanded(new Set(result.roots.map((r) => r.card.id)));
-  }, [result]);
-
-  const finals = useMemo(() => {
-    if (!result) return [];
-    return [...result.reached.values()]
-      .filter((n) => categoryOf(n.card) === "monster")
-      .map((n) => ({ node: n, hits: (n.card.tags ?? []).filter((t) => INTERRUPTIONS.includes(t)) }))
-      .filter((x) => x.hits.length)
-      .sort((a, b) => b.hits.length - a.hits.length || (b.node.card.views ?? 0) - (a.node.card.views ?? 0))
-      .slice(0, 12);
-  }, [result]);
-
-  const toggle = useCallback(
-    (id: number) => setExpanded((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    }),
-    [],
+  // linha do formato escolhido, sem nenhuma carta proibida ou não lançada nele
+  const fits = useCallback(
+    (l: LinhaCombo) =>
+      (!l.formatos || l.formatos.includes(format)) &&
+      cardsOfLine(l).every((id) => {
+        const c = byId.get(id);
+        return !c || legalIn(c, format);
+      }),
+    [format, byId],
   );
+  // linhas calculadas no motor cuja mão inicial está na mão escolhida
+  const lines = useMemo(
+    () => linesForHand(combos, hand.map((c) => c.id)).filter(fits).sort((x, y) => y.pontos - x.pontos),
+    [combos, hand, fits],
+  );
+  // linhas escritas pela comunidade só aparecem quando o motor as confirmou
+  const confirmed = KNOWN_COMBOS.filter((k) => lines.some((l) => l.comunidade === k.id));
+
+  // cartas que iniciam combos calculados sozinhas (atalhos na tela vazia), por deck
+  const starters = useMemo(() => {
+    if (!combos) return [];
+    return combos.decks.map((d, i) => ({
+      deck: d,
+      cards: [...new Set(combos.linhas.filter((l) => l.deck === i && l.mao.length === 1 && fits(l)).map((l) => l.mao[0]))]
+        .map((id) => byId.get(id))
+        .filter((c): c is Card => !!c),
+    })).filter((s) => s.cards.length);
+  }, [combos, byId, fits]);
 
   // prévia ao passar o mouse (mesmo popup da busca)
   const [hover, setHover] = useState<{ card: Card; rect: DOMRect } | null>(null);
@@ -229,79 +159,65 @@ export default function Combos({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            <label className="field depth-field">
-              <span className="field-label">Passos</span>
-              <select value={depth} onChange={(e) => setDepth(Number(e.target.value))}>
-                {[1, 2, 3, 4].map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </label>
           </section>
 
           <section className="combos-result">
-            {!legalHand.length ? (
+            {!combos ? (
+              <div className="combos-empty">
+                <p>Os combos calculados ainda não foram baixados.</p>
+                <small>Eles chegam com a camada de marcações da base; confira a conexão e abra a tela de novo.</small>
+              </div>
+            ) : !hand.length ? (
               <div className="combos-empty">
                 <p>Escolha uma ou mais cartas para a mão inicial.</p>
                 <small>
-                  A árvore mostra o que cada carta alcança sozinha (busca, invoca, Ritual, Fusão com os materiais à mão) e onde
-                  cada caminho pode chegar. Os ramos vêm ordenados por combo com a mão inicial, uso no metagame e popularidade.
+                  Só aparecem linhas que o motor de regras do EDOPro conseguiu jogar com decklists reais de torneio: custos,
+                  condições de ativação, travas, “uma vez por turno” e o limite de Invocação-Normal são aplicados pelos scripts
+                  oficiais das cartas, no primeiro turno e com o oponente passando.
                 </small>
+                {starters.map((s) => (
+                  <div key={s.deck.url} className="starter-chips">
+                    <span className="field-label">{s.deck.busca}</span>
+                    {s.cards.map((c) => (
+                      <button key={c.id} className="chip" onClick={() => addCard(c)}>
+                        {displayName(c)}
+                      </button>
+                    ))}
+                  </div>
+                ))}
               </div>
-            ) : !index || !result ? (
+            ) : !lines.length ? (
               <div className="combos-empty">
-                <span className="spinner" />
-                <p>Montando relações entre cartas…</p>
+                <p>Nenhum combo calculado para esta mão no {format}.</p>
+                <small>
+                  O motor testa cada carta dos decks abaixo sozinha na mão (e as mãos das linhas da comunidade), com a banlist
+                  atual de cada formato. Uma mão sem linha aqui não chegou a um campo com Invocação do Extra Deck ou 3+ Invocações,
+                  ou a linha usa carta proibida ou não lançada no {format}.
+                </small>
+                <ul className="combos-decks">
+                  {combos.decks.map((d) => (
+                    <li key={d.url}>
+                      <ExternalLink href={d.url}>{d.nome} ↗</ExternalLink>
+                      {d.evento && <small> · {d.evento}</small>}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : (
               <>
-                <p className="combos-summary">
-                  <strong>{fmt(result.reached.size)}</strong> cartas alcançáveis em até {depth} {depth === 1 ? "passo" : "passos"} no {format}
-                  {legalHand.length > 1 && (
-                    <> · <strong>{[...result.reached.values()].filter((n) => n.needsCombination).length}</strong> só combinando as cartas da mão</>
-                  )}
-                </p>
-
-                <div className="combos-columns">
-                  <ul className="combo-tree" aria-label="Árvore de combos">
-                    {result.roots.map((n) => (
-                      <TreeNode key={n.card.id} node={n} expanded={expanded} toggle={toggle} onHover={onHover} />
-                    ))}
-                  </ul>
-
-                  <aside className="combo-finals">
-                    <h4>Pontos de chegada</h4>
-                    <p className="tags-note">Monstros alcançados com interrupções para o turno do oponente.</p>
-                    {finals.length === 0 ? (
-                      <p className="tags-note">Nenhum monstro com negação, remoção em massa ou floodgate nesses caminhos.</p>
-                    ) : (
-                      <ol>
-                        {finals.map(({ node, hits }) => (
-                          <li key={node.card.id}>
-                            <span
-                              className="combo-name"
-                              onPointerEnter={(e) => e.pointerType === "mouse" && onHover(node.card, e.currentTarget)}
-                              onPointerLeave={() => onHover(null)}
-                            >
-                              {displayName(node.card)}
-                            </span>
-                            <span className="finals-tags">
-                              {hits.map((t) => (
-                                <span key={t} className="combo-note">{tagById(t)?.label ?? t}</span>
-                              ))}
-                            </span>
-                            <small>
-                              {node.depth} {node.depth === 1 ? "passo" : "passos"}
-                            </small>
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-                  </aside>
-                </div>
+                <VerifiedCombos lines={lines} combos={combos} byId={byId} known={known} format={format} onHover={onHover} />
+                {confirmed.length > 0 && (
+                  <KnownCombos
+                    title="Linhas da comunidade conferidas no motor"
+                    combos={confirmed}
+                    byName={byName}
+                    format={format}
+                    onHover={onHover}
+                  />
+                )}
                 <p className="tags-note combos-disclaimer">
-                  Aproximação pelo texto das cartas: não simula custos, ordem de Chain, limites de Invocação nem a necessidade de
-                  um efeito de Fusão. Use como mapa de possibilidades.
+                  Calculado em {new Date(combos.geradoEm).toLocaleDateString("pt-BR")} com o motor {combos.motor.nome} (
+                  {combos.motor.ocgcore}, scripts {combos.motor.scripts}). O motor não simula interrupções do oponente.
                 </p>
               </>
             )}

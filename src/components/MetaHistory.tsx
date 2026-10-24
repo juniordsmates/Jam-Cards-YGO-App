@@ -1,4 +1,5 @@
 import type { Overlay } from "../db/overlay";
+import ExternalLink from "./ExternalLink";
 
 type Props = {
   archetype: string;
@@ -79,9 +80,9 @@ export default function MetaHistory({ archetype, meta }: Props) {
         </tbody>
       </table>
 
-      <a className="meta-source" href={meta.periodos[0].url} target="_blank" rel="noreferrer">
+      <ExternalLink className="meta-source" href={meta.periodos[0].url}>
         Fonte: Road of the King ↗
-      </a>
+      </ExternalLink>
     </section>
   );
 }

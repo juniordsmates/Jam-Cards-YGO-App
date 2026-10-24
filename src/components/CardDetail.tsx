@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { createPortal } from "react-dom";
+import ExternalLink from "./ExternalLink";
 import { cardImage } from "../db/images";
 import { readCard } from "../db/effects";
 import CardEffects, { readingSummary } from "./CardEffects";
 import CardStats from "./CardStats";
 import CardInfo from "./CardInfo";
+import CardPrices from "./CardPrices";
 import MetaHistory from "./MetaHistory";
 import CardRelations from "./CardRelations";
 import { describeQuery, RELATION_LABELS, relationTargetIds, type RelationIndex } from "../db/relations";
@@ -140,193 +141,165 @@ export default function CardDetail({
     );
   };
 
-  // Portal no body: um ancestral com transform (animação da tela) deslocaria o position: fixed
-  return createPortal(
-    <div className="overlay drawer-overlay" onClick={onClose}>
-      <aside
-        ref={drawerRef}
-        className="drawer"
-        style={{ "--frame": frameColor(card.frame) } as CSSProperties}
-        role="dialog"
-        aria-modal="true"
-        aria-label={displayName(card)}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="drawer-nav">
-          {previous && (
-            <button className="ghost-btn drawer-back" onClick={onBack} title={`Voltar para ${displayName(previous)} (Alt+←)`}>
-              ← <span>{displayName(previous)}</span>
-            </button>
-          )}
-          <button className="drawer-close ghost-btn" onClick={onClose} aria-label="Fechar">
-            ✕
+  // Painel fixo na coluna da esquerda: não bloqueia a lista de cartas ao lado
+  return (
+    <aside
+      ref={drawerRef}
+      className="drawer docked"
+      style={{ "--frame": frameColor(card.frame) } as CSSProperties}
+      aria-label={`Detalhes: ${displayName(card)}`}
+    >
+      <div className="drawer-nav">
+        {previous && (
+          <button className="ghost-btn drawer-back" onClick={onBack} title={`Voltar para ${displayName(previous)} (Alt+←)`}>
+            ← <span>{displayName(previous)}</span>
           </button>
-        </div>
+        )}
+        <button className="drawer-close ghost-btn" onClick={onClose} aria-label="Fechar">
+          ✕
+        </button>
+      </div>
 
-        <div className="drawer-art">
-          {artFailed ? (
-            <div className="art-fallback">
-              <strong>{displayName(card)}</strong>
-              <span>Imagem indisponível</span>
-            </div>
-          ) : (
-            <img src={cardImage(card.images[art] ?? card.id, "full")} alt={displayName(card)} onError={() => setArtFailed(true)} />
-          )}
-        </div>
-
-        {card.images.length > 1 && (
-          <div className="art-picker" aria-label="Artes alternativas">
-            {card.images.map((imgId, i) => (
-              <button
-                key={imgId}
-                className={i === art ? "active" : ""}
-                onClick={() => {
-                  setArt(i);
-                  setArtFailed(false);
-                }}
-                aria-label={`Arte ${i + 1}`}
-              >
-                <img src={cardImage(imgId, "small")} alt="" loading="lazy" />
-              </button>
-            ))}
+      <div className="drawer-art">
+        {artFailed ? (
+          <div className="art-fallback">
+            <strong>{displayName(card)}</strong>
+            <span>Imagem indisponível</span>
           </div>
+        ) : (
+          <img src={cardImage(card.images[art] ?? card.id, "full")} alt={displayName(card)} onError={() => setArtFailed(true)} />
         )}
+      </div>
 
-        <header className="drawer-head">
-          <h3>{displayName(card)}</h3>
-          {card.namePt && <p className="drawer-en">{card.name}</p>}
-          <p className="drawer-kind">{kindLabel(card)}</p>
-        </header>
+      {card.images.length > 1 && (
+        <div className="art-picker" aria-label="Artes alternativas">
+          {card.images.map((imgId, i) => (
+            <button
+              key={imgId}
+              className={i === art ? "active" : ""}
+              onClick={() => {
+                setArt(i);
+                setArtFailed(false);
+              }}
+              aria-label={`Arte ${i + 1}`}
+            >
+              <img src={cardImage(imgId, "small")} alt="" loading="lazy" />
+            </button>
+          ))}
+        </div>
+      )}
 
-        <CardStats card={card} />
+      <header className="drawer-head">
+        <h3>{displayName(card)}</h3>
+        {card.namePt && <p className="drawer-en">{card.name}</p>}
+        <p className="drawer-kind">{kindLabel(card)}</p>
+      </header>
 
-        <section className="drawer-section">
-          <div className="section-title">
-            <h4>{plainText ? "Texto" : "Leitura da carta"}</h4>
-            <span className="section-actions">
-              <button className="link-btn" onClick={() => setPlainText((v) => !v)}>
-                {plainText ? "Ver leitura" : "Ver texto corrido"}
-              </button>
-              {card.descPt && (
-                <button className="link-btn" onClick={() => setShowOriginal((v) => !v)}>
-                  {showOriginal ? "Português" : "Original (inglês)"}
-                </button>
-              )}
-            </span>
-          </div>
-          {plainText ? (
-            <p className="desc">{desc}</p>
-          ) : (
-            <>
-              {summary && <p className="reading-summary">{summary}</p>}
-              <CardEffects reading={reading} renderExtra={showOriginal ? undefined : effectLinks} />
-            </>
-          )}
-        </section>
+      <CardStats card={card} />
 
-        <CardRelations
-          card={card}
-          index={relations}
-          cards={cards}
-          byId={byId}
-          byName={byName}
-          archetypePt={archetypePt}
-          meta={meta}
-          onOpen={onOpen}
-          onShowSet={onShowSet}
-        />
-
-        {references.length > 0 && (
-          <section className="drawer-section">
-            <h4>Cartas citadas</h4>
-            <div className="chips">
-              {references.map(({ name, card: ref, archetype }) => (
-                <button
-                  key={name}
-                  className={`chip ref-chip ${!ref && archetype ? "is-archetype" : ""}`}
-                  title={ref ? "Abrir esta carta" : archetype ? "Ver o arquétipo e as cartas de suporte" : "Buscar por este nome"}
-                  onClick={() => (!ref && archetype ? onArchetype(name) : onReference(name, ref))}
-                >
-                  {!ref && archetype && <span className="ref-kind">Arquétipo</span>}
-                  {ref ? displayName(ref) : name}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {card.tags && card.tags.length > 0 && (
-          <section className="drawer-section">
-            <h4>Tags</h4>
-            <div className="chips">
-              {card.tags.map((id) => {
-                const tag = tagById(id);
-                return (
-                  tag && (
-                    <button key={id} className="chip tag-chip" title={`${tag.hint} — clique para buscar`} onClick={() => onTag(id)}>
-                      {tag.label}
-                    </button>
-                  )
-                );
-              })}
-            </div>
-            <p className="tags-note">Tags geradas por regras sobre o texto em inglês e revisadas na base curada.</p>
-          </section>
-        )}
-
-        {(card.archetype || bans.length > 0) && (
-          <section className="drawer-section tags">
-            {card.archetype && (
-              <button className="tag tag-btn" onClick={() => onArchetype(card.archetype!)} title="Ver o arquétipo e as cartas de suporte">
-                Arquétipo: {card.archetype}
+      <section className="drawer-section">
+        <div className="section-title">
+          <h4>{plainText ? "Texto" : "Leitura da carta"}</h4>
+          <span className="section-actions">
+            <button className="link-btn" onClick={() => setPlainText((v) => !v)}>
+              {plainText ? "Ver leitura" : "Ver texto corrido"}
+            </button>
+            {card.descPt && (
+              <button className="link-btn" onClick={() => setShowOriginal((v) => !v)}>
+                {showOriginal ? "Português" : "Original (inglês)"}
               </button>
             )}
-            {bans.map(([fmt, status]) => (
-              <span key={fmt} className={`tag ban-${status}`}>
-                {fmt.toUpperCase()}: {BAN_LABELS[status]}
-              </span>
+          </span>
+        </div>
+        {plainText ? (
+          <p className="desc">{desc}</p>
+        ) : (
+          <>
+            {summary && <p className="reading-summary">{summary}</p>}
+            <CardEffects reading={reading} renderExtra={showOriginal ? undefined : effectLinks} />
+          </>
+        )}
+      </section>
+
+      <CardRelations
+        card={card}
+        index={relations}
+        cards={cards}
+        byId={byId}
+        byName={byName}
+        archetypePt={archetypePt}
+        meta={meta}
+        onOpen={onOpen}
+        onShowSet={onShowSet}
+      />
+
+      {references.length > 0 && (
+        <section className="drawer-section">
+          <h4>Cartas citadas</h4>
+          <div className="chips">
+            {references.map(({ name, card: ref, archetype }) => (
+              <button
+                key={name}
+                className={`chip ref-chip ${!ref && archetype ? "is-archetype" : ""}`}
+                title={ref ? "Abrir esta carta" : archetype ? "Ver o arquétipo e as cartas de suporte" : "Buscar por este nome"}
+                onClick={() => (!ref && archetype ? onArchetype(name) : onReference(name, ref))}
+              >
+                {!ref && archetype && <span className="ref-kind">Arquétipo</span>}
+                {ref ? displayName(ref) : name}
+              </button>
             ))}
-          </section>
-        )}
+          </div>
+        </section>
+      )}
 
-        <CardInfo
-          card={card}
-          genesysPoints={genesys?.[card.id]}
-          onTreatedAs={(name) => onReference(name, findCard(name))}
-        />
+      {card.tags && card.tags.length > 0 && (
+        <section className="drawer-section">
+          <h4>Tags</h4>
+          <div className="chips">
+            {card.tags.map((id) => {
+              const tag = tagById(id);
+              return (
+                tag && (
+                  <button key={id} className="chip tag-chip" title={`${tag.hint} — clique para buscar`} onClick={() => onTag(id)}>
+                    {tag.label}
+                  </button>
+                )
+              );
+            })}
+          </div>
+          <p className="tags-note">Tags geradas por regras sobre o texto em inglês e revisadas na base curada.</p>
+        </section>
+      )}
 
-        {card.archetype && meta && <MetaHistory archetype={card.archetype} meta={meta} />}
+      {(card.archetype || bans.length > 0) && (
+        <section className="drawer-section tags">
+          {card.archetype && (
+            <button className="tag tag-btn" onClick={() => onArchetype(card.archetype!)} title="Ver o arquétipo e as cartas de suporte">
+              Arquétipo: {card.archetype}
+            </button>
+          )}
+          {bans.map(([fmt, status]) => (
+            <span key={fmt} className={`tag ban-${status}`}>
+              {fmt.toUpperCase()}: {BAN_LABELS[status]}
+            </span>
+          ))}
+        </section>
+      )}
 
-        {card.prices && (
-          <section className="drawer-section">
-            <h4>Preço mínimo</h4>
-            <p className="prices">
-              <span>Cardmarket € {card.prices.cardmarket ?? "—"}</span>
-              <span>TCGplayer $ {card.prices.tcgplayer ?? "—"}</span>
-            </p>
-          </section>
-        )}
+      <CardInfo
+        card={card}
+        genesysPoints={genesys?.[card.id]}
+        onTreatedAs={(name) => onReference(name, findCard(name))}
+      />
 
-        {card.sets.length > 0 && (
-          <section className="drawer-section">
-            <h4>Coleções ({card.sets.length})</h4>
-            <ul className="sets">
-              {card.sets.map((s) => (
-                <li key={`${s.code}-${s.rarity}`}>
-                  <code>{s.code}</code>
-                  <span>{s.name}</span>
-                  <em>{s.rarity}</em>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+      {card.archetype && meta && <MetaHistory archetype={card.archetype} meta={meta} />}
 
-        <a className="drawer-source" href={card.url} target="_blank" rel="noreferrer">
-          Ver na YGOPRODeck ↗
-        </a>
-      </aside>
-    </div>,
-    document.body,
+      <CardPrices card={card} />
+
+
+      <ExternalLink className="drawer-source" href={card.url}>
+        Ver na YGOPRODeck ↗
+      </ExternalLink>
+    </aside>
   );
 }

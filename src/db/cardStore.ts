@@ -30,8 +30,8 @@ export interface CardDbState {
   tagDefs: TagDefinition[];
   /** data de geração da camada em uso; ausente = só regras locais */
   overlayDate?: string;
-  /** dados extras da camada (arquétipos, metagame, Genesys); ausentes sem camada */
-  extras?: Pick<Overlay, "arquetipos" | "meta" | "genesys">;
+  /** dados extras da camada (arquétipos, metagame, Genesys, combos calculados); ausentes sem camada */
+  extras?: Pick<Overlay, "arquetipos" | "meta" | "genesys" | "combos">;
   /** nomes oficiais dos arquétipos (da camada, ou os presentes nas cartas) */
   archetypes: string[];
   /** arquétipo em inglês → nome em português */
@@ -92,7 +92,7 @@ const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e)
 /** Aplica a camada e publica as cartas (array novo, para a busca recalcular) */
 function publish(cards: Card[], patch: Partial<CardDbState> = {}) {
   const tagDefs = applyOverlay(cards, overlay);
-  const extras = overlay && { arquetipos: overlay.arquetipos ?? [], meta: overlay.meta, genesys: overlay.genesys ?? {} };
+  const extras = overlay && { arquetipos: overlay.arquetipos ?? [], meta: overlay.meta, genesys: overlay.genesys ?? {}, combos: overlay.combos };
   const archetypes = extras?.arquetipos.length
     ? extras.arquetipos
     : [...new Set(cards.map((c) => c.archetype).filter(Boolean) as string[])].sort();
@@ -128,7 +128,9 @@ export async function initCardDb() {
     overlay = savedOverlay;
     if (cards?.length && meta) {
       publish(cards, { status: "ready", meta });
+      // a base é conferida a cada 24 horas; a camada (marcações e combos calculados) a cada abertura
       if (Date.now() - meta.checkedAt > CHECK_INTERVAL) void checkForUpdate();
+      else void refreshOverlay().then((changed) => changed && publish(state.cards));
     } else {
       await download(false);
     }

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import CardEffects from "./CardEffects";
 import CardStats from "./CardStats";
 import { readCard } from "../db/effects";
+import { cardImage } from "../db/images";
 import { BAN_LABELS, frameColor, kindLabel } from "../db/labels";
 import { useTagLookup } from "../db/cardStore";
 import { displayName, type Card } from "../db/types";
@@ -34,6 +35,8 @@ export default function CardPreview({ card, anchor }: Props) {
   }, [anchor, card]);
 
   const reading = useMemo(() => readCard(card), [card]);
+  const [imageFailed, setImageFailed] = useState(false);
+  useLayoutEffect(() => setImageFailed(false), [card.id]);
   const ban = card.ban?.tcg;
   const tagById = useTagLookup();
   const tags = (card.tags ?? []).map(tagById).filter((t) => t !== undefined);
@@ -50,13 +53,27 @@ export default function CardPreview({ card, anchor }: Props) {
         ...(pos ? { left: pos.left, top: pos.top } : { visibility: "hidden" }),
       }}
     >
-      <header className="preview-head">
-        <strong>{displayName(card)}</strong>
-        {card.namePt && <span className="preview-en">{card.name}</span>}
-        <span className="preview-kind">{kindLabel(card)}</span>
-      </header>
+      <div className="preview-top">
+        {/* imagem da carta ao lado dos dados (some se não carregar) */}
+        {!imageFailed && (
+          <img
+            key={card.id}
+            className="preview-art"
+            src={cardImage(card.images[0] ?? card.id, "small")}
+            alt=""
+            onError={() => setImageFailed(true)}
+          />
+        )}
+        <div className="preview-info">
+          <header className="preview-head">
+            <strong>{displayName(card)}</strong>
+            {card.namePt && <span className="preview-en">{card.name}</span>}
+            <span className="preview-kind">{kindLabel(card)}</span>
+          </header>
 
-      <CardStats card={card} compact />
+          <CardStats card={card} compact />
+        </div>
+      </div>
 
       <div className="preview-desc">
         <CardEffects reading={reading} compact />

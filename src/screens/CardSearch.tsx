@@ -30,8 +30,14 @@ export default function CardSearch({ onBack }: { onBack: () => void }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [limit, setLimit] = useState(PAGE);
   const [selected, setSelected] = useState<Card | null>(null);
-  // cartas abertas antes da atual, para o botão Voltar do painel
-  const [history, setHistory] = useState<Card[]>([]);
+  // estado anterior (carta aberta + filtros da lista), para o botão Voltar do painel
+  const [history, setHistory] = useState<{ card: Card; filters: Filters; pinned: Card | null }[]>([]);
+  // carta aberta que não está na lista atual: fica fixada no início da grade, sem mexer nos filtros
+  const [pinned, setPinned] = useState<Card | null>(null);
+  // com o painel aberto, a coluna da esquerda alterna entre a carta e os filtros
+  const [leftTab, setLeftTab] = useState<"carta" | "filtros">("carta");
+  // carta a destacar e trazer à vista na grade
+  const [focusId, setFocusId] = useState<number | null>(null);
   const deferred = useDeferredValue(filters);
   const gridRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -86,23 +92,60 @@ export default function CardSearch({ onBack }: { onBack: () => void }) {
   const closeDetail = useCallback(() => {
     setSelected(null);
     setHistory([]);
+    setFocusId(null);
+    setPinned(null);
   }, []);
-  // abrir outra carta a partir do painel guarda a atual no histórico
-  // (refs em vez de setState aninhado: o React pode repetir atualizadores no modo estrito)
+
+  // refs em vez de setState aninhado: o React pode repetir atualizadores no modo estrito
   const selectedRef = useRef<Card | null>(null);
   selectedRef.current = selected;
-  const historyRef = useRef<Card[]>([]);
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+  const historyRef = useRef(history);
   historyRef.current = history;
-  const openFromDetail = useCallback((card: Card) => {
+  const pinnedRef = useRef(pinned);
+  pinnedRef.current = pinned;
+  const resultsRef = useRef(results);
+  resultsRef.current = results;
+
+  /** Guarda a carta aberta e a lista atual, para o Voltar desfazer o próximo passo */
+  const remember = useCallback(() => {
     const current = selectedRef.current;
-    if (current && current.id !== card.id) setHistory((h) => [...h, current]);
-    setSelected(card);
+    if (current) setHistory((h) => [...h, { card: current, filters: filtersRef.current, pinned: pinnedRef.current }]);
   }, []);
+
+  /** Muda a lista sem fechar o painel (Ver na busca, tag, arquétipo…) */
+  const showInList = useCallback(
+    (next: Filters | ((f: Filters) => Filters)) => {
+      remember();
+      setPinned(null);
+      setFilters(next);
+    },
+    [remember],
+  );
+
+  /** Abre uma carta no painel e garante que ela apareça na lista */
+  const openCard = useCallback(
+    (card: Card, fromList = false) => {
+      if (selectedRef.current?.id === card.id) return;
+      remember();
+      setSelected(card);
+      setLeftTab("carta");
+      setFocusId(card.id);
+      // carta referenciada que não está na lista atual: aparece fixada no início da grade
+      if (!fromList) setPinned(resultsRef.current.some((c) => c.id === card.id) ? null : card);
+    },
+    [remember],
+  );
+
   const goBack = useCallback(() => {
     const prev = historyRef.current[historyRef.current.length - 1];
     if (!prev) return;
     setHistory((h) => h.slice(0, -1));
-    setSelected(prev);
+    setSelected(prev.card);
+    setFilters(prev.filters);
+    setPinned(prev.pinned);
+    setFocusId(prev.card.id);
   }, []);
 
   // Popup de prévia: espera um pouco antes de abrir (evita piscar ao só passar o mouse);
@@ -133,11 +176,22 @@ export default function CardSearch({ onBack }: { onBack: () => void }) {
   const select = useCallback(
     (card: Card) => {
       hideHover();
-      setHistory([]);
-      setSelected(card);
+      openCard(card, true);
     },
-    [hideHover],
+    [hideHover, openCard],
   );
+
+  // Traz a carta em foco à vista na grade (carregando mais páginas, se preciso)
+  useEffect(() => {
+    if (focusId === null) return;
+    const index = results.findIndex((c) => c.id === focusId);
+    if (index < 0) return;
+    if (index >= limit) {
+      setLimit(index + PAGE);
+      return;
+    }
+    gridRef.current?.querySelector(`[data-card-id="${focusId}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusId, results, limit]);
 
   useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
   // filtros mudaram: a carta sob o cursor pode nem estar mais na lista
@@ -183,16 +237,61 @@ export default function CardSearch({ onBack }: { onBack: () => void }) {
           )}
         </div>
       ) : (
-        <div className="search">
-          <SearchFilters
-            filters={filters}
-            archetypes={archetypes}
-            tagDefs={db.tagDefs}
-            tagCounts={tagCounts}
-            formats={formats}
-            archetypePt={db.archetypePt}
-            onChange={patch}
-          />
+        <div className={`search ${selected ? "has-detail" : ""}`}>
+          <div className="left-col">
+            {selected && (
+              <div className="left-tabs" role="tablist" aria-label="Coluna da esquerda">
+                <button role="tab" aria-selected={leftTab === "carta"} className={leftTab === "carta" ? "active" : ""} onClick={() => setLeftTab("carta")}>
+                  Carta
+                </button>
+                <button role="tab" aria-selected={leftTab === "filtros"} className={leftTab === "filtros" ? "active" : ""} onClick={() => setLeftTab("filtros")}>
+                  Filtros
+                </button>
+              </div>
+            )}
+            {selected && leftTab === "carta" ? (
+              <CardDetail
+                card={selected}
+                onClose={closeDetail}
+                onTag={(id) => showInList((f) => ({ ...EMPTY_FILTERS, sort: f.sort, tags: [id] }))}
+                findCard={findCard}
+                isArchetype={(name) => archetypeSet.has(name.toLowerCase())}
+                meta={db.extras?.meta}
+                genesys={db.extras?.genesys}
+                relations={relations}
+                cards={db.cards}
+                byId={byId}
+                archetypePt={db.archetypePt}
+                onOpen={(card) => openCard(card)}
+                previous={history[history.length - 1]?.card}
+                onBack={goBack}
+                byName={byName}
+                onShowSet={(label, ids, keepFilters) => {
+                  const idSet = { label, ids };
+                  showInList((f) => (keepFilters ? { ...f, idSet } : { ...EMPTY_FILTERS, idSet, sort: f.sort }));
+                }}
+                onArchetype={(name) =>
+                  // todas as cartas do arquétipo, mais as que o suportam
+                  showInList((f) => ({ ...EMPTY_FILTERS, sort: f.sort, archetype: name, includeSupport: true }))
+                }
+                onReference={(name, ref) => {
+                  if (ref) openCard(ref);
+                  // nome citado que não é carta nem arquétipo: busca por ele
+                  else showInList((f) => ({ ...EMPTY_FILTERS, sort: f.sort, text: name }));
+                }}
+              />
+            ) : (
+              <SearchFilters
+                filters={filters}
+                archetypes={archetypes}
+                tagDefs={db.tagDefs}
+                tagCounts={tagCounts}
+                formats={formats}
+                archetypePt={db.archetypePt}
+                onChange={patch}
+              />
+            )}
+          </div>
 
           <div className="results">
             <div className="results-bar">
@@ -232,12 +331,22 @@ export default function CardSearch({ onBack }: { onBack: () => void }) {
             <ActiveFilters filters={filters} tagDefs={db.tagDefs} onChange={patch} onClearAll={() => setFilters({ ...EMPTY_FILTERS, sort: filters.sort })} />
 
             <div className="grid" ref={gridRef} onScroll={hover ? hideHover : undefined}>
+              {pinned && !results.some((c) => c.id === pinned.id) && (
+                <div className="pinned-slot">
+                  <span className="pinned-label" title="Aberta no painel; não faz parte da lista atual">
+                    Aberta no painel
+                  </span>
+                  <CardTile card={pinned} selected={pinned.id === selected?.id} onSelect={select} onHover={onHover} />
+                </div>
+              )}
               {results.length === 0 ? (
                 <p className="empty">Nenhuma carta corresponde aos filtros.</p>
               ) : (
                 results
                   .slice(0, limit)
-                  .map((card) => <CardTile key={card.id} card={card} onSelect={select} onHover={onHover} />)
+                  .map((card) => (
+                    <CardTile key={card.id} card={card} selected={card.id === selected?.id} onSelect={select} onHover={onHover} />
+                  ))
               )}
               {limit < results.length && <div ref={sentinelRef} className="sentinel" />}
             </div>
@@ -245,50 +354,8 @@ export default function CardSearch({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {hover && !selected && <CardPreview card={hover.card} anchor={hover.rect} />}
-
-      {selected && (
-        <CardDetail
-          card={selected}
-          onClose={closeDetail}
-          onTag={(id) => {
-            // "ver todas as cartas com esta tag": recomeça a busca só com ela
-            setFilters({ ...EMPTY_FILTERS, tags: [id] });
-            closeDetail();
-          }}
-          findCard={findCard}
-          isArchetype={(name) => archetypeSet.has(name.toLowerCase())}
-          meta={db.extras?.meta}
-          genesys={db.extras?.genesys}
-          relations={relations}
-          cards={db.cards}
-          byId={byId}
-          archetypePt={db.archetypePt}
-          onOpen={openFromDetail}
-          previous={history[history.length - 1]}
-          onBack={goBack}
-          byName={byName}
-          onShowSet={(label, ids, keepFilters) => {
-            const idSet = { label, ids };
-            setFilters((f) => (keepFilters ? { ...f, idSet } : { ...EMPTY_FILTERS, idSet, sort: f.sort }));
-            closeDetail();
-          }}
-          onArchetype={(name) => {
-            // todas as cartas do arquétipo, mais as que o suportam
-            setFilters({ ...EMPTY_FILTERS, archetype: name, includeSupport: true });
-            closeDetail();
-          }}
-          onReference={(name, ref) => {
-            if (ref) {
-              openFromDetail(ref);
-            } else {
-              // nome citado que não é carta nem arquétipo: busca por ele
-              setFilters({ ...EMPTY_FILTERS, text: name });
-              closeDetail();
-            }
-          }}
-        />
-      )}
+      {/* o popup da lista funciona também com o painel aberto */}
+      {hover && <CardPreview card={hover.card} anchor={hover.rect} />}
     </ScreenShell>
   );
 }
