@@ -129,7 +129,7 @@ test("painel da Aleister: leitura, camada revisada, informações e metagame", a
 
 test("arquétipo no painel abre a busca com cartas de suporte", async () => {
   await page.click(".drawer .tag-btn:has-text('Invoked')");
-  await page.waitForSelector(".drawer", { state: "detached" });
+  await page.waitForTimeout(450); // o painel fica aberto; a lista muda ao lado
   assert.ok((await page.textContent(".active-filters")).includes("Arquétipo: Invoked + suporte"));
   const n = await resultCount();
   assert.ok(n > 20, `Invoked + suporte: ${n}`);
@@ -164,7 +164,7 @@ test("relacionamentos: Cortina invoca Mago Negro e o inverso", async () => {
   assert.ok((await page.textContent(".relation-group.rel-out-invoca")).includes("Mago Negro"));
   // "Ver na busca" mostra só as cartas que ela invoca
   await page.click(".relation-group.rel-out-invoca .link-btn:has-text('Ver na busca')");
-  await page.waitForSelector(".drawer", { state: "detached" });
+  await page.waitForTimeout(450); // o painel fica aberto; a lista muda ao lado
   assert.equal(await resultCount(), 1);
   assert.equal(await page.textContent(".grid .tile-name >> nth=0"), "Mago Negro");
   // no Mago Negro, o sentido inverso
@@ -190,7 +190,7 @@ test("relacionamentos: 'Combinar com filtros' mantém os filtros atuais", async 
   await page.waitForSelector(".drawer .relation-group.rel-in-invoca");
   const all = await page.$eval(".relation-group.rel-in-invoca .relation-count", (e) => Number(e.textContent));
   await page.click(".relation-group.rel-in-invoca .link-btn:has-text('Combinar com filtros')");
-  await page.waitForSelector(".drawer", { state: "detached" });
+  await page.waitForTimeout(450); // o painel fica aberto; a lista muda ao lado
   // Magia + "cortina de mago negro" + invocadoras do Mago Negro = só a Cortina
   assert.ok(all > 5, `invocadoras do Mago Negro: ${all}`);
   assert.equal(await resultCount(), 1);
@@ -225,6 +225,48 @@ test("botão Voltar no painel retorna à carta anterior", async () => {
   await page.click(".drawer-back");
   await page.waitForFunction(() => document.querySelector(".drawer-head h3")?.textContent === "Dark Magical Curtain");
   assert.equal(await page.$(".drawer-back"), null);
+  await page.click(".drawer-close");
+  await search("");
+});
+
+test("painel à esquerda não bloqueia a lista: clicar em outra carta e ver o popup", async () => {
+  await reset();
+  await search("mago negro");
+  await page.click(".grid .tile >> nth=0");
+  await page.waitForSelector(".left-col .drawer.docked");
+  // a grade continua clicável com o painel aberto
+  const second = await page.textContent(".grid .tile-name >> nth=1");
+  await page.click(".grid .tile >> nth=1");
+  await page.waitForFunction((n) => document.querySelector(".drawer-head h3")?.textContent === n, second);
+  assert.ok(await page.$(".grid .tile.selected"), "carta aberta deveria ficar destacada");
+  // o popup da lista também funciona com o painel aberto
+  await page.hover(".grid .tile >> nth=2");
+  await page.waitForSelector(".preview", { timeout: 3000 });
+  await page.mouse.move(5, 5);
+  // a aba Filtros continua acessível
+  await page.click(".left-tabs button:has-text('Filtros')");
+  await page.waitForSelector(".left-col .filters");
+  await page.click(".left-tabs button:has-text('Carta')");
+  await page.waitForSelector(".left-col .drawer.docked");
+});
+
+test("carta referenciada aparece na lista, e Voltar restaura a lista anterior", async () => {
+  await reset();
+  await search("cortina de mago negro");
+  await page.click(".grid .tile >> nth=0");
+  await page.waitForSelector(".drawer .effect-link");
+  // Mago Negro não está na lista atual: aparece fixado no início da grade, sem mexer nos filtros
+  await page.click(".drawer .effect-link:has-text('Mago Negro')");
+  await page.waitForFunction(() => document.querySelector(".drawer-head h3")?.textContent === "Mago Negro");
+  assert.equal(await page.textContent(".grid .pinned-slot .tile-name"), "Mago Negro");
+  assert.ok(await page.$(".grid .pinned-slot .tile.selected"));
+  assert.equal(await page.inputValue(".search-input input"), "cortina de mago negro");
+  assert.equal(await resultCount(), 1);
+  // Voltar: painel anterior, sem a carta fixada
+  await page.click(".drawer-back");
+  await page.waitForFunction(() => document.querySelector(".drawer-head h3")?.textContent === "Cortina de Mago Negro");
+  assert.equal(await page.$(".grid .pinned-slot"), null);
+  assert.equal(await page.inputValue(".search-input input"), "cortina de mago negro");
   await page.click(".drawer-close");
   await search("");
 });

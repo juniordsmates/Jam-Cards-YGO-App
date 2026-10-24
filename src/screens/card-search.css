@@ -1584,3 +1584,130 @@
 .ranked-actions .link-btn {
   font-size: 0.72rem;
 }
+
+/* ---------- Painel da carta à esquerda (sem bloquear a lista) ---------- */
+
+.search.has-detail {
+  grid-template-columns: minmax(340px, 440px) minmax(0, 1fr);
+}
+
+.left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.left-col > .filters,
+.left-col > .drawer {
+  flex: 1;
+  min-height: 0;
+}
+
+.left-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.left-tabs button {
+  padding: 6px;
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  outline: none;
+}
+
+.left-tabs button.active {
+  color: var(--on-accent);
+  background: var(--cyan);
+}
+
+.left-tabs button:focus-visible {
+  box-shadow: 0 0 0 3px rgb(0 165 196 / 0.25);
+}
+
+.drawer.docked {
+  width: 100%;
+  height: auto;
+  padding: 20px 20px 28px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--frame);
+  border-left: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: slide-in-left 0.22s ease-out both;
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+
+.drawer.docked .drawer-nav {
+  top: -20px;
+  margin: -10px -8px 6px;
+}
+
+.drawer.docked .drawer-art img,
+.drawer.docked .art-fallback {
+  width: min(230px, 70%);
+}
+
+/* carta aberta no painel, destacada na grade */
+.tile.selected .tile-art {
+  border-color: var(--frame);
+  box-shadow:
+    0 0 0 2px var(--frame),
+    0 8px 22px color-mix(in srgb, var(--frame) 40%, transparent);
+}
+
+.tile.selected .tile-name {
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .search.has-detail {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .search.has-detail .left-col {
+    max-height: 55vh;
+  }
+}
+
+/* carta aberta que não está na lista atual: fixada no início da grade */
+.pinned-slot {
+  position: relative;
+  padding: 22px 8px 8px;
+  background: color-mix(in srgb, var(--cyan) 7%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--cyan) 45%, transparent);
+  border-radius: 10px;
+}
+
+.pinned-label {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  overflow: hidden;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
