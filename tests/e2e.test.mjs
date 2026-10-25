@@ -393,20 +393,20 @@ test("combos: sugestões respeitam o formato e mão sem linha calculada avisa", 
   await page.waitForSelector(".menu-btn");
 });
 
-test("combos: Trudea mostra só linhas jogadas pelo motor, com deck de torneio e linha da comunidade confirmada", async () => {
+test("combos: Trudea mostra só linhas calculadas com o App, com deck de torneio e linha da comunidade confirmada", async () => {
   await page.keyboard.press("2");
   await page.waitForSelector(".combos-setup");
   // atalhos da tela vazia, por deck
   await page.click(".starter-chips:has-text('Centur-Ion') .chip:has-text('Trudea')");
   await page.waitForSelector(".verified-combos .vc", { timeout: 15_000 });
   const lines = await page.$$eval(".verified-combos .vc", (e) => e.map((x) => x.textContent));
-  assert.ok(lines.every((t) => t.includes("Calculado no motor")));
+  assert.ok(lines.every((t) => t.includes("Calculado com o App")));
   const first = lines[0];
   assert.ok(first.includes("Invocação-Sincro"), "a linha passa por uma Sincro");
   assert.ok(first.includes("Auxila"), first.slice(0, 300));
   // a linha escrita pela comunidade só aparece porque o motor a confirmou
   assert.ok(lines.some((t) => t.includes("Confirma a linha da comunidade")));
-  assert.ok((await page.textContent(".known-combos:not(.verified-combos)")).includes("conferidas no motor"));
+  assert.ok((await page.textContent(".known-combos:not(.verified-combos)")).includes("conferidas com o App"));
   // o deck usado no cálculo abre fora do app
   const [popup] = await Promise.all([
     page.context().waitForEvent("page"),
@@ -419,15 +419,39 @@ test("combos: Trudea mostra só linhas jogadas pelo motor, com deck de torneio e
   await page.waitForSelector(".menu-btn");
 });
 
-test("combos: Primera sozinha só segue com uma carta para descarte (linha da comunidade)", async () => {
+test("combos: Primera sozinha só segue com descarte, e linhas que chegam nela", async () => {
   await page.keyboard.press("2");
   await page.waitForSelector(".combos-setup");
   await page.fill(".hand-search input", "centur-ion primera");
   await page.waitForSelector(".suggestions button");
   await page.click(".suggestions button:has-text('Primera'):not(:has-text('Primus'))");
   await page.waitForSelector(".verified-combos .vc", { timeout: 15_000 });
-  const hands = await page.$$eval(".verified-combos .vc .kc-hand", (e) => e.map((x) => x.textContent));
+  const hands = await page.$$eval("section[aria-label='Combos começando com a mão'] .vc .kc-hand", (e) => e.map((x) => x.textContent));
   assert.ok(hands.length > 0 && hands.every((h) => h.includes("carta qualquer")), hands.join(" | "));
+  // linhas que chegam na Primera (ex.: a Trudea a coloca no campo), com o passo destacado
+  const reach = page.locator("section[aria-label^='Combos que chegam em']");
+  assert.ok((await reach.locator(".vc").count()) > 0);
+  assert.ok((await reach.locator(".vc >> nth=0").textContent()).includes("Chega em"));
+  assert.ok((await reach.locator(".vc[open] .vc-hit").count()) > 0);
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
+test("busca: atalhos para Combos (cabeçalho e painel da carta com a carta na mão)", async () => {
+  await openSearch();
+  await search("centur-ion trudea");
+  await page.click(".grid .tile >> nth=0");
+  await page.waitForSelector(".drawer-combos");
+  await page.click(".drawer-combos");
+  await page.waitForSelector(".combos-setup");
+  assert.ok((await page.textContent(".hand-cards")).includes("Trudea"));
+  await page.waitForSelector(".verified-combos .vc", { timeout: 15_000 });
+  // Menu volta para a busca, de onde veio
+  await page.click(".screen-header .ghost-btn >> nth=0");
+  await page.waitForSelector(".search-input input");
+  await page.click(".combos-shortcut");
+  await page.waitForSelector(".combos-setup");
+  assert.equal(await page.$$eval(".hand-card", (e) => e.length), 0);
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
 });

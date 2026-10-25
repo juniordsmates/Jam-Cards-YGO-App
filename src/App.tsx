@@ -6,11 +6,14 @@ import Combos from "./screens/Combos";
 import ExitDialog from "./components/ExitDialog";
 import { exitApp } from "./platform";
 import { initCardDb } from "./db/cardStore";
+import type { Card } from "./db/types";
 
 export type Screen = "menu" | "search" | "combos" | "deck";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("menu");
+  // Combos aberta pela busca: volta para a busca e já abre com a carta na mão
+  const [combosFrom, setCombosFrom] = useState<{ screen: Screen; hand: Card[] }>({ screen: "menu", hand: [] });
   const [confirmingExit, setConfirmingExit] = useState(false);
   const [exited, setExited] = useState(false);
 
@@ -54,14 +57,25 @@ export default function App() {
         <MainMenu
           active={!confirmingExit}
           onSearch={() => setScreen("search")}
-          onCombos={() => setScreen("combos")}
+          onCombos={() => {
+            setCombosFrom({ screen: "menu", hand: [] });
+            setScreen("combos");
+          }}
           onDeck={() => setScreen("deck")}
           onExit={() => setConfirmingExit(true)}
         />
       )}
 
-      {screen === "search" && <CardSearch onBack={() => setScreen("menu")} />}
-      {screen === "combos" && <Combos onBack={() => setScreen("menu")} />}
+      {screen === "search" && (
+        <CardSearch
+          onBack={() => setScreen("menu")}
+          onCombos={(card) => {
+            setCombosFrom({ screen: "search", hand: card ? [card] : [] });
+            setScreen("combos");
+          }}
+        />
+      )}
+      {screen === "combos" && <Combos onBack={() => setScreen(combosFrom.screen)} initialHand={combosFrom.hand} />}
 
       {screen === "deck" && (
         <ScreenShell

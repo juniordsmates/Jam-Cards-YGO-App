@@ -40,6 +40,8 @@ type Props = {
   archetypePt: Map<string, string>;
   onOpen: (card: Card) => void;
   onShowSet: (label: string, ids: number[], keepFilters: boolean) => void;
+  /** abre a tela de combos com esta carta na mão */
+  onCombos: (card: Card) => void;
 };
 
 export default function CardDetail({
@@ -60,6 +62,7 @@ export default function CardDetail({
   onBack,
   archetypePt,
   onOpen,
+  onCombos,
   onShowSet,
 }: Props) {
   const [art, setArt] = useState(0);
@@ -155,6 +158,9 @@ export default function CardDetail({
             ← <span>{displayName(previous)}</span>
           </button>
         )}
+        <button className="ghost-btn drawer-combos" onClick={() => onCombos(card)} title="Abrir a tela de combos com esta carta na mão">
+          Combos com esta carta
+        </button>
         <button className="drawer-close ghost-btn" onClick={onClose} aria-label="Fechar">
           ✕
         </button>

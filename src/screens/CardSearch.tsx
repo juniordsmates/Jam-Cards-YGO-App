@@ -25,7 +25,8 @@ const SORTS: { value: SortKey; label: string }[] = [
 
 const fmt = (n: number) => n.toLocaleString("pt-BR");
 
-export default function CardSearch({ onBack }: { onBack: () => void }) {
+/** `onCombos`: abre a tela de combos (com a carta na mão, se vier do painel) */
+export default function CardSearch({ onBack, onCombos }: { onBack: () => void; onCombos: (card?: Card) => void }) {
   const db = useCardDb();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [limit, setLimit] = useState(PAGE);
@@ -215,7 +216,20 @@ export default function CardSearch({ onBack }: { onBack: () => void }) {
   );
 
   return (
-    <ScreenShell title="Buscar Carta" accent="cyan" onBack={onBack} actions={status} plain>
+    <ScreenShell
+      title="Buscar Carta"
+      accent="cyan"
+      onBack={onBack}
+      actions={
+        <span className="search-actions">
+          {status}
+          <button className="ghost-btn combos-shortcut" onClick={() => onCombos()} title="Abrir a tela de combos">
+            Combos
+          </button>
+        </span>
+      }
+      plain
+    >
       {!ready ? (
         <div className="db-loading">
           {db.status === "error" ? (
@@ -263,6 +277,7 @@ export default function CardSearch({ onBack }: { onBack: () => void }) {
                 byId={byId}
                 archetypePt={db.archetypePt}
                 onOpen={(card) => openCard(card)}
+                onCombos={onCombos}
                 previous={history[history.length - 1]?.card}
                 onBack={goBack}
                 byName={byName}

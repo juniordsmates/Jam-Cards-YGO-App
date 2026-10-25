@@ -8,7 +8,10 @@ import { displayName, type Card } from "../db/types";
 type Hover = (card: Card | null, el?: HTMLElement) => void;
 
 type Props = {
+  title?: string;
   lines: LinhaCombo[];
+  /** cartas a destacar: a linha mostra em que passo chega nelas */
+  highlight?: number[];
   combos: CombosCalculados;
   byId: Map<number, Card>;
   known: Map<string, KnownCombo>;
@@ -75,6 +78,12 @@ function StepText({ p, byId, onHover }: { p: Passo; byId: Map<number, Card>; onH
   }
 }
 
+/** O passo envolve alguma das cartas? */
+function stepHas(p: Passo, ids: Set<number>) {
+  if (p.t === "compra") return p.c.some((c) => ids.has(c));
+  return ids.has(p.c);
+}
+
 /** Agrupa as consequências da resolução de um efeito sob o passo anterior (numeração só nos passos) */
 function groupSteps(passos: Passo[]) {
   const groups: { step: Passo; subs: Passo[] }[] = [];
@@ -87,15 +96,21 @@ function groupSteps(passos: Passo[]) {
 }
 
 /** Linhas de combo jogadas pelo motor de regras do EDOPro para a mão escolhida */
-export default function VerifiedCombos({ lines, combos, byId, known, format, onHover }: Props) {
+export default function VerifiedCombos({ title = "Combos calculados", lines, highlight = [], combos, byId, known, format, onHover }: Props) {
   if (!lines.length) return null;
+  const hits = new Set(highlight);
   return (
-    <section className="known-combos verified-combos" aria-label="Combos calculados">
-      <h4>Combos calculados ({lines.length})</h4>
+    <section className="known-combos verified-combos" aria-label={title}>
+      <h4>
+        {title} ({lines.length})
+      </h4>
       {lines.map((l, idx) => {
         const deck = combos.decks[l.deck];
         const community = l.comunidade ? known.get(l.comunidade) : undefined;
         const top = l.campo.monstros.slice(0, 3);
+        const groups = groupSteps(l.passos);
+        // primeiro passo em que a linha chega a uma carta destacada
+        const firstHit = hits.size ? groups.findIndex((g) => stepHas(g.step, hits) || g.subs.some((p) => stepHas(p, hits))) : -1;
         return (
           <details key={`${l.deck}-${idx}`} className="kc vc" open={idx === 0}>
             <summary>
@@ -107,8 +122,14 @@ export default function VerifiedCombos({ lines, combos, byId, known, format, onH
                 Mão: {join(l.mao.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ")}
                 {l.qualquer ? ` + ${l.qualquer} carta qualquer (para descarte)` : ""}
               </span>
-              <span className="vc-badge" title="Linha jogada pelo motor de regras do EDOPro: custos, condições, travas e limites aplicados">
-                Calculado no motor
+              {firstHit >= 0 && (
+                <span className="vc-reach">
+                  Chega em {join(highlight.filter((id) => l.passos.some((p) => stepHas(p, new Set([id])))).map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), ", ")} no passo{" "}
+                  {firstHit + 1}; os passos seguintes continuam a partir dela.
+                </span>
+              )}
+              <span className="vc-badge" title="Linha jogada pelo App com as regras oficiais das cartas: custos, condições, travas e limites aplicados">
+                Calculado com o App
               </span>
             </summary>
 
@@ -124,8 +145,8 @@ export default function VerifiedCombos({ lines, combos, byId, known, format, onH
             )}
 
             <ol className="kc-steps vc-steps">
-              {groupSteps(l.passos).map(({ step, subs }, i) => (
-                <li key={i}>
+              {groups.map(({ step, subs }, i) => (
+                <li key={i} className={firstHit >= 0 && (stepHas(step, hits) || subs.some((p) => stepHas(p, hits))) ? "vc-hit" : undefined}>
                   <StepText p={step} byId={byId} onHover={onHover} />
                   {subs.length > 0 && (
                     <ul className="vc-subs">
@@ -166,8 +187,8 @@ export default function VerifiedCombos({ lines, combos, byId, known, format, onH
             )}
             <p className="tags-note">
               Deck: <ExternalLink href={deck.url}>{deck.nome} ↗</ExternalLink>
-              {deck.evento && ` · ${deck.evento}`}, ajustado à banlist atual do {format}. Jogado no motor do EDOPro (Project Ignis)
-              no primeiro turno, com o oponente passando.
+              {deck.evento && ` · ${deck.evento}`}, ajustado à banlist atual do {format}. Jogado pelo App (regras do EDOPro, Project Ignis) no
+              primeiro turno, com o oponente passando.
             </p>
           </details>
         );
