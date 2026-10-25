@@ -1899,3 +1899,24 @@
 .preview-info .stats.compact {
   flex-wrap: wrap;
 }
+
+/* ---------- Atalhos para a tela de Combos ---------- */
+
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.combos-shortcut,
+.drawer-combos {
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  color: var(--magenta);
+  border-color: color-mix(in srgb, var(--magenta) 40%, transparent);
+}
+
+.combos-shortcut:hover,
+.drawer-combos:hover {
+  background: color-mix(in srgb, var(--magenta) 10%, transparent);
+}

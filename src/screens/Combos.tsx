@@ -15,10 +15,11 @@ import "./combos.css";
 
 const MAX_SUGGESTIONS = 8;
 
-export default function Combos({ onBack }: { onBack: () => void }) {
+/** `initialHand`: cartas já na mão ao abrir (vindas da busca) */
+export default function Combos({ onBack, initialHand = [] }: { onBack: () => void; initialHand?: Card[] }) {
   const db = useCardDb();
   const [format, setFormat] = useState<GameFormat>("TCG");
-  const [hand, setHand] = useState<Card[]>([]);
+  const [hand, setHand] = useState<Card[]>(initialHand);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +58,18 @@ export default function Combos({ onBack }: { onBack: () => void }) {
     () => linesForHand(combos, hand.map((c) => c.id)).filter(fits).sort((x, y) => y.pontos - x.pontos),
     [combos, hand, fits],
   );
+  // linhas que passam pelas cartas escolhidas sem começar com elas: como chegar nelas e o que fazer depois
+  const reach = useMemo(() => {
+    if (!combos || !hand.length) return [];
+    const ids = hand.map((c) => c.id);
+    const start = new Set(lines);
+    return combos.linhas
+      .filter((l) => !start.has(l) && fits(l) && ids.some((id) => !l.mao.includes(id) && cardsOfLine(l).includes(id)))
+      .sort((x, y) => y.pontos - x.pontos)
+      .slice(0, 12);
+  }, [combos, hand, lines, fits]);
+  const handNames = hand.map((c) => displayName(c)).join(", ");
+
   // linhas escritas pela comunidade só aparecem quando o motor as confirmou
   const confirmed = KNOWN_COMBOS.filter((k) => lines.some((l) => l.comunidade === k.id));
 
@@ -171,7 +184,7 @@ export default function Combos({ onBack }: { onBack: () => void }) {
               <div className="combos-empty">
                 <p>Escolha uma ou mais cartas para a mão inicial.</p>
                 <small>
-                  Só aparecem linhas que o motor de regras do EDOPro conseguiu jogar com decklists reais de torneio: custos,
+                  Só aparecem linhas que o App conseguiu jogar, com as regras do EDOPro, usando decklists reais de torneio: custos,
                   condições de ativação, travas, “uma vez por turno” e o limite de Invocação-Normal são aplicados pelos scripts
                   oficiais das cartas, no primeiro turno e com o oponente passando.
                 </small>
@@ -186,11 +199,11 @@ export default function Combos({ onBack }: { onBack: () => void }) {
                   </div>
                 ))}
               </div>
-            ) : !lines.length ? (
+            ) : !lines.length && !reach.length ? (
               <div className="combos-empty">
-                <p>Nenhum combo calculado para esta mão no {format}.</p>
+                <p>Nenhum combo calculado com esta mão, nem chegando nela, no {format}.</p>
                 <small>
-                  O motor testa cada carta dos decks abaixo sozinha na mão (e as mãos das linhas da comunidade), com a banlist
+                  O App testa cada carta dos decks abaixo sozinha na mão (e as mãos das linhas da comunidade), com a banlist
                   atual de cada formato. Uma mão sem linha aqui não chegou a um campo com Invocação do Extra Deck ou 3+ Invocações,
                   ou a linha usa carta proibida ou não lançada no {format}.
                 </small>
@@ -205,10 +218,28 @@ export default function Combos({ onBack }: { onBack: () => void }) {
               </div>
             ) : (
               <>
-                <VerifiedCombos lines={lines} combos={combos} byId={byId} known={known} format={format} onHover={onHover} />
+                <VerifiedCombos
+                  title="Combos começando com a mão"
+                  lines={lines}
+                  combos={combos}
+                  byId={byId}
+                  known={known}
+                  format={format}
+                  onHover={onHover}
+                />
+                <VerifiedCombos
+                  title={`Combos que chegam em ${handNames}`}
+                  lines={reach}
+                  highlight={hand.map((c) => c.id)}
+                  combos={combos}
+                  byId={byId}
+                  known={known}
+                  format={format}
+                  onHover={onHover}
+                />
                 {confirmed.length > 0 && (
                   <KnownCombos
-                    title="Linhas da comunidade conferidas no motor"
+                    title="Linhas da comunidade conferidas com o App"
                     combos={confirmed}
                     byName={byName}
                     format={format}
@@ -216,8 +247,8 @@ export default function Combos({ onBack }: { onBack: () => void }) {
                   />
                 )}
                 <p className="tags-note combos-disclaimer">
-                  Calculado em {new Date(combos.geradoEm).toLocaleDateString("pt-BR")} com o motor {combos.motor.nome} (
-                  {combos.motor.ocgcore}, scripts {combos.motor.scripts}). O motor não simula interrupções do oponente.
+                  Calculado com o App em {new Date(combos.geradoEm).toLocaleDateString("pt-BR")}, com as regras do {combos.motor.nome} (
+                  {combos.motor.ocgcore}, scripts {combos.motor.scripts}). O cálculo não simula interrupções do oponente.
                 </p>
               </>
             )}

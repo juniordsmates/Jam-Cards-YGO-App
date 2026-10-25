@@ -428,3 +428,15 @@
   list-style: none;
   font-size: 0.8rem;
 }
+
+.vc-reach {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.vc-steps > li.vc-hit {
+  margin-left: -8px;
+  padding: 2px 8px;
+  background: color-mix(in srgb, var(--magenta) 9%, transparent);
+  border-radius: 8px;
+}
