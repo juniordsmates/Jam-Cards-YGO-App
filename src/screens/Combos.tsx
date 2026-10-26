@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./ScreenShell";
 import CardPreview from "../components/CardPreview";
-import ExternalLink from "../components/ExternalLink";
+import { FontesButton } from "../components/Fontes";
 import KnownCombos from "../components/KnownCombos";
 import VerifiedCombos from "../components/VerifiedCombos";
 import { KNOWN_COMBOS } from "../data/combos";
@@ -210,11 +210,12 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
                 <ul className="combos-decks">
                   {combos.decks.map((d) => (
                     <li key={d.url}>
-                      <ExternalLink href={d.url}>{d.nome} ↗</ExternalLink>
+                      {d.nome}
                       {d.evento && <small> · {d.evento}</small>}
                     </li>
                   ))}
                 </ul>
+                <FontesButton sites={["ygoprodeck", "project-ignis"]} links={combos.decks.map((d) => ({ nome: `Deck: ${d.nome}`, url: d.url }))} />
               </div>
             ) : (
               <>
@@ -247,8 +248,8 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
                   />
                 )}
                 <p className="tags-note combos-disclaimer">
-                  Calculado com o App em {new Date(combos.geradoEm).toLocaleDateString("pt-BR")}, com as regras do {combos.motor.nome} (
-                  {combos.motor.ocgcore}, scripts {combos.motor.scripts}). O cálculo não simula interrupções do oponente.
+                  Calculado com o App em {new Date(combos.geradoEm).toLocaleDateString("pt-BR")} (scripts {combos.motor.scripts}). O cálculo
+                  não simula interrupções do oponente. <FontesButton sites={["project-ignis", "ygoprodeck"]} />
                 </p>
               </>
             )}

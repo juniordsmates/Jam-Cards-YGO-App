@@ -407,14 +407,22 @@ test("combos: Trudea mostra só linhas calculadas com o App, com deck de torneio
   // a linha escrita pela comunidade só aparece porque o motor a confirmou
   assert.ok(lines.some((t) => t.includes("Confirma a linha da comunidade")));
   assert.ok((await page.textContent(".known-combos:not(.verified-combos)")).includes("conferidas com o App"));
-  // o deck usado no cálculo abre fora do app
+  // "Fontes" abre a lista de sites, com o deck usado no cálculo em destaque; o link abre fora do app
+  await page.click(".verified-combos .vc[open] .fontes-btn");
+  await page.waitForSelector(".fontes-dialog");
+  const fontes = await page.textContent(".fontes-dialog");
+  for (const site of ["YGOPRODeck", "Master Duel Meta", "YGO Combo Builder", "CardCluster", "Project Ignis"]) assert.ok(fontes.includes(site), site);
   const [popup] = await Promise.all([
     page.context().waitForEvent("page"),
-    page.click(".verified-combos .vc[open] .tags-note a"),
+    page.click(".fontes-here a:has-text('Deck:')"),
   ]);
   assert.ok(popup.url().startsWith("https://ygoprodeck.com/deck/centur-ion"), popup.url());
   await popup.close();
   assert.ok(page.url().startsWith("http://localhost"), "o app não deve navegar para o link");
+  // Esc fecha só a tela de Fontes; o segundo volta ao menu
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".fontes-dialog", { state: "detached" });
+  assert.ok(await page.$(".combos-setup"));
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
 });

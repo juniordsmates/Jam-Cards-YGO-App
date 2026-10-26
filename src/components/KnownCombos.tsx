@@ -1,5 +1,5 @@
 import type { ComboStep, KnownCombo } from "../data/combos";
-import ExternalLink from "./ExternalLink";
+import { FontesButton } from "./Fontes";
 import { legalIn, type GameFormat } from "../db/legality";
 import { displayName, type Card } from "../db/types";
 
@@ -105,17 +105,7 @@ export default function KnownCombos({ title = "Combos conhecidos", combos, byNam
               </span>
             </div>
             <p className="tags-note">
-              Fonte:{" "}
-              {c.fontes.map((f, i) => (
-                <span key={f.nome}>
-                  {i > 0 && " · "}
-                  {f.url ? (
-                    <ExternalLink href={f.url}>{f.nome} ↗</ExternalLink>
-                  ) : (
-                    f.nome
-                  )}
-                </span>
-              ))}
+              <FontesButton links={c.fontes.filter((f) => f.url).map((f) => ({ nome: f.nome, url: f.url! }))} />
             </p>
           </details>
         );

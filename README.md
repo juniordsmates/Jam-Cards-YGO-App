@@ -110,6 +110,10 @@ A aba Combos (pelo menu, pelo botão **Combos** da busca ou por **Combos com est
 
 As linhas escritas pela comunidade ([src/data/combos.ts](src/data/combos.ts)) só aparecem quando o motor as confirma (mesmo id em `maos` de `dados/combos-alvos.json` na base). O motor e os scripts (AGPL-3.0) não vão no app.
 
+## Sites / Referências
+
+Todos os sites de onde vêm os dados ficam em [src/data/referencias.ts](src/data/referencias.ts), por grupo (Cartas, Combos, Metagame, Preços). O app não lista sites em cada tela: mostra só o botão **Fontes**, que abre a tela com todos e destaca os usados ali (ex.: o deck de uma linha de combo) ([src/components/Fontes.tsx](src/components/Fontes.tsx)).
+
 ## Testes
 
 ```bash

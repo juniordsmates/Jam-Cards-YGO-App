@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import ExternalLink from "./ExternalLink";
+import { FontesButton } from "./Fontes";
 import type { KnownCombo } from "../data/combos";
 import type { GameFormat } from "../db/legality";
 import { METODO_LABEL, moveText, origemText, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
@@ -135,12 +135,7 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
 
             {community && (
               <p className="vc-community">
-                Confirma a linha da comunidade “{community.titulo}” (
-                {join(
-                  community.fontes.map((f) => (f.url ? <ExternalLink key={f.nome} href={f.url}>{f.nome} ↗</ExternalLink> : <span key={f.nome}>{f.nome}</span>)),
-                  " · ",
-                )}
-                ).
+                Confirma a linha da comunidade “{community.titulo}”.
               </p>
             )}
 
@@ -186,9 +181,16 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
               </div>
             )}
             <p className="tags-note">
-              Deck: <ExternalLink href={deck.url}>{deck.nome} ↗</ExternalLink>
-              {deck.evento && ` · ${deck.evento}`}, ajustado à banlist atual do {format}. Jogado pelo App (regras do EDOPro, Project Ignis) no
-              primeiro turno, com o oponente passando.
+              Deck {deck.nome}
+              {deck.evento && ` (${deck.evento})`}, ajustado à banlist atual do {format}. Jogado pelo App no primeiro turno, com o
+              oponente passando.{" "}
+              <FontesButton
+                sites={["ygoprodeck", "project-ignis"]}
+                links={[
+                  { nome: `Deck: ${deck.nome}`, url: deck.url },
+                  ...(community?.fontes ?? []).filter((f) => f.url).map((f) => ({ nome: f.nome, url: f.url! })),
+                ]}
+              />
             </p>
           </details>
         );

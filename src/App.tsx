@@ -4,6 +4,7 @@ import ScreenShell from "./screens/ScreenShell";
 import CardSearch from "./screens/CardSearch";
 import Combos from "./screens/Combos";
 import ExitDialog from "./components/ExitDialog";
+import { FontesDialog, isFontesOpen } from "./components/Fontes";
 import { exitApp } from "./platform";
 import { initCardDb } from "./db/cardStore";
 import type { Card } from "./db/types";
@@ -23,7 +24,7 @@ export default function App() {
   // Esc volta ao menu a partir de qualquer tela (painéis abertos tratam antes)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || confirmingExit || e.defaultPrevented) return;
+      if (e.key !== "Escape" || confirmingExit || e.defaultPrevented || isFontesOpen()) return;
       if (screen !== "menu") setScreen("menu");
     };
     window.addEventListener("keydown", onKey);
@@ -86,6 +87,8 @@ export default function App() {
           O editor de deck entra aqui.
         </ScreenShell>
       )}
+
+      <FontesDialog />
 
       {confirmingExit && (
         <ExitDialog

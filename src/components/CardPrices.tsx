@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ExternalLink from "./ExternalLink";
+import { FontesButton } from "./Fontes";
 import {
   cachedTcgApi,
   fetchTcgApi,
@@ -231,7 +232,7 @@ export default function CardPrices({ card }: { card: Card }) {
           {rates
             ? `Valores em reais convertidos pela cotação de ${rates.quotedAt.slice(8, 10)}/${rates.quotedAt.slice(5, 7)} (US$ 1 = ${formatMoney(rates.USD, "BRL")}, € 1 = ${formatMoney(rates.EUR, "BRL")}). `
             : "Sem cotação do dia: valores só na moeda original. "}
-          Preços via YGOPRODeck e <ExternalLink href="https://tcgapi.dev">TCG API</ExternalLink>.
+          <FontesButton sites={["ygoprodeck", "tcgapi", "awesomeapi"]} />
         </p>
       </section>
     </>

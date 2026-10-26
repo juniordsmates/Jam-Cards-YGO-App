@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import ExternalLink from "./ExternalLink";
+import { FontesButton, isFontesOpen } from "./Fontes";
 import { cardImage } from "../db/images";
 import { readCard } from "../db/effects";
 import CardEffects, { readingSummary } from "./CardEffects";
@@ -88,7 +88,7 @@ export default function CardDetail({
         onBack();
         return;
       }
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || e.defaultPrevented || isFontesOpen()) return;
       e.preventDefault();
       onClose();
     };
@@ -303,9 +303,7 @@ export default function CardDetail({
       <CardPrices card={card} />
 
 
-      <ExternalLink className="drawer-source" href={card.url}>
-        Ver na YGOPRODeck ↗
-      </ExternalLink>
+      <FontesButton className="drawer-source" sites={["ygoprodeck", "yugioh-wiki"]} links={[{ nome: `${card.name} na YGOPRODeck`, url: card.url }]} />
     </aside>
   );
 }

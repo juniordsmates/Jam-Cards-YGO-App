@@ -1920,3 +1920,68 @@
 .drawer-combos:hover {
   background: color-mix(in srgb, var(--magenta) 10%, transparent);
 }
+
+/* ---------- Fontes ---------- */
+
+/* fica acima do painel e do popup de carta */
+.fontes-overlay {
+  z-index: 1000;
+}
+
+.fontes-btn {
+  font-size: inherit;
+}
+
+.fontes-dialog {
+  width: min(520px, 100%);
+  max-height: min(80vh, 720px);
+  overflow-y: auto;
+  border-top-color: var(--cyan);
+}
+
+.fontes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.fontes-head h2 {
+  margin: 0;
+}
+
+.fontes-group h3 {
+  margin: 16px 0 6px;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.fontes-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fontes-group li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.88rem;
+}
+
+.fontes-group small {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+}
+
+.fontes-here {
+  padding: 4px 12px 12px;
+  background: color-mix(in srgb, var(--cyan) 7%, transparent);
+  border-radius: 10px;
+}
