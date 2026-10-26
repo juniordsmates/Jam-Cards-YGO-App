@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { FontesButton, isFontesOpen } from "./Fontes";
+import { isContaOpen } from "./Conta";
 import { cardImage } from "../db/images";
 import { readCard } from "../db/effects";
 import CardEffects, { readingSummary } from "./CardEffects";
@@ -88,7 +89,7 @@ export default function CardDetail({
         onBack();
         return;
       }
-      if (e.key !== "Escape" || e.defaultPrevented || isFontesOpen()) return;
+      if (e.key !== "Escape" || e.defaultPrevented || isFontesOpen() || isContaOpen()) return;
       e.preventDefault();
       onClose();
     };

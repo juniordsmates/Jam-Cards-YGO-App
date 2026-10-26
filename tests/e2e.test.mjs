@@ -464,6 +464,81 @@ test("busca: atalhos para Combos (cabeçalho e painel da carta com a carta na m�
   await page.waitForSelector(".menu-btn");
 });
 
+test("conta: botão Entrar no menu abre a tela de conta com a integração de IA; Esc fecha só ela", async () => {
+  await page.goto(URL);
+  await page.waitForSelector(".menu-btn");
+  await page.click(".menu-conta");
+  await page.waitForSelector(".conta-dialog");
+  const text = await page.textContent(".conta-dialog");
+  assert.ok(text.includes("Integração com IA") && text.includes("Política de Privacidade"), text.slice(0, 200));
+  // documento legal dentro do app
+  await page.click(".conta-docs .link-btn:has-text('Política')");
+  assert.ok((await page.textContent(".conta-dialog")).includes("LGPD"));
+  await page.keyboard.press("Escape"); // volta para a conta
+  await page.keyboard.press("Escape"); // fecha
+  await page.waitForSelector(".conta-dialog", { state: "detached" });
+  assert.ok(await page.$(".menu-btn"), "continua no menu");
+});
+
+test("Combo Search: carta final encontra linhas do App, e a IA (resposta simulada) sugere combos", async () => {
+  // resposta da API do Claude simulada: a IA chama registrar_combos direto
+  const registro = {
+    combos: [
+      {
+        titulo: "Trudea até Auxila",
+        iniciais: ["Centur-Ion Trudea"],
+        passos: [
+          { texto: "Invocação-Normal da Trudea e ativa o efeito dela.", cartas: ["Centur-Ion Trudea"] },
+          { texto: "Invocação-Sincro da Auxila.", cartas: ["Centur-Ion Auxila"] },
+        ],
+        campo_final: ["Centur-Ion Auxila", "Carta Que Não Existe"],
+        fontes: [{ nome: "Guia de teste", url: "https://example.com/guia" }],
+        observacoes: "Linha de teste.",
+      },
+    ],
+  };
+  const sse = [
+    ["message_start", { type: "message_start", message: { id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } } }],
+    ["content_block_start", { type: "content_block_start", index: 0, content_block: { type: "tool_use", id: "toolu_1", name: "registrar_combos", input: {} } }],
+    ["content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: JSON.stringify(registro) } }],
+    ["content_block_stop", { type: "content_block_stop", index: 0 }],
+    ["message_delta", { type: "message_delta", delta: { stop_reason: "tool_use", stop_sequence: null }, usage: { output_tokens: 50 } }],
+    ["message_stop", { type: "message_stop" }],
+  ].map(([e, d]) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`).join("");
+  const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "POST, OPTIONS" };
+  let pedidos = 0;
+  await page.route("**/api.anthropic.com/**", (r) => {
+    if (r.request().method() === "OPTIONS") return r.fulfill({ status: 204, headers: cors });
+    pedidos++;
+    return r.fulfill({ status: 200, headers: { ...cors, "content-type": "text/event-stream" }, body: sse });
+  });
+  await page.evaluate(() => localStorage.setItem("cartas-ia", JSON.stringify({ chave: "sk-ant-teste", modelo: "claude-opus-5-5" })));
+
+  await page.keyboard.press("2");
+  await page.waitForSelector(".combos-setup");
+  await page.click(".combos-modos button:has-text('Combo Search')");
+  await page.fill(".cs-finais input", "centur-ion auxila");
+  await page.waitForSelector(".cs-finais .suggestions button");
+  await page.keyboard.press("Enter");
+  await page.click(".cs-buscar");
+  // linhas calculadas pelo App que chegam na Auxila
+  await page.waitForSelector("section[aria-label='Calculados pelo App'] .vc", { timeout: 15_000 });
+  assert.ok((await page.textContent("section[aria-label='Calculados pelo App']")).includes("Auxila"));
+
+  await page.click(".cs-ia");
+  await page.waitForSelector(".ia-section .base-combo", { timeout: 15_000 });
+  const ia = await page.textContent(".ia-section");
+  assert.equal(pedidos, 1);
+  assert.ok(ia.includes("Sugestão de IA") && ia.includes("Trudea até Auxila"), ia.slice(0, 300));
+  assert.ok(ia.includes("Invocação-Sincro da Auxila."));
+  assert.ok(ia.includes("Entre na sua conta"), "sem conta, avisa que não gravou");
+
+  await page.evaluate(() => localStorage.removeItem("cartas-ia"));
+  await page.unroute("**/api.anthropic.com/**");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
 test("nenhum erro de JavaScript na página", () => {
   assert.deepEqual(pageErrors, []);
 });

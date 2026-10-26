@@ -117,14 +117,24 @@ As linhas escritas pela comunidade ([src/data/combos.ts](src/data/combos.ts)) s�
 
 Todos os sites de onde vêm os dados ficam em [src/data/referencias.ts](src/data/referencias.ts), por grupo (Cartas, Combos, Metagame, Preços). O app não lista sites em cada tela: mostra só o botão **Fontes**, que abre a tela com todos e destaca os usados ali (ex.: o deck de uma linha de combo) ([src/components/Fontes.tsx](src/components/Fontes.tsx)).
 
-## Contas e Combos da Comunidade (Supabase)
+## Combo Search, contas e base de combos (Supabase)
 
-Contas, combos da comunidade e decks salvos ficam no [Supabase](https://supabase.com) (projeto `spgphpwnnvympqeejsaq`, região us-east-2).
+Na aba Combos, **Combo Search** recebe 0 ou mais cartas iniciais (starters) e/ou 1 ou mais cartas finais, e procura em três lugares:
 
-- **Estrutura do banco:** fica em [supabase/migrations/](supabase/migrations/). Toda tabela tem RLS: cada pessoa só altera o que é dela.
-- **Senhas:** e-mail e senha ficam no Supabase Auth, e a senha só como hash.
-- **O que o app usa:** só a URL do projeto e a chave pública (*publishable/anon*). A senha do Postgres nunca entra no código.
-- **Documentos legais:** [Política de Privacidade](docs/politica-de-privacidade.md) e [Termos de Uso](docs/termos-de-uso.md).
+1. **Calculados pelo App:** as linhas da camada pública em que as iniciais estão na mão e as finais aparecem na linha.
+2. **Base de combos** (Supabase): combos da comunidade e sugestões de IA de buscas anteriores.
+3. **Busca com IA** ([src/db/ia.ts](src/db/ia.ts)): o app chama o Claude com a **chave de API do próprio usuário**, cadastrada em *Minha conta → Integração com IA* e guardada só no dispositivo.
+   - O Claude pesquisa na web e consulta o app por ferramentas: o texto das cartas e os combos já registrados.
+   - Ele entrega os combos pela ferramenta `registrar_combos`.
+   - As sugestões são **gravadas na base logo após a busca**, com origem `ia`. O usuário pode publicar qualquer uma como **Combo da Comunidade**, com o nome do autor.
+
+**Base de combos** ([supabase/migrations/](supabase/migrations/)): uma tabela `combos` com o JSON completo de cada combo em `dados` e índices por `arquetipos` (nomes em inglês), `iniciais` (starters), `finais` e `cartas` (todas, preenchido pelo banco). A visão `combos_indice` dá a navegação **Arquétipo > Starter > combos**. A `origem` diz de onde veio o combo: `app`, `comunidade` ou `ia`.
+
+**Contas:**
+- **Acesso:** botão **Entrar** no canto superior direito da tela principal, com e-mail, usuário (público) e senha.
+- **Senhas:** ficam no Supabase Auth, só como hash. Toda tabela tem RLS: cada pessoa só altera o que é dela.
+- **Chave do app:** o app usa a URL do projeto e a chave pública em [src/db/supabase.ts](src/db/supabase.ts). Enquanto ela estiver vazia, as contas e a base de combos ficam desativadas, mas a busca com IA funciona sem gravar.
+- **Documentos legais:** [Política de Privacidade](docs/politica-de-privacidade.md) e [Termos de Uso](docs/termos-de-uso.md), que também abrem dentro do app.
 
 ## Testes
 

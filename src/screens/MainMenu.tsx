@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { ComboIcon, DeckIcon, ExitIcon, SearchIcon } from "../icons";
 import { isDesktop } from "../platform";
 import { BUILD_LABEL, VERSION_LABEL } from "../version";
+import { useConta } from "../db/conta";
 
 type Props = {
   /** false enquanto um diálogo está aberto por cima do menu */
@@ -10,6 +11,8 @@ type Props = {
   onCombos: () => void;
   onDeck: () => void;
   onExit: () => void;
+  /** abre a tela de conta (entrar, criar conta, integração com IA) */
+  onConta: () => void;
 };
 
 type Item = {
@@ -20,10 +23,11 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onDeck, onExit }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onDeck, onExit, onConta }: Props) {
+  const conta = useConta();
   const items: Item[] = [
     { label: "Buscar Carta", hint: "Encontre qualquer carta", icon: <SearchIcon />, accent: "cyan", action: onSearch },
-    { label: "Combos", hint: "O que uma mão inicial alcança", icon: <ComboIcon />, accent: "cyan", action: onCombos },
+    { label: "Combos", hint: "Mão inicial e Combo Search", icon: <ComboIcon />, accent: "cyan", action: onCombos },
     { label: "Editor de Deck", hint: "Monte e ajuste seus decks", icon: <DeckIcon />, accent: "magenta", action: onDeck },
     { label: "Sair", hint: isDesktop ? "Fechar o aplicativo" : "Encerrar a sessão", icon: <ExitIcon />, accent: "red", action: onExit },
   ];
@@ -57,6 +61,11 @@ export default function MainMenu({ active, onSearch, onCombos, onDeck, onExit }:
   }, []);
 
   return (
+    <>
+    {/* fora do bloco animado do menu: canto superior direito da tela */}
+    <button className="ghost-btn menu-conta" onClick={onConta} title={conta ? "Minha conta" : "Entrar ou criar conta"}>
+      {conta ? `@${conta.usuario}` : "Entrar"}
+    </button>
     <section className="menu">
       <header className="menu-header">
         <h1 className="logo">
@@ -91,5 +100,6 @@ export default function MainMenu({ active, onSearch, onCombos, onDeck, onExit }:
         <span title={BUILD_LABEL}>v{VERSION_LABEL} · {isDesktop ? "Desktop" : "Web"} · {BUILD_LABEL}</span>
       </footer>
     </section>
+    </>
   );
 }

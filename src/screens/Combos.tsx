@@ -1,26 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./ScreenShell";
 import CardPreview from "../components/CardPreview";
+import CardPicker from "../components/CardPicker";
+import ComboSearch from "../components/ComboSearch";
 import { FontesButton } from "../components/Fontes";
 import KnownCombos from "../components/KnownCombos";
 import VerifiedCombos from "../components/VerifiedCombos";
 import { KNOWN_COMBOS } from "../data/combos";
-import { SearchIcon } from "../icons";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
 import { cardsOfLine, linesForHand, uniqueLines, type LinhaCombo } from "../db/motor";
-import { normalize } from "../db/search";
 import { displayName, type Card } from "../db/types";
 import "./combos.css";
-
-const MAX_SUGGESTIONS = 8;
 
 /** `initialHand`: cartas já na mão ao abrir (vindas da busca) */
 export default function Combos({ onBack, initialHand = [] }: { onBack: () => void; initialHand?: Card[] }) {
   const db = useCardDb();
   const [format, setFormat] = useState<GameFormat>("TCG");
   const [hand, setHand] = useState<Card[]>(initialHand);
-  const [query, setQuery] = useState("");
+  // "mao": o que a mão inicial alcança; "search": Combo Search (iniciais e/ou finais, com IA)
+  const [modo, setModo] = useState<"mao" | "search">("mao");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => void initCardDb(), []);
@@ -28,17 +27,6 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
 
   const byId = useMemo(() => new Map(db.cards.map((c) => [c.id, c])), [db.cards]);
   const byName = useMemo(() => new Map(db.cards.map((c) => [c.name, c])), [db.cards]);
-
-  // Sugestões: cartas pelo nome (pt/en), legais no formato primeiro
-  const suggestions = useMemo(() => {
-    const q = normalize(query);
-    if (q.length < 2) return [];
-    const terms = q.split(" ");
-    return db.cards
-      .filter((c) => c.frame !== "skill" && c.frame !== "token" && terms.every((t) => c.key.includes(t)) && !hand.some((h) => h.id === c.id))
-      .sort((a, b) => Number(legalIn(b, format)) - Number(legalIn(a, format)) || (b.views ?? 0) - (a.views ?? 0))
-      .slice(0, MAX_SUGGESTIONS);
-  }, [query, db.cards, hand, format]);
 
   const combos = db.extras?.combos;
   const known = useMemo(() => new Map(KNOWN_COMBOS.map((k) => [k.id, k])), []);
@@ -95,11 +83,22 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
 
   const addCard = (c: Card) => {
     setHand((h) => [...h, c]);
-    setQuery("");
     inputRef.current?.focus();
   };
 
   const ready = db.status === "ready";
+
+  // alternância entre os dois modos, no topo da coluna da esquerda
+  const modos = (
+    <div className="left-tabs combos-modos" role="tablist" aria-label="Modo">
+      <button role="tab" aria-selected={modo === "mao"} className={modo === "mao" ? "active" : ""} onClick={() => setModo("mao")}>
+        Mão inicial
+      </button>
+      <button role="tab" aria-selected={modo === "search"} className={modo === "search" ? "active" : ""} onClick={() => setModo("search")}>
+        Combo Search
+      </button>
+    </div>
+  );
 
   return (
     <ScreenShell
@@ -131,55 +130,22 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
           <p>{db.step ?? "Carregando base de cartas…"}</p>
         </div>
       ) : (
+        modo === "search" ? (
+          <ComboSearch tabs={modos} all={db.cards} byId={byId} format={format} combos={combos} known={known} fits={fits} onHover={onHover} />
+        ) : (
         <div className="combos">
           <section className="combos-setup">
-            <div className="hand">
-              <span className="field-label">Mão inicial</span>
-              <div className="hand-cards">
-                {hand.map((c) => {
-                  const ok = legalIn(c, format);
-                  return (
-                    <span key={c.id} className={`hand-card ${ok ? "" : "illegal"}`} title={ok ? undefined : `Não pode ser usada no ${format}`}>
-                      {displayName(c)}
-                      {!ok && <em> · fora do {format}</em>}
-                      <button onClick={() => setHand((h) => h.filter((x) => x.id !== c.id))} aria-label={`Tirar ${displayName(c)} da mão`}>
-                        ✕
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-              <div className="hand-search">
-                <label className="search-input">
-                  <SearchIcon />
-                  <input
-                    ref={inputRef}
-                    type="search"
-                    placeholder={hand.length ? "Acrescentar outra carta à mão…" : "Escolha uma carta (ex.: Mitsurugi Prayers)"}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && suggestions[0] && legalIn(suggestions[0], format) && addCard(suggestions[0])}
-                  />
-                </label>
-                {suggestions.length > 0 && (
-                  <ul className="suggestions" role="listbox">
-                    {suggestions.map((c) => {
-                      const ok = legalIn(c, format);
-                      return (
-                        <li key={c.id}>
-                          <button disabled={!ok} onClick={() => addCard(c)} role="option" aria-selected={false}>
-                            <span>{displayName(c)}</span>
-                            {c.namePt && <small>{c.name}</small>}
-                            {!ok && <em>{c.ban?.[format === "TCG" ? "tcg" : "ocg"] === "Forbidden" ? "proibida" : `fora do ${format}`}</em>}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </div>
-
+            {modos}
+            <CardPicker
+              label="Mão inicial"
+              cards={hand}
+              onChange={setHand}
+              all={db.cards}
+              format={format}
+              inputRef={inputRef}
+              placeholder="Escolha uma carta (ex.: Mitsurugi Prayers)"
+              placeholderMore="Acrescentar outra carta à mão…"
+            />
           </section>
 
           <section className="combos-result">
@@ -261,6 +227,7 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
             )}
           </section>
         </div>
+        )
       )}
       {hover && <CardPreview card={hover.card} anchor={hover.rect} />}
     </ScreenShell>

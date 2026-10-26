@@ -444,3 +444,51 @@
   padding: 6px 14px;
   font-size: 0.82rem;
 }
+
+/* ---------- Modos e Combo Search ---------- */
+
+.combos-modos {
+  margin-bottom: 4px;
+}
+
+.cs-buscar {
+  width: 100%;
+}
+
+.ia-progresso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.86rem;
+  color: var(--text-dim);
+}
+
+.badge-comunidade {
+  background: #2f7d5b;
+}
+
+.badge-ia {
+  background: #8a6d1d;
+}
+
+.vc-step-cards {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.comunidade-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.comunidade-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

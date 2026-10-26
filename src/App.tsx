@@ -5,6 +5,8 @@ import CardSearch from "./screens/CardSearch";
 import Combos from "./screens/Combos";
 import ExitDialog from "./components/ExitDialog";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
+import { ContaDialog, isContaOpen, openConta } from "./components/Conta";
+import { iniciarConta } from "./db/conta";
 import { exitApp } from "./platform";
 import { initCardDb } from "./db/cardStore";
 import type { Card } from "./db/types";
@@ -20,11 +22,13 @@ export default function App() {
 
   // Carrega a base de cartas já na abertura, para a busca abrir pronta
   useEffect(() => void initCardDb(), []);
+  // restaura a sessão da conta (se as contas estiverem ativas)
+  useEffect(() => iniciarConta(), []);
 
   // Esc volta ao menu a partir de qualquer tela (painéis abertos tratam antes)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || confirmingExit || e.defaultPrevented || isFontesOpen()) return;
+      if (e.key !== "Escape" || confirmingExit || e.defaultPrevented || isFontesOpen() || isContaOpen()) return;
       if (screen !== "menu") setScreen("menu");
     };
     window.addEventListener("keydown", onKey);
@@ -64,6 +68,7 @@ export default function App() {
           }}
           onDeck={() => setScreen("deck")}
           onExit={() => setConfirmingExit(true)}
+          onConta={() => openConta()}
         />
       )}
 
@@ -89,6 +94,7 @@ export default function App() {
       )}
 
       <FontesDialog />
+      <ContaDialog />
 
       {confirmingExit && (
         <ExitDialog

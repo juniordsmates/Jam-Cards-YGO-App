@@ -18,7 +18,7 @@ type Props = {
 };
 
 /** Nome da carta em português, com o popup da carta ao passar o mouse (id 0 = Ficha) */
-function Name({ id, byId, onHover }: { id: number; byId: Map<number, Card>; onHover: Hover }) {
+export function Name({ id, byId, onHover }: { id: number; byId: Map<number, Card>; onHover: Hover }) {
   if (id === 0) return <span className="kc-card">Ficha</span>;
   const card = byId.get(id);
   return (
@@ -32,10 +32,10 @@ function Name({ id, byId, onHover }: { id: number; byId: Map<number, Card>; onHo
   );
 }
 
-const join = (nodes: ReactNode[], sep: string) => nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
+export const join = (nodes: ReactNode[], sep: string) => nodes.flatMap((n, i) => (i ? [sep, n] : [n]));
 
-/** Texto de um passo calculado pelo motor */
-function StepText({ p, byId, onHover }: { p: Passo; byId: Map<number, Card>; onHover: Hover }) {
+/** Texto de um passo (calculado pelo App, ou escrito pela comunidade/IA) */
+export function StepText({ p, byId, onHover }: { p: Passo; byId: Map<number, Card>; onHover: Hover }) {
   const N = (id: number) => <Name key={id} id={id} byId={byId} onHover={onHover} />;
   switch (p.t) {
     case "normal":
@@ -73,17 +73,29 @@ function StepText({ p, byId, onHover }: { p: Passo; byId: Map<number, Card>; onH
     }
     case "compra":
       return <>Compra {join(p.c.map((c, i) => <Name key={`${c}-${i}`} id={c} byId={byId} onHover={onHover} />), ", ")}</>;
+    case "texto":
+      return (
+        <>
+          {p.texto}
+          {p.c.length > 0 && (
+            <span className="vc-step-cards">
+              {" "}
+              ({join(p.c.map((c, i) => <Name key={`${c}-${i}`} id={c} byId={byId} onHover={onHover} />), ", ")})
+            </span>
+          )}
+        </>
+      );
   }
 }
 
 /** O passo envolve alguma das cartas? */
-function stepHas(p: Passo, ids: Set<number>) {
-  if (p.t === "compra") return p.c.some((c) => ids.has(c));
+export function stepHas(p: Passo, ids: Set<number>) {
+  if (p.t === "compra" || p.t === "texto") return p.c.some((c) => ids.has(c));
   return ids.has(p.c);
 }
 
 /** Agrupa as consequências da resolução de um efeito sob o passo anterior (numeração só nos passos) */
-function groupSteps(passos: Passo[]) {
+export function groupSteps(passos: Passo[]) {
   const groups: { step: Passo; subs: Passo[] }[] = [];
   for (const p of passos) {
     const sub = "por" in p && p.por !== undefined && p.por !== p.c;

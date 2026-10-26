@@ -10,7 +10,9 @@ export type Passo =
   | { t: "ativa"; c: number; de: Zona }
   | { t: "invoca"; c: number; de: Zona; m?: Metodo; mat?: number[]; por?: number }
   | { t: "move"; c: number; de: Zona; para: Zona; por?: number }
-  | { t: "compra"; c: number[] };
+  | { t: "compra"; c: number[] }
+  // passo descrito em texto (combos da comunidade e sugestões de IA), com as cartas citadas
+  | { t: "texto"; texto: string; c: number[] };
 
 export interface CampoFinal {
   monstros: number[];
@@ -45,7 +47,7 @@ export interface CombosCalculados {
 export function cardsOfLine(l: LinhaCombo): number[] {
   const ids = new Set<number>(l.mao);
   for (const p of l.passos) {
-    if (p.t === "compra") p.c.forEach((c) => ids.add(c));
+    if (p.t === "compra" || p.t === "texto") p.c.forEach((c) => ids.add(c));
     else {
       ids.add(p.c);
       if ("mat" in p) p.mat?.forEach((c) => ids.add(c));
@@ -121,3 +123,28 @@ export function moveText(de: Zona, para: Zona): [string, string] {
 }
 
 export const origemText = (z: Zona) => ORIGEM[z] ?? "";
+
+/** Passo em texto corrido (para enviar combos existentes à IA do Combo Search) */
+export function passoEmTexto(p: Passo, nome: (id: number) => string): string {
+  const lista = (ids: number[]) => ids.map(nome).join(" + ");
+  switch (p.t) {
+    case "normal":
+      return `Invocação-Normal de ${nome(p.c)}`;
+    case "baixa":
+      return `Baixa ${nome(p.c)}`;
+    case "ativa":
+      return `Ativa ${nome(p.c)}${p.de === "mao" || p.de === "cemiterio" || p.de === "banido" ? ` ${origemText(p.de)}` : ""}`;
+    case "invoca":
+      return p.m
+        ? `${METODO_LABEL[p.m]} de ${nome(p.c)}${p.mat?.length ? ` usando ${lista(p.mat)}` : ""}`
+        : `Invocação-Especial de ${nome(p.c)} ${origemText(p.de)}`.trim();
+    case "move": {
+      const [verb, rest] = moveText(p.de, p.para);
+      return `${verb} ${nome(p.c)} ${rest}`.trim();
+    }
+    case "compra":
+      return `Compra ${p.c.map(nome).join(", ")}`;
+    case "texto":
+      return p.texto;
+  }
+}
