@@ -4,7 +4,7 @@ Escolha a versão e baixe o instalador do seu sistema: abra o arquivo e clique e
 
 | Versão | Windows | macOS (Apple Silicon e Intel) |
 | --- | --- | --- |
-| **0.0.1** (mais recente) | [Cartas_0.0.1_x64-setup.exe](0.0.1/Cartas_0.0.1_x64-setup.exe) (1.9 MB) | [Cartas_0.0.1_universal.dmg](0.0.1/Cartas_0.0.1_universal.dmg) (5.3 MB) |
+| **0.0.1** (mais recente) | [Cartas_0.0.1_x64-setup.exe](0.0.1/Cartas_0.0.1_x64-setup.exe) (2.0 MB) | [Cartas_0.0.1_universal.dmg](0.0.1/Cartas_0.0.1_universal.dmg) (5.4 MB) |
 
 Os mesmos arquivos ficam na página de [Releases](https://github.com/juniordsmates/Cartas-App/releases). Esta pasta é atualizada automaticamente a cada versão publicada.
 
