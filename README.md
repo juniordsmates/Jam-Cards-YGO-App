@@ -114,6 +114,15 @@ As linhas escritas pela comunidade ([src/data/combos.ts](src/data/combos.ts)) s�
 
 Todos os sites de onde vêm os dados ficam em [src/data/referencias.ts](src/data/referencias.ts), por grupo (Cartas, Combos, Metagame, Preços). O app não lista sites em cada tela: mostra só o botão **Fontes**, que abre a tela com todos e destaca os usados ali (ex.: o deck de uma linha de combo) ([src/components/Fontes.tsx](src/components/Fontes.tsx)).
 
+## Contas e Combos da Comunidade (Supabase)
+
+Contas, combos da comunidade e decks salvos ficam no [Supabase](https://supabase.com) (projeto `spgphpwnnvympqeejsaq`, região us-east-2).
+
+- **Estrutura do banco:** fica em [supabase/migrations/](supabase/migrations/). Toda tabela tem RLS: cada pessoa só altera o que é dela.
+- **Senhas:** e-mail e senha ficam no Supabase Auth, e a senha só como hash.
+- **O que o app usa:** só a URL do projeto e a chave pública (*publishable/anon*). A senha do Postgres nunca entra no código.
+- **Documentos legais:** [Política de Privacidade](docs/politica-de-privacidade.md) e [Termos de Uso](docs/termos-de-uso.md).
+
 ## Testes
 
 ```bash
