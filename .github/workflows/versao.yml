@@ -87,6 +87,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      - name: Tag da versão no commit desta build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # o Release é reaproveitado entre builds da mesma versão; a tag acompanha a build mais recente
+        run: gh api -X PATCH "repos/${{ github.repository }}/git/refs/tags/v${{ github.ref_name }}-${CANAL}" -f sha="${{ github.sha }}" -F force=true
       - name: Atualizar Install/${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { ComboIcon, DeckIcon, ExitIcon, SearchIcon } from "../icons";
 import { isDesktop } from "../platform";
-import { VERSION_LABEL } from "../version";
+import { BUILD_LABEL, VERSION_LABEL } from "../version";
 
 type Props = {
   /** false enquanto um diálogo está aberto por cima do menu */
@@ -88,7 +88,7 @@ export default function MainMenu({ active, onSearch, onCombos, onDeck, onExit }:
       <footer className="menu-footer">
         <span>↑ ↓ navegar</span>
         <span>Enter selecionar</span>
-        <span>v{VERSION_LABEL} · {isDesktop ? "Desktop" : "Web"}</span>
+        <span title={BUILD_LABEL}>v{VERSION_LABEL} · {isDesktop ? "Desktop" : "Web"} · {BUILD_LABEL}</span>
       </footer>
     </section>
   );
