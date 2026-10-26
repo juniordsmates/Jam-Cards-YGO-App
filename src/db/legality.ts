@@ -6,6 +6,9 @@ import type { Card } from "./types";
 
 export type GameFormat = "TCG" | "OCG";
 
+/** Formatos com aba própria (Combos); um formato novo entra aqui */
+export const FORMATS: GameFormat[] = ["TCG", "OCG"];
+
 export function releasedIn(c: Card, format: GameFormat): boolean {
   if (format === "TCG") return !!(c.formats?.includes("TCG") || c.tcgDate || c.ban?.tcg);
   return !!(c.formats?.includes("OCG") || c.ocgDate || c.ban?.ocg);

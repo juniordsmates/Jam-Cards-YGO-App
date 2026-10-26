@@ -58,6 +58,20 @@ export function cardsOfLine(l: LinhaCombo): number[] {
   return [...ids];
 }
 
+/**
+ * O pipeline calcula o decklist com a banlist de cada formato; quando as duas versões chegam
+ * à mesma linha, ela aparece uma vez só.
+ */
+export function uniqueLines(lines: LinhaCombo[]): LinhaCombo[] {
+  const seen = new Set<string>();
+  return lines.filter((l) => {
+    const key = JSON.stringify([l.deck, l.mao, l.qualquer, l.passos]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** Linhas cuja mão inicial está toda na mão escolhida */
 export function linesForHand(combos: CombosCalculados | undefined, hand: number[]): LinhaCombo[] {
   if (!combos || !hand.length) return [];

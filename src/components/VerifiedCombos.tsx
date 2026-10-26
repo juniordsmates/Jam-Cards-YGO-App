@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { FontesButton } from "./Fontes";
 import type { KnownCombo } from "../data/combos";
-import type { GameFormat } from "../db/legality";
 import { METODO_LABEL, moveText, origemText, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
 import { displayName, type Card } from "../db/types";
 
@@ -15,7 +14,6 @@ type Props = {
   combos: CombosCalculados;
   byId: Map<number, Card>;
   known: Map<string, KnownCombo>;
-  format: GameFormat;
   onHover: Hover;
 };
 
@@ -96,7 +94,7 @@ function groupSteps(passos: Passo[]) {
 }
 
 /** Linhas de combo jogadas pelo motor de regras do EDOPro para a mão escolhida */
-export default function VerifiedCombos({ title = "Combos calculados", lines, highlight = [], combos, byId, known, format, onHover }: Props) {
+export default function VerifiedCombos({ title = "Combos calculados", lines, highlight = [], combos, byId, known, onHover }: Props) {
   if (!lines.length) return null;
   const hits = new Set(highlight);
   return (
@@ -182,8 +180,8 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
             )}
             <p className="tags-note">
               Deck {deck.nome}
-              {deck.evento && ` (${deck.evento})`}, ajustado à banlist atual do {format}. Jogado pelo App no primeiro turno, com o
-              oponente passando.{" "}
+              {deck.evento && ` (${deck.evento})`}. Jogado pelo App no primeiro turno, com o oponente passando; vale em todo formato
+              em que as cartas da linha existem e não são proibidas.{" "}
               <FontesButton
                 sites={["ygoprodeck", "project-ignis"]}
                 links={[

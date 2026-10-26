@@ -7,8 +7,8 @@ import VerifiedCombos from "../components/VerifiedCombos";
 import { KNOWN_COMBOS } from "../data/combos";
 import { SearchIcon } from "../icons";
 import { initCardDb, useCardDb } from "../db/cardStore";
-import { legalIn, type GameFormat } from "../db/legality";
-import { cardsOfLine, linesForHand, type LinhaCombo } from "../db/motor";
+import { FORMATS, legalIn, type GameFormat } from "../db/legality";
+import { cardsOfLine, linesForHand, uniqueLines, type LinhaCombo } from "../db/motor";
 import { normalize } from "../db/search";
 import { displayName, type Card } from "../db/types";
 import "./combos.css";
@@ -43,10 +43,10 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
   const combos = db.extras?.combos;
   const known = useMemo(() => new Map(KNOWN_COMBOS.map((k) => [k.id, k])), []);
 
-  // linha do formato escolhido, sem nenhuma carta proibida ou não lançada nele
+  // Uma linha vale em qualquer formato em que todas as cartas dela existam (e não sejam proibidas):
+  // só uma carta exclusiva do OCG (ou proibida no TCG) deixa a linha só no OCG, e vice-versa.
   const fits = useCallback(
     (l: LinhaCombo) =>
-      (!l.formatos || l.formatos.includes(format)) &&
       cardsOfLine(l).every((id) => {
         const c = byId.get(id);
         return !c || legalIn(c, format);
@@ -55,7 +55,7 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
   );
   // linhas calculadas no motor cuja mão inicial está na mão escolhida
   const lines = useMemo(
-    () => linesForHand(combos, hand.map((c) => c.id)).filter(fits).sort((x, y) => y.pontos - x.pontos),
+    () => uniqueLines(linesForHand(combos, hand.map((c) => c.id)).filter(fits)).sort((x, y) => y.pontos - x.pontos),
     [combos, hand, fits],
   );
   // linhas que passam pelas cartas escolhidas sem começar com elas: como chegar nelas e o que fazer depois
@@ -63,8 +63,7 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
     if (!combos || !hand.length) return [];
     const ids = hand.map((c) => c.id);
     const start = new Set(lines);
-    return combos.linhas
-      .filter((l) => !start.has(l) && fits(l) && ids.some((id) => !l.mao.includes(id) && cardsOfLine(l).includes(id)))
+    return uniqueLines(combos.linhas.filter((l) => !start.has(l) && fits(l) && ids.some((id) => !l.mao.includes(id) && cardsOfLine(l).includes(id))))
       .sort((x, y) => y.pontos - x.pontos)
       .slice(0, 12);
   }, [combos, hand, lines, fits]);
@@ -103,7 +102,29 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
   const ready = db.status === "ready";
 
   return (
-    <ScreenShell title="Combos" accent="magenta" onBack={onBack} plain>
+    <ScreenShell
+      title="Combos"
+      accent="magenta"
+      onBack={onBack}
+      actions={
+        // canto superior direito: o formato vale para a mão, as sugestões e as linhas
+        <div className="format-switch combos-format" role="radiogroup" aria-label="Formato">
+          {FORMATS.map((f) => (
+            <button
+              key={f}
+              role="radio"
+              aria-checked={format === f}
+              className={format === f ? "active" : ""}
+              onClick={() => setFormat(f)}
+              title={`Combos em que todas as cartas existem no ${f} e não são proibidas nele`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      }
+      plain
+    >
       {!ready ? (
         <div className="db-loading">
           <span className="spinner" />
@@ -112,19 +133,6 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
       ) : (
         <div className="combos">
           <section className="combos-setup">
-            <div className="format-switch" role="radiogroup" aria-label="Formato">
-              {(["TCG", "OCG"] as GameFormat[]).map((f) => (
-                <button key={f} role="radio" aria-checked={format === f} className={format === f ? "active" : ""} onClick={() => setFormat(f)}>
-                  {f}
-                </button>
-              ))}
-            </div>
-            <p className="format-help">
-              {format === "TCG"
-                ? "Só cartas lançadas no TCG e não proibidas na banlist do TCG."
-                : "Só cartas lançadas no OCG e não proibidas na banlist do OCG."}
-            </p>
-
             <div className="hand">
               <span className="field-label">Mão inicial</span>
               <div className="hand-cards">
@@ -225,7 +233,6 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
                   combos={combos}
                   byId={byId}
                   known={known}
-                  format={format}
                   onHover={onHover}
                 />
                 <VerifiedCombos
@@ -235,7 +242,6 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
                   combos={combos}
                   byId={byId}
                   known={known}
-                  format={format}
                   onHover={onHover}
                 />
                 {confirmed.length > 0 && (

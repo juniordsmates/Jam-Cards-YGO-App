@@ -53,12 +53,6 @@
   box-shadow: 0 0 0 3px rgb(214 31 143 / 0.25);
 }
 
-.format-help {
-  margin: -6px 0 0;
-  font-size: 0.74rem;
-  color: var(--text-dim);
-}
-
 .hand {
   display: flex;
   flex-direction: column;
@@ -439,4 +433,14 @@
   padding: 2px 8px;
   background: color-mix(in srgb, var(--magenta) 9%, transparent);
   border-radius: 8px;
+}
+
+/* formato no canto superior direito, ao lado do Esc */
+.combos-format {
+  grid-template-columns: repeat(var(--formats, 2), minmax(72px, auto));
+}
+
+.combos-format button {
+  padding: 6px 14px;
+  font-size: 0.82rem;
 }
