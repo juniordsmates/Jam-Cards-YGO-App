@@ -75,3 +75,32 @@ jobs:
           releaseDraft: false
           prerelease: true
           args: --target universal-apple-darwin --bundles dmg
+
+  # Copia os instaladores do Release para Install/<versão>/ na main, para achar tudo pela página do projeto
+  pasta-install:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Atualizar Install/${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSAO: ${{ github.ref_name }}
+        run: |
+          TAG="v${VERSAO}-${CANAL}"
+          mkdir -p "Install/$VERSAO"
+          rm -f "Install/$VERSAO"/*.exe "Install/$VERSAO"/*.dmg
+          gh release download "$TAG" --dir "Install/$VERSAO" --pattern '*.exe' --pattern '*.dmg'
+          node scripts/install-readme.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Install
+          git diff --cached --quiet && exit 0
+          git commit -m "Instaladores da versão $VERSAO"
+          for i in 1 2 3; do git push && exit 0; git pull --rebase; done
+          exit 1

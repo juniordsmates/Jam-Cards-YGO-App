@@ -2,6 +2,8 @@
 
 App de busca de cartas e montagem de decks de Yu-Gi-Oh! que roda na **web**, no **macOS** e no **Windows** a partir do mesmo código.
 
+> **⬇ Instaladores:** abra a pasta [Install](Install/) para baixar o Cartas para Windows (`.exe`) ou macOS (`.dmg`), com as instruções de instalação.
+
 - **Frontend:** React 18 + TypeScript + Vite
 - **Desktop:** Tauri 2 (Rust + WebView do sistema)
 
@@ -48,6 +50,7 @@ A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push num 
 
 - **Windows:** `Cartas_<versão>_x64-setup.exe`. Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
 - **macOS:** `Cartas_<versão>_universal.dmg` (Apple Silicon e Intel).
+- **Pasta Install:** depois dos dois builds, a Action copia os instaladores para [Install/](Install/)`<versão>/` na `main` e atualiza o [Install/README.md](Install/README.md) ([scripts/install-readme.mjs](scripts/install-readme.mjs)), uma pasta por versão de distribuição.
 
 Para atualizar a distribuição: quando o dono pedir, leve a `main` para o branch da versão (`0.0.1`). Para uma versão nova: suba o número nos três arquivos acima e crie o branch com o novo número a partir da `main`.
 
