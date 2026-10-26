@@ -539,6 +539,65 @@ test("Combo Search: carta final encontra linhas do App, e a IA (resposta simulad
   await page.waitForSelector(".menu-btn");
 });
 
+test("Combo Search: IA no formato OpenAI (resposta simulada) com ferramentas do app", async () => {
+  // 1ª chamada: a IA consulta uma carta; 2ª: entrega os combos
+  const chamadas = [];
+  const resposta = (message) => ({ choices: [{ message, finish_reason: message.tool_calls ? "tool_calls" : "stop" }] });
+  await page.route("**/api.openai.com/v1/chat/completions", async (r) => {
+    const body = JSON.parse(r.request().postData());
+    chamadas.push(body);
+    const json =
+      chamadas.length === 1
+        ? resposta({ role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "buscar_carta", arguments: JSON.stringify({ nome: "Centur-Ion Trudea" }) } }] })
+        : resposta({
+            role: "assistant",
+            content: "Pronto.",
+            tool_calls: [
+              {
+                id: "c2",
+                type: "function",
+                function: {
+                  name: "registrar_combos",
+                  arguments: JSON.stringify({
+                    combos: [{ titulo: "Linha GPT", iniciais: ["Centur-Ion Trudea"], passos: [{ texto: "Passo gerado pelo GPT.", cartas: ["Centur-Ion Trudea"] }], campo_final: ["Centur-Ion Auxila"], fontes: [], observacoes: "" }],
+                  }),
+                },
+              },
+            ],
+          });
+    await r.fulfill({ status: 200, headers: { "access-control-allow-origin": "*" }, contentType: "application/json", body: JSON.stringify(json) });
+  });
+  await page.route("**/api.openai.com/**", (r) =>
+    r.request().method() === "OPTIONS" ? r.fulfill({ status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-headers": "*" } }) : r.fallback(),
+  );
+  await page.evaluate(() =>
+    localStorage.setItem("cartas-ia", JSON.stringify({ provedor: "openai", chave: "sk-teste", modelo: "gpt-teste", url: "https://api.openai.com/v1" })),
+  );
+
+  await page.keyboard.press("2");
+  await page.waitForSelector(".combos-setup");
+  await page.click(".combos-modos button:has-text('Combo Search')");
+  await page.fill(".cs-iniciais input", "centur-ion trudea");
+  await page.waitForSelector(".cs-iniciais .suggestions button");
+  await page.keyboard.press("Enter");
+  await page.click(".cs-buscar");
+  assert.ok((await page.textContent(".cs-ia")).includes("ChatGPT"));
+  await page.click(".cs-ia");
+  await page.waitForSelector(".ia-section .base-combo", { timeout: 15_000 });
+  assert.ok((await page.textContent(".ia-section")).includes("Linha GPT"));
+  // a resposta da ferramenta buscar_carta voltou para a IA com o texto da carta
+  assert.equal(chamadas.length, 2);
+  const tool = chamadas[1].messages.find((m) => m.role === "tool");
+  assert.ok(tool && JSON.parse(tool.content).nome === "Centur-Ion Trudea", JSON.stringify(tool));
+  assert.equal(chamadas[0].model, "gpt-teste");
+
+  await page.evaluate(() => localStorage.removeItem("cartas-ia"));
+  await page.unroute("**/api.openai.com/**");
+  await page.unroute("**/api.openai.com/v1/chat/completions");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
 test("nenhum erro de JavaScript na página", () => {
   assert.deepEqual(pageErrors, []);
 });

@@ -4,7 +4,7 @@ import ExternalLink from "./ExternalLink";
 import politica from "../../docs/politica-de-privacidade.md?raw";
 import termos from "../../docs/termos-de-uso.md?raw";
 import { cadastrar, contaAtual, entrar, recuperarSenha, sair, useConta } from "../db/conta";
-import { getConfigIA, MODELOS, setConfigIA } from "../db/ia";
+import { getConfigIA, iaConfigurada, MODELOS, PROVEDORES, provedor, setConfigIA, type ConfigIA, type ProvedorId } from "../db/ia";
 import { supabaseReady } from "../db/supabase";
 
 // Tela "Minha conta": entrar, criar conta, recuperar senha, integração com IA e documentos.
@@ -65,29 +65,62 @@ function Documento({ texto }: { texto: string }) {
 
 function IntegracaoIA() {
   const [cfg, setCfg] = useState(getConfigIA);
-  const [rascunho, setRascunho] = useState("");
-  const salvar = (novo: typeof cfg) => {
+  const [chave, setChave] = useState("");
+  const p = provedor(cfg.provedor);
+  const salvar = (novo: ConfigIA) => {
     setConfigIA(novo);
     setCfg(getConfigIA());
+  };
+  const trocarProvedor = (id: ProvedorId) => {
+    const novo = provedor(id);
+    // ao trocar de provedor, a chave e o modelo do anterior não servem
+    salvar({ provedor: id, chave: "", modelo: id === "anthropic" ? MODELOS[0].id : "", url: novo.url });
+    setChave("");
   };
   return (
     <section className="conta-ia">
       <h3>Integração com IA</h3>
       <p className="tags-note">
-        O Combo Search usa o Claude (Anthropic) com a <strong>sua</strong> chave de API: os custos são cobrados na sua conta
-        Anthropic. A chave fica guardada só neste dispositivo e é enviada apenas à Anthropic, nunca aos servidores do app. Crie
-        uma em <ExternalLink href="https://console.anthropic.com/settings/keys">console.anthropic.com</ExternalLink>.
+        O Combo Search usa a IA que você escolher, com a <strong>sua</strong> chave de API: os custos são cobrados na sua conta
+        do provedor. A chave fica guardada só neste dispositivo e é enviada apenas ao provedor, nunca aos servidores do app.
       </p>
       <label className="field">
-        <span className="field-label">Modelo</span>
-        <select value={cfg.modelo} onChange={(e) => salvar({ ...cfg, modelo: e.target.value })} disabled={!cfg.chave}>
-          {MODELOS.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nome}
+        <span className="field-label">Provedor</span>
+        <select value={cfg.provedor} onChange={(e) => trocarProvedor(e.target.value as ProvedorId)} aria-label="Provedor de IA">
+          {PROVEDORES.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.nome}
             </option>
           ))}
         </select>
       </label>
+      {p.id === "anthropic" ? (
+        <label className="field">
+          <span className="field-label">Modelo</span>
+          <select value={cfg.modelo} onChange={(e) => salvar({ ...cfg, modelo: e.target.value })}>
+            {MODELOS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <>
+          <label className="field">
+            <span className="field-label">Endereço da API (formato OpenAI)</span>
+            <input value={cfg.url} placeholder="https://…/v1" onChange={(e) => setCfg({ ...cfg, url: e.target.value })} onBlur={() => salvar(cfg)} aria-label="Endereço da API" />
+          </label>
+          <label className="field">
+            <span className="field-label">Modelo</span>
+            <input value={cfg.modelo} placeholder={p.exemplo} onChange={(e) => setCfg({ ...cfg, modelo: e.target.value })} onBlur={() => salvar(cfg)} aria-label="Modelo" />
+          </label>
+        </>
+      )}
+      <p className="tags-note">
+        Pesquisa na web: <strong>{p.web}</strong>.{p.web === "não" && " A IA usa os dados do app (texto das cartas e combos registrados) e o próprio conhecimento."}
+        {p.local && " Rode o programa no computador antes de buscar."}
+      </p>
       {cfg.chave ? (
         <div className="conta-row">
           <span>Chave cadastrada (…{cfg.chave.slice(-4)})</span>
@@ -96,20 +129,36 @@ function IntegracaoIA() {
           </button>
         </div>
       ) : (
-        <div className="tcgapi-key-row">
-          <input type="password" placeholder="Chave da API da Anthropic (sk-ant-…)" value={rascunho} onChange={(e) => setRascunho(e.target.value)} aria-label="Chave da API da Anthropic" />
-          <button
-            className="ghost-btn"
-            disabled={!rascunho.trim()}
-            onClick={() => {
-              salvar({ ...cfg, chave: rascunho });
-              setRascunho("");
-            }}
-          >
-            Salvar
-          </button>
-        </div>
+        <>
+          <div className="tcgapi-key-row">
+            <input
+              type="password"
+              placeholder={p.local ? "Chave (opcional)" : `Chave da API (${p.nome})`}
+              value={chave}
+              onChange={(e) => setChave(e.target.value)}
+              aria-label="Chave da API de IA"
+            />
+            <button
+              className="ghost-btn"
+              disabled={!chave.trim()}
+              onClick={() => {
+                salvar({ ...cfg, chave });
+                setChave("");
+              }}
+            >
+              Salvar
+            </button>
+          </div>
+          {p.chaves && (
+            <p className="tags-note">
+              Crie uma chave em <ExternalLink href={p.chaves}>{new URL(p.chaves).host}</ExternalLink>.
+            </p>
+          )}
+        </>
       )}
+      <p className={iaConfigurada(cfg) ? "conta-ok" : "tags-note"}>
+        {iaConfigurada(cfg) ? "Pronta para o Combo Search." : "Falta configurar: " + [!cfg.modelo && "modelo", p.id !== "anthropic" && !cfg.url && "endereço", !cfg.chave && !p.local && "chave"].filter(Boolean).join(", ") + "."}
+      </p>
     </section>
   );
 }

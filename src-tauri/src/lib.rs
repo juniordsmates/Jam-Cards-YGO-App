@@ -98,12 +98,42 @@ async fn tcgapi_search(api_key: String, query: String) -> Result<TcgApiResponse,
     Ok(TcgApiResponse { status, body, remaining })
 }
 
+/// Resposta de um provedor de IA repassada ao app (status HTTP e corpo JSON).
+#[derive(serde::Serialize)]
+struct IaResponse {
+    status: u16,
+    body: String,
+}
+
+/// Chamada a uma API de IA no formato da OpenAI (/chat/completions) com a chave do usuário.
+/// Feita aqui no Rust porque vários provedores não aceitam chamadas da janela do app (CORS).
+/// Só aceita endpoints /chat/completions em https, ou http no próprio computador (Ollama, LM Studio).
+#[tauri::command]
+async fn ia_chat(url: String, api_key: String, body: String) -> Result<IaResponse, String> {
+    let local = url.starts_with("http://localhost") || url.starts_with("http://127.0.0.1");
+    if !(url.starts_with("https://") || local) || !url.ends_with("/chat/completions") {
+        return Err("endereço de IA não permitido".into());
+    }
+    let mut req = http()
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .timeout(std::time::Duration::from_secs(600))
+        .body(body);
+    if !api_key.is_empty() {
+        req = req.bearer_auth(api_key);
+    }
+    let res = req.send().await.map_err(|e| e.to_string())?;
+    let status = res.status().as_u16();
+    let body = res.text().await.map_err(|e| e.to_string())?;
+    Ok(IaResponse { status, body })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         // abre links no navegador padrão (a janela do app não abre janelas novas)
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![tcgapi_search])
+        .invoke_handler(tauri::generate_handler![tcgapi_search, ia_chat])
         .register_asynchronous_uri_scheme_protocol("ygoimg", |ctx, request, responder| {
             let cache_root = ctx.app_handle().path().app_cache_dir();
             let path = request.uri().path().to_string();

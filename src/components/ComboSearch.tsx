@@ -6,7 +6,7 @@ import VerifiedCombos, { groupSteps, join, Name, StepText } from "./VerifiedComb
 import type { KnownCombo } from "../data/combos";
 import { buscarNaBase, gravarBuscaIA, salvarComoComunidade, type ComboBase } from "../db/baseCombos";
 import { useConta } from "../db/conta";
-import { buscarCombosComIA, getConfigIA, type SugestaoIA } from "../db/ia";
+import { buscarCombosComIA, getConfigIA, iaConfigurada, provedor, type SugestaoIA } from "../db/ia";
 import type { GameFormat } from "../db/legality";
 import { cardsOfLine, passoEmTexto, uniqueLines, type CombosCalculados, type LinhaCombo } from "../db/motor";
 import { normalize } from "../db/search";
@@ -104,7 +104,7 @@ function ComboCard({ combo, byId, onHover, highlight }: { combo: ComboBase; byId
       )}
       {d.observacoes && <p className="vc-community">{d.observacoes}</p>}
       <p className="tags-note">
-        {combo.origem === "ia" && "Sugerido por IA a partir de pesquisa na web: confira antes de usar. "}
+        {combo.origem === "ia" && `Sugerido por IA${combo.dados.modelo ? ` (${combo.dados.modelo})` : ""}: confira antes de usar. `}
         <FontesButton links={(d.fontes ?? []).map((f) => ({ nome: f.nome, url: f.url }))} />
         {combo.origem !== "comunidade" && supabaseReady() && !form && estado?.tipo !== "ok" && (
           <>
@@ -235,7 +235,7 @@ export default function ComboSearch({ tabs, all, byId, format, combos, known, fi
       if (supabaseReady() && conta) {
         try {
           gravados = await gravarBuscaIA(
-            { iniciais: consulta.iniciais.map((c) => c.id), finais: consulta.finais.map((c) => c.id), formato: format, modelo: cfg.modelo },
+            { iniciais: consulta.iniciais.map((c) => c.id), finais: consulta.finais.map((c) => c.id), formato: format, modelo: `${provedor(cfg.provedor).nome} · ${cfg.modelo}`.slice(0, 60) },
             sugestoes,
             (ids) => ids.map((id) => byId.get(id)).filter((c): c is Card => !!c),
           );
@@ -254,7 +254,8 @@ export default function ComboSearch({ tabs, all, byId, format, combos, known, fi
   };
 
   const destaque = new Set(consulta?.finais.map((c) => c.id) ?? []);
-  const temChave = !!getConfigIA().chave;
+  const cfgIA = getConfigIA();
+  const temChave = iaConfigurada(cfgIA);
   const podeBuscar = iniciais.length + finais.length > 0;
 
   return (
@@ -323,11 +324,11 @@ export default function ComboSearch({ tabs, all, byId, format, combos, known, fi
               {ia.status === "parado" &&
                 (temChave ? (
                   <button className="ghost-btn cs-ia" onClick={() => void buscarComIA()}>
-                    Buscar com IA: {[...consulta.iniciais, ...consulta.finais].map((c) => displayName(c)).join(", ")}
+                    Buscar com {provedor(cfgIA.provedor).nome}: {[...consulta.iniciais, ...consulta.finais].map((c) => displayName(c)).join(", ")}
                   </button>
                 ) : (
                   <p className="tags-note">
-                    Para pesquisar combos novos com IA, cadastre sua chave em{" "}
+                    Para pesquisar combos novos com IA (Claude, ChatGPT, Gemini e outras), configure em{" "}
                     <button className="link-btn" onClick={() => openConta()}>
                       Minha conta → Integração com IA
                     </button>

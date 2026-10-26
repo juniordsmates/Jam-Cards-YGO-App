@@ -123,10 +123,12 @@ Na aba Combos, **Combo Search** recebe 0 ou mais cartas iniciais (starters) e/ou
 
 1. **Calculados pelo App:** as linhas da camada pública em que as iniciais estão na mão e as finais aparecem na linha.
 2. **Base de combos** (Supabase): combos da comunidade e sugestões de IA de buscas anteriores.
-3. **Busca com IA** ([src/db/ia.ts](src/db/ia.ts)): o app chama o Claude com a **chave de API do próprio usuário**, cadastrada em *Minha conta → Integração com IA* e guardada só no dispositivo.
-   - O Claude pesquisa na web e consulta o app por ferramentas: o texto das cartas e os combos já registrados.
-   - Ele entrega os combos pela ferramenta `registrar_combos`.
-   - As sugestões são **gravadas na base logo após a busca**, com origem `ia`. O usuário pode publicar qualquer uma como **Combo da Comunidade**, com o nome do autor.
+3. **Busca com IA** ([src/db/ia.ts](src/db/ia.ts)): o app chama a IA escolhida pelo usuário, com a **chave de API dele**, cadastrada em *Minha conta → Integração com IA* e guardada só no dispositivo.
+   - **Claude (Anthropic):** SDK oficial, com pesquisa na web.
+   - **Qualquer API no formato da OpenAI** (`/chat/completions`): ChatGPT, Gemini, OpenRouter, DeepSeek, Groq, Mistral, Grok, Ollama e LM Studio no computador, ou outro endereço. No desktop, a chamada sai pelo Rust (`ia_chat` em [src-tauri/src/lib.rs](src-tauri/src/lib.rs)), que só aceita `/chat/completions` em https ou no próprio computador.
+   - **Pesquisa na web:** nesses provedores não há pesquisa na web, salvo no OpenRouter com `:online` no fim do modelo. A IA usa os dados do app e o próprio conhecimento.
+   - **Como a IA trabalha:** consulta o app por ferramentas (o texto das cartas e os combos já registrados) e entrega os combos pela ferramenta `registrar_combos`.
+   - **Gravação:** as sugestões são **gravadas na base logo após a busca**, com origem `ia`. O usuário pode publicar qualquer uma como **Combo da Comunidade**, com o nome do autor.
 
 **Base de combos** ([supabase/migrations/](supabase/migrations/)): uma tabela `combos` com o JSON completo de cada combo em `dados` e índices por `arquetipos` (nomes em inglês), `iniciais` (starters), `finais` e `cartas` (todas, preenchido pelo banco). A visão `combos_indice` dá a navegação **Arquétipo > Starter > combos**. A `origem` diz de onde veio o combo: `app`, `comunidade` ou `ia`.
 
