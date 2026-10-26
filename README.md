@@ -37,19 +37,19 @@ Versão atual: **0.0.1 Alpha** (número em `package.json`, `src-tauri/tauri.conf
 
 | Branch | Papel |
 | --- | --- |
-| `main` | desenvolvimento: mudanças novas, inclusive as do agente agendado |
-| `release` | versão final: só recebe mudanças por **Pull Request aprovado pelo dono do projeto**; cada push nela gera o instalador |
+| `main` | desenvolvimento: tudo é feito aqui |
+| `0.0.1` | versão de distribuição (o nome do branch é o número da versão): só recebe as mudanças da `main` **quando o dono do projeto pede**; cada push nela gera os instaladores |
 
 O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **desativado**: o que estiver nele não é aplicado ao projeto.
 
 ### Instaladores (Windows e macOS)
 
-A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push na `release` e publica no mesmo Release (tag `v<versão>-<canal>`):
+A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push num branch de distribuição (`0.0.1`, `0.0.2`…) e publica no mesmo Release (tag `v<versão>-<canal>`):
 
 - **Windows:** `Cartas_<versão>_x64-setup.exe`. Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
 - **macOS:** `Cartas_<versão>_universal.dmg` (Apple Silicon e Intel).
 
-Para lançar uma versão: suba o número nos três arquivos acima, junte a `main` na `release` por Pull Request e aprove.
+Para atualizar a distribuição: quando o dono pedir, leve a `main` para o branch da versão (`0.0.1`). Para uma versão nova: suba o número nos três arquivos acima e crie o branch com o novo número a partir da `main`.
 
 O app não tem assinatura digital. No Windows, na primeira execução pode aparecer "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**. No macOS: **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**; se aparecer "está danificado", `xattr -cr /Applications/Cartas.app`.
 

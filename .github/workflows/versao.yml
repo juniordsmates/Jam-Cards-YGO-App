@@ -2,11 +2,12 @@ name: Versão (Windows e macOS)
 
 # Gera o instalador do Windows (.exe, NSIS) e o do macOS (.dmg universal: Apple Silicon e Intel)
 # e publica os dois no mesmo Release do GitHub.
-# Só a branch "release" gera versão: mudanças chegam lá por Pull Request aprovado pelo dono do
-# projeto. O número vem de package.json/tauri.conf.json; o canal (Alpha, Beta…) vem de CANAL abaixo.
+# Só os branches de distribuição (nome = número da versão, ex.: 0.0.1) geram instalador. Eles só
+# recebem mudanças da main quando o dono do projeto pede. O número vem de
+# package.json/tauri.conf.json; o canal (Alpha, Beta…) vem de CANAL abaixo.
 on:
   push:
-    branches: [release]
+    branches: ["[0-9]+.[0-9]+.[0-9]+"]
   workflow_dispatch:
 
 env:
@@ -35,7 +36,7 @@ jobs:
         with:
           tagName: v__VERSION__-${{ env.CANAL }}
           releaseName: Cartas v__VERSION__ ${{ env.CANAL }}
-          releaseCommitish: release
+          releaseCommitish: ${{ github.ref_name }}
           releaseBody: |
             **Windows:** baixe `Cartas_…_x64-setup.exe` e execute.
             - Se o Cartas já estiver instalado, o instalador só atualiza o app e mantém seus dados (base de cartas e imagens em cache).
@@ -70,7 +71,7 @@ jobs:
         with:
           tagName: v__VERSION__-${{ env.CANAL }}
           releaseName: Cartas v__VERSION__ ${{ env.CANAL }}
-          releaseCommitish: release
+          releaseCommitish: ${{ github.ref_name }}
           releaseDraft: false
           prerelease: true
           args: --target universal-apple-darwin --bundles dmg
