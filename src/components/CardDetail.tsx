@@ -81,21 +81,16 @@ export default function CardDetail({
     drawerRef.current?.scrollTo({ top: 0 });
   }, [card.id]);
 
-  // Captura: fecha o painel antes de o Esc global voltar ao menu; Alt+← volta à carta anterior
+  // Captura: fecha o painel antes de o Esc global voltar ao menu
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.altKey && e.key === "ArrowLeft" && previous) {
-        e.preventDefault();
-        onBack();
-        return;
-      }
       if (e.key !== "Escape" || e.defaultPrevented || isFontesOpen() || isContaOpen()) return;
       e.preventDefault();
       onClose();
     };
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, [onClose, onBack, previous]);
+  }, [onClose]);
 
   const tagById = useTagLookup();
   const desc = showOriginal || !card.descPt ? card.desc : card.descPt;
@@ -155,7 +150,7 @@ export default function CardDetail({
     >
       <div className="drawer-nav">
         {previous && (
-          <button className="ghost-btn drawer-back" onClick={onBack} title={`Voltar para ${displayName(previous)} (Alt+←)`}>
+          <button className="ghost-btn drawer-back" onClick={onBack} title={`Voltar para ${displayName(previous)}`}>
             ← <span>{displayName(previous)}</span>
           </button>
         )}

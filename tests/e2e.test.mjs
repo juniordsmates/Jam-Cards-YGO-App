@@ -20,7 +20,7 @@ const resultCount = async () => {
 const openSearch = async () => {
   await page.goto(URL);
   await page.waitForSelector(".menu-btn");
-  await page.keyboard.press("1");
+  await page.click(".menu-btn:has-text('Buscar Carta')");
   await page.waitForSelector(".grid .tile", { timeout: 120_000 });
 };
 
@@ -77,7 +77,7 @@ after(async () => {
   await browser?.close();
 });
 
-test("menu: tecla 1 abre a busca sem digitar no campo", async () => {
+test("menu: Buscar Carta abre a busca com o campo vazio", async () => {
   assert.equal(await page.inputValue(".search-input input"), "");
   assert.ok((await resultCount()) > 14_000);
 });
@@ -363,15 +363,15 @@ test("Esc volta ao menu e Sair pede confirmação", async () => {
   await reset();
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
-  await page.keyboard.press("4");
+  await page.click(".menu-btn:has-text('Sair')");
   await page.waitForSelector(".dialog");
   await page.keyboard.press("Escape");
   assert.equal(await page.$(".dialog"), null);
 });
 
 test("combos: sugestões respeitam o formato e mão sem linha calculada avisa", async () => {
-  // tela de combos pelo menu (tecla 2)
-  await page.keyboard.press("2");
+  // tela de combos pelo menu
+  await page.click(".menu-btn:has-text('Combos')");
   await page.waitForSelector(".combos-setup");
   // proibida no TCG aparece desabilitada nas sugestões
   await page.fill(".hand-search input", "ame no habakiri");
@@ -394,7 +394,7 @@ test("combos: sugestões respeitam o formato e mão sem linha calculada avisa", 
 });
 
 test("combos: Trudea mostra só linhas calculadas com o App, com deck de torneio e linha da comunidade confirmada", async () => {
-  await page.keyboard.press("2");
+  await page.click(".menu-btn:has-text('Combos')");
   await page.waitForSelector(".combos-setup");
   // atalhos da tela vazia, por deck
   await page.click(".starter-chips:has-text('Centur-Ion') .chip:has-text('Trudea')");
@@ -428,7 +428,7 @@ test("combos: Trudea mostra só linhas calculadas com o App, com deck de torneio
 });
 
 test("combos: Primera sozinha só segue com descarte, e linhas que chegam nela", async () => {
-  await page.keyboard.press("2");
+  await page.click(".menu-btn:has-text('Combos')");
   await page.waitForSelector(".combos-setup");
   await page.fill(".hand-search input", "centur-ion primera");
   await page.waitForSelector(".suggestions button");
@@ -476,6 +476,11 @@ test("conta: botão Entrar no menu abre a tela de conta com a integração de IA
   await page.click(".conta-tabs button:has-text('Criar conta')");
   assert.ok(await page.$(".conta-form input[pattern]"), "campo de usuário no cadastro");
   assert.ok((await page.textContent(".conta-form")).includes("Li e aceito"));
+  // digitar números num campo da conta não aciona o menu por trás (não há atalhos numéricos)
+  await page.fill(".conta-form input[type=email]", "");
+  await page.type(".conta-form input[type=email]", "1234");
+  assert.ok(await page.$(".conta-dialog"), "a tela de conta continua aberta");
+  assert.ok(await page.$(".menu-btn"), "continua no menu");
   // documento legal dentro do app
   await page.click(".conta-docs .link-btn:has-text('Política')");
   assert.ok((await page.textContent(".conta-dialog")).includes("LGPD"));
@@ -519,7 +524,7 @@ test("Combo Search: carta final encontra linhas do App, e a IA (resposta simulad
   });
   await page.evaluate(() => localStorage.setItem("cartas-ia", JSON.stringify({ chave: "sk-ant-teste", modelo: "claude-opus-5-5" })));
 
-  await page.keyboard.press("2");
+  await page.click(".menu-btn:has-text('Combos')");
   await page.waitForSelector(".combos-setup");
   await page.click(".combos-modos button:has-text('Combo Search')");
   await page.fill(".cs-finais input", "centur-ion auxila");
@@ -579,7 +584,7 @@ test("Combo Search: IA no formato OpenAI (resposta simulada) com ferramentas do 
     localStorage.setItem("cartas-ia", JSON.stringify({ provedor: "openai", chave: "sk-teste", modelo: "gpt-teste", url: "https://api.openai.com/v1" })),
   );
 
-  await page.keyboard.press("2");
+  await page.click(".menu-btn:has-text('Combos')");
   await page.waitForSelector(".combos-setup");
   await page.click(".combos-modos button:has-text('Combo Search')");
   await page.fill(".cs-iniciais input", "centur-ion trudea");

@@ -71,9 +71,9 @@ src-tauri/                configuração e código nativo (Rust)
 
 ## Atalhos
 
-- `↑` `↓` navegar no menu, `Enter` selecionar
-- `1` `2` `3` `4` acionam os botões do menu direto
-- `Esc` volta ao menu ou cancela o diálogo
+- `↑` `↓` navegar no menu, `Enter` selecionar, `Tab` entre os campos
+- `Esc` fecha a janela aberta (Fontes, conta, painel da carta) ou volta ao menu
+- Não há atalhos de letras ou números: digitar em qualquer campo nunca aciona outra tela
 
 ## Dados das cartas
 

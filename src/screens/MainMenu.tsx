@@ -3,6 +3,8 @@ import { ComboIcon, DeckIcon, ExitIcon, SearchIcon } from "../icons";
 import { isDesktop } from "../platform";
 import { BUILD_LABEL, VERSION_LABEL } from "../version";
 import { useConta } from "../db/conta";
+import { isContaOpen } from "../components/Conta";
+import { isFontesOpen } from "../components/Fontes";
 
 type Props = {
   /** false enquanto um diálogo está aberto por cima do menu */
@@ -36,23 +38,20 @@ export default function MainMenu({ active, onSearch, onCombos, onDeck, onExit, o
   const activeRef = useRef(active);
   activeRef.current = active;
 
-  // Setas navegam entre os botões; teclas 1-3 acionam direto
+  // Setas navegam entre os botões (Enter aciona). Sem atalhos de letras ou números: digitar numa
+  // janela aberta por cima do menu (ex.: senha na tela de conta) não pode acionar o menu.
   useEffect(() => {
     refs.current[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (!activeRef.current) return;
+      if (!activeRef.current || isFontesOpen() || isContaOpen()) return;
+      const alvo = e.target as HTMLElement | null;
+      if (alvo?.closest("input, textarea, select, [contenteditable]")) return;
       const current = refs.current.findIndex((el) => el === document.activeElement);
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const step = e.key === "ArrowDown" ? 1 : -1;
         const next = (Math.max(current, 0) + step + items.length) % items.length;
         refs.current[next]?.focus();
-      }
-      const n = Number(e.key);
-      if (n >= 1 && n <= items.length) {
-        // impede que o dígito seja digitado no campo que ganha foco na próxima tela
-        e.preventDefault();
-        items[n - 1].action();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -89,7 +88,6 @@ export default function MainMenu({ active, onSearch, onCombos, onDeck, onExit, o
               <span className="menu-btn-label">{item.label}</span>
               <span className="menu-btn-hint">{item.hint}</span>
             </span>
-            <kbd className="menu-btn-key">{i + 1}</kbd>
           </button>
         ))}
       </nav>
