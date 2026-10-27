@@ -471,6 +471,11 @@ test("conta: botão Entrar no menu abre a tela de conta com a integração de IA
   await page.waitForSelector(".conta-dialog");
   const text = await page.textContent(".conta-dialog");
   assert.ok(text.includes("Integração com IA") && text.includes("Política de Privacidade"), text.slice(0, 200));
+  // contas ativas: abre em Entrar, com as abas de cadastro e de recuperar senha
+  assert.ok(text.includes("Criar conta") && text.includes("Esqueci a senha"), text.slice(0, 200));
+  await page.click(".conta-tabs button:has-text('Criar conta')");
+  assert.ok(await page.$(".conta-form input[pattern]"), "campo de usuário no cadastro");
+  assert.ok((await page.textContent(".conta-form")).includes("Li e aceito"));
   // documento legal dentro do app
   await page.click(".conta-docs .link-btn:has-text('Política')");
   assert.ok((await page.textContent(".conta-dialog")).includes("LGPD"));

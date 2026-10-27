@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 // A chave pública (publishable/anon) é feita para ficar no app: a segurança vem das regras
 // (RLS) do banco. A senha do Postgres nunca entra aqui.
 export const SUPABASE_URL = "https://spgphpwnnvympqeejsaq.supabase.co";
-export const SUPABASE_KEY = "";
+export const SUPABASE_KEY = "sb_publishable_B0GQIUfHq_noMToT93lstg_gAVaiFHm";
 
 let client: SupabaseClient | null = null;
 
