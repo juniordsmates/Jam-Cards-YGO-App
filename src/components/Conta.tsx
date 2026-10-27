@@ -133,7 +133,7 @@ function IntegracaoIA() {
           <div className="tcgapi-key-row">
             <input
               type="password"
-              placeholder={p.local ? "Chave (opcional)" : `Chave da API (${p.nome})`}
+              placeholder={p.local ? "Chave (opcional)" : `Chave da API · ${p.nome}`}
               value={chave}
               onChange={(e) => setChave(e.target.value)}
               aria-label="Chave da API de IA"
