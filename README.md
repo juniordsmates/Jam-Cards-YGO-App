@@ -35,12 +35,12 @@ O instalador de cada sistema precisa ser gerado nesse sistema (ou via CI, como G
 
 ## Versões e branches
 
-Versão atual: **0.0.1 Alpha** (número em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`; canal em [src/version.ts](src/version.ts) e na Action).
+Versão atual: **1.0.0 Alpha** (número em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`; canal em [src/version.ts](src/version.ts) e na Action).
 
 | Branch | Papel |
 | --- | --- |
 | `main` | desenvolvimento: tudo é feito aqui |
-| `0.0.1` | versão de distribuição (o nome do branch é o número da versão): só recebe as mudanças da `main` **quando o dono do projeto pede**; cada push nela gera os instaladores |
+| `1.0.0`, `0.0.1` | versões de distribuição (o nome do branch é o número da versão): só recebem as mudanças da `main` **quando o dono do projeto pede**; cada push nelas gera os instaladores |
 
 O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **desativado**: o que estiver nele não é aplicado ao projeto.
 
