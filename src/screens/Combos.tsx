@@ -9,7 +9,7 @@ import VerifiedCombos from "../components/VerifiedCombos";
 import { KNOWN_COMBOS } from "../data/combos";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
-import { cardsOfLine, linesForHand, uniqueLines, type LinhaCombo } from "../db/motor";
+import { cardsOfLine, linesForHand, semCartaDoCalculo, uniqueLines, type LinhaCombo } from "../db/motor";
 import { deckDoCombo } from "../db/decks";
 import { displayName, type Card } from "../db/types";
 import "./combos.css";
@@ -23,7 +23,7 @@ export default function Combos({
   onBack: () => void;
   initialHand?: Card[];
   /** abre o Teste de Jogo com um deck temporário da linha */
-  onTestar?: (deckId: string, combo: { mao: number[]; passos: LinhaCombo["passos"] }) => void;
+  onTestar?: (deckId: string, combo: { mao: number[]; passos: LinhaCombo["passos"]; qualquer?: number }) => void;
 }) {
   const db = useCardDb();
   const [format, setFormat] = useState<GameFormat>("TCG");
@@ -102,8 +102,9 @@ export default function Combos({
   // Teste de Jogo de uma linha: deck temporário "<arquétipo> Temporário" com as cartas dela
   const testar = onTestar
     ? (l: LinhaCombo) => {
-        const deck = deckDoCombo(l, byId, format);
-        onTestar(deck.id, { mao: l.mao, passos: l.passos });
+        const linha = semCartaDoCalculo(l);
+        const deck = deckDoCombo(linha, byId, format);
+        onTestar(deck.id, { mao: linha.mao, passos: linha.passos, qualquer: linha.qualquer });
       }
     : undefined;
   const legal = useCallback((id: number) => {

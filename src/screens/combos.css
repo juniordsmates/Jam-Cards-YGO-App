@@ -622,3 +622,16 @@
   font-weight: 700;
   color: var(--magenta);
 }
+
+/* cabeçalho da linha: selo e o atalho para o Teste de Jogo */
+.vc-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.vc-acoes .vc-badge {
+  margin-top: 0;
+}

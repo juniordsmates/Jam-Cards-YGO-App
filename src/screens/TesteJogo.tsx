@@ -24,7 +24,7 @@ import {
   type ZonaId,
 } from "../db/testeJogo";
 import { categoryOf, displayName, type Card } from "../db/types";
-import { passoEmTexto, type Passo } from "../db/motor";
+import { CARTA_QUALQUER, passoEmTexto, semCartaDoCalculo, type Passo } from "../db/motor";
 import { groupSteps } from "../components/VerifiedCombos";
 import { FontesButton } from "../components/Fontes";
 import "./teste-jogo.css";
@@ -40,6 +40,8 @@ type Menu = { uid: string; x: number; y: number } | null;
 export interface ComboTeste {
   mao: number[];
   passos: Passo[];
+  /** cartas quaisquer da mão (para descarte), que o deck temporário não traz */
+  qualquer?: number;
 }
 
 export default function TesteJogo({
@@ -60,9 +62,9 @@ export default function TesteJogo({
 }) {
   // passo atual do "Executar combo" (null: caixa de passos fechada)
   const [passo, setPasso] = useState<number | null>(null);
-  const grupos = combo ? groupSteps(combo.passos) : [];
+  const grupos = combo ? groupSteps(semCartaDoCalculo({ qualquer: combo.qualquer, passos: combo.passos }).passos) : [];
   const textoPasso = (p: Passo) => {
-    const t = passoEmTexto(p, (id) => (id === 0 ? "Ficha" : byId.get(id) ? displayName(byId.get(id)!) : `#${id}`));
+    const t = passoEmTexto(p, (id) => (id === 0 ? "Ficha" : id === CARTA_QUALQUER ? "carta qualquer" : byId.get(id) ? displayName(byId.get(id)!) : `#${id}`));
     return t.charAt(0).toUpperCase() + t.slice(1);
   };
   const [t, setT] = useState<Tabuleiro>(() => testeDeMao(main, extra));

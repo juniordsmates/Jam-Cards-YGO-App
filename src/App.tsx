@@ -26,6 +26,16 @@ export default function App() {
 
   // Carrega a base de cartas já na abertura, para a busca abrir pronta
   useEffect(() => void initCardDb(), []);
+  // sem o menu nativo do navegador interno ("Reload", "Inspect Element") no botão direito;
+  // os campos de texto continuam com o menu de copiar e colar
+  useEffect(() => {
+    const onMenu = (e: MouseEvent) => {
+      const alvo = e.target as HTMLElement | null;
+      if (!alvo?.closest("input, textarea, [contenteditable]")) e.preventDefault();
+    };
+    document.addEventListener("contextmenu", onMenu);
+    return () => document.removeEventListener("contextmenu", onMenu);
+  }, []);
   // restaura a sessão da conta (se as contas estiverem ativas)
   useEffect(() => iniciarConta(), []);
 

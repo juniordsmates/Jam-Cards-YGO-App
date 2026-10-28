@@ -770,8 +770,8 @@ test("combo → Teste de Jogo: deck temporário do arquétipo, Executar combo co
   await page.fill(".hand-search input", "centur-ion trudea");
   await page.waitForSelector(".suggestions button");
   await page.keyboard.press("Enter");
-  await page.waitForSelector(".verified-combos .vc[open] .vc-testar", { timeout: 15_000 });
-  await page.click(".verified-combos .vc[open] .vc-testar");
+  await page.waitForSelector(".verified-combos .vc .vc-testar", { timeout: 15_000 });
+  await page.click(".verified-combos .vc >> nth=1 >> .vc-testar");
   await page.waitForSelector(".teste-jogo");
   assert.ok((await page.textContent(".tj-dir h3")).includes("Centur-Ion Temporário"));
   // Executar combo: a mão vira a mão da linha e a caixa de passos aparece no topo
@@ -803,6 +803,15 @@ test("combo → Teste de Jogo: deck temporário do arquétipo, Executar combo co
   await page.waitForSelector(".deck-editor");
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
+});
+
+test("sem o menu nativo do navegador no botão direito (fora dos campos de texto)", async () => {
+  const bloqueado = await page.evaluate(() => {
+    const e = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    document.querySelector("main")?.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  assert.equal(bloqueado, true);
 });
 
 test("nenhum erro de JavaScript na página", () => {

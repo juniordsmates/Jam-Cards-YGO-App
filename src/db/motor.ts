@@ -168,3 +168,23 @@ export function respostasDaLinha(l: { passos: Passo[] }): { sempre: Set<number>;
   const sempre = new Set(comResp.length >= 4 ? [...conta].filter(([, n]) => n >= comResp.length * 0.75).map(([r]) => r) : []);
   return { sempre, porPasso: (p) => (p.resp ?? []).filter((r) => !sempre.has(r)) };
 }
+
+/** Id usado pelo cálculo como "1 carta qualquer" (só para descarte); no app vira CARTA_QUALQUER */
+const ID_QUALQUER_NO_CALCULO = 89631139;
+/** Marcador de "carta qualquer" nos passos exibidos */
+export const CARTA_QUALQUER = -1;
+
+/** Nas linhas com "+ carta qualquer", troca a carta usada pelo cálculo pelo marcador */
+export function semCartaDoCalculo<T extends { qualquer?: number; passos: Passo[] }>(l: T): T {
+  if (!l.qualquer) return l;
+  const troca = (c: number) => (c === ID_QUALQUER_NO_CALCULO ? CARTA_QUALQUER : c);
+  return {
+    ...l,
+    passos: l.passos.map((p) => {
+      if (p.t === "compra" || p.t === "texto") return { ...p, c: p.c.map(troca) };
+      const q = { ...p, c: troca(p.c) } as Passo;
+      if (q.t === "invoca" && q.mat) q.mat = q.mat.map(troca);
+      return q;
+    }),
+  };
+}

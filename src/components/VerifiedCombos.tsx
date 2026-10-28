@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { FontesButton } from "./Fontes";
 import type { KnownCombo } from "../data/combos";
-import { METODO_LABEL, moveText, origemText, respostasDaLinha, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
+import { CARTA_QUALQUER, METODO_LABEL, moveText, origemText, respostasDaLinha, semCartaDoCalculo, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
 import { openRespostas } from "./RespostasDialog";
 import { ordenarRespostas, TIPOS, useContextoRespostas } from "../db/respostas";
 import { displayName, type Card } from "../db/types";
@@ -28,6 +28,7 @@ type Props = {
 /** Nome da carta em português, com o popup da carta ao passar o mouse (id 0 = Ficha) */
 export function Name({ id, byId, onHover }: { id: number; byId: Map<number, Card>; onHover: Hover }) {
   if (id === 0) return <span className="kc-card">Ficha</span>;
+  if (id === CARTA_QUALQUER) return <span className="kc-card">carta qualquer</span>;
   const card = byId.get(id);
   return (
     <span
@@ -160,7 +161,9 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
       <h4>
         {title} ({lines.length})
       </h4>
-      {lines.map((l, idx) => {
+      {lines.map((original, idx) => {
+        // "+ 1 carta qualquer": a carta que o cálculo usou para o descarte aparece como "carta qualquer"
+        const l = semCartaDoCalculo(original);
         const deck = combos.decks[l.deck];
         const community = l.comunidade ? known.get(l.comunidade) : undefined;
         const top = l.campo.monstros.slice(0, 3);
@@ -189,8 +192,24 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
                   {firstHit + 1}; os passos seguintes continuam a partir dela.
                 </span>
               )}
-              <span className="vc-badge" title="Linha jogada pelo App com as regras oficiais das cartas: custos, condições, travas e limites aplicados">
-                Calculado com o App
+              <span className="vc-acoes">
+                <span className="vc-badge" title="Linha jogada pelo App com as regras oficiais das cartas: custos, condições, travas e limites aplicados">
+                  Calculado com o App
+                </span>
+                {onTestar && (
+                  <button
+                    className="ghost-btn vc-testar"
+                    onClick={(e) => {
+                      // o botão fica no cabeçalho da linha: não abre nem fecha os detalhes
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onTestar(l);
+                    }}
+                    title="Cria um deck temporário com as cartas desta linha e abre o Teste de Jogo com o Executar combo"
+                  >
+                    ▶ Teste de Jogo
+                  </button>
+                )}
               </span>
             </summary>
 
@@ -250,11 +269,6 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
               </div>
             )}
             <p className="tags-note">
-              {onTestar && (
-                <button className="ghost-btn vc-testar" onClick={() => onTestar(l)} title="Abre o Teste de Jogo com um deck temporário desta linha">
-                  Teste de Jogo
-                </button>
-              )}{" "}
               Deck {deck.nome}
               {deck.evento && ` (${deck.evento})`}. Jogado pelo App no primeiro turno, com o oponente passando; vale em todo formato
               em que as cartas da linha existem e não são proibidas.{" "}
