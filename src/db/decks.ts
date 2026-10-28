@@ -241,31 +241,6 @@ export function contagem(ids: number[], byId: Map<number, Card>) {
   return n;
 }
 
-// ---------------------------------------------------------------- arquivo .ydk (Duelingbook, EDOPro, YGOPRODeck)
-
-export function paraYdk(deck: Deck): string {
-  return ["#created by Cartas", "#main", ...deck.main, "#extra", ...deck.extra, "!side", ...deck.side, ""].join("\n");
-}
-
-/** Lê um .ydk; ids de artes alternativas viram o id da carta; desconhecidos são contados */
-export function deYdk(texto: string, idCanonico: (id: number) => number | undefined): { deck: Pick<Deck, Parte>; ignorados: number } {
-  const deck: Pick<Deck, Parte> = { main: [], extra: [], side: [] };
-  let parte: Parte = "main";
-  let ignorados = 0;
-  for (const bruta of texto.split(/\r?\n/)) {
-    const linha = bruta.trim();
-    if (linha === "#main") parte = "main";
-    else if (linha === "#extra") parte = "extra";
-    else if (linha === "!side") parte = "side";
-    else if (/^\d+$/.test(linha)) {
-      const id = idCanonico(Number(linha));
-      if (id) deck[parte].push(id);
-      else ignorados++;
-    }
-  }
-  return { deck, ignorados };
-}
-
 /** Ordem do deck como no Duelingbook: monstros, magias, armadilhas; dentro, por nome */
 export function ordenarParte(ids: number[], byId: Map<number, Card>): number[] {
   const ordem = { monster: 0, spell: 1, trap: 2, other: 3 };

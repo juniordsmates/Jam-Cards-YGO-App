@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { copiasPermitidas } from "./decks";
 import type { GameFormat } from "./legality";
 import type { CampoFinal, Passo } from "./motor";
 import type { SugestaoIA } from "./ia";
@@ -16,6 +17,10 @@ export interface DadosCombo {
   observacoes?: string;
   fontes?: { nome: string; url: string }[];
   modelo?: string;
+  /** cópias de cada carta (id) que o combo usa; gravado pelo "Criar combo" do Teste de Jogo */
+  copias?: Record<string, number>;
+  /** combo criado no Teste de Jogo (passos anotados das ações do jogador) */
+  teste?: boolean;
 }
 
 export interface ComboBase {
@@ -29,9 +34,40 @@ export interface ComboBase {
   dados: DadosCombo;
   conferido_em: string | null;
   criado_em: string;
+  /** compartilhado com todos (aba Combos); sem compartilhar, só o autor vê */
+  publico: boolean;
 }
 
-const COLS = "id, origem, autor_nome, titulo, arquetipos, iniciais, finais, dados, conferido_em, criado_em";
+const COLS = "id, origem, autor_nome, titulo, arquetipos, iniciais, finais, dados, conferido_em, criado_em, publico";
+
+// ---------------------------------------------------------------- validade na banlist atual
+
+/** Cópias de cada carta que o combo usa (sem o registro: cada inicial conta, as demais 1 cópia) */
+export function copiasDoCombo(combo: Pick<ComboBase, "iniciais" | "finais" | "dados">): Map<number, number> {
+  if (combo.dados.copias) return new Map(Object.entries(combo.dados.copias).map(([id, n]) => [Number(id), n]));
+  const m = new Map<number, number>();
+  for (const id of combo.iniciais) m.set(id, (m.get(id) ?? 0) + 1);
+  const outras = [...combo.finais, ...combo.dados.passos.flatMap((p) => ("c" in p ? (Array.isArray(p.c) ? p.c : [p.c]) : []))];
+  for (const id of outras) if (id > 0 && !m.has(id)) m.set(id, 1);
+  return m;
+}
+
+/**
+ * O combo vale no formato com a banlist atual: nenhuma carta proibida ou não lançada nele e, de
+ * cada carta, no máximo as cópias permitidas (limitada 1, semi-limitada 2, demais 3).
+ */
+export function validadeNoFormato(copias: Map<number, number>, byId: Map<number, Card>, formato: GameFormat): { valido: boolean; problemas: string[] } {
+  const problemas: string[] = [];
+  for (const [id, n] of copias) {
+    const c = byId.get(id);
+    if (!c || c.frame === "token") continue;
+    const max = copiasPermitidas(c, formato);
+    const nome = c.namePt ?? c.name;
+    if (max === 0) problemas.push(`${nome}: proibida ou não lançada no ${formato}`);
+    else if (n > max) problemas.push(`${nome}: usa ${n} cópias (máximo ${max} no ${formato})`);
+  }
+  return { valido: !problemas.length, problemas };
+}
 
 /** Arquétipos (nomes oficiais em inglês) das cartas do combo */
 export const arquetiposDe = (cards: Card[]) => [...new Set(cards.map((c) => c.archetype).filter((a): a is string => !!a))];
@@ -101,4 +137,46 @@ export async function salvarComoComunidade(
     .single();
   if (error) throw new Error(`Salvar combo: ${error.message}`);
   return data as ComboBase;
+}
+
+/**
+ * Grava um combo criado no Teste de Jogo (origem "comunidade", com o nome de usuário do autor).
+ * Compartilhado, aparece para todos na aba Combos; sem compartilhar, só para o autor.
+ */
+export async function criarComboDoTeste(
+  campos: { autorNome: string; titulo: string; observacoes: string; compartilhar: boolean },
+  combo: { iniciais: number[]; dados: DadosCombo; arquetipos: string[] },
+): Promise<ComboBase> {
+  const sb = supabase();
+  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  const { data, error } = await sb
+    .from("combos")
+    .insert({
+      origem: "comunidade",
+      autor_nome: campos.autorNome.trim().slice(0, 60),
+      titulo: campos.titulo.trim().slice(0, 120),
+      arquetipos: combo.arquetipos,
+      iniciais: combo.iniciais.slice(0, 10),
+      dados: { ...combo.dados, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined, teste: true },
+      publico: campos.compartilhar,
+    })
+    .select(COLS)
+    .single();
+  if (error) throw new Error(`Criar combo: ${error.message}`);
+  return data as ComboBase;
+}
+
+/**
+ * Combos da Comunidade para a aba Combos: os que começam com todas as cartas da mão escolhida
+ * (ou, sem mão, os mais recentes). Os compartilhados aparecem para todos; os não compartilhados,
+ * só para o autor (regra do banco).
+ */
+export async function combosDaComunidade(mao: number[], limite = 20): Promise<ComboBase[]> {
+  const sb = supabase();
+  if (!sb) return [];
+  let q = sb.from("combos").select(COLS).eq("origem", "comunidade");
+  if (mao.length) q = q.contains("iniciais", mao);
+  const { data, error } = await q.order("criado_em", { ascending: false }).limit(limite);
+  if (error) throw new Error(`Combos da Comunidade: ${error.message}`);
+  return (data ?? []) as ComboBase[];
 }

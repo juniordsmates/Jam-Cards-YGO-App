@@ -4,7 +4,7 @@ import { openConta } from "./Conta";
 import { FontesButton } from "./Fontes";
 import VerifiedCombos, { groupSteps, join, Name, StepText } from "./VerifiedCombos";
 import type { KnownCombo } from "../data/combos";
-import { buscarNaBase, gravarBuscaIA, salvarComoComunidade, type ComboBase } from "../db/baseCombos";
+import { buscarNaBase, copiasDoCombo, gravarBuscaIA, salvarComoComunidade, validadeNoFormato, type ComboBase } from "../db/baseCombos";
 import { useConta } from "../db/conta";
 import { buscarCombosComIA, getConfigIA, iaConfigurada, provedor, type SugestaoIA } from "../db/ia";
 import type { GameFormat } from "../db/legality";
@@ -44,13 +44,32 @@ const ORIGEM_LABEL: Record<ComboBase["origem"], string> = {
   ia: "Sugestão de IA · não conferida",
 };
 
-/** Um combo da base (comunidade ou IA), com a opção de publicar como Combo da Comunidade */
-function ComboCard({ combo, byId, onHover, highlight }: { combo: ComboBase; byId: Map<number, Card>; onHover: Hover; highlight: Set<number> }) {
+/**
+ * Um combo da base (comunidade ou IA), com a opção de publicar como Combo da Comunidade.
+ * Com `format`, mostra se o combo vale na banlist atual desse formato; com `onTestar`, o botão
+ * Teste de Jogo (deck temporário com as cartas dele).
+ */
+export function ComboCard({
+  combo,
+  byId,
+  onHover,
+  highlight,
+  format,
+  onTestar,
+}: {
+  combo: ComboBase;
+  byId: Map<number, Card>;
+  onHover: Hover;
+  highlight: Set<number>;
+  format?: GameFormat;
+  onTestar?: (combo: ComboBase) => void;
+}) {
   const conta = useConta();
   const [form, setForm] = useState<{ autor: string; titulo: string; obs: string } | null>(null);
   const [estado, setEstado] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const d = combo.dados;
   const groups = groupSteps(d.passos);
+  const validade = format ? validadeNoFormato(copiasDoCombo(combo), byId, format) : null;
 
   const salvar = async () => {
     if (!form) return;
@@ -74,9 +93,32 @@ function ComboCard({ combo, byId, onHover, highlight }: { combo: ComboBase; byId
         <span className={`vc-badge badge-${combo.origem}`}>
           {ORIGEM_LABEL[combo.origem]}
           {combo.origem === "comunidade" && combo.autor_nome && ` · ${combo.autor_nome}`}
+          {combo.origem === "comunidade" && ` · ${new Date(combo.criado_em).toLocaleDateString("pt-BR")}`}
+          {combo.origem === "comunidade" && !combo.publico && " · só você vê"}
           {combo.conferido_em && " · conferido com o App"}
         </span>
+        {validade && (
+          <span
+            className={`vc-badge combo-validade ${validade.valido ? "valido" : "invalido"}`}
+            title={validade.valido ? `Todas as cartas e cópias permitidas na banlist atual do ${format}.` : validade.problemas.join("\n")}
+          >
+            {validade.valido ? `Válido no ${format}` : `Fora da banlist do ${format}`}
+          </span>
+        )}
+        {onTestar && (
+          <button
+            className="ghost-btn vc-testar"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onTestar(combo);
+            }}
+          >
+            ▶ Teste de Jogo
+          </button>
+        )}
       </summary>
+      {validade && !validade.valido && <p className="db-warning combo-problemas">{validade.problemas.join(" · ")}</p>}
       <ol className="kc-steps vc-steps">
         {groups.map(({ step, subs }, i) => (
           <li key={i} className={[step, ...subs].some((p) => "c" in p && (Array.isArray(p.c) ? p.c.some((c) => highlight.has(c)) : highlight.has(p.c))) ? "vc-hit" : undefined}>
@@ -321,7 +363,7 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
                 <h4>Na base de combos ({base.carregando ? "…" : base.combos.length})</h4>
                 {base.erro && <p className="db-warning">{base.erro}</p>}
                 {base.combos.map((c) => (
-                  <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} />
+                  <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} format={format} />
                 ))}
               </section>
             )}
@@ -353,7 +395,7 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
                   {ia.aviso && <p className="tags-note">{ia.aviso}</p>}
                   {ia.combos.length === 0 && <p className="tags-note">{ia.resposta || "A IA não encontrou combos confiáveis para estas cartas."}</p>}
                   {ia.combos.map((c) => (
-                    <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} />
+                    <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} format={format} />
                   ))}
                 </>
               )}
@@ -378,5 +420,6 @@ function paraComboBase(s: SugestaoIA, i: number): ComboBase {
     dados: { passos: s.passos, campo: s.campo, observacoes: s.observacoes, fontes: s.fontes },
     conferido_em: null,
     criado_em: new Date().toISOString(),
+    publico: false,
   };
 }

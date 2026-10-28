@@ -5,16 +5,13 @@ import { useConta } from "../db/conta";
 import {
   avisos,
   contagem,
-  copiasPermitidas,
   criarDeck,
   deckComNome,
   definirPadrao,
-  deYdk,
   ehExtra,
   excluirDeck,
   motivoBloqueio,
   ordenarParte,
-  paraYdk,
   salvarDeck,
   trazerDecksDaConta,
   useDecks,
@@ -26,23 +23,16 @@ import { ATTRIBUTES, kindLabel, levelLabel, MONSTER_CLASSES, MONSTER_RACES, SPEL
 import { FORMATS, type GameFormat } from "../db/legality";
 import { EMPTY_FILTERS, searchCards, type Filters, type SortKey } from "../db/search";
 import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
-import { isDesktop } from "../platform";
+import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
 import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
 
 const POR_PAGINA = 24;
-// sem Side Deck no editor (o arquivo .ydk ainda lê e grava a seção, vazia)
+// sem Side Deck no editor
 const PARTES: { id: Parte; label: string }[] = [
   { id: "main", label: "Deck" },
   { id: "extra", label: "Extra" },
 ];
-
-/** Selo da banlist no canto da carta: 0 proibida (ou fora do formato), 1 limitada, 2 semi-limitada */
-function Selo({ card, formato }: { card: Card; formato: GameFormat }) {
-  const n = copiasPermitidas(card, formato);
-  if (n === 3) return null;
-  return <span className={`de-selo de-selo-${n}`}>{n}</span>;
-}
 
 type Nomeando = { modo: "novo" | "renomear" | "salvarComo"; valor: string } | null;
 
@@ -66,8 +56,6 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const [pagina, setPagina] = useState(0);
   const [nomeando, setNomeando] = useState<Nomeando>(null);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
-  const [painel, setPainel] = useState<"importar" | "exportar" | null>(null);
-  const [textoImport, setTextoImport] = useState("");
   const [mensagem, setMensagem] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const arrastando = useRef<{ id: number; de?: Parte; indice?: number } | null>(null);
   // Teste de Jogo (Solo Mode) com o deck aberto
@@ -88,12 +76,6 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const byId = useMemo(() => {
     const m = new Map(db.cards.map((c) => [c.id, c]));
     return m;
-  }, [db.cards]);
-  // ids de artes alternativas (dos .ydk) → id da carta
-  const idCanonico = useMemo(() => {
-    const m = new Map<number, number>();
-    for (const c of db.cards) for (const img of [c.id, ...c.images]) m.set(img, c.id);
-    return (id: number) => m.get(id);
   }, [db.cards]);
 
   const resultados = useMemo(() => searchCards(db.cards, filtros, db.archetypePt).filter((c) => c.frame !== "skill" && c.frame !== "token"), [db.cards, filtros, db.archetypePt]);
@@ -206,33 +188,6 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     setMensagem(null);
   };
 
-  const importar = (texto: string) => {
-    const { deck, ignorados } = deYdk(texto, idCanonico);
-    if (!deck.main.length && !deck.extra.length && !deck.side.length) return avisar("erro", "Nenhuma carta reconhecida. Use o formato .ydk (#main, #extra, !side).");
-    // sem deck aberto, cria um deck com o conteúdo importado; com deck aberto, substitui (sem salvar)
-    const semSide = { ...deck, side: [] };
-    if (!trabalho) setDeckId(criarDeck("Deck importado", semSide).id);
-    else setTrabalho({ ...trabalho, ...semSide });
-    setPainel(null);
-    setTextoImport("");
-    avisar("ok", `Importado: ${deck.main.length} no Main e ${deck.extra.length} no Extra${deck.side.length ? ` (Side ignorado: ${deck.side.length})` : ""}${ignorados ? ` (${ignorados} cartas não reconhecidas)` : ""}.${trabalho ? " Clique em Salvar." : ""}`);
-  };
-
-  const lerArquivo = (f?: File | null) => {
-    if (!f) return;
-    void f.text().then(importar);
-  };
-
-  const ydk = trabalho ? paraYdk(trabalho) : "";
-  const baixar = () => {
-    const url = URL.createObjectURL(new Blob([ydk], { type: "text/plain" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(trabalho?.nome ?? "deck").replace(/[^\w\- ]+/g, "")}.ydk`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   // ---------------------------------------------------------------- render
 
   const ready = db.status === "ready";
@@ -264,7 +219,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
         data-card-id={c.id}
       >
         <img src={cardImage(c.id, "small")} alt={displayName(c)} loading="lazy" draggable={false} />
-        <Selo card={c} formato={formato} />
+        <CardSelos card={c} formato={formato} />
       </div>
     );
   };
@@ -298,126 +253,111 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           <p>{db.step ?? "Carregando base de cartas…"}</p>
         </div>
       ) : testando && trabalho ? (
-        <TesteJogo nome={trabalho.nome} main={trabalho.main} extra={trabalho.extra} byId={byId} onFechar={() => setTestando(false)} combo={inicial.combo} />
+        <TesteJogo nome={trabalho.nome} main={trabalho.main} extra={trabalho.extra} byId={byId} formato={formato} onFechar={() => setTestando(false)} combo={inicial.combo} />
       ) : (
         <div className="deck-editor">
           {/* ---------------- esquerda: carta e controles */}
           <aside className="de-left">
-            <div className="de-preview">
-              {preview ? (
-                <>
-                  <img src={cardImage(preview.id, "full")} alt={displayName(preview)} />
-                  <div className="de-preview-texto">
-                    <strong>{displayName(preview)}</strong>
-                    <small>
-                      {kindLabel(preview)}
-                      {categoryOf(preview) === "monster" && levelLabel(preview) && ` · ${levelLabel(preview)}`}
-                      {categoryOf(preview) === "monster" && ` · ATK ${preview.atk ?? "?"}${preview.frame === "link" ? "" : ` / DEF ${preview.def ?? "?"}`}`}
-                    </small>
-                    <p>{preview.descPt ?? preview.desc}</p>
-                  </div>
-                </>
-              ) : (
-                <p className="tags-note">Passe o mouse sobre uma carta para ver os detalhes.</p>
-              )}
-            </div>
-
-            <div className="de-controles">
-              <select value={deckId ?? ""} onChange={(e) => trocarDeck(e.target.value)} aria-label="Deck">
-                {!decks.length && <option value="">Nenhum deck</option>}
-                {decks.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.nome}
-                    {d.id === padrao ? " (padrão)" : ""}
-                  </option>
-                ))}
-              </select>
-              {nomeando ? (
-                <div className="de-nome">
-                  <input
-                    autoFocus
-                    value={nomeando.valor}
-                    placeholder="Nome do deck"
-                    maxLength={80}
-                    onChange={(e) => setNomeando({ ...nomeando, valor: e.target.value })}
-                    onKeyDown={(e) => e.key === "Enter" && confirmarNome()}
-                    aria-label="Nome do deck"
-                  />
-                  <button className="ghost-btn" onClick={confirmarNome}>
-                    OK
-                  </button>
-                  <button className="ghost-btn" onClick={() => setNomeando(null)}>
-                    Cancelar
-                  </button>
-                </div>
-              ) : (
-                <div className="de-botoes">
-                  <button className="ghost-btn" onClick={() => setNomeando({ modo: "novo", valor: "" })}>Novo</button>
-                  <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "renomear", valor: trabalho?.nome ?? "" })}>Renomear</button>
-                  <button className="ghost-btn de-salvar" disabled={!trabalho} onClick={salvar}>
-                    Salvar{alterado ? " •" : ""}
-                  </button>
-                  <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "salvarComo", valor: `${trabalho?.nome ?? ""} (cópia)` })}>Salvar como</button>
-                  <button className="ghost-btn" onClick={() => setPainel(painel === "importar" ? null : "importar")}>Importar</button>
-                  <button className="ghost-btn" disabled={!trabalho} onClick={() => setPainel(painel === "exportar" ? null : "exportar")}>Exportar</button>
-                  <button className="ghost-btn" disabled={!trabalho} onClick={() => trabalho && setTrabalho({ ...trabalho, main: [], extra: [], side: [] })}>Limpar</button>
-                  <button className="ghost-btn" disabled={!trabalho || trabalho.id === padrao} onClick={() => trabalho && definirPadrao(trabalho.id)}>Definir padrão</button>
-                  {confirmarExclusao ? (
-                    <button
-                      className="danger-btn"
-                      onClick={() => {
-                        if (trabalho) excluirDeck(trabalho.id);
-                        setDeckId(undefined);
-                        setConfirmarExclusao(false);
-                      }}
-                    >
-                      Confirmar exclusão
-                    </button>
-                  ) : (
-                    <button className="ghost-btn" disabled={!trabalho} onClick={() => setConfirmarExclusao(true)}>Excluir</button>
-                  )}
-                </div>
-              )}
-
-              {painel === "importar" && (
-                <div className="de-painel">
-                  <label className="ghost-btn de-arquivo">
-                    Escolher arquivo .ydk
-                    <input type="file" accept=".ydk,.txt" onChange={(e) => lerArquivo(e.target.files?.[0])} />
-                  </label>
-                  <textarea rows={5} placeholder={"Ou cole o conteúdo do .ydk:\n#main\n…\n#extra\n…\n!side\n…"} value={textoImport} onChange={(e) => setTextoImport(e.target.value)} aria-label="Conteúdo do .ydk" />
-                  <button className="ghost-btn" disabled={!textoImport.trim()} onClick={() => importar(textoImport)}>Importar texto</button>
-                </div>
-              )}
-              {painel === "exportar" && trabalho && (
-                <div className="de-painel">
-                  <textarea rows={5} readOnly value={ydk} aria-label="Deck em .ydk" />
-                  <div className="de-botoes">
-                    <button className="ghost-btn" onClick={() => void navigator.clipboard?.writeText(ydk).then(() => avisar("ok", "Lista .ydk copiada."))}>Copiar</button>
-                    {!isDesktop && <button className="ghost-btn" onClick={baixar}>Baixar .ydk</button>}
-                  </div>
-                  <p className="tags-note">Formato .ydk: abre no Duelingbook, EDOPro, YGOPRODeck e Master Duel (por importadores).</p>
-                </div>
-              )}
-              {trocaPendente && (
-                <div className="de-painel">
-                  <p className="db-warning">Há alterações não salvas neste deck.</p>
-                  <div className="de-botoes">
-                    <button className="ghost-btn" onClick={() => { salvar(); trocarDeck(trocaPendente, true); }}>Salvar e trocar</button>
-                    <button className="ghost-btn" onClick={() => trocarDeck(trocaPendente, true)}>Descartar e trocar</button>
-                    <button className="ghost-btn" onClick={() => setTrocaPendente(null)}>Cancelar</button>
-                  </div>
-                </div>
-              )}
-              {mensagem && <p className={mensagem.tipo === "erro" ? "db-warning" : "conta-ok"}>{mensagem.texto}</p>}
-              {listaAvisos.length > 0 && (
-                <ul className="de-avisos">
-                  {listaAvisos.slice(0, 6).map((a) => (
-                    <li key={a}>{a}</li>
+            {/* opções do deck (escolher, criar, salvar…), num bloco separado da carta */}
+            <section className="de-bloco de-opcoes" aria-label="Opções do deck">
+              <h3 className="de-bloco-titulo">Deck</h3>
+              <div className="de-controles">
+                <select value={deckId ?? ""} onChange={(e) => trocarDeck(e.target.value)} aria-label="Deck">
+                  {!decks.length && <option value="">Nenhum deck</option>}
+                  {decks.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.nome}
+                      {d.id === padrao ? " (padrão)" : ""}
+                    </option>
                   ))}
-                </ul>
-              )}
-            </div>
+                </select>
+                {nomeando ? (
+                  <div className="de-nome">
+                    <input
+                      autoFocus
+                      value={nomeando.valor}
+                      placeholder="Nome do deck"
+                      maxLength={80}
+                      onChange={(e) => setNomeando({ ...nomeando, valor: e.target.value })}
+                      onKeyDown={(e) => e.key === "Enter" && confirmarNome()}
+                      aria-label="Nome do deck"
+                    />
+                    <button className="ghost-btn" onClick={confirmarNome}>
+                      OK
+                    </button>
+                    <button className="ghost-btn" onClick={() => setNomeando(null)}>
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="de-botoes">
+                    <button className="ghost-btn" onClick={() => setNomeando({ modo: "novo", valor: "" })}>Novo</button>
+                    <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "renomear", valor: trabalho?.nome ?? "" })}>Renomear</button>
+                    <button className="ghost-btn de-salvar" disabled={!trabalho} onClick={salvar}>
+                      Salvar{alterado ? " •" : ""}
+                    </button>
+                    <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "salvarComo", valor: `${trabalho?.nome ?? ""} (cópia)` })}>Salvar como</button>
+                    <button className="ghost-btn" disabled={!trabalho || trabalho.id === padrao} onClick={() => trabalho && definirPadrao(trabalho.id)}>Definir padrão</button>
+                    {confirmarExclusao ? (
+                      <button
+                        className="danger-btn"
+                        onClick={() => {
+                          if (trabalho) excluirDeck(trabalho.id);
+                          setDeckId(undefined);
+                          setConfirmarExclusao(false);
+                        }}
+                      >
+                        Confirmar exclusão
+                      </button>
+                    ) : (
+                      <button className="ghost-btn" disabled={!trabalho} onClick={() => setConfirmarExclusao(true)}>Excluir</button>
+                    )}
+                  </div>
+                )}
+
+                {trocaPendente && (
+                  <div className="de-painel">
+                    <p className="db-warning">Há alterações não salvas neste deck.</p>
+                    <div className="de-botoes">
+                      <button className="ghost-btn" onClick={() => { salvar(); trocarDeck(trocaPendente, true); }}>Salvar e trocar</button>
+                      <button className="ghost-btn" onClick={() => trocarDeck(trocaPendente, true)}>Descartar e trocar</button>
+                      <button className="ghost-btn" onClick={() => setTrocaPendente(null)}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+                {mensagem && <p className={mensagem.tipo === "erro" ? "db-warning" : "conta-ok"}>{mensagem.texto}</p>}
+                {listaAvisos.length > 0 && (
+                  <ul className="de-avisos">
+                    {listaAvisos.slice(0, 6).map((a) => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+
+            {/* apresentação da carta em foco (passar o mouse ou clicar) */}
+            <section className="de-bloco de-carta" aria-label="Carta">
+              <div className="de-preview">
+                {preview ? (
+                  <>
+                    <img src={cardImage(preview.id, "full")} alt={displayName(preview)} />
+                    <div className="de-preview-texto">
+                      <strong>{displayName(preview)}</strong>
+                      <small>
+                        {kindLabel(preview)}
+                        {categoryOf(preview) === "monster" && levelLabel(preview) && ` · ${levelLabel(preview)}`}
+                        {categoryOf(preview) === "monster" && ` · ATK ${preview.atk ?? "?"}${preview.frame === "link" ? "" : ` / DEF ${preview.def ?? "?"}`}`}
+                      </small>
+                      <PapeisDaCarta card={preview} />
+                      <p>{preview.descPt ?? preview.desc}</p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="tags-note">Passe o mouse sobre uma carta para ver os detalhes.</p>
+                )}
+              </div>
+            </section>
           </aside>
 
           {/* ---------------- centro: Main, Side e Extra */}
@@ -425,7 +365,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
             {!trabalho ? (
               <div className="combos-empty">
                 <p>Nenhum deck aberto.</p>
-                <small>Clique em Novo, importe um .ydk ou simplesmente clique numa carta da busca para começar.</small>
+                <small>Clique em Novo ou simplesmente clique numa carta da busca para começar.</small>
               </div>
             ) : (
               <>

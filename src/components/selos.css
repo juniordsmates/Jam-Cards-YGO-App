@@ -1,0 +1,60 @@
+/* selos sobre a imagem da carta (Editor de Deck e Teste de Jogo); o pai tem position: relative */
+
+.selo-ban {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  max-width: calc(100% - 6px);
+  overflow: hidden;
+  padding: 1px 4px;
+  font-size: 0.54rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #fff;
+  background: var(--ban);
+  border-radius: 4px;
+  box-shadow: 0 0 8px var(--ban);
+  pointer-events: none;
+}
+
+.selo-ban.ban-Forbidden { --ban: #ff3b5c; }
+.selo-ban.ban-Limited { --ban: #ff9f1a; }
+.selo-ban.ban-Semi-Limited { --ban: #c9a000; }
+.selo-ban.ban-fora { --ban: #555; }
+
+.selo-papeis {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: calc(100% - 6px);
+  pointer-events: none;
+}
+
+.selo-papel {
+  padding: 0 3px;
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: #fff;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 70%);
+}
+
+/* classificação por extenso, no painel da carta */
+.papeis-da-carta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.papeis-da-carta .selo-papel {
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  box-shadow: none;
+}

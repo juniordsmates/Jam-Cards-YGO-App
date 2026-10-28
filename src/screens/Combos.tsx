@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ScreenShell from "./ScreenShell";
 import CardPreview from "../components/CardPreview";
 import CardPicker from "../components/CardPicker";
-import ComboSearch from "../components/ComboSearch";
+import ComboSearch, { ComboCard } from "../components/ComboSearch";
 import { FontesButton } from "../components/Fontes";
 import KnownCombos from "../components/KnownCombos";
 import VerifiedCombos from "../components/VerifiedCombos";
@@ -11,6 +11,8 @@ import { initCardDb, useCardDb } from "../db/cardStore";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
 import { cardsOfLine, linesForHand, semCartaDoCalculo, uniqueLines, type LinhaCombo } from "../db/motor";
 import { deckDoCombo } from "../db/decks";
+import { combosDaComunidade, type ComboBase } from "../db/baseCombos";
+import { supabaseReady } from "../db/supabase";
 import { bilingualName, displayName, type Card } from "../db/types";
 import "./combos.css";
 
@@ -18,6 +20,47 @@ import "./combos.css";
 function arquetipoBilingue(en: string, cards: Card[]) {
   const pt = cards.find((c) => c.archetype?.toLowerCase() === en.toLowerCase())?.archetypePt;
   return pt && pt.toLowerCase() !== en.toLowerCase() ? `${en} · ${pt}` : en;
+}
+
+/**
+ * Combos da Comunidade (criados no Teste de Jogo e compartilhados): os que começam com a mão
+ * escolhida ou, sem mão, os mais recentes; com autor, data e validade na banlist do formato
+ */
+function CombosComunidade({
+  mao,
+  byId,
+  format,
+  onHover,
+  onTestar,
+}: {
+  mao: number[];
+  byId: Map<number, Card>;
+  format: GameFormat;
+  onHover: (card: Card | null, el?: HTMLElement) => void;
+  onTestar?: (combo: ComboBase) => void;
+}) {
+  const [lista, setLista] = useState<ComboBase[]>([]);
+  const chave = mao.join(",");
+  useEffect(() => {
+    let vivo = true;
+    combosDaComunidade(chave ? chave.split(",").map(Number) : [], chave ? 20 : 8)
+      .then((l) => vivo && setLista(l))
+      .catch(() => vivo && setLista([]));
+    return () => {
+      vivo = false;
+    };
+  }, [chave]);
+  if (!supabaseReady() || !lista.length) return null;
+  const destaque = new Set(mao);
+  return (
+    <section className="combos-comunidade">
+      <h3>{mao.length ? "Combos da Comunidade com esta mão" : "Combos da Comunidade recentes"}</h3>
+      {lista.map((c) => (
+        <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} format={format} onTestar={onTestar} />
+      ))}
+      <p className="tags-note">Criados por usuários no Teste de Jogo e compartilhados: confira antes de usar.</p>
+    </section>
+  );
 }
 
 /** `initialHand`: cartas já na mão ao abrir (vindas da busca) */
@@ -111,6 +154,13 @@ export default function Combos({
         const linha = semCartaDoCalculo(l);
         const deck = deckDoCombo(linha, byId, format);
         onTestar(deck.id, { mao: linha.mao, passos: linha.passos, qualquer: linha.qualquer });
+      }
+    : undefined;
+  // o mesmo para um Combo da Comunidade
+  const testarDaComunidade = onTestar
+    ? (c: ComboBase) => {
+        const deck = deckDoCombo({ mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo }, byId, format);
+        onTestar(deck.id, { mao: c.iniciais, passos: c.dados.passos });
       }
     : undefined;
   const legal = useCallback((id: number) => {
@@ -267,6 +317,7 @@ export default function Combos({
                 </p>
               </>
             )}
+            <CombosComunidade mao={hand.map((c) => c.id)} byId={byId} format={format} onHover={onHover} onTestar={testarDaComunidade} />
           </section>
         </div>
         )

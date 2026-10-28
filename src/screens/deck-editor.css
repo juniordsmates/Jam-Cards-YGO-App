@@ -9,7 +9,7 @@
   gap: 14px;
 }
 
-.de-left,
+.de-bloco,
 .de-busca,
 .de-centro {
   min-height: 0;
@@ -21,10 +21,32 @@
   box-shadow: var(--shadow);
 }
 
+/* coluna da esquerda: dois blocos (opções do deck em cima, a carta embaixo) */
 .de-left {
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+}
+
+.de-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.de-opcoes {
+  flex: none;
+  max-height: 55%;
+}
+
+.de-carta {
+  flex: 1;
+}
+
+.de-bloco-titulo {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .de-preview img {
@@ -104,20 +126,6 @@
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 8px;
-}
-
-.de-arquivo {
-  position: relative;
-  text-align: center;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.de-arquivo input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
 }
 
 .de-avisos {

@@ -46,13 +46,39 @@ const search = async (text) => {
   await page.waitForTimeout(450);
 };
 
+/** Abre o Editor de Deck com um deck gravado neste computador (o editor não importa .ydk) */
+const abrirEditorCom = async (deck) => {
+  await page.goto(URL);
+  await page.waitForSelector(".menu-btn");
+  await page.waitForTimeout(1500); // deixa a camada terminar de baixar antes de recarregar
+  await page.evaluate((d) => {
+    const agora = new Date().toISOString();
+    localStorage.setItem("cartas-decks", JSON.stringify({ decks: [{ id: "t", side: [], atualizadoEm: agora, ...d }], padrao: "t" }));
+  }, deck);
+  await page.goto(URL);
+  await page.waitForSelector(".menu-btn");
+  await page.click(".menu-btn:has-text('Editor de Deck')");
+  await page.waitForSelector(".deck-editor", { timeout: 120_000 });
+};
+
 before(async () => {
   browser = await webkit.launch();
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 800 }, serviceWorkers: "block" });
   // links externos abertos pelos testes não carregam o site de verdade
   await ctx.route("https://ygoprodeck.com/**", (r) => r.fulfill({ status: 200, contentType: "text/html", body: "<p>ok</p>" }));
   page = await ctx.newPage();
-  await page.route("**/images.ygoprodeck.com/**", (r) => r.abort());
+  // imagens das cartas não carregam nos testes: o endereço vira um vazio (falha na hora, como um
+  // bloqueio), dentro da própria página. Com page.route, cada imagem passava pelo processo do teste,
+  // que guarda um registro por pedido até a página fechar (centenas de MB nas listas de cartas).
+  await ctx.addInitScript(() => {
+    const vazio = (v) => (String(v).includes("images.ygoprodeck.com") ? "data:," : v);
+    const src = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+    Object.defineProperty(HTMLImageElement.prototype, "src", { ...src, set(v) { src.set.call(this, vazio(v)); } });
+    const setAttribute = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (nome, v) {
+      return setAttribute.call(this, nome, this instanceof HTMLImageElement && nome === "src" ? vazio(v) : v);
+    };
+  });
   // cotação fixa: US$ 1 = R$ 5,00 e € 1 = R$ 6,00 (deixa os valores em reais previsíveis)
   await page.route("**/economia.awesomeapi.com.br/**", (r) =>
     r.fulfill({
@@ -634,25 +660,26 @@ test("respostas: passos mostram as interrupções do oponente, com opção de es
   await reset();
 });
 
-test("editor de deck: importar .ydk, adicionar pela busca, banlist, Extra e exportar (sem Side)", async () => {
-  await page.evaluate(() => localStorage.removeItem("cartas-decks"));
-  await page.goto(URL);
-  await page.waitForSelector(".menu-btn");
-  await page.click(".menu-btn:has-text('Editor de Deck')");
-  await page.waitForSelector(".deck-editor", { timeout: 120_000 });
-  // importar um .ydk (Ash x2, Pote da Ganância, Accesscode Talker no Extra; o Side é ignorado)
-  await page.click(".de-botoes button:has-text('Importar')");
-  await page.fill(".de-painel textarea", "#main\n14558127\n14558127\n55144522\n#extra\n86066372\n!side\n97268402\n");
-  await page.click(".de-painel button:has-text('Importar texto')");
+test("editor de deck: selos de banlist e classificação, adicionar pela busca, Extra e salvar (sem Side, Importar, Exportar ou Limpar)", async () => {
+  // Ash x2, Pote da Ganância e Accesscode Talker no Extra
+  await abrirEditorCom({ nome: "Teste", main: [14558127, 14558127, 55144522], extra: [86066372] });
   await page.waitForSelector(".de-main .de-thumb");
   const total = (parte) => page.textContent(`.de-${parte} .de-total`);
   assert.equal(await total("main"), "3");
   assert.equal(await total("extra"), "1");
   assert.equal(await page.$(".de-side"), null);
-  assert.ok((await page.textContent(".de-controles")).includes("Side ignorado"));
-  // Pote da Ganância é proibido no TCG: selo 0 e aviso
-  assert.ok(await page.$(".de-main .de-thumb[data-card-id='55144522'] .de-selo-0"));
+  // sem Importar, Exportar e Limpar; opções do deck num bloco separado da carta
+  const botoes = await page.$$eval(".de-botoes button", (b) => b.map((x) => x.textContent));
+  assert.ok(!botoes.some((b) => /Importar|Exportar|Limpar/.test(b)), botoes.join(" | "));
+  assert.ok(await page.$(".de-left .de-opcoes .de-controles"));
+  assert.ok(await page.$(".de-left .de-carta .de-preview"));
+  // Pote da Ganância é proibido no TCG: selo como na busca e aviso
+  assert.equal(await page.textContent(".de-main .de-thumb[data-card-id='55144522'] .selo-ban"), "Proibida");
   assert.ok((await page.textContent(".de-avisos")).includes("máximo 0 no TCG"));
+  // classificação: Ash Blossom é hand trap (selo HT na carta e por extenso no painel)
+  assert.ok(await page.$(".de-main .de-thumb[data-card-id='14558127'] .selo-papel:has-text('HT')"));
+  await page.hover(".de-main .de-thumb[data-card-id='14558127']");
+  assert.ok((await page.textContent(".de-carta .papeis-da-carta")).includes("Hand trap"));
   // busca: clique adiciona ao Main (3ª Ash); a 4ª é bloqueada pelo limite de cópias
   await page.fill(".de-busca input[aria-label=Nome]", "ash blossom");
   await page.waitForSelector(".de-resultados .de-thumb[data-card-id='14558127']");
@@ -668,11 +695,8 @@ test("editor de deck: importar .ydk, adicionar pela busca, banlist, Extra e expo
   await page.waitForSelector(".de-resultados .de-thumb[data-card-id='97268402']");
   await page.click(".de-resultados .de-thumb[data-card-id='97268402']", { button: "right" });
   assert.equal(await total("main"), "4");
-  // salvar e exportar em .ydk
+  // salvar
   await page.click(".de-salvar");
-  await page.click(".de-botoes button:has-text('Exportar')");
-  const ydk = await page.inputValue(".de-painel textarea");
-  assert.ok(ydk.includes("#main") && ydk.includes("97268402") && ydk.includes("#extra\n86066372") && ydk.trimEnd().endsWith("!side"), ydk);
   const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("cartas-decks")).decks[0]);
   assert.equal(salvo.main.length, 4);
   await page.keyboard.press("Escape");
@@ -721,16 +745,9 @@ test("editor de deck: um deck por nome (Salvar como e Novo com nome existente n�
 });
 
 test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, invocar pelo menu e Esc volta ao editor", async () => {
-  await page.evaluate(() => localStorage.removeItem("cartas-decks"));
-  await page.goto(URL);
-  await page.waitForSelector(".menu-btn");
-  await page.click(".menu-btn:has-text('Editor de Deck')");
-  await page.waitForSelector(".deck-editor", { timeout: 120_000 });
   const ids = [42493140, 15005145, 41371602, 14558127, 10045474, 40155014, 97698279, 96030710, 77765207, 97268402];
   const main = Array.from({ length: 40 }, (_, i) => ids[i % ids.length]);
-  await page.click(".de-botoes button:has-text('Importar')");
-  await page.fill(".de-painel textarea", `#main\n${main.join("\n")}\n#extra\n8841431\n!side\n`);
-  await page.click(".de-painel button:has-text('Importar texto')");
+  await abrirEditorCom({ nome: "Teste de Jogo", main, extra: [8841431] });
   await page.click(".de-teste");
   await page.waitForSelector(".teste-jogo");
   const deck = async () => Number(await page.textContent(".tj-zona[data-zona=deck] .tj-contagem"));
@@ -746,6 +763,10 @@ test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, inv
   assert.ok((await page.textContent(".tj-prob-mao")).includes("%"));
   // probabilidade geral: deck de 10 cartas com 4 cópias → mão sempre no perfil "cartas com 4 cópias"
   assert.ok((await page.textContent(".tj-prob-geral")).includes("com 4 cópias"));
+  // "Esta mão" como exemplo em 100 mãos, e a caixa com a classificação das cartas da mão
+  assert.ok((await page.textContent(".tj-prob-mao")).includes("em 100 mãos"));
+  const papeisMao = await page.textContent(".tj-papeis-mao");
+  assert.ok(papeisMao.includes("Nesta mão") && /\d/.test(papeisMao), papeisMao);
   // Visualizar Deck: clique abre as opções; ao fechar, o Deck é embaralhado
   // uma carta no campo antes de abrir o Deck: fechar a visualização não pode mexer nela
   await page.click(".tj-mao .tj-carta >> nth=0");
@@ -805,13 +826,43 @@ test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, inv
   assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
   assert.equal(await deck(), 35);
   assert.equal(await page.textContent(".tj-zona[data-zona=cemiterio] .tj-contagem"), "0");
-  // Extra Deck: invocar pelo menu vai para a Zona de Monstros Extra
+  // Extra Deck: como o Deck, clique esquerdo não faz nada; o direito abre "Abrir Extra Deck"
   await page.click(".tj-zona[data-zona=extra]");
+  assert.equal(await page.$(".tj-lista"), null);
+  await page.click(".tj-zona[data-zona=deck]", { button: "right" });
+  await page.click(".tj-menu button:has-text('Comprar uma carta')");
+  await page.click(".tj-zona[data-zona=deck]", { button: "right" });
+  await page.click(".tj-menu button:has-text('Comprar uma carta')");
+  await page.click(".tj-zona[data-zona=extra]", { button: "right" });
+  await page.click(".tj-menu button:has-text('Abrir Extra Deck')");
   await page.waitForSelector(".tj-lista .tj-carta");
+  // monstro do Extra Deck: só invocar, Cemitério ou banir (nada de mão ou Deck)
   await page.click(".tj-lista .tj-carta", { button: "right" });
+  const opcoesExtra = await page.$$eval(".tj-menu button", (b) => b.map((x) => x.textContent));
+  assert.ok(!opcoesExtra.some((o) => /mão|topo|fundo/.test(o)), opcoesExtra.join(" | "));
   await page.click(".tj-menu button:has-text('Invocar em ataque')");
   assert.ok(await page.$(".tj-zona[data-zona=em0] .tj-carta[data-card-id='8841431']"));
   await page.keyboard.press("Escape"); // fecha a lista
+  // levar para a mão é recusado
+  await page.click(".tj-zona[data-zona=em0] .tj-carta");
+  await page.click(".tj-mao");
+  assert.ok(await page.$(".tj-zona[data-zona=em0] .tj-carta[data-card-id='8841431']"));
+  assert.ok((await page.textContent(".tj-log li >> nth=0")).includes("é do Extra Deck"));
+  // Criar combo: os passos do teste (compras juntas num passo e a Invocação do Extra Deck)
+  await page.click(".tj-criar-combo");
+  await page.waitForSelector(".tj-criar");
+  const passosCombo = await page.$$eval(".tj-criar-passos li", (l) => l.map((x) => x.textContent));
+  assert.equal(passosCombo.length, 2, passosCombo.join(" | "));
+  assert.ok(passosCombo[0].startsWith("Compra ") && passosCombo[0].includes(","), passosCombo[0]);
+  assert.ok(/de Centur/.test(passosCombo[1]), passosCombo[1]);
+  // validade na banlist atual dos dois formatos e, sem login, "Entrar para criar"
+  assert.equal(await page.$$eval(".tj-criar-validade .combo-validade", (e) => e.length), 2);
+  assert.ok(await page.$(".tj-criar-entrar"));
+  assert.equal(await page.isChecked(".tj-criar-compartilhar input"), false);
+  await page.click(".tj-criar-passos li >> nth=0 >> button");
+  assert.equal(await page.$$eval(".tj-criar-passos li", (l) => l.length), 1);
+  await page.keyboard.press("Escape"); // fecha o Criar combo
+  assert.equal(await page.$(".tj-criar"), null);
   await page.keyboard.press("Escape"); // volta ao editor
   await page.waitForSelector(".deck-editor");
   await page.keyboard.press("Escape");

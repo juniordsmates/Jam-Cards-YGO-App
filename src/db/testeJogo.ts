@@ -2,6 +2,8 @@
 // as cartas do deck à mão para testar jogadas. Este módulo guarda o estado e as ações; a tela fica
 // em src/screens/TesteJogo.tsx.
 
+import type { CampoFinal, Metodo, Passo, Zona } from "./motor";
+
 export type ZonaId =
   | "deck"
   | "extra"
@@ -244,4 +246,57 @@ export function probabilidadeGeral(deck: number[], mao: number[]): { p: number; 
       partes.push(`${k} ${k === 1 ? "carta" : "cartas"} com ${c} ${c === 1 ? "cópia" : "cópias"}${x > 1 ? ` (${x} na mão${k > 1 ? ", de cada" : ""})` : ""}`);
   }
   return { p: maos / combinacoes(deck.length, mao.length), perfil: partes.join(" + ") };
+}
+
+// ---------------------------------------------------------------- Criar combo (a partir do teste)
+
+/** Zona do tabuleiro → zona dos passos de combo (as mesmas da tela de Combos) */
+export function zonaDoPasso(z: ZonaId | "material"): Zona {
+  if (z === "material") return "material";
+  if (MONSTROS.includes(z) || MONSTROS_EXTRA.includes(z)) return "campo";
+  if (MAGIAS.includes(z)) return "magia";
+  return z as Zona;
+}
+
+/** Método de Invocação de um monstro do Extra Deck pelo tipo de carta (frame da YGOPRODeck) */
+export function metodoDoExtra(frame: string): Metodo | undefined {
+  if (frame.startsWith("xyz")) return "xyz";
+  if (frame.startsWith("link")) return "link";
+  if (frame.startsWith("synchro")) return "sincro";
+  if (frame.startsWith("fusion")) return "fusao";
+  return undefined;
+}
+
+/**
+ * Acrescenta um passo à lista, no mesmo formato das linhas da tela de Combos:
+ * - compras seguidas viram um passo só;
+ * - na Invocação do Extra Deck, as cartas que acabaram de sair do campo (Cemitério, banidas ou
+ *   matéria) viram as matérias dela ("Link de X usando A + B");
+ * - cartas anexadas logo depois de uma Invocação-Xyz entram nas matérias dela.
+ */
+export function anotarPasso(passos: Passo[], p: Passo): Passo[] {
+  const ultimo = passos[passos.length - 1];
+  if (p.t === "compra" && ultimo?.t === "compra") return [...passos.slice(0, -1), { t: "compra", c: [...ultimo.c, ...p.c] }];
+  if (p.t === "move" && p.para === "material" && ultimo?.t === "invoca" && ultimo.m === "xyz")
+    return [...passos.slice(0, -1), { ...ultimo, mat: [...(ultimo.mat ?? []), p.c] }];
+  if (p.t === "invoca" && p.de === "extra" && p.m && !p.mat?.length) {
+    let i = passos.length;
+    while (i > 0) {
+      const q = passos[i - 1];
+      if (q.t !== "move" || q.de !== "campo" || !["cemiterio", "banido", "material"].includes(q.para)) break;
+      i--;
+    }
+    const mat = passos.slice(i).map((q) => q.c as number);
+    if (mat.length) return [...passos.slice(0, i), { ...p, mat }];
+  }
+  return [...passos, p];
+}
+
+/** Campo final do teste: monstros (Zonas de Monstros e Extra), Magias/Armadilhas e a mão */
+export function campoDoTabuleiro(t: Tabuleiro): CampoFinal {
+  return {
+    monstros: [...MONSTROS_EXTRA, ...MONSTROS].flatMap((z) => t[z].map((c) => c.id)),
+    magias: (["campo-magia", ...MAGIAS] as ZonaId[]).flatMap((z) => t[z].map((c): [number, boolean] => [c.id, c.baixada])),
+    mao: t.mao.map((c) => c.id),
+  };
 }

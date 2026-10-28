@@ -635,3 +635,22 @@
 .vc-acoes .vc-badge {
   margin-top: 0;
 }
+
+/* combo válido (ou não) na banlist atual do formato */
+.combo-validade.valido {
+  color: #1d7a46;
+  background: color-mix(in srgb, #1d7a46 12%, transparent);
+}
+
+.combo-validade.invalido {
+  color: #b3261e;
+  background: color-mix(in srgb, #b3261e 12%, transparent);
+}
+
+.combos-comunidade {
+  margin-top: 18px;
+}
+
+.combos-comunidade h3 {
+  margin: 0 0 8px;
+}
