@@ -26,6 +26,8 @@ export interface DadosCombo {
 export interface ComboBase {
   id: string;
   origem: OrigemCombo;
+  /** conta de quem criou (só o autor pode editar ou excluir um Combo da Comunidade) */
+  autor_id: string | null;
   autor_nome: string | null;
   titulo: string;
   arquetipos: string[];
@@ -38,7 +40,7 @@ export interface ComboBase {
   publico: boolean;
 }
 
-const COLS = "id, origem, autor_nome, titulo, arquetipos, iniciais, finais, dados, conferido_em, criado_em, publico";
+const COLS = "id, origem, autor_id, autor_nome, titulo, arquetipos, iniciais, finais, dados, conferido_em, criado_em, publico";
 
 // ---------------------------------------------------------------- validade na banlist atual
 
@@ -179,4 +181,37 @@ export async function combosDaComunidade(mao: number[], limite = 20): Promise<Co
   const { data, error } = await q.order("criado_em", { ascending: false }).limit(limite);
   if (error) throw new Error(`Combos da Comunidade: ${error.message}`);
   return (data ?? []) as ComboBase[];
+}
+
+/**
+ * Edita um Combo da Comunidade do próprio usuário: título, observações, passos e se fica
+ * compartilhado (o banco só deixa o autor alterar os combos dele).
+ */
+export async function editarCombo(
+  combo: ComboBase,
+  campos: { titulo: string; observacoes: string; compartilhar: boolean; passos: DadosCombo["passos"] },
+): Promise<ComboBase> {
+  const sb = supabase();
+  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  const { data, error } = await sb
+    .from("combos")
+    .update({
+      titulo: campos.titulo.trim().slice(0, 120),
+      publico: campos.compartilhar,
+      dados: { ...combo.dados, passos: campos.passos, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined },
+    })
+    .eq("id", combo.id)
+    .select(COLS)
+    .single();
+  if (error) throw new Error(`Editar combo: ${error.message}`);
+  return data as ComboBase;
+}
+
+/** Exclui um Combo da Comunidade do próprio usuário (o banco só deixa o autor apagar) */
+export async function excluirCombo(id: string): Promise<void> {
+  const sb = supabase();
+  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  const { error, count } = await sb.from("combos").delete({ count: "exact" }).eq("id", id);
+  if (error) throw new Error(`Excluir combo: ${error.message}`);
+  if (!count) throw new Error("Excluir combo: só quem criou o combo pode excluí-lo.");
 }

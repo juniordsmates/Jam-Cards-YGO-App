@@ -654,3 +654,26 @@
 .combos-comunidade h3 {
   margin: 0 0 8px;
 }
+
+/* edição de um Combo da Comunidade pelo autor */
+.combo-edicao-passos {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.combo-edicao-passos .link-btn {
+  margin-left: 6px;
+  font-size: 0.72rem;
+  opacity: 0.55;
+}
+
+.combo-edicao-passos .link-btn:hover {
+  opacity: 1;
+}
+
+.combo-excluir-ok {
+  color: #b3261e;
+  font-weight: 700;
+}

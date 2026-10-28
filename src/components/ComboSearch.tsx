@@ -1,10 +1,19 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import CardPicker from "./CardPicker";
 import { openConta } from "./Conta";
 import { FontesButton } from "./Fontes";
 import VerifiedCombos, { groupSteps, join, Name, StepText } from "./VerifiedCombos";
 import type { KnownCombo } from "../data/combos";
-import { buscarNaBase, copiasDoCombo, gravarBuscaIA, salvarComoComunidade, validadeNoFormato, type ComboBase } from "../db/baseCombos";
+import {
+  buscarNaBase,
+  copiasDoCombo,
+  editarCombo,
+  excluirCombo,
+  gravarBuscaIA,
+  salvarComoComunidade,
+  validadeNoFormato,
+  type ComboBase,
+} from "../db/baseCombos";
 import { useConta } from "../db/conta";
 import { buscarCombosComIA, getConfigIA, iaConfigurada, provedor, type SugestaoIA } from "../db/ia";
 import type { GameFormat } from "../db/legality";
@@ -50,7 +59,7 @@ const ORIGEM_LABEL: Record<ComboBase["origem"], string> = {
  * Teste de Jogo (deck temporário com as cartas dele).
  */
 export function ComboCard({
-  combo,
+  combo: recebido,
   byId,
   onHover,
   highlight,
@@ -65,11 +74,39 @@ export function ComboCard({
   onTestar?: (combo: ComboBase) => void;
 }) {
   const conta = useConta();
+  // cópia local: a edição e a exclusão pelo autor aparecem na hora, sem buscar a lista de novo
+  const [combo, setCombo] = useState(recebido);
+  useEffect(() => setCombo(recebido), [recebido]);
+  const [excluido, setExcluido] = useState(false);
   const [form, setForm] = useState<{ autor: string; titulo: string; obs: string } | null>(null);
+  const [edicao, setEdicao] = useState<{ titulo: string; obs: string; compartilhar: boolean; passos: ComboBase["dados"]["passos"] } | null>(null);
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [estado, setEstado] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  // só quem criou o Combo da Comunidade pode editar ou excluir (o banco também confere)
+  const meu = !!conta && combo.origem === "comunidade" && combo.autor_id === conta.id;
   const d = combo.dados;
   const groups = groupSteps(d.passos);
   const validade = format ? validadeNoFormato(copiasDoCombo(combo), byId, format) : null;
+
+  const salvarEdicao = async () => {
+    if (!edicao) return;
+    try {
+      setCombo(await editarCombo(combo, { titulo: edicao.titulo, observacoes: edicao.obs, compartilhar: edicao.compartilhar, passos: edicao.passos }));
+      setEdicao(null);
+      setEstado({ tipo: "ok", texto: "Combo atualizado." });
+    } catch (e) {
+      setEstado({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
+    }
+  };
+  const excluir = async () => {
+    try {
+      await excluirCombo(combo.id);
+      setExcluido(true);
+    } catch (e) {
+      setConfirmarExclusao(false);
+      setEstado({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
+    }
+  };
 
   const salvar = async () => {
     if (!form) return;
@@ -81,6 +118,8 @@ export function ComboCard({
       setEstado({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
     }
   };
+
+  if (excluido) return <p className="conta-ok combo-excluido">Combo “{combo.titulo}” excluído.</p>;
 
   return (
     <details className={`kc vc base-combo origem-${combo.origem}`} open>
@@ -152,6 +191,35 @@ export function ComboCard({
       <p className="tags-note">
         {combo.origem === "ia" && `Sugerido por IA${combo.dados.modelo ? ` (${combo.dados.modelo})` : ""}: confira antes de usar. `}
         <FontesButton links={(d.fontes ?? []).map((f) => ({ nome: f.nome, url: f.url }))} />
+        {meu && !edicao && (
+          <>
+            {" · "}
+            <button
+              className="link-btn combo-editar"
+              onClick={() => {
+                setEstado(null);
+                setEdicao({ titulo: combo.titulo, obs: d.observacoes ?? "", compartilhar: combo.publico, passos: d.passos });
+              }}
+            >
+              Editar
+            </button>
+            {" · "}
+            {confirmarExclusao ? (
+              <>
+                <button className="link-btn combo-excluir-ok" onClick={() => void excluir()}>
+                  Confirmar exclusão
+                </button>{" "}
+                <button className="link-btn" onClick={() => setConfirmarExclusao(false)}>
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <button className="link-btn combo-excluir" onClick={() => setConfirmarExclusao(true)}>
+                Excluir
+              </button>
+            )}
+          </>
+        )}
         {combo.origem !== "comunidade" && supabaseReady() && !form && estado?.tipo !== "ok" && (
           <>
             {" · "}
@@ -164,6 +232,46 @@ export function ComboCard({
           </>
         )}
       </p>
+      {edicao && (
+        <div className="comunidade-form combo-edicao">
+          <label className="field">
+            <span className="field-label">Título</span>
+            <input value={edicao.titulo} maxLength={120} onChange={(e) => setEdicao({ ...edicao, titulo: e.target.value })} aria-label="Título do combo" />
+          </label>
+          <span className="field-label">Passos</span>
+          <ol className="combo-edicao-passos">
+            {edicao.passos.map((p, i) => (
+              <li key={i}>
+                <StepText p={p} byId={byId} onHover={onHover} />
+                <button
+                  className="link-btn"
+                  onClick={() => setEdicao({ ...edicao, passos: edicao.passos.filter((_, j) => j !== i) })}
+                  aria-label={`Tirar o passo ${i + 1}`}
+                  title="Tirar este passo"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ol>
+          <label className="field">
+            <span className="field-label">Observações</span>
+            <textarea rows={3} maxLength={2000} value={edicao.obs} onChange={(e) => setEdicao({ ...edicao, obs: e.target.value })} />
+          </label>
+          <label className="respostas-toggle">
+            <input type="checkbox" checked={edicao.compartilhar} onChange={(e) => setEdicao({ ...edicao, compartilhar: e.target.checked })} /> Compartilhar com todos na aba
+            Combos
+          </label>
+          <div className="dialog-actions">
+            <button className="ghost-btn" onClick={() => setEdicao(null)}>
+              Cancelar
+            </button>
+            <button className="ghost-btn" disabled={!edicao.titulo.trim() || !edicao.passos.length} onClick={() => void salvarEdicao()}>
+              Salvar
+            </button>
+          </div>
+        </div>
+      )}
       {form && (
         <div className="comunidade-form">
           <label className="field">
@@ -412,6 +520,7 @@ function paraComboBase(s: SugestaoIA, i: number): ComboBase {
   return {
     id: `local-${i}`,
     origem: "ia",
+    autor_id: null,
     autor_nome: null,
     titulo: s.titulo,
     arquetipos: [],
