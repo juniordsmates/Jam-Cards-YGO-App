@@ -13,13 +13,16 @@ export type SiteId =
   | "cardcluster"
   | "project-ignis"
   | "tcgapi"
-  | "awesomeapi";
+  | "awesomeapi"
+  | "otterlord"
+  | "deck-probability"
+  | "deckcal";
 
 export interface Site {
   id: SiteId;
   nome: string;
   url: string;
-  grupo: "Cartas" | "Combos" | "Metagame" | "Preços";
+  grupo: "Cartas" | "Combos" | "Metagame" | "Probabilidade" | "Preços";
   /** o que o app usa do site */
   uso: string;
 }
@@ -89,6 +92,27 @@ export const SITES: Site[] = [
     uso: "Participação de cada arquétipo nos torneios do OCG, por trimestre.",
   },
   {
+    id: "otterlord",
+    nome: "Yu-Gi-Oh! Probability Calculator (otterlord)",
+    url: "https://yugioh.otterlord.dev/",
+    grupo: "Probabilidade",
+    uso: "Referência da conta de chance de abrir cartas (hipergeométrica) usada no Teste de Mão.",
+  },
+  {
+    id: "deck-probability",
+    nome: "Deck Probability",
+    url: "https://www.deck-probability.com/",
+    grupo: "Probabilidade",
+    uso: "Referência da conta de chance de abrir cartas usada no Teste de Mão.",
+  },
+  {
+    id: "deckcal",
+    nome: "DeckCal",
+    url: "https://www.deckcal.cc",
+    grupo: "Probabilidade",
+    uso: "Referência da conta de chance de abrir cartas usada no Teste de Mão.",
+  },
+  {
     id: "tcgapi",
     nome: "TCG API",
     url: "https://tcgapi.dev/games/yugioh/",
@@ -104,4 +128,4 @@ export const SITES: Site[] = [
   },
 ];
 
-export const GRUPOS: Site["grupo"][] = ["Cartas", "Combos", "Metagame", "Preços"];
+export const GRUPOS: Site["grupo"][] = ["Cartas", "Combos", "Metagame", "Probabilidade", "Preços"];

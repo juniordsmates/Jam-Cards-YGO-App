@@ -7,6 +7,8 @@ import {
   aleatorio,
   alternar,
   comprar,
+  chanceDeAbrir,
+  probabilidadeDaMao,
   embaralharDeck,
   maoDoCombo,
   MAGIAS,
@@ -14,7 +16,6 @@ import {
   MONSTROS_EXTRA,
   mover,
   NOMES_ZONA,
-  tabuleiroInicial,
   testeDeMao,
   ZONAS_UNICAS,
   type CartaJogo,
@@ -24,6 +25,7 @@ import {
 import { categoryOf, displayName, type Card } from "../db/types";
 import { passoEmTexto, type Passo } from "../db/motor";
 import { groupSteps } from "../components/VerifiedCombos";
+import { FontesButton } from "../components/Fontes";
 import "./teste-jogo.css";
 
 // Teste de Jogo (Solo Mode): sem regras de jogo; o jogador move as cartas à vontade.
@@ -68,6 +70,26 @@ export default function TesteJogo({
   const [fase, setFase] = useState<(typeof FASES)[number]>("M1");
   const [preview, setPreview] = useState<Card | null>(null);
   const [menu, setMenu] = useState<Menu>(null);
+  // clicar para mover: a carta clicada fica selecionada e o próximo clique numa zona a coloca lá
+  const [selecionada, setSelecionada] = useState<string | null>(null);
+  // brilho rápido na carta que ativou um efeito
+  const [ativada, setAtivada] = useState<string | null>(null);
+  // animação de embaralhar (setas em círculo sobre o Deck por 1,5 s)
+  const [embaralhando, setEmbaralhando] = useState(false);
+  const animarEmbaralhar = () => {
+    setEmbaralhando(true);
+    setTimeout(() => setEmbaralhando(false), 1500);
+  };
+  const embaralhar = () => {
+    setT((a) => embaralharDeck(a));
+    animarEmbaralhar();
+    registrar("Embaralhou o Deck.");
+  };
+  /** Fecha a visualização; ao fechar a do Deck, ele é sempre embaralhado (como no Duelingbook) */
+  const fecharLista = () => {
+    if (lista === "deck") embaralhar();
+    setLista(null);
+  };
   const [lista, setLista] = useState<ZonaId | null>(null);
   const [log, setLog] = useState<string[]>(["Teste de Mão: Deck embaralhado, 5 cartas compradas."]);
   const arrastando = useRef<string | null>(null);
@@ -85,13 +107,14 @@ export default function TesteJogo({
       e.preventDefault();
       e.stopPropagation();
       if (menu) setMenu(null);
-      else if (lista) setLista(null);
+      else if (selecionada) setSelecionada(null);
+      else if (lista) fecharLista();
       else if (passo !== null) setPasso(null);
       else onFechar();
     };
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, [menu, lista, passo, onFechar]);
+  }, [menu, selecionada, lista, passo, onFechar]);
 
   const executarCombo = () => {
     if (!combo) return;
@@ -123,6 +146,17 @@ export default function TesteJogo({
     const n = nomeDe(c);
     const out: { label: string; fazer: () => void }[] = [];
     const noCampo = ZONAS_UNICAS.has(z);
+    // ativar um efeito: em qualquer zona e posição, só registra (sem regras)
+    out.push({
+      label: "Ativar efeito",
+      fazer: () => {
+        const onde = z === "mao" ? "da mão" : z === "cemiterio" ? "no Cemitério" : z === "banido" ? "banida" : z === "deck" ? "no Deck" : z === "extra" ? "no Extra Deck" : `em ${NOMES_ZONA[z]}`;
+        registrar(`Ativou o efeito de ${n} (${onde}${c.baixada ? ", virada para baixo" : c.defesa ? ", em defesa" : ""}).`);
+        setAtivada(uid);
+        setTimeout(() => setAtivada((a) => (a === uid ? null : a)), 1200);
+        setMenu(null);
+      },
+    });
     const monstro = card && categoryOf(card) === "monster";
     if (!noCampo && monstro) {
       const zonaM = card && ehExtra(card) ? livre([...MONSTROS_EXTRA, ...MONSTROS]) : livre(MONSTROS);
@@ -145,7 +179,8 @@ export default function TesteJogo({
       if (monstro) out.push({ label: c.defesa ? "Posição de ataque" : "Posição de defesa", fazer: () => { setT((a) => alternar(a, uid, "defesa")); registrar(`Mudou a posição de ${n}.`); setMenu(null); } });
       if (c.materiais.length) out.push({ label: `Desanexar matéria (${c.materiais.length})`, fazer: () => moverPara(c.materiais[0].uid, "cemiterio", {}, `Desanexou ${nomeDe(c.materiais[0])}.`) });
     }
-    if (z !== "mao") out.push({ label: "Para a mão", fazer: () => moverPara(uid, "mao", {}, `${n} foi para a mão.`) });
+    out.push({ label: "Mover (clique na zona)", fazer: () => { setSelecionada(uid); setMenu(null); } });
+    if (z !== "mao") out.push({ label: z === "deck" ? "Adicionar à mão" : "Para a mão", fazer: () => moverPara(uid, "mao", {}, `${n} foi para a mão${z === "deck" ? " (do Deck)" : ""}.`) });
     if (z !== "cemiterio") out.push({ label: "Para o Cemitério", fazer: () => moverPara(uid, "cemiterio", {}, `${n} foi para o Cemitério.`) });
     if (z !== "banido") out.push({ label: "Banir", fazer: () => moverPara(uid, "banido", {}, `Baniu ${n}.`) });
     if (card && ehExtra(card)) {
@@ -172,9 +207,15 @@ export default function TesteJogo({
   };
   const soltar = (para: ZonaId) => (e: DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const uid = arrastando.current;
     arrastando.current = null;
-    if (!uid) return;
+    if (uid) colocar(uid, para);
+  };
+
+  /** Coloca a carta na zona (arrastando ou clicando); em zona ocupada, vira matéria Xyz */
+  const colocar = (uid: string, para: ZonaId) => {
+    setSelecionada(null);
     const atual = (Object.keys(t) as ZonaId[]).find((z) => t[z].some((c) => c.uid === uid));
     if (atual === para) return;
     const c = (atual && t[atual].find((x) => x.uid === uid)) || null;
@@ -194,15 +235,24 @@ export default function TesteJogo({
     return (
       <div
         key={c.uid}
-        className={`tj-carta ${c.defesa ? "tj-defesa" : ""} ${pequena ? "tj-pequena" : ""}`}
+        className={`tj-carta ${c.defesa ? "tj-defesa" : ""} ${pequena ? "tj-pequena" : ""} ${selecionada === c.uid ? "tj-sel" : ""} ${ativada === c.uid ? "tj-ativa" : ""}`}
         draggable
         onDragStart={arrastar(c.uid)}
         onMouseEnter={() => card && setPreview(card)}
+        onClick={(e) => {
+          e.stopPropagation();
+          const zonaDela = (Object.keys(t) as ZonaId[]).find((z) => t[z].some((x) => x.uid === c.uid));
+          // com outra carta selecionada, clicar nesta coloca a selecionada na zona dela
+          if (selecionada && selecionada !== c.uid && zonaDela) return colocar(selecionada, zonaDela);
+          if (!selecionada && zonaDela && PILHAS.includes(zonaDela) && !pequena) return setLista(zonaDela);
+          if (pequena && !selecionada) return setMenu({ uid: c.uid, x: e.clientX, y: e.clientY });
+          setSelecionada(selecionada === c.uid ? null : c.uid);
+        }}
         onContextMenu={(e: MouseEvent) => {
           e.preventDefault();
           setMenu({ uid: c.uid, x: e.clientX, y: e.clientY });
         }}
-        title={card ? `${displayName(card)} — botão direito para ações` : undefined}
+        title={card ? `${displayName(card)} — clique para selecionar e depois clique numa zona; botão direito para ações` : undefined}
         data-card-id={c.id}
       >
         {verso ? <div className="tj-verso" /> : <img src={cardImage(c.id, "small")} alt={card ? displayName(card) : ""} draggable={false} />}
@@ -217,14 +267,27 @@ export default function TesteJogo({
     return (
       <div
         key={id}
-        className={`tj-zona tj-${id.replace(/\d/, "")}`}
+        className={`tj-zona tj-${id.replace(/\d/, "")} ${selecionada ? "tj-alvo" : ""}`}
         onDragOver={(e) => e.preventDefault()}
         onDrop={soltar(id)}
-        onClick={() => (id === "deck" ? comprarUma() : pilha && cartas.length ? setLista(id) : undefined)}
-        title={id === "deck" ? "Clique para comprar" : pilha ? `${NOMES_ZONA[id]} — clique para ver` : NOMES_ZONA[id]}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (id === "deck") setLista("deck");
+        }}
+        onClick={() => {
+          if (selecionada) return colocar(selecionada, id);
+          if (id === "deck") return comprarUma();
+          if (pilha && cartas.length) setLista(id);
+        }}
+        title={id === "deck" ? "Clique para comprar; botão direito para visualizar o Deck" : pilha ? `${NOMES_ZONA[id]} — clique para ver` : NOMES_ZONA[id]}
         data-zona={id}
       >
         {cartas[0] && (id === "deck" ? <div className="tj-verso" /> : carta(cartas[0]))}
+        {id === "deck" && embaralhando && (
+          <span className="tj-embaralhando" aria-label="Embaralhando">
+            ⟳
+          </span>
+        )}
         {pilha && <span className="tj-contagem">{cartas.length}</span>}
         {!cartas.length && <span className="tj-rotulo">{id === "campo-magia" ? "Campo" : id === "cemiterio" ? "Cemitério" : id === "banido" ? "Banidas" : id === "extra" ? "Extra" : ""}</span>}
       </div>
@@ -232,7 +295,7 @@ export default function TesteJogo({
   };
 
   return (
-    <div className="teste-jogo">
+    <div className="teste-jogo" onContextMenu={(e) => e.preventDefault()}>
       <aside className="tj-esq">
         {preview ? (
           <>
@@ -271,9 +334,44 @@ export default function TesteJogo({
             {zona("deck")}
           </div>
         </div>
-        <div className="tj-mao" onDragOver={(e) => e.preventDefault()} onDrop={soltar("mao")} data-zona="mao">
-          {t.mao.map((c) => carta(c))}
+        <div className="tj-mao-linha">
+        <div className="tj-mao" onDragOver={(e) => e.preventDefault()} onDrop={soltar("mao")} onClick={() => selecionada && colocar(selecionada, "mao")} data-zona="mao">
+          {t.mao.map((c) => {
+            // chance de abrir ao menos 1 cópia numa mão de 5, pelas cópias no Deck testado
+            const copias = main.filter((id) => id === c.id).length;
+            const chance = chanceDeAbrir(main.length, copias, 5);
+            return (
+              <div key={c.uid} className="tj-mao-carta">
+                {carta(c)}
+                {copias > 0 && (
+                  <span
+                    className="tj-chance"
+                    style={{ background: `hsl(${Math.round(chance * 220)} 75% 38%)` }}
+                    title={`Chance de abrir ao menos 1 cópia numa mão de 5: ${copias} ${copias === 1 ? "cópia" : "cópias"} num Deck de ${main.length} (distribuição hipergeométrica, como nos calculadores de probabilidade).`}
+                  >
+                    {(chance * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                  </span>
+                )}
+              </div>
+            );
+          })}
           {!t.mao.length && <span className="tags-note">Mão vazia</span>}
+        </div>
+        {t.mao.length > 0 && (() => {
+          // chance de abrir exatamente estas cartas (em qualquer ordem) com este Deck
+          const p = probabilidadeDaMao(main, t.mao.map((c) => c.id));
+          const umEm = p > 0 ? Math.round(1 / p) : 0;
+          return (
+            <div
+              className="tj-prob-mao"
+              title={`Chance de abrir exatamente estas ${t.mao.length} cartas, em qualquer ordem, com este Deck de ${main.length} (hipergeométrica multivariada).`}
+            >
+              <span className="field-label">Probabilidade da mão</span>
+              <strong>{p > 0 ? `${(p * 100).toLocaleString("pt-BR", { maximumSignificantDigits: 3 })}%` : "—"}</strong>
+              {umEm > 0 && <small>1 em {umEm.toLocaleString("pt-BR")}</small>}
+            </div>
+          );
+        })()}
         </div>
       </section>
 
@@ -311,15 +409,26 @@ export default function TesteJogo({
               Executar combo
             </button>
           )}
-          <button className="ghost-btn tj-teste-mao" onClick={() => { setT(testeDeMao(main, extra)); setLp(8000); setFase("M1"); setLog(["Teste de Mão: Deck embaralhado, 5 cartas compradas."]); }}>
-            Teste de Mão
+          <button
+            className="ghost-btn tj-teste-mao"
+            title="Recolhe todas as cartas para o Deck e o Extra Deck, embaralha e compra 5 (Teste de Mão)"
+            onClick={() => {
+              setT(testeDeMao(main, extra));
+              animarEmbaralhar();
+              setLp(8000);
+              setFase("M1");
+              setSelecionada(null);
+              setPasso(null);
+              setLog(["Reiniciado: cartas recolhidas, Deck embaralhado, 5 cartas compradas."]);
+            }}
+          >
+            Reiniciar (Teste de Mão)
           </button>
           <button className="ghost-btn" onClick={comprarUma}>Comprar</button>
-          <button className="ghost-btn" onClick={() => { setT((a) => embaralharDeck(a)); registrar("Embaralhou o Deck."); }}>Embaralhar</button>
-          <button className="ghost-btn" onClick={() => setLista("deck")}>Ver Deck</button>
+          <button className="ghost-btn" onClick={embaralhar}>Embaralhar</button>
+          <button className="ghost-btn tj-visualizar" onClick={() => setLista("deck")}>Visualizar Deck</button>
           <button className="ghost-btn" onClick={() => registrar(`Dado: ${aleatorio(6) + 1}.`)}>Dado</button>
           <button className="ghost-btn" onClick={() => registrar(`Moeda: ${aleatorio(2) ? "cara" : "coroa"}.`)}>Moeda</button>
-          <button className="ghost-btn" onClick={() => { setT(tabuleiroInicial(main, extra)); setLp(8000); setLog(["Reiniciado: Deck embaralhado, mão vazia."]); }}>Reiniciar</button>
           <button className="ghost-btn" onClick={onFechar}>Voltar ao editor</button>
         </div>
         <ol className="tj-log" aria-label="Histórico">
@@ -327,7 +436,14 @@ export default function TesteJogo({
             <li key={i}>{l}</li>
           ))}
         </ol>
-        <p className="tags-note">Sem regras: arraste as cartas entre as zonas; botão direito para ações. O embaralhamento usa o gerador aleatório criptográfico do sistema.</p>
+        <p className="tags-note">
+          Abaixo de cada carta da mão: a chance de abrir ao menos 1 cópia dela numa mão de 5 com este Deck.{" "}
+          <FontesButton sites={["otterlord", "deck-probability", "deckcal"]} />
+        </p>
+        <p className="tags-note">
+          Sem regras: arraste uma carta até a zona, ou clique nela e depois na zona; botão direito para ações. O embaralhamento usa o
+          gerador aleatório criptográfico do sistema.
+        </p>
       </aside>
 
       {combo && passo !== null && grupos[passo] && (
@@ -365,12 +481,15 @@ export default function TesteJogo({
             <h4>
               {NOMES_ZONA[lista]} ({t[lista].length})
             </h4>
-            <button className="ghost-btn" onClick={() => setLista(null)} aria-label="Fechar">✕</button>
+            <button className="ghost-btn" onClick={fecharLista} aria-label="Fechar">✕</button>
           </div>
           <div className="tj-lista-cartas">
             {t[lista].map((c) => carta({ ...c, baixada: false }, true))}
           </div>
-          <p className="tags-note">Arraste uma carta para o campo ou a mão, ou use o botão direito.</p>
+          <p className="tags-note">
+            Clique numa carta para ver as opções (mão, Cemitério, banir, Invocar, Ativar…) ou arraste-a para o campo.
+            {lista === "deck" && " Ao fechar, o Deck é embaralhado."}
+          </p>
         </div>
       )}
 

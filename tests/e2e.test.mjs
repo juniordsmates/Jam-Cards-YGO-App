@@ -694,6 +694,27 @@ test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, inv
   const deck = async () => Number(await page.textContent(".tj-zona[data-zona=deck] .tj-contagem"));
   assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
   assert.equal(await deck(), 35);
+  // abaixo de cada carta: chance de abrir (4 cópias em 40, mão de 5 = 42,7%)
+  const chances = await page.$$eval(".tj-mao .tj-chance", (e) => e.map((x) => x.textContent));
+  assert.equal(chances.length, 5);
+  assert.ok(chances.every((c) => c === "42,7%"), chances.join(" "));
+  // cor da chance: do vermelho (baixa) ao azul (alta), passando pelo verde
+  assert.ok((await page.getAttribute(".tj-mao .tj-chance >> nth=0", "style")).includes("background"));
+  // probabilidade desta mão específica, ao lado da mão
+  assert.ok((await page.textContent(".tj-prob-mao")).includes("%"));
+  // Visualizar Deck: clique abre as opções; ao fechar, o Deck é embaralhado
+  await page.click(".tj-visualizar");
+  await page.waitForSelector(".tj-lista .tj-carta");
+  await page.click(".tj-lista .tj-carta >> nth=0");
+  await page.click(".tj-menu button:has-text('Adicionar à mão')");
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 6);
+  await page.click(".tj-lista [aria-label=Fechar]");
+  assert.equal(await page.textContent(".tj-log li >> nth=0"), "Embaralhou o Deck.");
+  await page.click(".tj-teste-mao");
+  // Ativar efeito: em qualquer carta, registrado no histórico
+  await page.click(".tj-mao .tj-carta >> nth=0", { button: "right" });
+  await page.click(".tj-menu button:has-text('Ativar efeito')");
+  assert.ok((await page.textContent(".tj-log li >> nth=0")).startsWith("Ativou o efeito de"));
   await page.click(".tj-zona[data-zona=deck]");
   assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 6);
   assert.equal(await deck(), 34);
@@ -701,6 +722,22 @@ test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, inv
   await page.click(".tj-teste-mao");
   assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
   assert.equal(await deck(), 35);
+  // clicar para mover: seleciona a carta da mão e clica na zona
+  const primeira = await page.getAttribute(".tj-mao .tj-carta >> nth=0", "data-card-id");
+  await page.click(".tj-mao .tj-carta >> nth=0");
+  assert.ok(await page.$(".tj-mao .tj-carta.tj-sel"));
+  await page.click(".tj-zona[data-zona=m2]");
+  assert.ok(await page.$(`.tj-zona[data-zona=m2] .tj-carta[data-card-id='${primeira}']`));
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 4);
+  // e do campo para o Cemitério, do mesmo jeito
+  await page.click(".tj-zona[data-zona=m2] .tj-carta");
+  await page.click(".tj-zona[data-zona=cemiterio]");
+  assert.equal(await page.textContent(".tj-zona[data-zona=cemiterio] .tj-contagem"), "1");
+  // Reiniciar: recolhe tudo, embaralha e compra 5
+  await page.click(".tj-teste-mao");
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
+  assert.equal(await deck(), 35);
+  assert.equal(await page.textContent(".tj-zona[data-zona=cemiterio] .tj-contagem"), "0");
   // Extra Deck: invocar pelo menu vai para a Zona de Monstros Extra
   await page.click(".tj-zona[data-zona=extra]");
   await page.waitForSelector(".tj-lista .tj-carta");

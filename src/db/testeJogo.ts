@@ -165,3 +165,39 @@ export const alternar = (t: Tabuleiro, uid: string, campo: "baixada" | "defesa")
   if (!achada || achada.dono) return t;
   return { ...t, [achada.zona]: t[achada.zona].map((c) => (c.uid === uid ? { ...c, [campo]: !c[campo] } : c)) };
 };
+
+/**
+ * Chance de abrir ao menos 1 cópia de uma carta (distribuição hipergeométrica, a mesma dos
+ * calculadores como yugioh.otterlord.dev, deck-probability.com e deckcal.cc):
+ * 1 − C(N−k, n) / C(N, n), com N cartas no Deck, k cópias da carta e n cartas na mão.
+ */
+export function chanceDeAbrir(N: number, k: number, n = 5): number {
+  if (k <= 0 || N <= 0) return 0;
+  if (n >= N || k > N - n) return 1;
+  // C(N−k, n) / C(N, n) = Π (N−k−i) / (N−i), i = 0..n−1
+  let nenhuma = 1;
+  for (let i = 0; i < n; i++) nenhuma *= (N - k - i) / (N - i);
+  return 1 - nenhuma;
+}
+
+/** C(n, k) em ponto flutuante (suficiente para decks de até 60 cartas) */
+function combinacoes(n: number, k: number): number {
+  if (k < 0 || k > n) return 0;
+  let r = 1;
+  for (let i = 1; i <= Math.min(k, n - k); i++) r = (r * (n - k + i)) / i;
+  return r;
+}
+
+/**
+ * Chance de abrir exatamente esta mão (as mesmas cartas, em qualquer ordem), comprando do Deck
+ * inteiro: Π C(cópias no Deck, cópias na mão) / C(cartas no Deck, cartas na mão)
+ * (hipergeométrica multivariada).
+ */
+export function probabilidadeDaMao(deck: number[], mao: number[]): number {
+  if (!mao.length || mao.length > deck.length) return 0;
+  const naMao = new Map<number, number>();
+  for (const id of mao) naMao.set(id, (naMao.get(id) ?? 0) + 1);
+  let favoraveis = 1;
+  for (const [id, x] of naMao) favoraveis *= combinacoes(deck.filter((d) => d === id).length, x);
+  return favoraveis / combinacoes(deck.length, mao.length);
+}

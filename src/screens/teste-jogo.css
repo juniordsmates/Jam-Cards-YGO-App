@@ -368,3 +368,112 @@
   justify-content: space-between;
   gap: 8px;
 }
+
+/* clicar para mover: carta selecionada e zonas de destino */
+.tj-sel {
+  outline: 3px solid var(--magenta);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.tj-alvo {
+  cursor: pointer;
+}
+
+.tj-alvo:hover {
+  background: color-mix(in srgb, var(--magenta) 22%, transparent);
+}
+
+/* mão: carta e, abaixo, a chance de abrir ao menos 1 cópia */
+.tj-mao-carta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tj-chance {
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgb(0 0 0 / 0.55);
+  border-radius: 999px;
+}
+
+/* carta que acabou de ativar um efeito */
+.tj-ativa {
+  animation: tj-brilho 1.2s ease-out;
+  border-radius: 4px;
+}
+
+@keyframes tj-brilho {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 196 0 / 0.95);
+  }
+  60% {
+    box-shadow: 0 0 18px 6px rgb(255 196 0 / 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(255 196 0 / 0);
+  }
+}
+
+/* animação de embaralhar: setas em círculo girando sobre o Deck por 1,5 s */
+.tj-embaralhando {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 2.4rem;
+  color: #ffd166;
+  text-shadow: 0 0 10px rgb(0 0 0 / 0.8);
+  animation: tj-girar 0.5s linear 3;
+  pointer-events: none;
+}
+
+@keyframes tj-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tj-visualizar {
+  font-weight: 700;
+}
+
+/* mão e, logo abaixo, um bloco pequeno com a probabilidade de abrir exatamente essa mão */
+.tj-mao-linha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tj-mao-linha .tj-mao {
+  align-self: stretch;
+}
+
+.tj-prob-mao {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  color: #fff;
+  background: rgb(255 255 255 / 0.08);
+  border-radius: 999px;
+}
+
+.tj-prob-mao .field-label {
+  color: rgb(255 255 255 / 0.65);
+}
+
+.tj-prob-mao strong {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+}
+
+.tj-prob-mao small {
+  color: rgb(255 255 255 / 0.7);
+}
