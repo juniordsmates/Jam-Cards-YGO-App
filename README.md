@@ -42,19 +42,19 @@ Versão atual: **1.0.0 Alpha** (número em `package.json`, `src-tauri/tauri.conf
 | Branch | Papel |
 | --- | --- |
 | `main` | desenvolvimento: tudo é feito aqui |
-| `1.0.0`, `0.0.1` | versões de distribuição (o nome do branch é o número da versão): só recebem as mudanças da `main` **quando o dono do projeto pede**; cada push nelas gera os instaladores |
+| `1.0.0` | versão de distribuição (o nome do branch é o número da versão): só recebe as mudanças da `main` **quando o dono do projeto pede**; cada push nela gera os instaladores |
 
 O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **desativado**: o que estiver nele não é aplicado ao projeto.
 
 ### Instaladores (Windows e macOS)
 
-A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push num branch de distribuição (`0.0.1`, `0.0.2`…) e publica no mesmo Release (tag `v<versão>-<canal>`):
+A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push num branch de distribuição (`1.0.0`, `1.0.1`…) e publica no mesmo Release (tag `v<versão>-<canal>`):
 
 - **Windows:** `Cartas_<versão>_x64-setup.exe`. Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
 - **macOS:** `Cartas_<versão>_universal.dmg` (Apple Silicon e Intel).
 - **Pasta Install:** depois dos dois builds, a Action copia os instaladores para [Install/](Install/)`<versão>/` na `main` e atualiza o [Install/README.md](Install/README.md) ([scripts/install-readme.mjs](scripts/install-readme.mjs)), uma pasta por versão de distribuição.
 
-Para atualizar a distribuição: quando o dono pedir, leve a `main` para o branch da versão (`0.0.1`). Para uma versão nova: suba o número nos três arquivos acima e crie o branch com o novo número a partir da `main`.
+Para atualizar a distribuição: quando o dono pedir, leve a `main` para o branch da versão (`1.0.0`). Depois do build, os instaladores também vão para a release pública do repositório [Cartas](https://github.com/juniordsmates/Cartas/releases). Para uma versão nova: suba o número nos três arquivos acima e crie o branch com o novo número a partir da `main`.
 
 O app não tem assinatura digital. No Windows, na primeira execução pode aparecer "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**. No macOS: **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**; se aparecer "está danificado", `xattr -cr /Applications/Cartas.app`.
 

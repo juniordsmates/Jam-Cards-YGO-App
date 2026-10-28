@@ -2,7 +2,7 @@ name: Versão (Windows e macOS)
 
 # Gera o instalador do Windows (.exe, NSIS) e o do macOS (.dmg universal: Apple Silicon e Intel)
 # e publica os dois no mesmo Release do GitHub.
-# Só os branches de distribuição (nome = número da versão, ex.: 0.0.1) geram instalador. Eles só
+# Só os branches de distribuição (nome = número da versão, ex.: 1.0.0) geram instalador. Eles só
 # recebem mudanças da main quando o dono do projeto pede. O número vem de
 # package.json/tauri.conf.json; o canal (Alpha, Beta…) vem de CANAL abaixo.
 on:
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  CANAL: alpha # minúsculas; vira sufixo da tag (v0.0.1-alpha) e nome do release (Cartas v0.0.1 alpha)
+  CANAL: alpha # minúsculas; vira sufixo da tag (v1.0.0-alpha) e nome do release (Cartas v1.0.0 alpha)
 
 permissions:
   contents: write
