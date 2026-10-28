@@ -419,7 +419,7 @@
   }
 }
 
-/* animação de embaralhar: setas em círculo girando sobre o Deck por 1,5 s */
+/* animação de embaralhar: setas em círculo girando sobre o Deck por 0,5 s */
 .tj-embaralhando {
   position: absolute;
   inset: 0;
@@ -428,7 +428,7 @@
   font-size: 2.4rem;
   color: #ffd166;
   text-shadow: 0 0 10px rgb(0 0 0 / 0.8);
-  animation: tj-girar 0.5s linear 3;
+  animation: tj-girar 0.5s linear 1;
   pointer-events: none;
 }
 
@@ -476,4 +476,16 @@
 
 .tj-prob-mao small {
   color: rgb(255 255 255 / 0.7);
+}
+
+.tj-prob-mao {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  border-radius: 12px;
+}
+
+.tj-prob-geral {
+  padding-left: 14px;
+  border-left: 1px solid rgb(255 255 255 / 0.2);
 }

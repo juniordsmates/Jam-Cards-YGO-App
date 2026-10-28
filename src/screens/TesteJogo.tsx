@@ -9,6 +9,7 @@ import {
   comprar,
   chanceDeAbrir,
   probabilidadeDaMao,
+  probabilidadeGeral,
   embaralharDeck,
   maoDoCombo,
   MAGIAS,
@@ -74,18 +75,21 @@ export default function TesteJogo({
   const [selecionada, setSelecionada] = useState<string | null>(null);
   // brilho rápido na carta que ativou um efeito
   const [ativada, setAtivada] = useState<string | null>(null);
-  // animação de embaralhar (setas em círculo sobre o Deck por 1,5 s)
+  // animação de embaralhar (setas em círculo sobre o Deck por 0,5 s)
   const [embaralhando, setEmbaralhando] = useState(false);
   const animarEmbaralhar = () => {
     setEmbaralhando(true);
-    setTimeout(() => setEmbaralhando(false), 1500);
+    setTimeout(() => setEmbaralhando(false), 500);
   };
   const embaralhar = () => {
     setT((a) => embaralharDeck(a));
     animarEmbaralhar();
     registrar("Embaralhou o Deck.");
   };
-  /** Fecha a visualização; ao fechar a do Deck, ele é sempre embaralhado (como no Duelingbook) */
+  /**
+   * Fecha a visualização; ao fechar a do Deck, só as cartas que ficaram no Deck são embaralhadas
+   * (mão, campo, Cemitério e banidas continuam como estão), como no Duelingbook
+   */
   const fecharLista = () => {
     if (lista === "deck") embaralhar();
     setLista(null);
@@ -358,17 +362,22 @@ export default function TesteJogo({
           {!t.mao.length && <span className="tags-note">Mão vazia</span>}
         </div>
         {t.mao.length > 0 && (() => {
-          // chance de abrir exatamente estas cartas (em qualquer ordem) com este Deck
-          const p = probabilidadeDaMao(main, t.mao.map((c) => c.id));
-          const umEm = p > 0 ? Math.round(1 / p) : 0;
+          const ids = t.mao.map((c) => c.id);
+          // mão exata: estas cartas, em qualquer ordem; geral: qualquer mão com o mesmo perfil
+          const p = probabilidadeDaMao(main, ids);
+          const geral = probabilidadeGeral(main, ids);
+          const pct = (x: number) => `${(x * 100).toLocaleString("pt-BR", { maximumSignificantDigits: 3 })}%`;
           return (
-            <div
-              className="tj-prob-mao"
-              title={`Chance de abrir exatamente estas ${t.mao.length} cartas, em qualquer ordem, com este Deck de ${main.length} (hipergeométrica multivariada).`}
-            >
-              <span className="field-label">Probabilidade da mão</span>
-              <strong>{p > 0 ? `${(p * 100).toLocaleString("pt-BR", { maximumSignificantDigits: 3 })}%` : "—"}</strong>
-              {umEm > 0 && <small>1 em {umEm.toLocaleString("pt-BR")}</small>}
+            <div className="tj-prob-mao">
+              <span title={`Chance de abrir exatamente estas ${ids.length} cartas, em qualquer ordem, com este Deck de ${main.length} (hipergeométrica multivariada).`}>
+                <span className="field-label">Esta mão</span> <strong>{p > 0 ? pct(p) : "—"}</strong>
+                {p > 0 && <small> 1 em {Math.round(1 / p).toLocaleString("pt-BR")}</small>}
+              </span>
+              {geral.p > 0 && (
+                <span className="tj-prob-geral" title={`Chance de abrir qualquer mão com o mesmo perfil: ${geral.perfil}.`}>
+                  <span className="field-label">Geral</span> <strong>{pct(geral.p)}</strong> <small>{geral.perfil}</small>
+                </span>
+              )}
             </div>
           );
         })()}

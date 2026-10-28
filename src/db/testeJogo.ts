@@ -201,3 +201,47 @@ export function probabilidadeDaMao(deck: number[], mao: number[]): number {
   for (const [id, x] of naMao) favoraveis *= combinacoes(deck.filter((d) => d === id).length, x);
   return favoraveis / combinacoes(deck.length, mao.length);
 }
+
+/**
+ * Probabilidade geral: chance de abrir uma mão com o mesmo perfil, sem importar quais cartas
+ * (ex.: "5 cartas com 3 cópias": cinco cartas diferentes, cada uma com 3 cópias no Deck). Conta todas as mãos em que, para
+ * cada número de cópias no Deck, aparecem tantas cartas diferentes com as mesmas quantidades:
+ * Π_c [ D_c! / ((D_c − m_c)! · Π mult!) · Π C(c, x) ] / C(N, n),
+ * com D_c cartas diferentes que têm c cópias no Deck e m_c delas na mão.
+ */
+export function probabilidadeGeral(deck: number[], mao: number[]): { p: number; perfil: string } {
+  if (!mao.length || mao.length > deck.length) return { p: 0, perfil: "" };
+  const copias = new Map<number, number>();
+  for (const id of deck) copias.set(id, (copias.get(id) ?? 0) + 1);
+  const naMao = new Map<number, number>();
+  for (const id of mao) naMao.set(id, (naMao.get(id) ?? 0) + 1);
+  // por número de cópias no Deck: quantas cartas diferentes existem e quantas de cada uma vieram
+  const porClasse = new Map<number, number[]>();
+  for (const [id, x] of naMao) {
+    const c = copias.get(id) ?? 0;
+    if (!c) return { p: 0, perfil: "" };
+    porClasse.set(c, [...(porClasse.get(c) ?? []), x]);
+  }
+  const distintasCom = (c: number) => [...copias.values()].filter((v) => v === c).length;
+  const fatorial = (n: number) => {
+    let r = 1;
+    for (let i = 2; i <= n; i++) r *= i;
+    return r;
+  };
+  let maos = 1;
+  const partes: string[] = [];
+  for (const [c, xs] of [...porClasse].sort((a, b) => b[0] - a[0])) {
+    const D = distintasCom(c);
+    const m = xs.length;
+    // escolhas de quais cartas diferentes ocupam o padrão de quantidades (sem contar repetidas)
+    let arranjos = 1;
+    for (let i = 0; i < m; i++) arranjos *= D - i;
+    const mult = new Map<number, number>();
+    for (const x of xs) mult.set(x, (mult.get(x) ?? 0) + 1);
+    for (const k of mult.values()) arranjos /= fatorial(k);
+    maos *= arranjos * xs.reduce((s, x) => s * combinacoes(c, x), 1);
+    for (const [x, k] of [...mult].sort((a, b) => b[0] - a[0]))
+      partes.push(`${k} ${k === 1 ? "carta" : "cartas"} com ${c} ${c === 1 ? "cópia" : "cópias"}${x > 1 ? ` (${x} na mão${k > 1 ? ", de cada" : ""})` : ""}`);
+  }
+  return { p: maos / combinacoes(deck.length, mao.length), perfil: partes.join(" + ") };
+}

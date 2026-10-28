@@ -702,14 +702,24 @@ test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, inv
   assert.ok((await page.getAttribute(".tj-mao .tj-chance >> nth=0", "style")).includes("background"));
   // probabilidade desta mão específica, ao lado da mão
   assert.ok((await page.textContent(".tj-prob-mao")).includes("%"));
+  // probabilidade geral: deck de 10 cartas com 4 cópias → mão sempre no perfil "cartas com 4 cópias"
+  assert.ok((await page.textContent(".tj-prob-geral")).includes("com 4 cópias"));
   // Visualizar Deck: clique abre as opções; ao fechar, o Deck é embaralhado
+  // uma carta no campo antes de abrir o Deck: fechar a visualização não pode mexer nela
+  await page.click(".tj-mao .tj-carta >> nth=0");
+  await page.click(".tj-zona[data-zona=m0]");
+  const noDeck = await deck();
   await page.click(".tj-visualizar");
   await page.waitForSelector(".tj-lista .tj-carta");
   await page.click(".tj-lista .tj-carta >> nth=0");
   await page.click(".tj-menu button:has-text('Adicionar à mão')");
-  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 6);
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
   await page.click(".tj-lista [aria-label=Fechar]");
   assert.equal(await page.textContent(".tj-log li >> nth=0"), "Embaralhou o Deck.");
+  // só o Deck foi embaralhado: mão, campo e contagem do Deck continuam
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
+  assert.ok(await page.$(".tj-zona[data-zona=m0] .tj-carta"));
+  assert.equal(await deck(), noDeck - 1);
   await page.click(".tj-teste-mao");
   // Ativar efeito: em qualquer carta, registrado no histórico
   await page.click(".tj-mao .tj-carta >> nth=0", { button: "right" });
