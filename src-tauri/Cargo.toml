@@ -1,6 +1,6 @@
 [package]
 name = "cartas"
-version = "1.0.0"
+version = "1.0.1"
 description = "Cartas"
 edition = "2021"
 

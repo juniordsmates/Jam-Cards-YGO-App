@@ -2,12 +2,12 @@ name: Versão (Windows e macOS)
 
 # Gera o instalador do Windows (.exe, NSIS) e o do macOS (.dmg universal: Apple Silicon e Intel)
 # e publica os dois no mesmo Release do GitHub.
-# Só os branches de distribuição (nome = número da versão, ex.: 1.0.0) geram instalador. Eles só
-# recebem mudanças da main quando o dono do projeto pede. O número vem de
-# package.json/tauri.conf.json; o canal (Alpha, Beta…) vem de CANAL abaixo.
+# Só o branch de distribuição "release" gera instalador. Ele só recebe mudanças da main quando o
+# dono do projeto pede. O número da versão vem de package.json/tauri.conf.json/Cargo.toml (os três
+# iguais); o canal (Alpha, Beta…) vem de CANAL abaixo.
 on:
   push:
-    branches: ["[0-9]+.[0-9]+.[0-9]+"]
+    branches: [release]
   workflow_dispatch:
 
 env:
@@ -19,6 +19,8 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    outputs:
+      versao: ${{ steps.versao.outputs.versao }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -30,8 +32,10 @@ jobs:
         with:
           workspaces: src-tauri -> target
       - run: npm ci
-      - name: Número da versão pelo branch
-        run: node scripts/versao-do-branch.mjs "${{ github.ref_name }}"
+      - name: Número da versão (package.json)
+        id: versao
+        shell: bash
+        run: echo "versao=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: tauri-apps/tauri-action@action-v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -67,8 +71,6 @@ jobs:
         with:
           workspaces: src-tauri -> target
       - run: npm ci
-      - name: Número da versão pelo branch
-        run: node scripts/versao-do-branch.mjs "${{ github.ref_name }}"
       - uses: tauri-apps/tauri-action@action-v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -95,11 +97,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # o Release é reaproveitado entre builds da mesma versão; a tag acompanha a build mais recente
-        run: gh api -X PATCH "repos/${{ github.repository }}/git/refs/tags/v${{ github.ref_name }}-${CANAL}" -f sha="${{ github.sha }}" -F force=true
-      - name: Atualizar Install/${{ github.ref_name }}
+        run: gh api -X PATCH "repos/${{ github.repository }}/git/refs/tags/v${{ needs.windows.outputs.versao }}-${CANAL}" -f sha="${{ github.sha }}" -F force=true
+      - name: Atualizar Install/${{ needs.windows.outputs.versao }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSAO: ${{ github.ref_name }}
+          VERSAO: ${{ needs.windows.outputs.versao }}
         run: |
           TAG="v${VERSAO}-${CANAL}"
           mkdir -p "Install/$VERSAO"
