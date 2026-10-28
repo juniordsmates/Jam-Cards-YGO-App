@@ -10,11 +10,21 @@ import { KNOWN_COMBOS } from "../data/combos";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
 import { cardsOfLine, linesForHand, uniqueLines, type LinhaCombo } from "../db/motor";
+import { deckDoCombo } from "../db/decks";
 import { displayName, type Card } from "../db/types";
 import "./combos.css";
 
 /** `initialHand`: cartas já na mão ao abrir (vindas da busca) */
-export default function Combos({ onBack, initialHand = [] }: { onBack: () => void; initialHand?: Card[] }) {
+export default function Combos({
+  onBack,
+  initialHand = [],
+  onTestar,
+}: {
+  onBack: () => void;
+  initialHand?: Card[];
+  /** abre o Teste de Jogo com um deck temporário da linha */
+  onTestar?: (deckId: string, combo: { mao: number[]; passos: LinhaCombo["passos"] }) => void;
+}) {
   const db = useCardDb();
   const [format, setFormat] = useState<GameFormat>("TCG");
   const [hand, setHand] = useState<Card[]>(initialHand);
@@ -89,6 +99,13 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
   };
 
   const ready = db.status === "ready";
+  // Teste de Jogo de uma linha: deck temporário "<arquétipo> Temporário" com as cartas dela
+  const testar = onTestar
+    ? (l: LinhaCombo) => {
+        const deck = deckDoCombo(l, byId, format);
+        onTestar(deck.id, { mao: l.mao, passos: l.passos });
+      }
+    : undefined;
   const legal = useCallback((id: number) => {
     const c = byId.get(id);
     return !c || legalIn(c, format);
@@ -214,6 +231,7 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
                   onHover={onHover}
                   respostas={respostas}
                   legal={legal}
+                  onTestar={testar}
                 />
                 <VerifiedCombos
                   title={`Combos que chegam em ${handNames}`}
@@ -225,6 +243,7 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
                   onHover={onHover}
                   respostas={respostas}
                   legal={legal}
+                  onTestar={testar}
                 />
                 {confirmed.length > 0 && (
                   <KnownCombos

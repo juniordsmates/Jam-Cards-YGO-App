@@ -1,0 +1,329 @@
+/* ---------- Editor de Deck (arranjo do Duelingbook) ---------- */
+
+.deck-editor {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr) 300px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.de-left,
+.de-busca,
+.de-centro {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.de-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.de-preview img {
+  display: block;
+  width: 100%;
+  border-radius: 8px;
+}
+
+.de-preview-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+}
+
+.de-preview-texto small {
+  color: var(--text-dim);
+}
+
+.de-preview-texto p {
+  margin: 4px 0 0;
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-line;
+  line-height: 1.45;
+}
+
+.de-controles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.de-controles select,
+.de-controles input,
+.de-controles textarea,
+.de-busca input,
+.de-busca select {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.de-botoes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.de-botoes button,
+.de-nome button {
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+
+.de-salvar {
+  font-weight: 700;
+}
+
+.de-nome {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+}
+
+.de-painel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.de-arquivo {
+  position: relative;
+  text-align: center;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.de-arquivo input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.de-avisos {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 0.76rem;
+  color: var(--red);
+}
+
+/* ---------- centro ---------- */
+
+.de-centro {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: linear-gradient(180deg, color-mix(in srgb, #7a3fd1 10%, var(--panel)), var(--panel));
+}
+
+.de-titulo {
+  font-family: var(--font-display);
+}
+
+.de-titulo small {
+  font-family: inherit;
+  color: var(--text-dim);
+}
+
+.de-parte {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 90px;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+.de-main {
+  min-height: 300px;
+  background: color-mix(in srgb, #7a3fd1 12%, transparent);
+}
+
+.de-side {
+  background: color-mix(in srgb, #1aa3d6 14%, transparent);
+}
+
+.de-extra {
+  background: color-mix(in srgb, #e07b16 16%, transparent);
+}
+
+.de-lateral {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.de-rotulo {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.de-total,
+.de-n {
+  min-width: 40px;
+  padding: 3px 6px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  text-align: center;
+  color: #fff;
+  background: #4a4a68;
+  border-radius: 6px;
+}
+
+.de-n-monster {
+  background: #b0702a;
+}
+
+.de-n-spell {
+  background: #1d9a7c;
+}
+
+.de-n-trap {
+  background: #b0337a;
+}
+
+.de-ordenar {
+  font-size: 0.72rem;
+}
+
+.de-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 4px;
+  align-content: start;
+}
+
+.de-thumb {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.de-thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  object-fit: cover;
+  border-radius: 3px;
+  background: #2a2240;
+}
+
+.de-thumb:hover img {
+  outline: 2px solid var(--magenta);
+}
+
+.de-desconhecida {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 59 / 86;
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  background: var(--bg);
+  border-radius: 3px;
+}
+
+/* selo da banlist: 0 proibida/fora do formato, 1 limitada, 2 semi-limitada */
+.de-selo {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #fff;
+  background: #d61f3c;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+}
+
+.de-selo-0 {
+  background: #000;
+}
+
+/* ---------- busca ---------- */
+
+.de-busca {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: linear-gradient(180deg, color-mix(in srgb, #8ac43f 18%, var(--panel)), var(--panel));
+}
+
+.de-busca h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+}
+
+.de-linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.de-faixa {
+  display: grid;
+  grid-template-columns: 52px 1fr 52px;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.de-paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.76rem;
+}
+
+.de-paginacao button {
+  padding: 4px 10px;
+}
+
+.de-resultados {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+@media (max-width: 1100px) {
+  .deck-editor {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    overflow-y: auto;
+  }
+}
+
+.de-teste {
+  grid-column: span 2;
+  font-weight: 700;
+  color: var(--magenta);
+}

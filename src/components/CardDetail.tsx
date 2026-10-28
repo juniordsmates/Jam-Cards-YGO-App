@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { FontesButton, isFontesOpen } from "./Fontes";
 import { isContaOpen } from "./Conta";
+import { isRespostasOpen } from "./RespostasDialog";
 import CardRespostas from "./CardRespostas";
 import { cardImage } from "../db/images";
 import { readCard } from "../db/effects";
@@ -85,7 +86,7 @@ export default function CardDetail({
   // Captura: fecha o painel antes de o Esc global voltar ao menu
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented || isFontesOpen() || isContaOpen()) return;
+      if (e.key !== "Escape" || e.defaultPrevented || isFontesOpen() || isContaOpen() || isRespostasOpen()) return;
       e.preventDefault();
       onClose();
     };

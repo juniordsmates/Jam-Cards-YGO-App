@@ -524,3 +524,101 @@
   font-size: 0.82rem;
   color: var(--text-dim);
 }
+
+.vc-resp-mais {
+  margin-left: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #a1461c;
+}
+
+/* ---------- Janela: todas as respostas ---------- */
+
+.respostas-dialog {
+  width: min(720px, 100%);
+}
+
+.respostas-filtros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 6px 0 8px;
+}
+
+.respostas-filtros .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.respostas-filtros select {
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 0.84rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.respostas-todas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.respostas-todas li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.86rem;
+}
+
+.respostas-todas .rt-nome small,
+.respostas-todas .rt-desc {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+}
+
+.rt-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-size: 0.7rem;
+}
+
+.rt-info span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.rt-classe.rt-torneio {
+  color: #fff;
+  background: #a1461c;
+  border-color: #a1461c;
+}
+
+.rt-classe.rt-ht-staple,
+.rt-classe.rt-hand-trap {
+  color: #a1461c;
+  border-color: color-mix(in srgb, #a1461c 45%, transparent);
+}
+
+@media (max-width: 640px) {
+  .respostas-filtros {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vc-testar {
+  margin-right: 6px;
+  padding: 3px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--magenta);
+}

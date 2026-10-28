@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { RESPOSTAS } from "../data/respostas";
+import { openRespostas } from "./RespostasDialog";
+import { ordenarRespostas, TIPOS, useContextoRespostas } from "../db/respostas";
 import { useCardDb } from "../db/cardStore";
 import { respostasDaLinha, uniqueLines, type CombosCalculados } from "../db/motor";
 import { displayName, type Card } from "../db/types";
@@ -44,70 +45,81 @@ function indiceDe(combos: CombosCalculados): Indice {
   return indice;
 }
 
-const ordenar = (c?: Contagem) => [...(c ?? new Map<number, number>())].sort((a, b) => b[1] - a[1]);
+/** Registros por lista no painel; o "+" abre a lista completa */
+const MAX_PAINEL = 15;
 
-/**
- * Respostas calculadas com o App: quem pode responder a esta carta nas linhas calculadas e, se ela
- * for uma interrupção de mão, a que ela pode responder.
- */
 export default function CardRespostas({ card, byId, onOpen }: { card: Card; byId: Map<number, Card>; onOpen: (card: Card) => void }) {
   const combos = useCardDb().extras?.combos;
+  const ctx = useContextoRespostas(byId);
   const indice = useMemo(() => (combos ? indiceDe(combos) : null), [combos]);
   if (!indice) return null;
 
-  const aoAtivar = ordenar(indice.aoAtivar.get(card.id));
-  const aoInvocar = ordenar(indice.aoInvocar.get(card.id));
-  const responde = ordenar(indice.responde.get(card.id));
-  if (!aoAtivar.length && !aoInvocar.length && !responde.length) return null;
+  const contagem = (m: Map<number, Contagem>) => m.get(card.id) ?? new Map<number, number>();
+  const aoAtivar = contagem(indice.aoAtivar);
+  const aoInvocar = contagem(indice.aoInvocar);
+  const responde = contagem(indice.responde);
+  if (!aoAtivar.size && !aoInvocar.size && !responde.size) return null;
 
-  const nome = (id: number) => {
-    const c = byId.get(id);
-    return c ? (
-      <button className="link-btn" onClick={() => onOpen(c)} title={RESPOSTAS[c.name]}>
+  const nome = (c: Card | undefined, id: number) =>
+    c ? (
+      <button className="link-btn" onClick={() => onOpen(c)}>
         {displayName(c)}
       </button>
     ) : (
       <span>#{id}</span>
     );
+  // mesma ordem do combo: mais usadas em torneios, hand trap e staple, hand trap, staple, outras
+  const lista = (c: Contagem, titulo: string, comUso: boolean) => {
+    const ordenadas = ordenarRespostas([...c.keys()], ctx);
+    return (
+      <ul className="respostas-lista">
+        {ordenadas.slice(0, MAX_PAINEL).map((r) => {
+          const n = c.get(r.id) ?? 0;
+          return (
+            <li key={r.id}>
+              {nome(r.card, r.id)}
+              {comUso && (r.descricao || r.tipos.length) && <small> — {r.descricao ?? r.tipos.map((t) => TIPOS[t] ?? t).join(", ")}</small>}
+              <small className="respostas-n">
+                {" "}
+                · {n} {n === 1 ? "linha" : "linhas"}
+              </small>
+            </li>
+          );
+        })}
+        {ordenadas.length > MAX_PAINEL && (
+          <li>
+            <button className="link-btn vc-resp-mais" onClick={() => openRespostas({ titulo, ids: ordenadas.map((r) => r.id), byId })}>
+              +{ordenadas.length - MAX_PAINEL} (ver todas)
+            </button>
+          </li>
+        )}
+      </ul>
+    );
   };
-  const lista = (itens: [number, number][], comUso: boolean) => (
-    <ul className="respostas-lista">
-      {itens.slice(0, 12).map(([id, n]) => (
-        <li key={id}>
-          {nome(id)}
-          {comUso && RESPOSTAS[byId.get(id)?.name ?? ""] && <small> — {RESPOSTAS[byId.get(id)!.name]}</small>}
-          <small className="respostas-n">
-            {" "}
-            · {n} {n === 1 ? "linha" : "linhas"}
-          </small>
-        </li>
-      ))}
-    </ul>
-  );
 
   return (
     <section className="drawer-section respostas-section">
       <h4>Respostas</h4>
-      {aoAtivar.length > 0 && (
+      {aoAtivar.size > 0 && (
         <>
           <p className="tags-note">Quando esta carta ativa um efeito, o oponente pode responder com:</p>
-          {lista(aoAtivar, true)}
+          {lista(aoAtivar, `Respostas quando ${displayName(card)} ativa um efeito`, true)}
         </>
       )}
-      {aoInvocar.length > 0 && (
+      {aoInvocar.size > 0 && (
         <>
           <p className="tags-note">Quando esta carta é Invocada:</p>
-          {lista(aoInvocar, true)}
+          {lista(aoInvocar, `Respostas quando ${displayName(card)} é Invocada`, true)}
         </>
       )}
-      {responde.length > 0 && (
+      {responde.size > 0 && (
         <>
           <p className="tags-note">Esta carta pode responder a:</p>
-          {lista(responde, false)}
+          {lista(responde, `${displayName(card)} pode responder a`, false)}
         </>
       )}
       <p className="tags-note">
-        Calculado com o App: nas linhas de combo calculadas, com as interrupções de mão mais usadas na mão do oponente.
+        Calculado com o App: nas linhas de combo calculadas, com todas as cartas ativáveis da mão na mão do oponente.
       </p>
     </section>
   );

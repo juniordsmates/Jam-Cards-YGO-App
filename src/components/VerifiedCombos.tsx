@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { FontesButton } from "./Fontes";
 import type { KnownCombo } from "../data/combos";
 import { METODO_LABEL, moveText, origemText, respostasDaLinha, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
-import { RESPOSTAS } from "../data/respostas";
+import { openRespostas } from "./RespostasDialog";
+import { ordenarRespostas, TIPOS, useContextoRespostas } from "../db/respostas";
 import { displayName, type Card } from "../db/types";
 
 type Hover = (card: Card | null, el?: HTMLElement) => void;
@@ -20,6 +21,8 @@ type Props = {
   respostas?: boolean;
   /** a carta pode ser usada no formato escolhido (respostas proibidas não aparecem) */
   legal?: (id: number) => boolean;
+  /** abre o Teste de Jogo com um deck temporário da linha */
+  onTestar?: (l: LinhaCombo) => void;
 };
 
 /** Nome da carta em português, com o popup da carta ao passar o mouse (id 0 = Ficha) */
@@ -110,26 +113,46 @@ export function groupSteps(passos: Passo[]) {
   return groups;
 }
 
-/** Interrupções do oponente que poderiam ser ativadas neste ponto, com o que cada uma faz */
-export function Respostas({ ids, byId, onHover, rotulo = "Pode ser respondido por" }: { ids: number[]; byId: Map<number, Card>; onHover: Hover; rotulo?: string }) {
+/** Respostas mostradas por item no combo; o "+" abre a lista completa */
+const MAX_RESPOSTAS = 5;
+
+/**
+ * Cartas do oponente que poderiam ser ativadas neste ponto, na ordem de prioridade (mais usadas em
+ * torneios, hand trap e staple, hand trap, staple, outras), com o que cada uma faz.
+ */
+export function Respostas({ ids, byId, onHover, rotulo = "Pode ser respondido por", max = MAX_RESPOSTAS }: { ids: number[]; byId: Map<number, Card>; onHover: Hover; rotulo?: string; max?: number }) {
+  const ctx = useContextoRespostas(byId);
   if (!ids.length) return null;
+  const ordenadas = ordenarRespostas(ids, ctx);
   return (
     <span className="vc-resp">
       <span className="vc-resp-label">↯ {rotulo}:</span>{" "}
       {join(
-        ids.map((id) => (
-          <span key={id} title={RESPOSTAS[byId.get(id)?.name ?? ""] ?? undefined}>
-            <Name id={id} byId={byId} onHover={onHover} />
+        ordenadas.slice(0, max).map((r) => (
+          <span key={r.id} title={r.descricao ?? r.tipos.map((t) => TIPOS[t] ?? t).join(", ")}>
+            <Name id={r.id} byId={byId} onHover={onHover} />
           </span>
         )),
         ", ",
+      )}
+      {ordenadas.length > max && (
+        <button
+          className="link-btn vc-resp-mais"
+          title={`Ver as ${ordenadas.length} respostas possíveis`}
+          onClick={(e) => {
+            e.preventDefault();
+            openRespostas({ titulo: "Todas as respostas possíveis", ids: ordenadas.map((r) => r.id), byId });
+          }}
+        >
+          +{ordenadas.length - max}
+        </button>
       )}
     </span>
   );
 }
 
 /** Linhas de combo jogadas pelo motor de regras do EDOPro para a mão escolhida */
-export default function VerifiedCombos({ title = "Combos calculados", lines, highlight = [], combos, byId, known, onHover, respostas = false, legal = () => true }: Props) {
+export default function VerifiedCombos({ title = "Combos calculados", lines, highlight = [], combos, byId, known, onHover, respostas = false, legal = () => true, onTestar }: Props) {
   if (!lines.length) return null;
   const hits = new Set(highlight);
   return (
@@ -227,6 +250,11 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
               </div>
             )}
             <p className="tags-note">
+              {onTestar && (
+                <button className="ghost-btn vc-testar" onClick={() => onTestar(l)} title="Abre o Teste de Jogo com um deck temporário desta linha">
+                  Teste de Jogo
+                </button>
+              )}{" "}
               Deck {deck.nome}
               {deck.evento && ` (${deck.evento})`}. Jogado pelo App no primeiro turno, com o oponente passando; vale em todo formato
               em que as cartas da linha existem e não são proibidas.{" "}

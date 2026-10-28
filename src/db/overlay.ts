@@ -38,6 +38,10 @@ export interface Overlay {
   nomes?: Record<string, string>;
   /** linhas de combo jogadas pelo motor de regras do EDOPro com decklists de torneio */
   combos?: CombosCalculados;
+  /** uso em torneios: em quantos dos `decks` decklists recentes cada carta (id) aparece */
+  uso?: { decks: number; atualizadoEm: string; maisAntigo: string; cartas: Record<string, number> };
+  /** cartas ativáveis da mão no turno do oponente → tipos de resposta (pelos scripts oficiais) */
+  respondedores?: Record<string, string[]>;
 }
 
 const LOCAL_TAG_DEFS: TagDefinition[] = TAGS.map(({ id, label, group, hint }) => ({ id, label, group, hint }));

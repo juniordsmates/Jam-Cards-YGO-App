@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import MainMenu from "./screens/MainMenu";
-import ScreenShell from "./screens/ScreenShell";
 import CardSearch from "./screens/CardSearch";
 import Combos from "./screens/Combos";
+import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
 import ExitDialog from "./components/ExitDialog";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
 import { ContaDialog, isContaOpen, openConta } from "./components/Conta";
+import { isRespostasOpen, RespostasDialog } from "./components/RespostasDialog";
 import { iniciarConta } from "./db/conta";
 import { exitApp } from "./platform";
 import { initCardDb } from "./db/cardStore";
@@ -17,6 +18,9 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("menu");
   // Combos aberta pela busca: volta para a busca e já abre com a carta na mão
   const [combosFrom, setCombosFrom] = useState<{ screen: Screen; hand: Card[] }>({ screen: "menu", hand: [] });
+  // Editor de Deck aberto direto no Teste de Jogo (menu principal ou atalho de um combo)
+  const [deckInicial, setDeckInicial] = useState<EditorInicial>({});
+  const [deckFrom, setDeckFrom] = useState<Screen>("menu");
   const [confirmingExit, setConfirmingExit] = useState(false);
   const [exited, setExited] = useState(false);
 
@@ -28,7 +32,7 @@ export default function App() {
   // Esc volta ao menu a partir de qualquer tela (painéis abertos tratam antes)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || confirmingExit || e.defaultPrevented || isFontesOpen() || isContaOpen()) return;
+      if (e.key !== "Escape" || confirmingExit || e.defaultPrevented || isFontesOpen() || isContaOpen() || isRespostasOpen()) return;
       if (screen !== "menu") setScreen("menu");
     };
     window.addEventListener("keydown", onKey);
@@ -66,7 +70,16 @@ export default function App() {
             setCombosFrom({ screen: "menu", hand: [] });
             setScreen("combos");
           }}
-          onDeck={() => setScreen("deck")}
+          onDeck={() => {
+            setDeckInicial({});
+            setDeckFrom("menu");
+            setScreen("deck");
+          }}
+          onTeste={() => {
+            setDeckInicial({ testar: true });
+            setDeckFrom("menu");
+            setScreen("deck");
+          }}
           onExit={() => setConfirmingExit(true)}
           onConta={() => openConta()}
         />
@@ -81,20 +94,23 @@ export default function App() {
           }}
         />
       )}
-      {screen === "combos" && <Combos onBack={() => setScreen(combosFrom.screen)} initialHand={combosFrom.hand} />}
-
-      {screen === "deck" && (
-        <ScreenShell
-          title="Editor de Deck"
-          accent="magenta"
-          onBack={() => setScreen("menu")}
-        >
-          O editor de deck entra aqui.
-        </ScreenShell>
+      {screen === "combos" && (
+        <Combos
+          onBack={() => setScreen(combosFrom.screen)}
+          initialHand={combosFrom.hand}
+          onTestar={(deckId, combo) => {
+            setDeckInicial({ deckId, testar: true, combo });
+            setDeckFrom("combos");
+            setScreen("deck");
+          }}
+        />
       )}
+
+      {screen === "deck" && <DeckEditor key={JSON.stringify(deckInicial)} inicial={deckInicial} onBack={() => setScreen(deckFrom)} />}
 
       <FontesDialog />
       <ContaDialog />
+      <RespostasDialog />
 
       {confirmingExit && (
         <ExitDialog

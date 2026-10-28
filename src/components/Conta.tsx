@@ -3,7 +3,22 @@ import { createPortal } from "react-dom";
 import ExternalLink from "./ExternalLink";
 import politica from "../../docs/politica-de-privacidade.md?raw";
 import termos from "../../docs/termos-de-uso.md?raw";
-import { cadastrar, contaAtual, entrar, recuperarSenha, sair, useConta } from "../db/conta";
+import {
+  cadastrar,
+  contaAtual,
+  entrar,
+  lerConfigIANaConta,
+  listarRecalculos,
+  pedirRecalculo,
+  recuperarSenha,
+  removerConfigIADaConta,
+  sair,
+  salvarConfigIANaConta,
+  situacao,
+  useConta,
+  type Recalculo,
+  type TipoRecalculo,
+} from "../db/conta";
 import { getConfigIA, iaConfigurada, MODELOS, PROVEDORES, provedor, setConfigIA, type ConfigIA, type ProvedorId } from "../db/ia";
 import { supabaseReady } from "../db/supabase";
 
@@ -64,12 +79,30 @@ function Documento({ texto }: { texto: string }) {
 }
 
 function IntegracaoIA() {
+  const conta = useConta();
   const [cfg, setCfg] = useState(getConfigIA);
   const [chave, setChave] = useState("");
+  // configuração também guardada na conta (opcional), para usar em outros computadores
+  const [naConta, setNaConta] = useState(false);
+  const [erroConta, setErroConta] = useState("");
   const p = provedor(cfg.provedor);
+  useEffect(() => {
+    if (conta) void lerConfigIANaConta().then((c) => setNaConta(!!c));
+  }, [conta]);
   const salvar = (novo: ConfigIA) => {
     setConfigIA(novo);
     setCfg(getConfigIA());
+    if (naConta) void salvarConfigIANaConta(getConfigIA()).catch((e) => setErroConta(String(e.message ?? e)));
+  };
+  const alternarConta = async (guardar: boolean) => {
+    setErroConta("");
+    try {
+      if (guardar) await salvarConfigIANaConta(getConfigIA());
+      else await removerConfigIADaConta();
+      setNaConta(guardar);
+    } catch (e) {
+      setErroConta(e instanceof Error ? e.message : String(e));
+    }
   };
   const trocarProvedor = (id: ProvedorId) => {
     const novo = provedor(id);
@@ -82,7 +115,7 @@ function IntegracaoIA() {
       <h3>Integração com IA</h3>
       <p className="tags-note">
         O Combo Search usa a IA que você escolher, com a <strong>sua</strong> chave de API: os custos são cobrados na sua conta
-        do provedor. A chave fica guardada só neste dispositivo e é enviada apenas ao provedor, nunca aos servidores do app.
+        do provedor. A chave fica neste dispositivo (e, se você marcar a opção abaixo, também na sua conta) e é usada só para chamar o provedor.
       </p>
       <label className="field">
         <span className="field-label">Provedor</span>
@@ -156,9 +189,82 @@ function IntegracaoIA() {
           )}
         </>
       )}
+      {conta && (
+        <label className="conta-aceite">
+          <input type="checkbox" checked={naConta} onChange={(e) => void alternarConta(e.target.checked)} /> Guardar esta configuração (com a
+          chave) na minha conta, para usar em outros computadores
+        </label>
+      )}
+      {erroConta && <p className="db-warning">{erroConta}</p>}
       <p className={iaConfigurada(cfg) ? "conta-ok" : "tags-note"}>
         {iaConfigurada(cfg) ? "Pronta para o Combo Search." : "Falta configurar: " + [!cfg.modelo && "modelo", p.id !== "anthropic" && !cfg.url && "endereço", !cfg.chave && !p.local && "chave"].filter(Boolean).join(", ") + "."}
       </p>
+    </section>
+  );
+}
+
+/** Só administradores: pede o recálculo das ações (combos e respostas) no pipeline da base */
+function Administracao() {
+  const [tipo, setTipo] = useState<TipoRecalculo>("tudo");
+  const [forcar, setForcar] = useState(false);
+  const [lista, setLista] = useState<Recalculo[]>([]);
+  const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const atualizar = () => void listarRecalculos().then(setLista);
+  useEffect(atualizar, []);
+
+  const pedir = async () => {
+    setEnviando(true);
+    setMsg(null);
+    try {
+      const r = await pedirRecalculo(tipo, forcar);
+      setMsg({ tipo: r.status.startsWith("sem token") ? "erro" : "ok", texto: `Pedido registrado: ${r.status}. Conferindo a resposta do GitHub…` });
+      // a chamada ao GitHub sai do banco em segundo plano: a resposta chega em alguns segundos
+      setTimeout(() => void listarRecalculos().then((l) => {
+        setLista(l);
+        const s = l[0] && situacao(l[0]);
+        if (s) setMsg({ tipo: s.ok ? "ok" : "erro", texto: s.ok ? `${s.texto}. O resultado aparece no app quando o cálculo terminar.` : `Falhou: ${s.texto}.` });
+      }), 6000);
+    } catch (e) {
+      setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <section className="conta-ia conta-admin">
+      <h3>Administração</h3>
+      <p className="tags-note">
+        Recalcula no pipeline da base (GitHub Actions) as linhas de combo e as respostas, e publica a camada nova. Leva de alguns
+        minutos a algumas horas; o app baixa o resultado ao abrir.
+      </p>
+      <label className="field">
+        <span className="field-label">O que recalcular</span>
+        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoRecalculo)}>
+          <option value="tudo">Tudo (combos e respostas)</option>
+          <option value="combos">Combos</option>
+          <option value="respostas">Respostas</option>
+        </select>
+      </label>
+      <label className="conta-aceite">
+        <input type="checkbox" checked={forcar} onChange={(e) => setForcar(e.target.checked)} /> Ignorar o cache e recalcular todos os
+        decks
+      </label>
+      <button className="ghost-btn conta-enviar recalcular" disabled={enviando} onClick={() => void pedir()}>
+        {enviando ? "Enviando…" : "Recalcular Ações"}
+      </button>
+      {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
+      {lista.length > 0 && (
+        <ul className="respostas-lista">
+          {lista.map((r) => (
+            <li key={r.id}>
+              {new Date(r.criado_em).toLocaleString("pt-BR")} · {r.tipo}
+              {r.forcar ? " (sem cache)" : ""} · <small>{situacao(r).texto}</small>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -213,6 +319,7 @@ function Formulario() {
           </div>
         </section>
         <IntegracaoIA />
+        {conta.admin && <Administracao />}
         {docs}
       </>
     );

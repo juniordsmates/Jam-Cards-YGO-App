@@ -634,6 +634,130 @@ test("respostas: passos mostram as interrupções do oponente, com opção de es
   await reset();
 });
 
+test("editor de deck: importar .ydk, adicionar pela busca, banlist, Side, Extra e exportar", async () => {
+  await page.evaluate(() => localStorage.removeItem("cartas-decks"));
+  await page.goto(URL);
+  await page.waitForSelector(".menu-btn");
+  await page.click(".menu-btn:has-text('Editor de Deck')");
+  await page.waitForSelector(".deck-editor", { timeout: 120_000 });
+  // importar um .ydk (Ash x2, Pote da Ganância, Accesscode Talker no Extra, Effect Veiler no Side)
+  await page.click(".de-botoes button:has-text('Importar')");
+  await page.fill(".de-painel textarea", "#main\n14558127\n14558127\n55144522\n#extra\n86066372\n!side\n97268402\n");
+  await page.click(".de-painel button:has-text('Importar texto')");
+  await page.waitForSelector(".de-main .de-thumb");
+  const total = (parte) => page.textContent(`.de-${parte} .de-total`);
+  assert.equal(await total("main"), "3");
+  assert.equal(await total("extra"), "1");
+  assert.equal(await total("side"), "1");
+  // Pote da Ganância é proibido no TCG: selo 0 e aviso
+  assert.ok(await page.$(".de-main .de-thumb[data-card-id='55144522'] .de-selo-0"));
+  assert.ok((await page.textContent(".de-avisos")).includes("máximo 0 no TCG"));
+  // busca: clique adiciona ao Main (3ª Ash); a 4ª é bloqueada pelo limite de cópias
+  await page.fill(".de-busca input[aria-label=Nome]", "ash blossom");
+  await page.waitForSelector(".de-resultados .de-thumb[data-card-id='14558127']");
+  await page.click(".de-resultados .de-thumb[data-card-id='14558127']");
+  assert.equal(await total("main"), "4");
+  await page.click(".de-resultados .de-thumb[data-card-id='14558127']");
+  assert.equal(await total("main"), "4");
+  assert.ok((await page.textContent(".de-controles")).includes("Limite de 3 cópias"));
+  // botão direito numa carta do deck retira; na busca, adiciona ao Side
+  await page.click(".de-main .de-thumb[data-card-id='55144522']", { button: "right" });
+  assert.equal(await total("main"), "3");
+  await page.fill(".de-busca input[aria-label=Nome]", "effect veiler");
+  await page.waitForSelector(".de-resultados .de-thumb[data-card-id='97268402']");
+  await page.click(".de-resultados .de-thumb[data-card-id='97268402']", { button: "right" });
+  assert.equal(await total("side"), "2");
+  // salvar e exportar em .ydk
+  await page.click(".de-salvar");
+  await page.click(".de-botoes button:has-text('Exportar')");
+  const ydk = await page.inputValue(".de-painel textarea");
+  assert.ok(ydk.includes("#main") && ydk.includes("#extra\n86066372") && ydk.includes("!side\n97268402\n97268402"), ydk);
+  const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("cartas-decks")).decks[0]);
+  assert.equal(salvo.main.length, 3);
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
+test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, invocar pelo menu e Esc volta ao editor", async () => {
+  await page.evaluate(() => localStorage.removeItem("cartas-decks"));
+  await page.goto(URL);
+  await page.waitForSelector(".menu-btn");
+  await page.click(".menu-btn:has-text('Editor de Deck')");
+  await page.waitForSelector(".deck-editor", { timeout: 120_000 });
+  const ids = [42493140, 15005145, 41371602, 14558127, 10045474, 40155014, 97698279, 96030710, 77765207, 97268402];
+  const main = Array.from({ length: 40 }, (_, i) => ids[i % ids.length]);
+  await page.click(".de-botoes button:has-text('Importar')");
+  await page.fill(".de-painel textarea", `#main\n${main.join("\n")}\n#extra\n8841431\n!side\n`);
+  await page.click(".de-painel button:has-text('Importar texto')");
+  await page.click(".de-teste");
+  await page.waitForSelector(".teste-jogo");
+  const deck = async () => Number(await page.textContent(".tj-zona[data-zona=deck] .tj-contagem"));
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
+  assert.equal(await deck(), 35);
+  await page.click(".tj-zona[data-zona=deck]");
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 6);
+  assert.equal(await deck(), 34);
+  // Teste de Mão de novo: volta a 5 na mão e 35 no Deck
+  await page.click(".tj-teste-mao");
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
+  assert.equal(await deck(), 35);
+  // Extra Deck: invocar pelo menu vai para a Zona de Monstros Extra
+  await page.click(".tj-zona[data-zona=extra]");
+  await page.waitForSelector(".tj-lista .tj-carta");
+  await page.click(".tj-lista .tj-carta", { button: "right" });
+  await page.click(".tj-menu button:has-text('Invocar em ataque')");
+  assert.ok(await page.$(".tj-zona[data-zona=em0] .tj-carta[data-card-id='8841431']"));
+  await page.keyboard.press("Escape"); // fecha a lista
+  await page.keyboard.press("Escape"); // volta ao editor
+  await page.waitForSelector(".deck-editor");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
+test("combo → Teste de Jogo: deck temporário do arquétipo, Executar combo com passos Anterior/Próximo", async () => {
+  await page.evaluate(() => localStorage.removeItem("cartas-decks"));
+  await page.goto(URL);
+  await page.waitForSelector(".menu-btn");
+  await page.click(".menu-btn:has-text('Combos')");
+  await page.waitForSelector(".combos-setup");
+  await page.fill(".hand-search input", "centur-ion trudea");
+  await page.waitForSelector(".suggestions button");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(".verified-combos .vc[open] .vc-testar", { timeout: 15_000 });
+  await page.click(".verified-combos .vc[open] .vc-testar");
+  await page.waitForSelector(".teste-jogo");
+  assert.ok((await page.textContent(".tj-dir h3")).includes("Centur-Ion Temporário"));
+  // Executar combo: a mão vira a mão da linha e a caixa de passos aparece no topo
+  await page.click(".tj-executar");
+  await page.waitForSelector(".tj-passo");
+  assert.ok((await page.textContent(".tj-passo")).includes("Passo 1 de"));
+  assert.ok((await page.textContent(".tj-mao")).length >= 0);
+  assert.equal(await page.$$eval(".tj-mao .tj-carta[data-card-id='42493140']", (e) => e.length), 1);
+  await page.click(".tj-passo-nav button:has-text('Próximo')");
+  assert.ok((await page.textContent(".tj-passo")).includes("Passo 2 de"));
+  await page.click(".tj-passo-nav button:has-text('Anterior')");
+  assert.ok((await page.textContent(".tj-passo")).includes("Passo 1 de"));
+  // o deck temporário fica salvo, sem aviso de mínimo de 40
+  const deck = await page.evaluate(() => JSON.parse(localStorage.getItem("cartas-decks")).decks[0]);
+  assert.ok(deck.temporario && deck.nome === "Centur-Ion Temporário" && deck.main.includes(42493140), JSON.stringify(deck).slice(0, 200));
+  await page.keyboard.press("Escape"); // fecha os passos
+  await page.keyboard.press("Escape"); // volta ao editor
+  await page.waitForSelector(".deck-editor");
+  assert.ok(!(await page.textContent(".de-controles")).includes("mínimo 40"));
+  // Menu volta para Combos, de onde veio
+  await page.click(".screen-header .ghost-btn >> nth=0");
+  await page.waitForSelector(".combos-setup");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+  // Teste de Jogo pela tela principal abre com o deck padrão
+  await page.click(".menu-btn:has-text('Teste de Jogo')");
+  await page.waitForSelector(".teste-jogo");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".deck-editor");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+});
+
 test("nenhum erro de JavaScript na página", () => {
   assert.deepEqual(pageErrors, []);
 });

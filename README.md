@@ -113,7 +113,14 @@ A aba Combos (pelo menu, pelo botão **Combos** da busca ou por **Combos com est
 
 **Ramificações:** quando a primeira jogada escolhe cartas do Deck (busca, Invocação ou envio), o pipeline abre uma linha para cada carta possível. Por exemplo, cada carta que a Sky Striker Mobilize - Engage! adiciona; o resumo da linha mostra "adicionando X".
 
-**Respostas do oponente:** o pipeline rejoga cada linha com as interrupções de mão mais usadas na mão do oponente ([src/data/respostas.ts](src/data/respostas.ts) diz o que cada uma faz). Em cada passo, marca as que o motor de regras deixaria ativar. Assim, a Ash Blossom só aparece onde há busca, Invocação ou envio do Deck, e o Nibiru só depois da 5ª Invocação.
+**Respostas do oponente:** o pipeline rejoga cada linha com **todas as cartas ativáveis da mão** no turno do oponente (cerca de 640, achadas nos scripts oficiais) na mão dele. Em cada passo, marca as que o motor de regras deixaria ativar. [src/data/respostas.ts](src/data/respostas.ts) descreve as mais comuns; as demais mostram o tipo de resposta tirado do script.
+- **Ordem** ([src/db/respostas.ts](src/db/respostas.ts)):
+  1. mais usadas em torneios (em ao menos 1% de 1.000 decklists recentes da YGOPRODeck);
+  2. hand trap e staple;
+  3. hand trap;
+  4. staple;
+  5. as demais.
+- **Quantidade:** no combo, até 5 por item; no painel da carta, até 15. O **+** abre a janela com todas ([src/components/RespostasDialog.tsx](src/components/RespostasDialog.tsx)), que tem filtro de classificação e de **Tipo de Resposta** e ordenação por prioridade, nome ou tipo. Assim, a Ash Blossom só aparece onde há busca, Invocação ou envio do Deck, e o Nibiru só depois da 5ª Invocação.
 - As que valem em quase toda a linha (Maxx "C", Mulcharmy…) aparecem uma vez, no topo.
 - As proibidas no formato escolhido não aparecem.
 - A opção "Mostrar respostas do oponente" liga e desliga.
@@ -124,6 +131,34 @@ As linhas escritas pela comunidade ([src/data/combos.ts](src/data/combos.ts)) s�
 ## Sites / Referências
 
 Todos os sites de onde vêm os dados ficam em [src/data/referencias.ts](src/data/referencias.ts), por grupo (Cartas, Combos, Metagame, Preços). O app não lista sites em cada tela: mostra só o botão **Fontes**, que abre a tela com todos e destaca os usados ali (ex.: o deck de uma linha de combo) ([src/components/Fontes.tsx](src/components/Fontes.tsx)).
+
+## Editor de Deck
+
+Arranjo do Duelingbook ([src/screens/DeckEditor.tsx](src/screens/DeckEditor.tsx), regras em [src/db/decks.ts](src/db/decks.ts)):
+- **Esquerda:** a carta em detalhe (imagem e texto) e os controles do deck: Novo, Renomear, Salvar, Salvar como, Importar, Exportar, Limpar, Definir padrão e Excluir.
+- **Centro:** Main (com total, monstros, magias e armadilhas, e ordenação A-Z), Side e Extra, cada carta com o selo da banlist do formato escolhido (0, 1 ou 2).
+- **Direita:** busca por nome, texto, tipo de carta, tipo, raça, atributo, faixas de Nível, ATK e DEF, limite da banlist e ordem, com páginas.
+
+Interação:
+- Clicar numa carta da busca adiciona ao Main, ou ao Extra no caso de Fusão, Sincro, Xyz e Link. O botão direito adiciona ao Side.
+- Arrastar move entre as partes. O botão direito numa carta do deck, ou soltá-la na busca, a retira.
+- Regras: Main de 40 a 60, Extra e Side até 15, até 3 cópias somando as partes, e o limite da banlist do formato (TCG/OCG, no canto superior direito).
+- **Importar/Exportar** no formato `.ydk` (Duelingbook, EDOPro, YGOPRODeck). Artes alternativas viram a carta original.
+- Os decks ficam neste dispositivo. Com conta, **Salvar** também guarda o deck na conta (tabela `decks`), e ao entrar em outro computador os decks da conta são trazidos.
+
+## Teste de Jogo (Solo Mode)
+
+Tabuleiro sem regras, como o Solo Mode do Duelingbook ([src/screens/TesteJogo.tsx](src/screens/TesteJogo.tsx), estado em [src/db/testeJogo.ts](src/db/testeJogo.ts)).
+- **Onde abre:** pelo botão **Teste de Jogo** do Editor de Deck, pela tela principal (com o deck padrão) ou pelo atalho **Teste de Jogo** de cada linha de combo.
+- **Mesa:** zonas de monstro (5 + 2 Extra), Magia/Armadilha, Campo, Deck, Extra Deck, Cemitério, Banidas e mão.
+- **Interação:**
+  - arrastar entre as zonas; soltar sobre um monstro anexa como matéria Xyz;
+  - botão direito: Invocar, Baixar, Ativar, virar, mudar de posição, desanexar, mão, Cemitério, banir e topo ou fundo do Deck;
+  - clique no Deck compra uma carta.
+- **Teste de Mão:** tudo volta ao Deck, que é embaralhado (Fisher-Yates com o gerador criptográfico do sistema), e você compra 5. Há também LP, fases (só marcação), dado, moeda e histórico.
+- **A partir de um combo:**
+  - o app cria (ou atualiza) o deck temporário **"<arquétipo> Temporário"** com as cartas da linha: sem mínimo, com máximo de 60 e 15 e a banlist normal;
+  - **Executar combo** monta a mão da linha e mostra no topo da tela o passo atual, com **‹ Anterior / Próximo ›**.
 
 ## Combo Search, contas e base de combos (Supabase)
 
@@ -139,6 +174,10 @@ Na aba Combos, **Combo Search** recebe 0 ou mais cartas iniciais (starters) e/ou
    - **Gravação:** as sugestões são **gravadas na base logo após a busca**, com origem `ia`. O usuário pode publicar qualquer uma como **Combo da Comunidade**, com o nome do autor.
 
 **Base de combos** ([supabase/migrations/](supabase/migrations/)): uma tabela `combos` com o JSON completo de cada combo em `dados` e índices por `arquetipos` (nomes em inglês), `iniciais` (starters), `finais` e `cartas` (todas, preenchido pelo banco). A visão `combos_indice` dá a navegação **Arquétipo > Starter > combos**. A `origem` diz de onde veio o combo: `app`, `comunidade` ou `ia`.
+
+**Administração:** quem estiver na tabela `admins` (pelo id da conta, não pelo e-mail) vê em *Minha conta* o botão **Recalcular Ações**. O pedido entra na tabela `recalculos`, e o próprio banco dispara a Action "Atualizar base" da base pela API do GitHub. O token fica no cofre do Supabase (segredo `github_token`) e nunca chega ao app.
+
+**Configuração de IA na conta (opcional):** marcando "guardar na minha conta", provedor, modelo, endereço e chave vão para a tabela `config_ia`, que só o dono lê. Ao entrar em outro computador sem IA configurada, o app usa essa configuração.
 
 **Contas:**
 - **Acesso:** botão **Entrar** no canto superior direito da tela principal, com e-mail, usuário (público) e senha.
