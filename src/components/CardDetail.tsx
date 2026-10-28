@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { FontesButton, isFontesOpen } from "./Fontes";
 import { isContaOpen } from "./Conta";
+import CardRespostas from "./CardRespostas";
 import { cardImage } from "../db/images";
 import { readCard } from "../db/effects";
 import CardEffects, { readingSummary } from "./CardEffects";
@@ -234,6 +235,8 @@ export default function CardDetail({
         onOpen={onOpen}
         onShowSet={onShowSet}
       />
+
+      <CardRespostas card={card} byId={byId} onOpen={onOpen} />
 
       {references.length > 0 && (
         <section className="drawer-section">

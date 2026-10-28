@@ -18,6 +18,10 @@ type Hover = (card: Card | null, el?: HTMLElement) => void;
 type Props = {
   /** alternância de modo da tela de Combos (fica no topo da coluna da esquerda) */
   tabs: ReactNode;
+  /** controles extras da coluna da esquerda (ex.: mostrar respostas) */
+  extra?: ReactNode;
+  respostas?: boolean;
+  legal?: (id: number) => boolean;
   all: Card[];
   byId: Map<number, Card>;
   format: GameFormat;
@@ -151,7 +155,7 @@ function ComboCard({ combo, byId, onHover, highlight }: { combo: ComboBase; byId
  * Combo Search: 0+ cartas iniciais e/ou 1+ cartas finais. Procura na base do App (linhas
  * calculadas), na base de combos (comunidade e buscas anteriores) e, com a chave do usuário, com IA.
  */
-export default function ComboSearch({ tabs, all, byId, format, combos, known, fits, onHover }: Props) {
+export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, format, combos, known, fits, onHover }: Props) {
   const conta = useConta();
   const [iniciais, setIniciais] = useState<Card[]>([]);
   const [finais, setFinais] = useState<Card[]>([]);
@@ -286,6 +290,7 @@ export default function ComboSearch({ tabs, all, byId, format, combos, known, fi
           Buscar
         </button>
         <p className="tags-note">Declare 0 ou mais cartas iniciais e/ou 1 ou mais cartas finais.</p>
+        {extra}
       </section>
 
       <section className="combos-result">
@@ -307,6 +312,8 @@ export default function ComboSearch({ tabs, all, byId, format, combos, known, fi
               byId={byId}
               known={known}
               onHover={onHover}
+              respostas={respostas}
+              legal={legal}
             />
 
             {supabaseReady() && (

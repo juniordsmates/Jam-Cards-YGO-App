@@ -4,7 +4,10 @@
 export type Zona = "deck" | "mao" | "campo" | "magia" | "cemiterio" | "banido" | "extra" | "material" | "campo-magia" | "pendulo" | "fora";
 export type Metodo = "xyz" | "link" | "sincro" | "fusao" | "ritual";
 
-export type Passo =
+/** cartas do oponente que poderiam responder logo depois do passo (calculado no pipeline) */
+type ComRespostas = { resp?: number[] };
+
+export type Passo = ComRespostas & (
   | { t: "normal"; c: number }
   | { t: "baixa"; c: number }
   | { t: "ativa"; c: number; de: Zona }
@@ -12,7 +15,8 @@ export type Passo =
   | { t: "move"; c: number; de: Zona; para: Zona; por?: number }
   | { t: "compra"; c: number[] }
   // passo descrito em texto (combos da comunidade e sugestões de IA), com as cartas citadas
-  | { t: "texto"; texto: string; c: number[] };
+  | { t: "texto"; texto: string; c: number[] }
+);
 
 export interface CampoFinal {
   monstros: number[];
@@ -34,6 +38,8 @@ export interface LinhaCombo {
   passos: Passo[];
   campo: CampoFinal;
   pontos: number;
+  /** ramificação: carta(s) que a primeira escolha do Deck trouxe nesta linha (ex.: o que a Engage adicionou) */
+  ramo?: number[];
 }
 
 export interface CombosCalculados {
@@ -61,13 +67,15 @@ export function cardsOfLine(l: LinhaCombo): number[] {
 }
 
 /**
- * O pipeline calcula o decklist com a banlist de cada formato; quando as duas versões chegam
- * à mesma linha, ela aparece uma vez só.
+ * O pipeline calcula o decklist com a banlist de cada formato; quando as versões chegam ao mesmo
+ * campo final com a mesma mão (e a mesma carta adicionada), a linha aparece uma vez só.
  */
 export function uniqueLines(lines: LinhaCombo[]): LinhaCombo[] {
   const seen = new Set<string>();
   return lines.filter((l) => {
-    const key = JSON.stringify([l.deck, l.mao, l.qualquer, l.passos]);
+    // mesma mão, mesma carta adicionada e mesmo campo final: a linha repetida não acrescenta nada
+    const campo = [...l.campo.monstros, ...l.campo.magias.map(([c]) => c)].sort();
+    const key = JSON.stringify([l.deck, [...l.mao].sort(), l.qualquer ?? 0, l.ramo ?? [], campo]);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -147,4 +155,16 @@ export function passoEmTexto(p: Passo, nome: (id: number) => string): string {
     case "texto":
       return p.texto;
   }
+}
+
+/**
+ * Respostas de uma linha: as que valem em quase toda a linha (ativáveis a qualquer momento, como
+ * Maxx "C") ficam separadas das que um passo específico abre (como Ash Blossom numa busca).
+ */
+export function respostasDaLinha(l: { passos: Passo[] }): { sempre: Set<number>; porPasso: (p: Passo) => number[] } {
+  const comResp = l.passos.filter((p) => p.resp?.length);
+  const conta = new Map<number, number>();
+  for (const p of comResp) for (const r of p.resp!) conta.set(r, (conta.get(r) ?? 0) + 1);
+  const sempre = new Set(comResp.length >= 4 ? [...conta].filter(([, n]) => n >= comResp.length * 0.75).map(([r]) => r) : []);
+  return { sempre, porPasso: (p) => (p.resp ?? []).filter((r) => !sempre.has(r)) };
 }

@@ -608,6 +608,32 @@ test("Combo Search: IA no formato OpenAI (resposta simulada) com ferramentas do 
   await page.waitForSelector(".menu-btn");
 });
 
+test("respostas: passos mostram as interrupções do oponente, com opção de esconder, e o painel da carta soma as linhas", async () => {
+  await page.click(".menu-btn:has-text('Combos')");
+  await page.waitForSelector(".combos-setup");
+  await page.fill(".hand-search input", "centur-ion trudea");
+  await page.waitForSelector(".suggestions button");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(".verified-combos .vc[open] .vc-resp", { timeout: 15_000 });
+  assert.ok((await page.textContent(".verified-combos .vc[open]")).includes("Pode ser respondido por"));
+  // a linha mostra a carta que a primeira busca adicionou
+  assert.ok((await page.textContent(".verified-combos .vc .kc-hand")).includes("adicionando"));
+  await page.uncheck(".respostas-toggle input");
+  assert.equal(await page.$(".verified-combos .vc-resp"), null);
+  await page.check(".respostas-toggle input");
+  await page.keyboard.press("Escape");
+  await page.waitForSelector(".menu-btn");
+
+  // painel da carta: seção Respostas
+  await page.click(".menu-btn:has-text('Buscar Carta')");
+  await page.waitForSelector(".grid .tile");
+  await search("centur-ion trudea");
+  await page.click(".grid .tile >> nth=0");
+  await page.waitForSelector(".respostas-section", { timeout: 15_000 });
+  assert.ok((await page.textContent(".respostas-section")).includes("o oponente pode responder com"));
+  await reset();
+});
+
 test("nenhum erro de JavaScript na página", () => {
   assert.deepEqual(pageErrors, []);
 });

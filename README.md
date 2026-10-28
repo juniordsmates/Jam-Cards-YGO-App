@@ -111,6 +111,14 @@ O alvo pode ser uma carta, um arquétipo ('"Invoked" monster') ou "cartas que ci
 
 A aba Combos (pelo menu, pelo botão **Combos** da busca ou por **Combos com esta carta** no painel da carta) mostra **só linhas calculadas**: o pipeline da base (Database-Cards-Ygo, `npm run combos`) joga cada mão inicial no motor de regras do EDOPro (Project Ignis) com decklists reais de torneio da YGOPRODeck. Custos, condições de ativação, "uma vez por turno", travas e o limite de Invocação-Normal vêm dos scripts oficiais das cartas, não da leitura do texto. O app recebe as linhas prontas na camada pública (campo `combos`, só ids e zonas) e mostra as que começam com a mão escolhida e as que **chegam** nas cartas escolhidas, com o passo em que a carta aparece destacado e a continuação depois dela ([src/db/motor.ts](src/db/motor.ts), [src/components/VerifiedCombos.tsx](src/components/VerifiedCombos.tsx)).
 
+**Ramificações:** quando a primeira jogada escolhe cartas do Deck (busca, Invocação ou envio), o pipeline abre uma linha para cada carta possível. Por exemplo, cada carta que a Sky Striker Mobilize - Engage! adiciona; o resumo da linha mostra "adicionando X".
+
+**Respostas do oponente:** o pipeline rejoga cada linha com as interrupções de mão mais usadas na mão do oponente ([src/data/respostas.ts](src/data/respostas.ts) diz o que cada uma faz). Em cada passo, marca as que o motor de regras deixaria ativar. Assim, a Ash Blossom só aparece onde há busca, Invocação ou envio do Deck, e o Nibiru só depois da 5ª Invocação.
+- As que valem em quase toda a linha (Maxx "C", Mulcharmy…) aparecem uma vez, no topo.
+- As proibidas no formato escolhido não aparecem.
+- A opção "Mostrar respostas do oponente" liga e desliga.
+- No painel de cada carta, a seção **Respostas** soma todas as linhas: quem responde quando a carta ativa ou é invocada e, se ela for uma interrupção, a que ela responde ([src/components/CardRespostas.tsx](src/components/CardRespostas.tsx)).
+
 As linhas escritas pela comunidade ([src/data/combos.ts](src/data/combos.ts)) só aparecem quando o motor as confirma (mesmo id em `maos` de `dados/combos-alvos.json` na base). O motor e os scripts (AGPL-3.0) não vão no app.
 
 ## Sites / Referências

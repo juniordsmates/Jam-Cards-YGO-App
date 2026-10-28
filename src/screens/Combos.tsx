@@ -20,6 +20,8 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
   const [hand, setHand] = useState<Card[]>(initialHand);
   // "mao": o que a mão inicial alcança; "search": Combo Search (iniciais e/ou finais, com IA)
   const [modo, setModo] = useState<"mao" | "search">("mao");
+  // interrupções de mão que o oponente poderia ativar em cada passo (calculado no pipeline)
+  const [respostas, setRespostas] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => void initCardDb(), []);
@@ -87,6 +89,15 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
   };
 
   const ready = db.status === "ready";
+  const legal = useCallback((id: number) => {
+    const c = byId.get(id);
+    return !c || legalIn(c, format);
+  }, [byId, format]);
+  const toggleRespostas = (
+    <label className="respostas-toggle">
+      <input type="checkbox" checked={respostas} onChange={(e) => setRespostas(e.target.checked)} /> Mostrar respostas do oponente
+    </label>
+  );
 
   // alternância entre os dois modos, no topo da coluna da esquerda
   const modos = (
@@ -131,7 +142,7 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
         </div>
       ) : (
         modo === "search" ? (
-          <ComboSearch tabs={modos} all={db.cards} byId={byId} format={format} combos={combos} known={known} fits={fits} onHover={onHover} />
+          <ComboSearch tabs={modos} extra={toggleRespostas} respostas={respostas} legal={legal} all={db.cards} byId={byId} format={format} combos={combos} known={known} fits={fits} onHover={onHover} />
         ) : (
         <div className="combos">
           <section className="combos-setup">
@@ -146,6 +157,7 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
               placeholder="Escolha uma carta (ex.: Mitsurugi Prayers)"
               placeholderMore="Acrescentar outra carta à mão…"
             />
+            {toggleRespostas}
           </section>
 
           <section className="combos-result">
@@ -200,6 +212,8 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
                   byId={byId}
                   known={known}
                   onHover={onHover}
+                  respostas={respostas}
+                  legal={legal}
                 />
                 <VerifiedCombos
                   title={`Combos que chegam em ${handNames}`}
@@ -209,6 +223,8 @@ export default function Combos({ onBack, initialHand = [] }: { onBack: () => voi
                   byId={byId}
                   known={known}
                   onHover={onHover}
+                  respostas={respostas}
+                  legal={legal}
                 />
                 {confirmed.length > 0 && (
                   <KnownCombos

@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { FontesButton } from "./Fontes";
 import type { KnownCombo } from "../data/combos";
-import { METODO_LABEL, moveText, origemText, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
+import { METODO_LABEL, moveText, origemText, respostasDaLinha, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
+import { RESPOSTAS } from "../data/respostas";
 import { displayName, type Card } from "../db/types";
 
 type Hover = (card: Card | null, el?: HTMLElement) => void;
@@ -15,6 +16,10 @@ type Props = {
   byId: Map<number, Card>;
   known: Map<string, KnownCombo>;
   onHover: Hover;
+  /** mostra em cada passo as interrupções de mão que o oponente poderia ativar */
+  respostas?: boolean;
+  /** a carta pode ser usada no formato escolhido (respostas proibidas não aparecem) */
+  legal?: (id: number) => boolean;
 };
 
 /** Nome da carta em português, com o popup da carta ao passar o mouse (id 0 = Ficha) */
@@ -105,8 +110,26 @@ export function groupSteps(passos: Passo[]) {
   return groups;
 }
 
+/** Interrupções do oponente que poderiam ser ativadas neste ponto, com o que cada uma faz */
+export function Respostas({ ids, byId, onHover, rotulo = "Pode ser respondido por" }: { ids: number[]; byId: Map<number, Card>; onHover: Hover; rotulo?: string }) {
+  if (!ids.length) return null;
+  return (
+    <span className="vc-resp">
+      <span className="vc-resp-label">↯ {rotulo}:</span>{" "}
+      {join(
+        ids.map((id) => (
+          <span key={id} title={RESPOSTAS[byId.get(id)?.name ?? ""] ?? undefined}>
+            <Name id={id} byId={byId} onHover={onHover} />
+          </span>
+        )),
+        ", ",
+      )}
+    </span>
+  );
+}
+
 /** Linhas de combo jogadas pelo motor de regras do EDOPro para a mão escolhida */
-export default function VerifiedCombos({ title = "Combos calculados", lines, highlight = [], combos, byId, known, onHover }: Props) {
+export default function VerifiedCombos({ title = "Combos calculados", lines, highlight = [], combos, byId, known, onHover, respostas = false, legal = () => true }: Props) {
   if (!lines.length) return null;
   const hits = new Set(highlight);
   return (
@@ -121,6 +144,10 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
         const groups = groupSteps(l.passos);
         // primeiro passo em que a linha chega a uma carta destacada
         const firstHit = hits.size ? groups.findIndex((g) => stepHas(g.step, hits) || g.subs.some((p) => stepHas(p, hits))) : -1;
+        // respostas: as de quase toda a linha ficam no topo; em cada passo, só as que ele abre
+        const resp = respostasDaLinha(l);
+        const doPasso = (p: Passo) => (respostas ? resp.porPasso(p).filter(legal) : []);
+        const sempre = respostas ? [...resp.sempre].filter(legal) : [];
         return (
           <details key={`${l.deck}-${idx}`} className="kc vc" open={idx === 0}>
             <summary>
@@ -131,6 +158,7 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
               <span className="kc-hand">
                 Mão: {join(l.mao.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ")}
                 {l.qualquer ? ` + ${l.qualquer} carta qualquer (para descarte)` : ""}
+                {l.ramo?.length ? <> · adicionando {join(l.ramo.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ")}</> : null}
               </span>
               {firstHit >= 0 && (
                 <span className="vc-reach">
@@ -149,15 +177,23 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
               </p>
             )}
 
+            {sempre.length > 0 && (
+              <p className="vc-resp-sempre">
+                <Respostas ids={sempre} byId={byId} onHover={onHover} rotulo="Em quase toda a linha, o oponente pode ativar" />
+              </p>
+            )}
+
             <ol className="kc-steps vc-steps">
               {groups.map(({ step, subs }, i) => (
                 <li key={i} className={firstHit >= 0 && (stepHas(step, hits) || subs.some((p) => stepHas(p, hits))) ? "vc-hit" : undefined}>
                   <StepText p={step} byId={byId} onHover={onHover} />
+                  <Respostas ids={doPasso(step)} byId={byId} onHover={onHover} />
                   {subs.length > 0 && (
                     <ul className="vc-subs">
                       {subs.map((p, j) => (
                         <li key={j}>
                           <StepText p={p} byId={byId} onHover={onHover} />
+                          <Respostas ids={doPasso(p)} byId={byId} onHover={onHover} />
                         </li>
                       ))}
                     </ul>

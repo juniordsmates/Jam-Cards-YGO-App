@@ -1985,3 +1985,15 @@
   background: color-mix(in srgb, var(--cyan) 7%, transparent);
   border-radius: 10px;
 }
+
+/* ---------- Respostas no painel da carta ---------- */
+
+.respostas-lista {
+  margin: 4px 0 10px;
+  padding-left: 18px;
+  font-size: 0.84rem;
+}
+
+.respostas-lista small {
+  color: var(--text-dim);
+}
