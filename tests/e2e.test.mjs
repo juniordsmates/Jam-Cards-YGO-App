@@ -63,7 +63,7 @@ before(async () => {
       }),
     }),
   );
-  await page.route("**/Database-Cards-Ygo-Camada/main/camada.json", async (r) => {
+  await page.route("**/juniordsmates/Cartas/main/dados/camada.json", async (r) => {
     const res = await r.fetch();
     const camada = await res.json();
     camada.combos = JSON.parse(readFileSync(new globalThis.URL("./fixtures/combos.json", import.meta.url), "utf8"));
@@ -677,6 +677,47 @@ test("editor de deck: importar .ydk, adicionar pela busca, banlist, Extra e expo
   assert.equal(salvo.main.length, 4);
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
+});
+
+test("editor de deck: um deck por nome (Salvar como e Novo com nome existente não duplicam; repetidos antigos somem)", async () => {
+  // dois decks com o mesmo nome guardados por uma versão anterior: fica só o salvo por último
+  await page.goto(URL);
+  await page.waitForSelector(".menu-btn");
+  await page.waitForTimeout(1500); // deixa a camada terminar de baixar antes de recarregar
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "cartas-decks",
+      JSON.stringify({
+        decks: [
+          { id: "a", nome: "Meu Deck", main: [14558127], extra: [], side: [], atualizadoEm: "2026-10-01T00:00:00Z" },
+          { id: "b", nome: "MEU DECK", main: [14558127, 14558127], extra: [], side: [], atualizadoEm: "2026-10-02T00:00:00Z" },
+          { id: "c", nome: "Outro", main: [97268402], extra: [], side: [], atualizadoEm: "2026-10-02T00:00:00Z" },
+        ],
+        padrao: "a",
+      }),
+    ),
+  );
+  await page.goto(URL);
+  await page.waitForSelector(".menu-btn");
+  await page.click(".menu-btn:has-text('Editor de Deck')");
+  await page.waitForSelector(".deck-editor", { timeout: 120_000 });
+  const opcoes = async () => page.$$eval(".de-controles select option", (o) => o.map((x) => x.textContent.trim()));
+  assert.deepEqual(await opcoes(), ["MEU DECK (padrão)", "Outro"]);
+  // "Outro" salvo como "Meu Deck": vai por cima, sem criar um terceiro deck
+  await page.selectOption(".de-controles select", { label: "Outro" });
+  await page.click(".de-botoes button:has-text('Salvar como')");
+  await page.fill("input[aria-label='Nome do deck']", "meu deck");
+  await page.click(".de-nome button:has-text('OK')");
+  assert.deepEqual(await opcoes(), ["MEU DECK (padrão)", "Outro"]);
+  assert.ok((await page.textContent(".de-controles")).includes("Salvo por cima"));
+  const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("cartas-decks")).decks.find((d) => d.id === "b"));
+  assert.deepEqual(salvo.main, [97268402]);
+  // Novo com nome existente só abre o deck
+  await page.click(".de-botoes button:has-text('Novo')");
+  await page.fill("input[aria-label='Nome do deck']", "Outro");
+  await page.click(".de-nome button:has-text('OK')");
+  assert.equal((await opcoes()).length, 2);
+  await page.evaluate(() => localStorage.removeItem("cartas-decks"));
 });
 
 test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, invocar pelo menu e Esc volta ao editor", async () => {

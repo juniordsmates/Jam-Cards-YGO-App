@@ -11,8 +11,14 @@ import { initCardDb, useCardDb } from "../db/cardStore";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
 import { cardsOfLine, linesForHand, semCartaDoCalculo, uniqueLines, type LinhaCombo } from "../db/motor";
 import { deckDoCombo } from "../db/decks";
-import { displayName, type Card } from "../db/types";
+import { bilingualName, displayName, type Card } from "../db/types";
 import "./combos.css";
+
+/** Nome do arquétipo (oficial, em inglês) com o nome em português ao lado, quando é outro */
+function arquetipoBilingue(en: string, cards: Card[]) {
+  const pt = cards.find((c) => c.archetype?.toLowerCase() === en.toLowerCase())?.archetypePt;
+  return pt && pt.toLowerCase() !== en.toLowerCase() ? `${en} · ${pt}` : en;
+}
 
 /** `initialHand`: cartas já na mão ao abrir (vindas da busca) */
 export default function Combos({
@@ -194,9 +200,9 @@ export default function Combos({
                 </small>
                 {starters.map((s) => (
                   <div key={s.deck.url} className="starter-chips">
-                    <span className="field-label">{s.deck.busca}</span>
+                    <span className="field-label">{arquetipoBilingue(s.deck.busca, s.cards)}</span>
                     {s.cards.map((c) => (
-                      <button key={c.id} className="chip" onClick={() => addCard(c)}>
+                      <button key={c.id} className="chip" onClick={() => addCard(c)} title={bilingualName(c)}>
                         {displayName(c)}
                       </button>
                     ))}

@@ -1,8 +1,8 @@
 import { useMemo, useState, type RefObject } from "react";
 import { SearchIcon } from "../icons";
 import { legalIn, type GameFormat } from "../db/legality";
-import { normalize } from "../db/search";
-import { displayName, type Card } from "../db/types";
+import { archetypeKey, normalize } from "../db/search";
+import { bilingualName, displayName, type Card } from "../db/types";
 
 const MAX_SUGGESTIONS = 8;
 
@@ -28,7 +28,7 @@ export default function CardPicker({ label, cards, onChange, all, format, placeh
     if (q.length < 2) return [];
     const terms = q.split(" ");
     return all
-      .filter((c) => c.frame !== "skill" && c.frame !== "token" && terms.every((t) => c.key.includes(t)) && !cards.some((h) => h.id === c.id))
+      .filter((c) => c.frame !== "skill" && c.frame !== "token" && terms.every((t) => c.key.includes(t) || archetypeKey(c).includes(t)) && !cards.some((h) => h.id === c.id))
       .sort((a, b) => Number(legalIn(b, format)) - Number(legalIn(a, format)) || (b.views ?? 0) - (a.views ?? 0))
       .slice(0, MAX_SUGGESTIONS);
   }, [query, all, cards, format]);
@@ -46,7 +46,7 @@ export default function CardPicker({ label, cards, onChange, all, format, placeh
         {cards.map((c) => {
           const ok = legalIn(c, format);
           return (
-            <span key={c.id} className={`hand-card ${ok ? "" : "illegal"}`} title={ok ? undefined : `Não pode ser usada no ${format}`}>
+            <span key={c.id} className={`hand-card ${ok ? "" : "illegal"}`} title={ok ? bilingualName(c) : `${bilingualName(c)} — não pode ser usada no ${format}`}>
               {displayName(c)}
               {!ok && <em> · fora do {format}</em>}
               <button onClick={() => onChange(cards.filter((x) => x.id !== c.id))} aria-label={`Tirar ${displayName(c)}`}>

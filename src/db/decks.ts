@@ -8,6 +8,7 @@ import type { Passo } from "./motor";
 // Decks do Editor de Deck: guardados neste dispositivo e, com conta, também na conta (tabela decks).
 // Regras: Main 40–60, Extra até 15, Side até 15, até 3 cópias por carta (somando as três partes),
 // e o limite da banlist do formato escolhido (proibida 0, limitada 1, semi-limitada 2).
+// Um deck por nome: salvar com um nome que já existe salva por cima dele (aqui e na conta).
 
 export type Parte = "main" | "extra" | "side";
 
@@ -32,9 +33,25 @@ interface Estado {
 const STORAGE = "cartas-decks";
 const LIMITES = { main: [40, 60], extra: [0, 15], side: [0, 15] } as const;
 
+/** Mesmo nome de deck: sem diferenciar maiúsculas, acentos de caixa ou espaços nas pontas */
+const chaveNome = (nome: string) => nome.trim().toLocaleLowerCase("pt-BR");
+
+/** Deixa um deck por nome (o salvo por último); decks repetidos vinham de salvamentos em dobro */
+function semRepetidos(e: Estado): Estado {
+  const porNome = new Map<string, Deck>();
+  for (const d of e.decks) {
+    const atual = porNome.get(chaveNome(d.nome));
+    if (!atual || d.atualizadoEm > atual.atualizadoEm) porNome.set(chaveNome(d.nome), { ...d, contaId: d.contaId ?? atual?.contaId });
+  }
+  const decks = e.decks.filter((d) => porNome.get(chaveNome(d.nome))?.id === d.id).map((d) => porNome.get(chaveNome(d.nome))!);
+  if (decks.length === e.decks.length) return e;
+  const padrao = e.decks.find((d) => d.id === e.padrao);
+  return { decks, padrao: padrao ? porNome.get(chaveNome(padrao.nome))?.id : decks[0]?.id };
+}
+
 function ler(): Estado {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE) ?? "") as Estado;
+    return semRepetidos(JSON.parse(localStorage.getItem(STORAGE) ?? "") as Estado);
   } catch {
     return { decks: [] };
   }
@@ -63,7 +80,17 @@ export const useDecks = () =>
 
 const novoId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
+/** Deck deste computador com o mesmo nome (sem diferenciar maiúsculas), fora o de id `exceto` */
+export const deckComNome = (nome: string, exceto?: string) =>
+  estado.decks.find((d) => d.id !== exceto && chaveNome(d.nome) === chaveNome(nome));
+
+/**
+ * Cria um deck. Se já existe um com o mesmo nome, não duplica: com conteúdo (`base`), salva por
+ * cima do existente; sem conteúdo (botão Novo), só devolve o existente.
+ */
 export function criarDeck(nome: string, base?: Pick<Deck, "main" | "extra" | "side">, temporario = false): Deck {
+  const existente = deckComNome(nome.trim() || "Deck sem nome");
+  if (existente) return base ? salvarDeck({ ...existente, ...base }) : existente;
   const deck: Deck = {
     id: novoId(),
     nome: nome.trim() || "Deck sem nome",
@@ -96,30 +123,70 @@ export const definirPadrao = (id: string) => gravar({ ...estado, padrao: id });
 
 // ---------------------------------------------------------------- conta
 
+// uma sincronização por vez: dois "Salvar" seguidos não podem criar o deck duas vezes na conta
+let fila: Promise<unknown> = Promise.resolve();
+const emFila = <T>(f: () => Promise<T>): Promise<T> => {
+  const p = fila.then(f, f);
+  fila = p.catch(() => undefined);
+  return p;
+};
+
+const vincular = (id: string, contaId: string) =>
+  gravar({ ...estado, decks: estado.decks.map((d) => (d.id === id ? { ...d, contaId } : d)) });
+
 /** Copia o deck para a conta (se houver login); guarda o id da conta no deck local */
-async function sincronizar(deck: Deck) {
-  const sb = supabase();
-  if (!sb || !contaAtual()) return;
-  const dados = { nome: deck.nome.slice(0, 80), main: deck.main.slice(0, 60), extra: deck.extra.slice(0, 15), side: deck.side.slice(0, 15) };
-  if (deck.contaId) {
-    await sb.from("decks").update(dados).eq("id", deck.contaId);
-    return;
-  }
-  const { data } = await sb.from("decks").insert(dados).select("id").single();
-  if (data?.id) gravar({ ...estado, decks: estado.decks.map((d) => (d.id === deck.id ? { ...d, contaId: data.id } : d)) });
+function sincronizar(deck: Deck) {
+  return emFila(async () => {
+    const sb = supabase();
+    if (!sb || !contaAtual()) return;
+    // lê de novo: o deck pode ter ganhado o id da conta numa sincronização anterior da fila
+    const atual = estado.decks.find((d) => d.id === deck.id);
+    if (!atual) return;
+    const dados = { nome: atual.nome.slice(0, 80), main: atual.main.slice(0, 60), extra: atual.extra.slice(0, 15), side: atual.side.slice(0, 15) };
+    let contaId = atual.contaId;
+    if (!contaId) {
+      // já existe na conta um deck com esse nome (de outro computador): salva por cima dele
+      const { data } = await sb.from("decks").select("id, nome");
+      contaId = (data ?? []).find((d) => chaveNome(d.nome) === chaveNome(atual.nome))?.id;
+    }
+    if (contaId) {
+      await sb.from("decks").update(dados).eq("id", contaId);
+      if (!atual.contaId) vincular(atual.id, contaId);
+      return;
+    }
+    const { data } = await sb.from("decks").insert(dados).select("id").single();
+    if (data?.id) vincular(atual.id, data.id);
+  });
 }
 
-/** Traz para este dispositivo os decks da conta que ainda não estão aqui */
-export async function trazerDecksDaConta(): Promise<number> {
-  const sb = supabase();
-  if (!sb || !contaAtual()) return 0;
-  const { data } = await sb.from("decks").select("id, nome, main, extra, side, atualizado_em").order("atualizado_em", { ascending: false });
-  const locais = new Set(estado.decks.map((d) => d.contaId).filter(Boolean));
-  const novos: Deck[] = (data ?? [])
-    .filter((d) => !locais.has(d.id))
-    .map((d) => ({ id: novoId(), nome: d.nome, main: d.main, extra: d.extra, side: d.side, contaId: d.id, atualizadoEm: d.atualizado_em }));
-  if (novos.length) gravar({ ...estado, decks: [...estado.decks, ...novos], padrao: estado.padrao ?? novos[0].id });
-  return novos.length;
+/**
+ * Traz para este dispositivo os decks da conta que ainda não estão aqui. Deck com o mesmo nome
+ * de um daqui é o mesmo deck: fica um só, com o conteúdo salvo por último, e as cópias
+ * repetidas na conta são apagadas.
+ */
+export function trazerDecksDaConta(): Promise<number> {
+  return emFila(async () => {
+    const sb = supabase();
+    if (!sb || !contaAtual()) return 0;
+    const { data } = await sb.from("decks").select("id, nome, main, extra, side, atualizado_em").order("atualizado_em", { ascending: false });
+    let decks = [...estado.decks];
+    const repetidos: string[] = [];
+    let novos = 0;
+    for (const r of data ?? []) {
+      const local = decks.find((d) => d.contaId === r.id) ?? decks.find((d) => chaveNome(d.nome) === chaveNome(r.nome));
+      if (!local) {
+        decks.push({ id: novoId(), nome: r.nome, main: r.main, extra: r.extra, side: r.side, contaId: r.id, atualizadoEm: r.atualizado_em });
+        novos++;
+      } else if (local.contaId && local.contaId !== r.id) repetidos.push(r.id);
+      else if (!local.contaId) {
+        const maisNovo = r.atualizado_em > local.atualizadoEm;
+        decks = decks.map((d) => (d.id !== local.id ? d : maisNovo ? { ...d, main: r.main, extra: r.extra, side: r.side, contaId: r.id, atualizadoEm: r.atualizado_em } : { ...d, contaId: r.id }));
+      }
+    }
+    if (decks.length !== estado.decks.length || decks.some((d, i) => d !== estado.decks[i])) gravar({ ...estado, decks, padrao: estado.padrao ?? decks[0]?.id });
+    if (repetidos.length) await sb.from("decks").delete().in("id", repetidos);
+    return novos;
+  });
 }
 
 // ---------------------------------------------------------------- regras

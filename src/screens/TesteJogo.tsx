@@ -23,7 +23,7 @@ import {
   type Tabuleiro,
   type ZonaId,
 } from "../db/testeJogo";
-import { categoryOf, displayName, type Card } from "../db/types";
+import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
 import { CARTA_QUALQUER, passoEmTexto, semCartaDoCalculo, type Passo } from "../db/motor";
 import { groupSteps } from "../components/VerifiedCombos";
 import { FontesButton } from "../components/Fontes";
@@ -265,7 +265,7 @@ export default function TesteJogo({
           e.preventDefault();
           setMenu({ uid: c.uid, x: e.clientX, y: e.clientY });
         }}
-        title={card ? `${displayName(card)} — clique para selecionar e depois clique numa zona; botão direito para ações` : undefined}
+        title={card ? `${bilingualName(card)} — clique para selecionar e depois clique numa zona; botão direito para ações` : undefined}
         data-card-id={c.id}
       >
         {verso ? <div className="tj-verso" /> : <img src={cardImage(c.id, "small")} alt={card ? displayName(card) : ""} draggable={false} />}

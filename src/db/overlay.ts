@@ -3,10 +3,10 @@ import type { Card } from "./types";
 import type { CombosCalculados } from "./motor";
 import { normalize } from "./search";
 
-// Camada pública de marcações (repositório Database-Cards-Ygo-Camada): tags e ajustes de
-// leitura revisados, sem textos de cartas. O app aplica a camada sobre os dados da YGOPRODeck.
-export const OVERLAY_URL =
-  "https://raw.githubusercontent.com/juniordsmates/Database-Cards-Ygo-Camada/main/camada.json";
+// Camada pública de marcações (dados/camada.json do repositório público Cartas, o mesmo dos
+// instaladores): tags e ajustes de leitura revisados, sem textos de cartas. O app aplica a
+// camada sobre os dados da YGOPRODeck.
+export const OVERLAY_URL = "https://raw.githubusercontent.com/juniordsmates/Cartas/main/dados/camada.json";
 
 const SUPPORTED_FORMAT = 1;
 

@@ -7,6 +7,7 @@ import {
   contagem,
   copiasPermitidas,
   criarDeck,
+  deckComNome,
   definirPadrao,
   deYdk,
   ehExtra,
@@ -24,7 +25,7 @@ import { cardImage } from "../db/images";
 import { ATTRIBUTES, kindLabel, levelLabel, MONSTER_CLASSES, MONSTER_RACES, SPELL_TYPES, TRAP_TYPES } from "../db/labels";
 import { FORMATS, type GameFormat } from "../db/legality";
 import { EMPTY_FILTERS, searchCards, type Filters, type SortKey } from "../db/search";
-import { categoryOf, displayName, type Card } from "../db/types";
+import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
 import { isDesktop } from "../platform";
 import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
@@ -174,12 +175,19 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     if (!nomeando) return;
     const nome = nomeando.valor.trim();
     if (!nome) return;
+    const existente = deckComNome(nome, nomeando.modo === "renomear" ? trabalho?.id : undefined);
     if (nomeando.modo === "novo") setDeckId(criarDeck(nome).id);
     else if (nomeando.modo === "salvarComo" && trabalho) setDeckId(criarDeck(nome, { main: trabalho.main, extra: trabalho.extra, side: trabalho.side }).id);
-    else if (nomeando.modo === "renomear" && trabalho) {
+    else if (nomeando.modo === "renomear" && trabalho && existente) {
+      // renomear para um nome que já existe: este deck vai por cima do existente
+      salvarDeck({ ...existente, main: trabalho.main, extra: trabalho.extra, side: trabalho.side });
+      excluirDeck(trabalho.id);
+      setDeckId(existente.id);
+    } else if (nomeando.modo === "renomear" && trabalho) {
       const d = salvarDeck({ ...(salvo ?? trabalho), nome });
       setTrabalho({ ...trabalho, nome: d.nome });
     }
+    if (existente) avisar("ok", nomeando.modo === "novo" ? `Já existe um deck "${existente.nome}": ele foi aberto.` : `Salvo por cima do deck "${existente.nome}", que já existia.`);
     setNomeando(null);
   };
 
@@ -252,7 +260,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           if (parte && indice !== undefined) remover(parte, indice);
           else adicionar(c);
         }}
-        title={parte ? `${displayName(c)} — botão direito retira` : `${displayName(c)} — clique adiciona ao Deck (ou ao Extra)`}
+        title={parte ? `${bilingualName(c)} — botão direito retira` : `${bilingualName(c)} — clique adiciona ao Deck (ou ao Extra)`}
         data-card-id={c.id}
       >
         <img src={cardImage(c.id, "small")} alt={displayName(c)} loading="lazy" draggable={false} />

@@ -3,6 +3,8 @@
 App de busca de cartas e montagem de decks de Yu-Gi-Oh! que roda na **web**, no **macOS** e no **Windows** a partir do mesmo código.
 
 > **⬇ Instaladores:** abra a pasta [Install](Install/) para baixar o Cartas para Windows (`.exe`) ou macOS (`.dmg`), com as instruções de instalação.
+>
+> Este repositório é privado. Para o público, só a versão final (hoje **1.0.0 Alpha**) é publicada, nas [Releases do repositório Cartas](https://github.com/juniordsmates/Cartas/releases).
 
 - **Frontend:** React 18 + TypeScript + Vite
 - **Desktop:** Tauri 2 (Rust + WebView do sistema)
@@ -78,7 +80,7 @@ src-tauri/                configuração e código nativo (Rust)
 ## Dados das cartas
 
 - **Cartas:** baixadas da [YGOPRODeck](https://ygoprodeck.com/api-guide/) na primeira abertura (inglês com `misc=yes`, português e staples) e guardadas no dispositivo (IndexedDB). A busca é toda local. Uma vez por dia o app confere se há versão nova.
-- **Camada de marcações:** tags revisadas, ajustes de leitura, arquétipos oficiais, metagame do OCG e pontos do Genesys vêm de [Database-Cards-Ygo-Camada](https://github.com/juniordsmates/Database-Cards-Ygo-Camada) (público, sem textos de cartas), gerada todo dia pelo repositório privado `Database-Cards-Ygo`. Cartas que ainda não estão na camada usam as regras locais de [src/db/tags.ts](src/db/tags.ts).
+- **Camada de marcações:** tags revisadas, ajustes de leitura, arquétipos oficiais, metagame do OCG e pontos do Genesys vêm de [dados/camada.json](https://github.com/juniordsmates/Cartas/blob/main/dados/camada.json) no repositório público [Cartas](https://github.com/juniordsmates/Cartas) (o mesmo dos instaladores, sem textos de cartas), gerada todo dia pelo repositório privado `Database-Cards-Ygo`. Cartas que ainda não estão na camada usam as regras locais de [src/db/tags.ts](src/db/tags.ts).
 - **Imagens:** baixadas uma vez e guardadas em cache (desktop: protocolo `ygoimg://` no Rust; web: service worker).
 
 `src/db/tags.ts`, `effects.ts`, `relations.ts`, `types.ts` e `ygoprodeck.ts` são cópias do repositório `Database-Cards-Ygo`, onde fica o original. Correções de cartas e regras novas devem ser feitas lá.

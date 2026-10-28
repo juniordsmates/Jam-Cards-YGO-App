@@ -93,6 +93,18 @@ function relatedKey(card: Card) {
   return key;
 }
 
+// Só o arquétipo (en/pt), para as listas de sugestão: "mago negro" acha as cartas Dark Magician
+let archetypeIndex: WeakMap<Card, string> | undefined;
+export function archetypeKey(card: Card) {
+  archetypeIndex ??= new WeakMap();
+  let key = archetypeIndex.get(card);
+  if (key === undefined) {
+    key = normalize(`${card.archetype ?? ""} ${card.archetypePt ?? ""}`);
+    archetypeIndex.set(card, key);
+  }
+  return key;
+}
+
 const num = (v: string) => (v.trim() === "" ? undefined : Number(v));
 
 function inRange(value: number | undefined, min?: number, max?: number) {

@@ -102,3 +102,5 @@ export const categoryOf = (card: Card): Category =>
         : "monster";
 
 export const displayName = (card: Card) => card.namePt ?? card.name;
+/** Nome em português e, entre parênteses, o oficial em inglês (dicas e listas de busca) */
+export const bilingualName = (card: Card) => (card.namePt && card.namePt !== card.name ? `${card.namePt} (${card.name})` : card.name);

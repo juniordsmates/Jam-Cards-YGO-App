@@ -4,7 +4,7 @@ import type { KnownCombo } from "../data/combos";
 import { CARTA_QUALQUER, METODO_LABEL, moveText, origemText, respostasDaLinha, semCartaDoCalculo, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
 import { openRespostas } from "./RespostasDialog";
 import { ordenarRespostas, TIPOS, useContextoRespostas } from "../db/respostas";
-import { displayName, type Card } from "../db/types";
+import { bilingualName, displayName, type Card } from "../db/types";
 
 type Hover = (card: Card | null, el?: HTMLElement) => void;
 
@@ -33,6 +33,7 @@ export function Name({ id, byId, onHover }: { id: number; byId: Map<number, Card
   return (
     <span
       className="kc-card"
+      title={card ? bilingualName(card) : undefined}
       onPointerEnter={(e) => card && e.pointerType === "mouse" && onHover(card, e.currentTarget)}
       onPointerLeave={() => onHover(null)}
     >
