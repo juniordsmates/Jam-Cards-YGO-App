@@ -57,7 +57,7 @@ kbd {
   grid-template-rows: minmax(0, 1fr);
   grid-template-columns: minmax(0, 1fr);
   place-items: center;
-  padding: 24px 16px;
+  padding: 24px clamp(16px, 2vw, 40px);
   isolation: isolate;
 }
 
@@ -267,7 +267,8 @@ kbd {
   --accent: var(--cyan);
   align-self: stretch;
   justify-self: stretch;
-  width: min(1100px, 100%);
+  /* usa a largura da janela (com margem); só em telas muito largas há um limite */
+  width: min(2400px, 100%);
   min-height: 0;
   margin: 0 auto;
   display: flex;

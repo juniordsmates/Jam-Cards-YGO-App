@@ -35,6 +35,8 @@ const FASES = ["DP", "SP", "M1", "BP", "M2", "EP"] as const;
 const PILHAS: ZonaId[] = ["deck", "extra", "cemiterio", "banido"];
 
 type Menu = { uid: string; x: number; y: number } | null;
+/** menu do Deck (botão direito na pilha do Deck), no lugar do uid de uma carta */
+const MENU_DECK = "deck";
 
 /** Linha de combo para o "Executar combo": mão inicial e passos */
 export interface ComboTeste {
@@ -145,6 +147,11 @@ export default function TesteJogo({
   const livre = (zonas: ZonaId[]) => zonas.find((z) => !t[z].length);
 
   const acoes = (uid: string): { label: string; fazer: () => void }[] => {
+    if (uid === MENU_DECK)
+      return [
+        { label: "Abrir deck", fazer: () => { setLista("deck"); setMenu(null); } },
+        { label: "Comprar uma carta", fazer: () => { comprarUma(); setMenu(null); } },
+      ];
     const achada = (Object.keys(t) as ZonaId[]).map((z) => ({ z, c: t[z].find((c) => c.uid === uid) })).find((x) => x.c);
     if (!achada?.c) return [];
     const { z, c } = achada;
@@ -278,14 +285,16 @@ export default function TesteJogo({
         onDrop={soltar(id)}
         onContextMenu={(e) => {
           e.preventDefault();
-          if (id === "deck") setLista("deck");
+          e.stopPropagation();
+          if (id === "deck") setMenu({ uid: MENU_DECK, x: e.clientX, y: e.clientY });
         }}
         onClick={() => {
           if (selecionada) return colocar(selecionada, id);
-          if (id === "deck") return comprarUma();
+          // o Deck só responde ao botão direito (Abrir deck / Comprar uma carta)
+          if (id === "deck") return;
           if (pilha && cartas.length) setLista(id);
         }}
-        title={id === "deck" ? "Clique para comprar; botão direito para visualizar o Deck" : pilha ? `${NOMES_ZONA[id]} — clique para ver` : NOMES_ZONA[id]}
+        title={id === "deck" ? "Botão direito: Abrir deck ou Comprar uma carta" : pilha ? `${NOMES_ZONA[id]} — clique para ver` : NOMES_ZONA[id]}
         data-zona={id}
       >
         {cartas[0] && (id === "deck" ? <div className="tj-verso" /> : carta(cartas[0]))}
@@ -492,6 +501,12 @@ export default function TesteJogo({
             <h4>
               {NOMES_ZONA[lista]} ({t[lista].length})
             </h4>
+            {/* com o Deck aberto, as opções do Deck continuam à mão */}
+            {lista === "deck" && (
+              <button className="ghost-btn tj-lista-comprar" onClick={comprarUma} disabled={!t.deck.length}>
+                Comprar uma carta
+              </button>
+            )}
             <button className="ghost-btn" onClick={fecharLista} aria-label="Fechar">✕</button>
           </div>
           <div className="tj-lista-cartas">

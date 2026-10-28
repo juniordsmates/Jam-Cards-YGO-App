@@ -634,13 +634,13 @@ test("respostas: passos mostram as interrupções do oponente, com opção de es
   await reset();
 });
 
-test("editor de deck: importar .ydk, adicionar pela busca, banlist, Side, Extra e exportar", async () => {
+test("editor de deck: importar .ydk, adicionar pela busca, banlist, Extra e exportar (sem Side)", async () => {
   await page.evaluate(() => localStorage.removeItem("cartas-decks"));
   await page.goto(URL);
   await page.waitForSelector(".menu-btn");
   await page.click(".menu-btn:has-text('Editor de Deck')");
   await page.waitForSelector(".deck-editor", { timeout: 120_000 });
-  // importar um .ydk (Ash x2, Pote da Ganância, Accesscode Talker no Extra, Effect Veiler no Side)
+  // importar um .ydk (Ash x2, Pote da Ganância, Accesscode Talker no Extra; o Side é ignorado)
   await page.click(".de-botoes button:has-text('Importar')");
   await page.fill(".de-painel textarea", "#main\n14558127\n14558127\n55144522\n#extra\n86066372\n!side\n97268402\n");
   await page.click(".de-painel button:has-text('Importar texto')");
@@ -648,7 +648,8 @@ test("editor de deck: importar .ydk, adicionar pela busca, banlist, Side, Extra 
   const total = (parte) => page.textContent(`.de-${parte} .de-total`);
   assert.equal(await total("main"), "3");
   assert.equal(await total("extra"), "1");
-  assert.equal(await total("side"), "1");
+  assert.equal(await page.$(".de-side"), null);
+  assert.ok((await page.textContent(".de-controles")).includes("Side ignorado"));
   // Pote da Ganância é proibido no TCG: selo 0 e aviso
   assert.ok(await page.$(".de-main .de-thumb[data-card-id='55144522'] .de-selo-0"));
   assert.ok((await page.textContent(".de-avisos")).includes("máximo 0 no TCG"));
@@ -660,20 +661,20 @@ test("editor de deck: importar .ydk, adicionar pela busca, banlist, Side, Extra 
   await page.click(".de-resultados .de-thumb[data-card-id='14558127']");
   assert.equal(await total("main"), "4");
   assert.ok((await page.textContent(".de-controles")).includes("Limite de 3 cópias"));
-  // botão direito numa carta do deck retira; na busca, adiciona ao Side
+  // botão direito numa carta do deck retira; na busca, também adiciona ao Deck
   await page.click(".de-main .de-thumb[data-card-id='55144522']", { button: "right" });
   assert.equal(await total("main"), "3");
   await page.fill(".de-busca input[aria-label=Nome]", "effect veiler");
   await page.waitForSelector(".de-resultados .de-thumb[data-card-id='97268402']");
   await page.click(".de-resultados .de-thumb[data-card-id='97268402']", { button: "right" });
-  assert.equal(await total("side"), "2");
+  assert.equal(await total("main"), "4");
   // salvar e exportar em .ydk
   await page.click(".de-salvar");
   await page.click(".de-botoes button:has-text('Exportar')");
   const ydk = await page.inputValue(".de-painel textarea");
-  assert.ok(ydk.includes("#main") && ydk.includes("#extra\n86066372") && ydk.includes("!side\n97268402\n97268402"), ydk);
+  assert.ok(ydk.includes("#main") && ydk.includes("97268402") && ydk.includes("#extra\n86066372") && ydk.trimEnd().endsWith("!side"), ydk);
   const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("cartas-decks")).decks[0]);
-  assert.equal(salvo.main.length, 3);
+  assert.equal(salvo.main.length, 4);
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
 });
@@ -725,7 +726,22 @@ test("teste de jogo: Teste de Mão compra 5 de um Deck embaralhado, comprar, inv
   await page.click(".tj-mao .tj-carta >> nth=0", { button: "right" });
   await page.click(".tj-menu button:has-text('Ativar efeito')");
   assert.ok((await page.textContent(".tj-log li >> nth=0")).startsWith("Ativou o efeito de"));
+  // Deck: clique esquerdo não faz nada; o direito abre "Abrir deck" / "Comprar uma carta"
   await page.click(".tj-zona[data-zona=deck]");
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 5);
+  assert.equal(await page.$(".tj-menu"), null);
+  await page.click(".tj-zona[data-zona=deck]", { button: "right" });
+  await page.click(".tj-menu button:has-text('Comprar uma carta')");
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 6);
+  // com o Deck aberto, as opções continuam (comprar pela própria visualização)
+  await page.click(".tj-zona[data-zona=deck]", { button: "right" });
+  await page.click(".tj-menu button:has-text('Abrir deck')");
+  await page.click(".tj-lista-comprar");
+  assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 7);
+  await page.click(".tj-lista [aria-label=Fechar]");
+  await page.click(".tj-teste-mao");
+  await page.click(".tj-zona[data-zona=deck]", { button: "right" });
+  await page.click(".tj-menu button:has-text('Comprar uma carta')");
   assert.equal(await page.$$eval(".tj-mao .tj-carta", (e) => e.length), 6);
   assert.equal(await deck(), 34);
   // Teste de Mão de novo: volta a 5 na mão e 35 no Deck

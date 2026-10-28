@@ -30,9 +30,9 @@ import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
 
 const POR_PAGINA = 24;
+// sem Side Deck no editor (o arquivo .ydk ainda lê e grava a seção, vazia)
 const PARTES: { id: Parte; label: string }[] = [
   { id: "main", label: "Deck" },
-  { id: "side", label: "Side" },
   { id: "extra", label: "Extra" },
 ];
 
@@ -202,11 +202,12 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     const { deck, ignorados } = deYdk(texto, idCanonico);
     if (!deck.main.length && !deck.extra.length && !deck.side.length) return avisar("erro", "Nenhuma carta reconhecida. Use o formato .ydk (#main, #extra, !side).");
     // sem deck aberto, cria um deck com o conteúdo importado; com deck aberto, substitui (sem salvar)
-    if (!trabalho) setDeckId(criarDeck("Deck importado", deck).id);
-    else setTrabalho({ ...trabalho, ...deck });
+    const semSide = { ...deck, side: [] };
+    if (!trabalho) setDeckId(criarDeck("Deck importado", semSide).id);
+    else setTrabalho({ ...trabalho, ...semSide });
     setPainel(null);
     setTextoImport("");
-    avisar("ok", `Importado: ${deck.main.length} no Main, ${deck.extra.length} no Extra, ${deck.side.length} no Side${ignorados ? ` (${ignorados} cartas não reconhecidas)` : ""}.${trabalho ? " Clique em Salvar." : ""}`);
+    avisar("ok", `Importado: ${deck.main.length} no Main e ${deck.extra.length} no Extra${deck.side.length ? ` (Side ignorado: ${deck.side.length})` : ""}${ignorados ? ` (${ignorados} cartas não reconhecidas)` : ""}.${trabalho ? " Clique em Salvar." : ""}`);
   };
 
   const lerArquivo = (f?: File | null) => {
@@ -249,9 +250,9 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
         onContextMenu={(e: MouseEvent) => {
           e.preventDefault();
           if (parte && indice !== undefined) remover(parte, indice);
-          else adicionar(c, "side");
+          else adicionar(c);
         }}
-        title={parte ? `${displayName(c)} — botão direito retira` : `${displayName(c)} — clique adiciona ao Deck; botão direito, ao Side`}
+        title={parte ? `${displayName(c)} — botão direito retira` : `${displayName(c)} — clique adiciona ao Deck (ou ao Extra)`}
         data-card-id={c.id}
       >
         <img src={cardImage(c.id, "small")} alt={displayName(c)} loading="lazy" draggable={false} />
@@ -266,6 +267,12 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
       accent="magenta"
       onBack={onBack}
       actions={
+        <span className="de-topo">
+          {!testando && (
+            <button className="ghost-btn de-teste" disabled={!trabalho?.main.length} onClick={() => setTestando(true)} title="Teste de Jogo (Solo Mode) com este deck">
+              ▶ Teste de Jogo
+            </button>
+          )}
         <div className="format-switch combos-format" role="radiogroup" aria-label="Formato">
           {FORMATS.map((f) => (
             <button key={f} role="radio" aria-checked={formato === f} className={formato === f ? "active" : ""} onClick={() => setFormato(f)}>
@@ -273,6 +280,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
             </button>
           ))}
         </div>
+        </span>
       }
       plain
     >
@@ -346,7 +354,6 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                   <button className="ghost-btn" disabled={!trabalho} onClick={() => setPainel(painel === "exportar" ? null : "exportar")}>Exportar</button>
                   <button className="ghost-btn" disabled={!trabalho} onClick={() => trabalho && setTrabalho({ ...trabalho, main: [], extra: [], side: [] })}>Limpar</button>
                   <button className="ghost-btn" disabled={!trabalho || trabalho.id === padrao} onClick={() => trabalho && definirPadrao(trabalho.id)}>Definir padrão</button>
-                  <button className="ghost-btn de-teste" disabled={!trabalho?.main.length} onClick={() => setTestando(true)}>Teste de Jogo</button>
                   {confirmarExclusao ? (
                     <button
                       className="danger-btn"
@@ -534,7 +541,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
             <div className="de-resultados">
               {resultados.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA).map((c) => thumb(c.id, undefined, undefined, String(c.id)))}
             </div>
-            <p className="tags-note">Clique adiciona ao Deck (ou Extra); botão direito, ao Side. Arraste para mover; solte aqui para retirar.</p>
+            <p className="tags-note">Clique adiciona ao Deck (ou ao Extra). Arraste para mover; solte aqui para retirar.</p>
           </aside>
         </div>
       )}
