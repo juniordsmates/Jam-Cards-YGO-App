@@ -29,7 +29,12 @@ export interface CartaJogo {
   defesa: boolean;
   /** matérias Xyz anexadas */
   materiais: CartaJogo[];
+  /** token criado no teste: só existe no campo (ao sair, deixa de existir) */
+  ficha?: boolean;
 }
+
+/** Token genérico (sem carta na base) */
+export const TOKEN_GENERICO = 0;
 
 export type Tabuleiro = Record<ZonaId, CartaJogo[]>;
 
@@ -133,6 +138,14 @@ function retirar(t: Tabuleiro, uid: string): { t: Tabuleiro; carta: CartaJogo } 
   return { t: novo, carta: achada.carta };
 }
 
+/** Cria um token na zona (virado para cima, em ataque ou em defesa) */
+export function criarToken(t: Tabuleiro, id: number, para: ZonaId, defesa = false): Tabuleiro {
+  return { ...t, [para]: [{ ...carta(id), defesa, ficha: true }, ...t[para]] };
+}
+
+/** Zonas onde um token pode ficar (fora delas, ele deixa de existir) */
+const ZONAS_DE_TOKEN = new Set<ZonaId>([...MONSTROS, ...MONSTROS_EXTRA]);
+
 export type Posicao = "topo" | "fundo";
 
 /**
@@ -143,6 +156,8 @@ export function mover(t: Tabuleiro, uid: string, para: ZonaId, opts: { posicao?:
   const r = retirar(t, uid);
   if (!r) return t;
   let { t: novo } = r;
+  // token que sai das Zonas de Monstros deixa de existir
+  if (r.carta.ficha && !ZONAS_DE_TOKEN.has(para)) return novo;
   const saiDoCampo = !ZONAS_UNICAS.has(para);
   const c: CartaJogo = {
     ...r.carta,
@@ -151,7 +166,9 @@ export function mover(t: Tabuleiro, uid: string, para: ZonaId, opts: { posicao?:
     materiais: saiDoCampo ? [] : r.carta.materiais,
   };
   // matérias de uma carta que saiu do campo vão para o Cemitério
-  if (saiDoCampo && r.carta.materiais.length) novo = { ...novo, cemiterio: [...r.carta.materiais.map((m) => ({ ...m, materiais: [] })), ...novo.cemiterio] };
+  // (tokens usados como matéria deixam de existir)
+  const materiais = r.carta.materiais.filter((m) => !m.ficha);
+  if (saiDoCampo && materiais.length) novo = { ...novo, cemiterio: [...materiais.map((m) => ({ ...m, materiais: [] })), ...novo.cemiterio] };
   if (ZONAS_UNICAS.has(para) && novo[para].length) {
     const [alvo] = novo[para];
     novo = { ...novo, [para]: [{ ...alvo, materiais: [...alvo.materiais, { ...c, baixada: false, defesa: false, materiais: [] }] }] };

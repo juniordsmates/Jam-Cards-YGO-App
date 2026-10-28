@@ -8,6 +8,8 @@ import {
   alternar,
   anotarPasso,
   campoDoTabuleiro,
+  criarToken,
+  TOKEN_GENERICO,
   metodoDoExtra,
   zonaDoPasso,
   comprar,
@@ -44,10 +46,13 @@ import "./teste-jogo.css";
 const FASES = ["DP", "SP", "M1", "BP", "M2", "EP"] as const;
 const PILHAS: ZonaId[] = ["deck", "extra", "cemiterio", "banido"];
 
-type Menu = { uid: string; x: number; y: number } | null;
+/** `zona`: no menu de token, a zona vazia onde ele será criado */
+type Menu = { uid: string; x: number; y: number; zona?: ZonaId } | null;
 /** menus das pilhas (botão direito no Deck ou no Extra Deck), no lugar do uid de uma carta */
 const MENU_DECK = "deck";
 const MENU_EXTRA = "extra";
+/** menu "Criar token" (botão ou botão direito numa Zona de Monstros vazia) */
+const MENU_TOKEN = "token";
 
 /** Linha de combo para o "Executar combo": mão inicial e passos */
 export interface ComboTeste {
@@ -80,14 +85,15 @@ export default function TesteJogo({
   const [passo, setPasso] = useState<number | null>(null);
   const grupos = combo ? groupSteps(semCartaDoCalculo({ qualquer: combo.qualquer, passos: combo.passos }).passos) : [];
   const textoPasso = (p: Passo) => {
-    const t = passoEmTexto(p, (id) => (id === 0 ? "Ficha" : id === CARTA_QUALQUER ? "carta qualquer" : byId.get(id) ? displayName(byId.get(id)!) : `#${id}`));
+    const t = passoEmTexto(p, (id) => (id === TOKEN_GENERICO ? "Token" : id === CARTA_QUALQUER ? "carta qualquer" : byId.get(id) ? displayName(byId.get(id)!) : `#${id}`));
     return t.charAt(0).toUpperCase() + t.slice(1);
   };
   const [t, setT] = useState<Tabuleiro>(() => testeDeMao(main, extra));
   const [lp, setLp] = useState(8000);
   const [lpAjuste, setLpAjuste] = useState("");
   const [fase, setFase] = useState<(typeof FASES)[number]>("M1");
-  const [preview, setPreview] = useState<Card | null>(null);
+  // carta em foco no painel da esquerda ("token": a carta Token, que não existe na base)
+  const [preview, setPreview] = useState<Card | "token" | null>(null);
   const [menu, setMenu] = useState<Menu>(null);
   // clicar para mover: a carta clicada fica selecionada e o próximo clique numa zona a coloca lá
   const [selecionada, setSelecionada] = useState<string | null>(null);
@@ -133,7 +139,8 @@ export default function TesteJogo({
   const anotar = (p: Passo | null, c?: CartaJogo) => {
     if (!p) return;
     setAnotados((ps) => anotarPasso(ps, p));
-    if (c) usadas.current.set(c.uid, c.id);
+    // tokens não contam como cópias de cartas do deck
+    if (c && !c.ficha) usadas.current.set(c.uid, c.id);
   };
   /** Passo de combo de um movimento (null: sem passo, como trocar de zona no próprio campo) */
   const passoDoMovimento = (c: CartaJogo, de: ZonaId, para: ZonaId | "material", opts: { baixada?: boolean; normal?: boolean } = {}): Passo | null => {
@@ -152,7 +159,7 @@ export default function TesteJogo({
     }
     return { t: "move", c: c.id, de: dz, para: pz };
   };
-  const nomeId = (id: number) => (byId.get(id) ? displayName(byId.get(id)!) : `#${id}`);
+  const nomeId = (id: number) => (byId.get(id) ? displayName(byId.get(id)!) : id === TOKEN_GENERICO ? "Token" : `#${id}`);
   const tituloSugerido = () => {
     const arq = arquetiposDe(maoInicial.map((c) => byId.get(c.id)).filter((c): c is Card => !!c))[0];
     return `${arq ? `${arq}: ` : ""}${maoInicial.map((c) => nomeId(c.id)).join(" + ")}`.slice(0, 120);
@@ -198,7 +205,7 @@ export default function TesteJogo({
 
   const nomeDe = (c: CartaJogo) => {
     const card = byId.get(c.id);
-    return card ? displayName(card) : `#${c.id}`;
+    return card ? displayName(card) : c.id === TOKEN_GENERICO ? "Token" : `#${c.id}`;
   };
   const registrar = (msg: string) => setLog((l) => [msg, ...l].slice(0, 60));
 
@@ -261,12 +268,34 @@ export default function TesteJogo({
         { label: "Comprar uma carta", fazer: () => { comprarUma(); setMenu(null); } },
       ];
     if (uid === MENU_EXTRA) return [{ label: "Abrir Extra Deck", fazer: () => { setLista("extra"); setMenu(null); } }];
+    if (uid === MENU_TOKEN) {
+      const zona = menu?.zona ?? livre(MONSTROS);
+      if (!zona) return [{ label: "Sem Zona de Monstros livre", fazer: () => setMenu(null) }];
+      // carta Token: nome "Token", Nível ?, ATK ?, DEF ?, tipo ? e sem atributo
+      const criar = (defesa: boolean) => {
+        setT((a) => criarToken(a, TOKEN_GENERICO, zona, defesa));
+        registrar(`Criou um Token${defesa ? " em defesa" : ""} (${NOMES_ZONA[zona]}).`);
+        anotar({ t: "invoca", c: TOKEN_GENERICO, de: "fora" });
+        setMenu(null);
+      };
+      return [
+        { label: "Criar token em ataque", fazer: () => criar(false) },
+        { label: "Criar token em defesa", fazer: () => criar(true) },
+      ];
+    }
     const achada = (Object.keys(t) as ZonaId[]).map((z) => ({ z, c: t[z].find((c) => c.uid === uid) })).find((x) => x.c);
     if (!achada?.c) return [];
     const { z, c } = achada;
     const card = byId.get(c.id);
     const n = nomeDe(c);
     const out: { label: string; fazer: () => void }[] = [];
+    // token: só fica nas Zonas de Monstros; ao sair do campo, deixa de existir
+    if (c.ficha)
+      return [
+        { label: c.defesa ? "Posição de ataque" : "Posição de defesa", fazer: () => { setT((a) => alternar(a, uid, "defesa")); registrar(`Mudou a posição de ${n}.`); setMenu(null); } },
+        { label: "Mover (clique na zona)", fazer: () => { setSelecionada(uid); setMenu(null); } },
+        { label: "Tirar do campo", fazer: () => moverPara(uid, "cemiterio", {}, `${n} saiu do campo e deixou de existir.`) },
+      ];
     const noCampo = ZONAS_UNICAS.has(z);
     // ativar um efeito: em qualquer zona e posição, só registra (sem regras)
     out.push({
@@ -383,7 +412,7 @@ export default function TesteJogo({
         className={`tj-carta ${c.defesa ? "tj-defesa" : ""} ${pequena ? "tj-pequena" : ""} ${selecionada === c.uid ? "tj-sel" : ""} ${ativada === c.uid ? "tj-ativa" : ""}`}
         draggable
         onDragStart={arrastar(c.uid)}
-        onMouseEnter={() => card && setPreview(card)}
+        onMouseEnter={() => (c.id === TOKEN_GENERICO ? setPreview("token") : card && setPreview(card))}
         onClick={(e) => {
           e.stopPropagation();
           const zonaDela = (Object.keys(t) as ZonaId[]).find((z) => t[z].some((x) => x.uid === c.uid));
@@ -400,7 +429,17 @@ export default function TesteJogo({
         title={card ? `${bilingualName(card)} — clique para selecionar e depois clique numa zona; botão direito para ações` : undefined}
         data-card-id={c.id}
       >
-        {verso ? <div className="tj-verso" /> : <img src={cardImage(c.id, "small")} alt={card ? displayName(card) : ""} draggable={false} />}
+        {verso ? (
+          <div className="tj-verso" />
+        ) : c.id === TOKEN_GENERICO ? (
+          <div className="tj-token">
+            <strong>Token</strong>
+            <span>Nível ?</span>
+            <span>? / ?</span>
+          </div>
+        ) : (
+          <img src={cardImage(c.id, "small")} alt={card ? displayName(card) : ""} draggable={false} />
+        )}
         {!verso && card && <CardSelos card={card} formato={formato} />}
         {c.materiais.length > 0 && <span className="tj-materiais" title="Matérias Xyz">{c.materiais.length}</span>}
       </div>
@@ -421,6 +460,7 @@ export default function TesteJogo({
           e.stopPropagation();
           if (id === "deck") setMenu({ uid: MENU_DECK, x: e.clientX, y: e.clientY });
           if (id === "extra") setMenu({ uid: MENU_EXTRA, x: e.clientX, y: e.clientY });
+          if ((MONSTROS.includes(id) || MONSTROS_EXTRA.includes(id)) && !cartas.length) setMenu({ uid: MENU_TOKEN, x: e.clientX, y: e.clientY, zona: id });
         }}
         onClick={() => {
           if (selecionada) return colocar(selecionada, id);
@@ -446,7 +486,19 @@ export default function TesteJogo({
   return (
     <div className="teste-jogo" onContextMenu={(e) => e.preventDefault()}>
       <aside className="tj-esq">
-        {preview ? (
+        {preview === "token" ? (
+          <>
+            <div className="tj-token tj-token-grande">
+              <strong>Token</strong>
+              <span>Nível ?</span>
+              <span>ATK ? / DEF ?</span>
+            </div>
+            <strong>Token</strong>
+            <small>Monstro Token · Nível ? · Tipo ? · Sem atributo</small>
+            <small>ATK ? / DEF ?</small>
+            <p className="tags-note">Criado no teste: fica só nas Zonas de Monstros e, ao sair do campo, deixa de existir.</p>
+          </>
+        ) : preview ? (
           <>
             <img src={cardImage(preview.id, "full")} alt={displayName(preview)} />
             <strong>{displayName(preview)}</strong>
@@ -605,6 +657,9 @@ export default function TesteJogo({
           <button className="ghost-btn" onClick={comprarUma}>Comprar</button>
           <button className="ghost-btn" onClick={embaralhar}>Embaralhar</button>
           <button className="ghost-btn tj-visualizar" onClick={() => setLista("deck")}>Visualizar Deck</button>
+          <button className="ghost-btn tj-criar-token" onClick={(e) => setMenu({ uid: MENU_TOKEN, x: e.clientX, y: e.clientY })} title="Cria um token numa Zona de Monstros livre (ou clique com o botão direito numa zona vazia)">
+            Criar token
+          </button>
           <button className="ghost-btn" onClick={() => registrar(`Dado: ${aleatorio(6) + 1}.`)}>Dado</button>
           <button className="ghost-btn" onClick={() => registrar(`Moeda: ${aleatorio(2) ? "cara" : "coroa"}.`)}>Moeda</button>
           <button className="ghost-btn" onClick={onFechar}>Voltar ao editor</button>

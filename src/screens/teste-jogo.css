@@ -595,3 +595,37 @@
 .tj-papel {
   white-space: nowrap;
 }
+
+/* token genérico (sem imagem na base) */
+.tj-token {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 59 / 86;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3b2a12;
+  background: repeating-linear-gradient(45deg, #e8d7b0 0 6px, #d9c393 6px 12px);
+  border: 1px solid #a8885a;
+  border-radius: 4px;
+}
+
+.tj-token span {
+  font-size: 0.55rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.tj-token-grande {
+  width: 100%;
+  font-size: 1.2rem;
+}
+
+.tj-token-grande span {
+  font-size: 0.9rem;
+}
