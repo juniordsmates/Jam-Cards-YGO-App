@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent } from "react";
 import ScreenShell from "./ScreenShell";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { useConta } from "../db/conta";
@@ -30,6 +30,11 @@ import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
 
 const POR_PAGINA = 24;
+// grade do deck: 10 cartas por linha no Main (4 a 6 linhas, até 60) e as 15 do Extra numa linha só
+const COLUNAS_MAIN = 10;
+const COLUNAS_EXTRA = 15;
+const VAO = 4; // espaço entre as cartas (px)
+const PROPORCAO = 86 / 59; // altura / largura da carta
 const SEM_LIMITE = "cartas-editor-sem-limite";
 const ESTOQUE = "cartas-editor-estoque";
 
@@ -103,6 +108,9 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const [pagina, setPagina] = useState(0);
   const [nomeando, setNomeando] = useState<Nomeando>(null);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
+  // tamanho das cartas do deck: o maior em que Main e Extra cabem inteiros no centro, sem rolar
+  const centroRef = useRef<HTMLElement>(null);
+  const [cartaPx, setCartaPx] = useState({ main: 60, extra: 50, linhas: 4 });
   // "Importar deck list": painel com arquivo .ydk ou texto/link colado
   const [importando, setImportando] = useState(false);
   const [textoImport, setTextoImport] = useState("");
@@ -273,6 +281,39 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     setDeckId(id);
     setMensagem(null);
   };
+
+  // ---------------------------------------------------------------- tamanho das cartas do deck
+
+  const qtdMain = trabalho?.main.length ?? 0;
+  useLayoutEffect(() => {
+    const centro = centroRef.current;
+    if (!centro) return;
+    const medir = () => {
+      const grade = centro.querySelector<HTMLElement>(".de-main .de-grade");
+      const titulo = centro.querySelector<HTMLElement>(".de-titulo");
+      if (!grade) return;
+      const linhas = Math.max(4, Math.ceil(qtdMain / COLUNAS_MAIN));
+      const largura = grade.clientWidth;
+      const estilo = getComputedStyle(centro);
+      // fora do centro: espaçamento interno do painel, título, vãos entre blocos e o respiro de cada bloco
+      const altura =
+        centro.clientHeight - parseFloat(estilo.paddingTop) - parseFloat(estilo.paddingBottom) - (titulo?.offsetHeight ?? 0) - 2 * 10 - 4 * 8;
+      let extra = Math.floor((largura - (COLUNAS_EXTRA - 1) * VAO) / COLUNAS_EXTRA);
+      let main = Math.floor((largura - (COLUNAS_MAIN - 1) * VAO) / COLUNAS_MAIN);
+      // tela larga (três colunas): a altura também limita; no celular (uma coluna), só a largura
+      if (window.innerWidth > 1100) {
+        const cabeAltura = (altura - extra * PROPORCAO - (linhas - 1) * VAO) / linhas / PROPORCAO;
+        main = Math.min(main, Math.floor(cabeAltura));
+        extra = Math.min(extra, main);
+      }
+      setCartaPx({ main: Math.max(10, main), extra: Math.max(10, extra), linhas });
+    };
+    medir();
+    const obs = new ResizeObserver(medir);
+    obs.observe(centro);
+    return () => obs.disconnect();
+    // o centro só existe com a base carregada e fora do Teste de Jogo
+  }, [qtdMain, trabalho?.id, db.status, testando]);
 
   // ---------------------------------------------------------------- render
 
@@ -496,7 +537,11 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           </aside>
 
           {/* ---------------- centro: Main, Side e Extra */}
-          <section className="de-centro">
+          <section
+            className="de-centro"
+            ref={centroRef}
+            style={{ "--carta-main": `${cartaPx.main}px`, "--carta-extra": `${cartaPx.extra}px`, "--linhas-main": cartaPx.linhas } as CSSProperties}
+          >
             {!trabalho ? (
               <div className="combos-empty">
                 <p>Nenhum deck aberto.</p>

@@ -157,14 +157,30 @@
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);
   gap: 8px;
-  min-height: 90px;
   padding: 8px;
   border-radius: 10px;
 }
 
 .de-main {
-  min-height: 300px;
   background: color-mix(in srgb, #7a3fd1 12%, transparent);
+}
+
+/* grades do deck: tamanho das cartas calculado no DeckEditor (Main e Extra cabem sem rolar).
+   Main: 10 por linha, sempre com espaço para 4 a 6 linhas; Extra: as 15 numa linha */
+.de-parte .de-grade {
+  justify-content: center;
+}
+
+.de-main .de-grade {
+  grid-template-columns: repeat(10, var(--carta-main));
+  grid-auto-rows: calc(var(--carta-main) * 86 / 59);
+  min-height: calc(var(--linhas-main) * var(--carta-main) * 86 / 59 + (var(--linhas-main) - 1) * 4px);
+}
+
+.de-extra .de-grade {
+  grid-template-columns: repeat(15, var(--carta-extra));
+  grid-auto-rows: calc(var(--carta-extra) * 86 / 59);
+  min-height: calc(var(--carta-extra) * 86 / 59);
 }
 
 .de-side {
