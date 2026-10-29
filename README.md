@@ -50,7 +50,7 @@ O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **d
 
 A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push no branch `release` e publica no Release da versão (tag `v<versão>-<canal>`, com o número do `package.json`):
 
-- **Windows:** `Jam Cards - YGO!_<versão>_x64-setup.exe` (o nome do app vem do `productName` do Tauri). Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
+- **Windows:** `Jam Cards - YGO!_<versão>_x64-setup.exe` (o nome do app vem do `productName` do Tauri; no GitHub, espaços e "!" viram pontos: `Jam.Cards.-.YGO._<versão>_x64-setup.exe`). Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
 - **macOS:** `Jam Cards - YGO!_<versão>_universal.dmg` (Apple Silicon e Intel).
 - **Pasta Install:** depois dos dois builds, a Action copia os instaladores para [Install/](Install/)`<versão>/` na `main` e atualiza o [Install/README.md](Install/README.md) ([scripts/install-readme.mjs](scripts/install-readme.mjs)), uma pasta por versão de distribuição.
 
