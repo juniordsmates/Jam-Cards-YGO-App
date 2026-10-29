@@ -72,7 +72,7 @@ export default function MainMenu({ active, onSearch, onCombos, onDeck, onTeste, 
     <section className="menu">
       <header className="menu-header">
         <h1 className="logo">
-          Cartas
+          Jam Cards - YGO!
         </h1>
         <p className="subtitle">Busca · Decks</p>
       </header>

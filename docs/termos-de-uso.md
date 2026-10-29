@@ -1,8 +1,8 @@
-# Termos de Uso — Cartas
+# Termos de Uso — Jam Cards - YGO!
 
 Última atualização: 26 de outubro de 2026.
 
-Estes termos regem o uso do app **Cartas** ("App"), um projeto independente e gratuito mantido por seus criadores e desenvolvedores ("Desenvolvedores"). Ao usar o App ou criar uma conta, você concorda com estes termos e com a [Política de Privacidade](politica-de-privacidade.md).
+Estes termos regem o uso do app **Jam Cards - YGO!** ("App"), um projeto independente e gratuito mantido por seus criadores e desenvolvedores ("Desenvolvedores"). Ao usar o App ou criar uma conta, você concorda com estes termos e com a [Política de Privacidade](politica-de-privacidade.md).
 
 ## 1. O que é o App
 

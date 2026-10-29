@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    cartas_lib::run()
+    jam_cards_ygo_lib::run()
 }

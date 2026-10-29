@@ -418,7 +418,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cartas"
+name = "jam-cards-ygo"
 version = "1.0.1"
 dependencies = [
  "reqwest 0.12.28",

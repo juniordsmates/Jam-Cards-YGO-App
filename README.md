@@ -1,10 +1,10 @@
-# Cartas
+# Jam Cards - YGO!
 
 App de busca de cartas e montagem de decks de Yu-Gi-Oh! que roda na **web**, no **macOS** e no **Windows** a partir do mesmo código.
 
-> **⬇ Instaladores:** abra a pasta [Install](Install/) para baixar o Cartas para Windows (`.exe`) ou macOS (`.dmg`), com as instruções de instalação.
+> **⬇ Instaladores:** abra a pasta [Install](Install/) para baixar o Jam Cards - YGO! para Windows (`.exe`) ou macOS (`.dmg`), com as instruções de instalação.
 >
-> Este repositório é privado. Para o público, só a versão final (hoje **1.0.0 Alpha**) é publicada, nas [Releases do repositório Cartas](https://github.com/juniordsmates/Cartas/releases).
+> Este repositório é privado. Para o público, só a versão final (hoje **1.0.0 Alpha**) é publicada, nas [Releases do repositório Jam-Cards-YGO](https://github.com/juniordsmates/Jam-Cards-YGO/releases).
 
 - **Frontend:** React 18 + TypeScript + Vite
 - **Desktop:** Tauri 2 (Rust + WebView do sistema)
@@ -50,13 +50,13 @@ O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **d
 
 A GitHub Action [versao.yml](.github/workflows/versao.yml) roda a cada push no branch `release` e publica no Release da versão (tag `v<versão>-<canal>`, com o número do `package.json`):
 
-- **Windows:** `Cartas_<versão>_x64-setup.exe`. Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
-- **macOS:** `Cartas_<versão>_universal.dmg` (Apple Silicon e Intel).
+- **Windows:** `Jam Cards - YGO!_<versão>_x64-setup.exe` (o nome do app vem do `productName` do Tauri). Se o app já estiver instalado, o instalador só atualiza, e os dados ficam.
+- **macOS:** `Jam Cards - YGO!_<versão>_universal.dmg` (Apple Silicon e Intel).
 - **Pasta Install:** depois dos dois builds, a Action copia os instaladores para [Install/](Install/)`<versão>/` na `main` e atualiza o [Install/README.md](Install/README.md) ([scripts/install-readme.mjs](scripts/install-readme.mjs)), uma pasta por versão de distribuição.
 
-Para atualizar a distribuição: quando o dono pedir, leve a `main` para o branch `release`. Para uma versão nova: suba o número nos três arquivos acima (e no `package-lock.json` e `src-tauri/Cargo.lock`) na `main` antes de levar para a `release`. A release pública do repositório [Cartas](https://github.com/juniordsmates/Cartas/releases) só troca de instalador quando o dono pede.
+Para atualizar a distribuição: quando o dono pedir, leve a `main` para o branch `release`. Para uma versão nova: suba o número nos três arquivos acima (e no `package-lock.json` e `src-tauri/Cargo.lock`) na `main` antes de levar para a `release`. A release pública do repositório [Jam-Cards-YGO](https://github.com/juniordsmates/Jam-Cards-YGO/releases) só troca de instalador quando o dono pede.
 
-O app não tem assinatura digital. No Windows, na primeira execução pode aparecer "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**. No macOS: **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**; se aparecer "está danificado", `xattr -cr /Applications/Cartas.app`.
+O app não tem assinatura digital. No Windows, na primeira execução pode aparecer "O Windows protegeu o computador" → **Mais informações** → **Executar assim mesmo**. No macOS: **Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim**; se aparecer "está danificado", `xattr -cr '/Applications/Jam Cards - YGO!.app'`.
 
 ## Estrutura
 
@@ -80,7 +80,7 @@ src-tauri/                configuração e código nativo (Rust)
 ## Dados das cartas
 
 - **Cartas:** baixadas da [YGOPRODeck](https://ygoprodeck.com/api-guide/) na primeira abertura (inglês com `misc=yes`, português e staples) e guardadas no dispositivo (IndexedDB). A busca é toda local. Uma vez por dia o app confere se há versão nova.
-- **Camada de marcações:** tags revisadas, ajustes de leitura, arquétipos oficiais, metagame do OCG e pontos do Genesys vêm de [dados/camada.json](https://github.com/juniordsmates/Cartas/blob/main/dados/camada.json) no repositório público [Cartas](https://github.com/juniordsmates/Cartas) (o mesmo dos instaladores, sem textos de cartas), gerada todo dia pelo repositório privado `Database-Cards-Ygo`. Cartas que ainda não estão na camada usam as regras locais de [src/db/tags.ts](src/db/tags.ts).
+- **Camada de marcações:** tags revisadas, ajustes de leitura, arquétipos oficiais, metagame do OCG e pontos do Genesys vêm de [dados/camada.json](https://github.com/juniordsmates/Jam-Cards-YGO/blob/main/dados/camada.json) no repositório público [Jam-Cards-YGO](https://github.com/juniordsmates/Jam-Cards-YGO) (o mesmo dos instaladores, sem textos de cartas), gerada todo dia pelo repositório privado `Database-Cards-Ygo`. Cartas que ainda não estão na camada usam as regras locais de [src/db/tags.ts](src/db/tags.ts).
 - **Imagens:** baixadas uma vez e guardadas em cache (desktop: protocolo `ygoimg://` no Rust; web: service worker).
 
 `src/db/tags.ts`, `effects.ts`, `relations.ts`, `types.ts` e `ygoprodeck.ts` são cópias do repositório `Database-Cards-Ygo`, onde fica o original. Correções de cartas e regras novas devem ser feitas lá.

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Cartas",
+  "productName": "Jam Cards - YGO!",
   "version": "1.0.1",
-  "identifier": "app.cartas.desktop",
+  "identifier": "app.jamcards.ygo",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Cartas",
+        "title": "Jam Cards - YGO!",
         "width": 1100,
         "height": 720,
         "minWidth": 800,

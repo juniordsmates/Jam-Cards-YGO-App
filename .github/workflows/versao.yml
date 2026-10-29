@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  CANAL: alpha # minúsculas; vira sufixo da tag (v1.0.0-alpha) e nome do release (Cartas v1.0.0 alpha)
+  CANAL: alpha # minúsculas; vira sufixo da tag (v1.0.0-alpha) e nome do release (Jam Cards - YGO! v1.0.0 alpha)
 
 permissions:
   contents: write
@@ -41,17 +41,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__-${{ env.CANAL }}
-          releaseName: Cartas v__VERSION__ ${{ env.CANAL }}
+          releaseName: "Jam Cards - YGO! v__VERSION__ ${{ env.CANAL }}"
           releaseCommitish: ${{ github.ref_name }}
           releaseBody: |
-            **Windows:** baixe `Cartas_…_x64-setup.exe` e execute.
-            - Se o Cartas já estiver instalado, o instalador só atualiza o app e mantém seus dados (base de cartas e imagens em cache).
+            **Windows:** baixe o arquivo `…_x64-setup.exe` e execute.
+            - Se o Jam Cards - YGO! já estiver instalado, o instalador só atualiza o app e mantém seus dados (base de cartas e imagens em cache).
             - Não pede administrador: instala na sua conta de usuário. Se faltar o WebView2 (Windows antigos), o instalador baixa sozinho.
             - O app não tem assinatura digital: se aparecer "O Windows protegeu o computador", clique em **Mais informações** → **Executar assim mesmo**.
 
-            **macOS (Apple Silicon e Intel):** baixe `Cartas_…_universal.dmg`, abra e arraste o Cartas para **Aplicativos**.
+            **macOS (Apple Silicon e Intel):** baixe o arquivo `…_universal.dmg`, abra e arraste o Jam Cards - YGO! para **Aplicativos**.
             - O app não é assinado pela Apple. Na primeira vez, se o macOS bloquear, vá em **Ajustes do Sistema → Privacidade e Segurança** e clique em **Abrir Mesmo Assim**.
-            - Se aparecer "está danificado", rode no Terminal: `xattr -cr /Applications/Cartas.app` e abra de novo.
+            - Se aparecer "está danificado", rode no Terminal: `xattr -cr '/Applications/Jam Cards - YGO!.app'` e abra de novo.
           releaseDraft: false
           prerelease: true
           args: --bundles nsis
@@ -76,7 +76,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__-${{ env.CANAL }}
-          releaseName: Cartas v__VERSION__ ${{ env.CANAL }}
+          releaseName: "Jam Cards - YGO! v__VERSION__ ${{ env.CANAL }}"
           releaseCommitish: ${{ github.ref_name }}
           releaseDraft: false
           prerelease: true

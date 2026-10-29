@@ -89,7 +89,7 @@ before(async () => {
       }),
     }),
   );
-  await page.route("**/juniordsmates/Cartas/main/dados/camada.json", async (r) => {
+  await page.route("**/juniordsmates/Jam-Cards-YGO/main/dados/camada.json", async (r) => {
     const res = await r.fetch();
     const camada = await res.json();
     camada.combos = JSON.parse(readFileSync(new globalThis.URL("./fixtures/combos.json", import.meta.url), "utf8"));

@@ -13,7 +13,7 @@ fn http() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         reqwest::Client::builder()
-            .user_agent("Cartas/0.1")
+            .user_agent("JamCardsYGO/1.0")
             .build()
             .expect("cliente HTTP")
     })

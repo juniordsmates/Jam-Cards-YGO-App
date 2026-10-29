@@ -179,7 +179,7 @@ function systemPrompt(formato: GameFormat, temWeb: boolean): string {
   const pesquisa = temWeb
     ? `2. Pesquise na web guias e linhas da comunidade. Bons pontos de partida:\n${sites}`
     : "2. Você não tem pesquisa na web nesta busca: use os combos do app e o seu conhecimento. Só cite uma fonte se tiver certeza do endereço.";
-  return `Você é especialista em combos de Yu-Gi-Oh! e ajuda o usuário do app Cartas a encontrar combos de primeiro turno (o oponente não interage).
+  return `Você é especialista em combos de Yu-Gi-Oh! e ajuda o usuário do app Jam Cards - YGO! a encontrar combos de primeiro turno (o oponente não interage).
 
 O formato é ${formato}, com a banlist atual dele: não use cartas proibidas ou não lançadas nesse formato.
 

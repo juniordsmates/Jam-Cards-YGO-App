@@ -1,11 +1,11 @@
 [package]
-name = "cartas"
+name = "jam-cards-ygo"
 version = "1.0.1"
-description = "Cartas"
+description = "Jam Cards - YGO!"
 edition = "2021"
 
 [lib]
-name = "cartas_lib"
+name = "jam_cards_ygo_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

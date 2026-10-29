@@ -1,8 +1,8 @@
-# Política de Privacidade — Cartas
+# Política de Privacidade — Jam Cards - YGO!
 
 Última atualização: 28 de outubro de 2026.
 
-Esta política explica quais dados pessoais o app **Cartas** ("App") trata, para quê, com quem são compartilhados e quais são os seus direitos, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018, "LGPD").
+Esta política explica quais dados pessoais o app **Jam Cards - YGO!** ("App") trata, para quê, com quem são compartilhados e quais são os seus direitos, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018, "LGPD").
 
 Ao criar uma conta ou usar os recursos online do App, você declara que leu e concorda com esta política e com os [Termos de Uso](termos-de-uso.md).
 
