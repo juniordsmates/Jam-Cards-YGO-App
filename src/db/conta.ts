@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
+import { isDesktop } from "../platform";
 import { getConfigDe, iaConfigurada, setConfigIA, type ConfigIA, type ProvedorId } from "./ia";
 
 // Conta do usuário (Supabase Auth): sessão e nome de usuário público.
@@ -40,7 +41,14 @@ export function iniciarConta() {
   if (iniciado || !sb) return;
   iniciado = true;
   void sb.auth.getSession().then(({ data }) => carregarPerfil(data.session));
-  sb.auth.onAuthStateChange((_event, session) => void carregarPerfil(session));
+  sb.auth.onAuthStateChange((evento, session) => {
+    void carregarPerfil(session);
+    // chegou pelo link de "Esqueci a senha": pede a senha nova
+    if (evento === "PASSWORD_RECOVERY") {
+      recuperando = true;
+      ouvintesRecuperacao.forEach((l) => l());
+    }
+  });
 }
 
 const subscribe = (l: () => void) => {
@@ -87,8 +95,28 @@ export async function criarUsuarioComoAdmin(usuario: string, email: string, senh
 }
 
 export async function recuperarSenha(email: string) {
-  const { error } = await exigirCliente().auth.resetPasswordForEmail(email.trim());
+  // no site, o link do e-mail volta para o próprio site (no app desktop, vale o endereço padrão do projeto)
+  const redirectTo = isDesktop ? undefined : `${window.location.origin}${import.meta.env.BASE_URL}`;
+  const { error } = await exigirCliente().auth.resetPasswordForEmail(email.trim(), { redirectTo });
   if (error) throw new Error(traduzir(error.message));
+}
+
+// ---------------------------------------------------------------- nova senha (link de recuperação)
+
+let recuperando = false;
+const ouvintesRecuperacao = new Set<() => void>();
+/** A pessoa chegou pelo link de "Esqueci a senha" e ainda não definiu a senha nova */
+export const emRecuperacao = () => recuperando;
+export function aoRecuperarSenha(l: () => void) {
+  ouvintesRecuperacao.add(l);
+  return () => ouvintesRecuperacao.delete(l);
+}
+
+export async function definirNovaSenha(senha: string) {
+  if (senha.length < 8) throw new Error("A senha precisa ter pelo menos 8 caracteres.");
+  const { error } = await exigirCliente().auth.updateUser({ password: senha });
+  if (error) throw new Error(traduzir(error.message));
+  recuperando = false;
 }
 
 export async function sair() {

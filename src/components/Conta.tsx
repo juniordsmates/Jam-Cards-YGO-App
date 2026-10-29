@@ -4,8 +4,11 @@ import ExternalLink from "./ExternalLink";
 import politica from "../../docs/politica-de-privacidade.md?raw";
 import termos from "../../docs/termos-de-uso.md?raw";
 import {
+  aoRecuperarSenha,
   contaAtual,
   criarUsuarioComoAdmin,
+  definirNovaSenha,
+  emRecuperacao,
   entrar,
   lerConfigsIANaConta,
   listarRecalculos,
@@ -38,7 +41,7 @@ import { supabaseReady } from "../db/supabase";
 // Tela "Minha conta": entrar, recuperar senha, IAs, documentos e (administrador) recálculos e
 // cadastro de usuários. Novas contas só pelo administrador. Abre de qualquer lugar e o Esc fecha só ela.
 
-type Aba = "entrar" | "senha" | "politica" | "termos";
+type Aba = "entrar" | "senha" | "novaSenha" | "politica" | "termos";
 
 let aberta: Aba | "conta" | null = null;
 const listeners = new Set<() => void>();
@@ -58,6 +61,9 @@ export function closeConta() {
   emit();
 }
 export const isContaOpen = () => aberta !== null;
+
+// link de "Esqueci a senha" (e-mail): a tela abre direto em "Nova senha"
+aoRecuperarSenha(() => openConta("novaSenha"));
 
 /** IA aberta direto no detalhe ao abrir a tela (ex.: "Cadastrar o Gemini", na aba Vídeo de Combos) */
 let iaInicial: ProvedorId | null = null;
@@ -120,6 +126,12 @@ function DetalheIA({ id, onVoltar }: { id: ProvedorId; onVoltar: () => void }) {
   };
   const alternarConta = async (guardar: boolean) => {
     setErroConta("");
+    // chave digitada e ainda não salva: salva antes de guardar na conta
+    if (guardar && chave.trim()) {
+      setConfigIA({ ...getConfigDe(id), chave });
+      setCfg(getConfigDe(id));
+      setChave("");
+    }
     try {
       if (guardar) await salvarConfigIANaConta(getConfigDe(id));
       else await removerConfigIADaConta(id);
@@ -425,6 +437,7 @@ function Formulario() {
     }
   };
 
+  if (aba === "novaSenha" || (aba && emRecuperacao())) return <NovaSenha />;
   if (aba === "politica") return <Documento texto={politica} />;
   if (aba === "termos") return <Documento texto={termos} />;
 
@@ -509,6 +522,41 @@ function Formulario() {
   );
 }
 
+/** Chegou pelo link de recuperação: define a senha nova (a sessão já está aberta pelo link) */
+function NovaSenha() {
+  const [senha, setSenha] = useState("");
+  const [repetir, setRepetir] = useState("");
+  const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  const enviar = async (e: FormEvent) => {
+    e.preventDefault();
+    if (senha !== repetir) return setMsg({ tipo: "erro", texto: "As duas senhas são diferentes." });
+    try {
+      await definirNovaSenha(senha);
+      setMsg({ tipo: "ok", texto: "Senha alterada. Você já está conectado." });
+      setSenha("");
+      setRepetir("");
+    } catch (err) {
+      setMsg({ tipo: "erro", texto: err instanceof Error ? err.message : String(err) });
+    }
+  };
+  return (
+    <form className="conta-form" onSubmit={(e) => void enviar(e)}>
+      <label className="field">
+        <span className="field-label">Nova senha (mínimo 8 caracteres)</span>
+        <input type="password" autoComplete="new-password" required minLength={8} value={senha} onChange={(e) => setSenha(e.target.value)} />
+      </label>
+      <label className="field">
+        <span className="field-label">Repita a nova senha</span>
+        <input type="password" autoComplete="new-password" required minLength={8} value={repetir} onChange={(e) => setRepetir(e.target.value)} />
+      </label>
+      {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
+      <button className="ghost-btn conta-enviar" type="submit">
+        Salvar a nova senha
+      </button>
+    </form>
+  );
+}
+
 /** Tela de conta (montada uma vez no App) */
 export function ContaDialog() {
   const aba = useSyncExternalStore(subscribe, () => aberta);
@@ -529,7 +577,8 @@ export function ContaDialog() {
   }, [aba]);
 
   if (!aba) return null;
-  const titulo = aba === "politica" ? "Política de Privacidade" : aba === "termos" ? "Termos de Uso" : conta ? "Minha conta" : "Conta";
+  const titulo =
+    aba === "novaSenha" ? "Nova senha" : aba === "politica" ? "Política de Privacidade" : aba === "termos" ? "Termos de Uso" : conta ? "Minha conta" : "Conta";
 
   return createPortal(
     <div className="overlay fontes-overlay" onClick={closeConta}>

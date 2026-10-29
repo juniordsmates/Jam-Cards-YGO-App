@@ -8,7 +8,7 @@ import { isDesktop } from "./platform";
 
 // Na web, o service worker guarda as imagens das cartas (no desktop o Rust faz isso)
 if (!isDesktop && "serviceWorker" in navigator) {
-  void navigator.serviceWorker.register("/sw.js");
+  void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

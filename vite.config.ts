@@ -12,8 +12,10 @@ const commit = (process.env.GITHUB_SHA ?? (() => {
   }
 })()).trim().slice(0, 7);
 
-// Porta fixa: o Tauri aponta para ela em src-tauri/tauri.conf.json
+// Porta fixa: o Tauri aponta para ela em src-tauri/tauri.conf.json.
+// SITE_BASE: endereço do site na web (GitHub Pages: /Jam-Cards-YGO/); no app e no dev, a raiz.
 export default defineConfig({
+  base: process.env.SITE_BASE ?? "/",
   plugins: [react()],
   define: {
     __BUILD_COMMIT__: JSON.stringify(commit),
