@@ -212,6 +212,46 @@ export const CAPITULOS: Capitulo[] = [
     ligacoes: ["Vídeo → **Editar e Importar** → Teste de Jogo → **Criar combo** → (Compartilhar) → Combos da Comunidade."],
   },
   {
+    id: "guia",
+    titulo: "Guia de Deck",
+    resumo:
+      "Os decks mais fortes do TCG nos últimos 6 meses, cada um com ideias para iniciantes e para jogadores avançados, combos, interações e artigos de jogadores. Escolha o idioma (Português, English, Español) no canto superior direito.",
+    imagem: { arquivo: "guia.jpg", legenda: "Guia de Deck do Kewl Tune" },
+    topicos: [
+      {
+        titulo: "A lista do meta (esquerda)",
+        itens: [
+          "Vem de cerca de 2 mil decklists de torneio do TCG dos últimos 6 meses (YGOPRODeck) e se atualiza toda semana.",
+          "Cada deck mostra a % dos decks em 6 meses e a tendência: **▲** subindo nos últimos 2 meses, **▼** caindo.",
+          "**✎** marca os decks com texto escrito (Ideias Iniciais e Avançadas); os outros têm as seções calculadas.",
+        ],
+      },
+      {
+        titulo: "As abas de cada deck",
+        itens: [
+          "**Ideias Iniciais**: como o deck funciona, as cartas que você quer abrir, boas práticas e o esqueleto dos combos; depois, o **núcleo do deck** (cartas presentes em boa parte das listas, com a média de cópias), as cartas que começam combos e as **listas campeãs** com link.",
+          "**Ideias Avançadas**: o campo final e as interrupções, como jogar através das hand traps, o jogo indo para o ataque e o Side; no fim, onde o deck costuma ser parado.",
+          "**Combos**: as linhas calculadas pelo motor de regras, passo a passo, com as respostas do oponente em cada passo e **▶ Teste de Jogo**; e os Combos da Comunidade do deck.",
+          "**Interações**: as respostas que mais param o deck (em quantas linhas, a partir de qual passo e onde acertam), os **pontos críticos** do combo e as interrupções do próprio deck.",
+          "**Artigos de Jogadores**: táticas e ideias escritas por jogadores. Com login, **Enviar um artigo**; ele aparece depois da aprovação do administrador. Dá para citar cartas com [[Nome da carta]].",
+        ],
+      },
+    ],
+    exemplo: {
+      titulo: "Exemplo: preparar-se contra o deck mais jogado",
+      passos: [
+        "Abra **Guia de Deck** e escolha o primeiro da lista (ex.: **Kewl Tune**).",
+        "Em **Interações**, veja quais hand traps param mais linhas e em que passo: são as melhores para o seu Side.",
+        "Em **Combos**, abra uma linha e clique em **▶ Teste de Jogo** para treinar onde usar a sua hand trap.",
+      ],
+    },
+    ligacoes: [
+      "**▶ Teste de Jogo** leva a linha para o Teste de Jogo, com um deck temporário.",
+      "Os Combos da Comunidade criados no Teste de Jogo (com Compartilhar) aparecem na aba Combos do deck.",
+      "As cartas citadas abrem a prévia, como na busca.",
+    ],
+  },
+  {
     id: "editor",
     titulo: "Editor de Deck",
     resumo: "Monte decks como no Duelingbook: busque cartas à direita, monte o Deck e o Extra Deck no centro e controle o deck à esquerda.",
@@ -420,6 +460,10 @@ export const CAPITULOS: Capitulo[] = [
       {
         titulo: "Do vídeo ao combo",
         itens: ["**Combos → Vídeo** → **Ler combo do vídeo** → **✎ Editar e Importar** → Teste de Jogo → **Criar combo**."],
+      },
+      {
+        titulo: "Do meta ao treino",
+        itens: ["**Guia de Deck** → deck do topo → **Interações** (o que o para) → **Combos** → **▶ Teste de Jogo** para treinar contra ele."],
       },
       {
         titulo: "Do arquivo ao teste",

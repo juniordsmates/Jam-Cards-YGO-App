@@ -31,7 +31,7 @@ export interface CardDbState {
   /** data de geração da camada em uso; ausente = só regras locais */
   overlayDate?: string;
   /** dados extras da camada (arquétipos, metagame, Genesys, combos calculados); ausentes sem camada */
-  extras?: Pick<Overlay, "arquetipos" | "meta" | "genesys" | "combos" | "uso" | "respondedores">;
+  extras?: Pick<Overlay, "arquetipos" | "meta" | "genesys" | "combos" | "uso" | "respondedores" | "metaTcg">;
   /** nomes oficiais dos arquétipos (da camada, ou os presentes nas cartas) */
   archetypes: string[];
   /** arquétipo em inglês → nome em português */
@@ -92,7 +92,7 @@ const errorMessage = (e: unknown) => (e instanceof Error ? e.message : String(e)
 /** Aplica a camada e publica as cartas (array novo, para a busca recalcular) */
 function publish(cards: Card[], patch: Partial<CardDbState> = {}) {
   const tagDefs = applyOverlay(cards, overlay);
-  const extras = overlay && { arquetipos: overlay.arquetipos ?? [], meta: overlay.meta, genesys: overlay.genesys ?? {}, combos: overlay.combos, uso: overlay.uso, respondedores: overlay.respondedores };
+  const extras = overlay && { arquetipos: overlay.arquetipos ?? [], meta: overlay.meta, genesys: overlay.genesys ?? {}, combos: overlay.combos, uso: overlay.uso, respondedores: overlay.respondedores, metaTcg: overlay.metaTcg };
   const archetypes = extras?.arquetipos.length
     ? extras.arquetipos
     : [...new Set(cards.map((c) => c.archetype).filter(Boolean) as string[])].sort();

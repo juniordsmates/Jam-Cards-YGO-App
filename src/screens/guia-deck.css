@@ -1,0 +1,393 @@
+/* Guia de Deck: lista do meta à esquerda e o guia do deck à direita (rolagem só no guia) */
+
+.guia-deck {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: clamp(230px, 18vw, 320px) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.gd-lista,
+.gd-conteudo {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.gd-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gd-lista > p {
+  margin: 0 0 6px;
+}
+
+.gd-lista button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 0.84rem;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.gd-lista button:hover {
+  background: color-mix(in srgb, var(--cyan) 10%, transparent);
+}
+
+.gd-lista button.active {
+  font-weight: 700;
+  color: #fff;
+  background: var(--cyan);
+}
+
+.gd-pos {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  text-align: right;
+  opacity: 0.7;
+}
+
+.gd-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gd-escrito {
+  margin-left: 5px;
+  font-size: 0.72rem;
+}
+
+.gd-pct {
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.gd-tend.sobe {
+  color: #1d7a46;
+}
+
+.gd-tend.desce {
+  color: #b3261e;
+}
+
+.gd-lista button.active .gd-tend {
+  color: #fff;
+}
+
+.gd-conteudo {
+  padding: 16px clamp(16px, 2.4vw, 36px);
+}
+
+.gd-conteudo > section {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.gd-topo {
+  max-width: 1100px;
+  margin: 0 auto 12px;
+}
+
+.gd-topo h3 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--cyan);
+}
+
+.gd-topo p {
+  margin: 2px 0;
+}
+
+.gd-numeros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-bottom: 4px;
+  font-size: 0.84rem;
+}
+
+.gd-numeros strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.gd-abas {
+  margin-top: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.gd-resumo {
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.gd-bloco {
+  margin: 14px 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.gd-bloco h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.gd-bloco ul,
+.gd-bloco ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.gd-bloco li + li {
+  margin-top: 4px;
+}
+
+.gd-carta {
+  font-weight: 600;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.gd-nucleo-parte h5 {
+  margin: 10px 0 6px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.gd-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 6px;
+}
+
+.gd-thumb,
+.gd-arte {
+  position: relative;
+}
+
+.gd-thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #2a2240;
+}
+
+/* legenda embaixo da carta: média de cópias e % das listas */
+.gd-copias {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+.gd-starters {
+  columns: 2 220px;
+}
+
+.gd-linha {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.gd-linha summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gd-linha ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+
+.gd-resp {
+  font-size: 0.78rem;
+  color: #a4471c;
+}
+
+.gd-campo {
+  margin: 8px 0 0;
+  font-size: 0.84rem;
+}
+
+.gd-respostas {
+  list-style: none;
+  padding: 0 !important;
+}
+
+.gd-respostas li {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.gd-respostas img {
+  width: 46px;
+  border-radius: 3px;
+}
+
+.gd-respostas small {
+  display: block;
+  color: var(--text-dim);
+}
+
+.gd-resp-topo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.gd-tipos {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.gd-barra {
+  height: 6px;
+  margin: 4px 0 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--magenta) 12%, transparent);
+  border-radius: 3px;
+}
+
+.gd-barra span {
+  display: block;
+  height: 100%;
+  background: var(--magenta);
+}
+
+.gd-onde {
+  margin-top: 2px;
+}
+
+.gd-pontos li {
+  margin-bottom: 6px;
+}
+
+.gd-artigos {
+  list-style: none;
+  padding: 0 !important;
+}
+
+.gd-artigo {
+  margin: 8px 0;
+  padding: 10px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.gd-artigo-topo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.gd-artigo p {
+  margin: 6px 0;
+}
+
+.gd-artigo-texto {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.gd-artigo-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.gd-pendente {
+  color: #8a5a00;
+  background: color-mix(in srgb, #e0a100 18%, transparent);
+}
+
+.gd-recusado {
+  color: #b3261e;
+  background: color-mix(in srgb, #b3261e 12%, transparent);
+}
+
+.gd-recusar input {
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.gd-form-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gd-form textarea,
+.gd-form input,
+.gd-form select {
+  width: 100%;
+}
+
+.gd-enviar {
+  margin-top: 10px;
+  font-weight: 700;
+  color: var(--magenta);
+}
+
+@media (max-width: 900px) {
+  .guia-deck {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .gd-lista {
+    max-height: 30vh;
+  }
+}
+
+/* seletor de idioma: os três numa linha */
+.gd-idiomas {
+  grid-template-columns: repeat(3, auto);
+}
+
+.gd-idiomas button {
+  white-space: nowrap;
+}

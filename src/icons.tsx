@@ -33,6 +33,14 @@ export const CollectionIcon = () => (
   </svg>
 );
 
+export const BookIcon = () => (
+  <svg {...base}>
+    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" />
+    <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5A2.5 2.5 0 0 1 4 20.5" />
+    <path d="M9 7.5h7M9 11h5" />
+  </svg>
+);
+
 export const HelpIcon = () => (
   <svg {...base}>
     <circle cx="12" cy="12" r="9" />

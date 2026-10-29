@@ -42,6 +42,39 @@ export interface Overlay {
   uso?: { decks: number; atualizadoEm: string; maisAntigo: string; cartas: Record<string, number> };
   /** cartas ativáveis da mão no turno do oponente → tipos de resposta (pelos scripts oficiais) */
   respondedores?: Record<string, string[]>;
+  /** metagame do TCG (6 meses de decklists de torneio): base do Guia de Deck */
+  metaTcg?: MetaTcg;
+}
+
+/** Carta do núcleo de um deck: em que fração das listas aparece e com quantas cópias, em média */
+export interface CartaNucleo {
+  id: number;
+  pct: number;
+  copias: number;
+}
+
+export interface ArquetipoMeta {
+  arquetipo: string;
+  decks: number;
+  decksRecentes: number;
+  pct6m: number;
+  pct2m: number;
+  vitorias: number;
+  pontos: number;
+  nomes: string[];
+  parceiros: string[];
+  nucleo: { main: CartaNucleo[]; extra: CartaNucleo[]; side: CartaNucleo[] };
+  exemplos: { deckNum: number; url: string; nome: string; torneio: string; colocacao: string; jogadores: number | null; quando: string }[];
+}
+
+/** Gerado pelo pipeline da base (src/metaTcg.ts) */
+export interface MetaTcg {
+  fonte: string;
+  atualizadoEm: string;
+  meses: number;
+  decks: number;
+  decksRecentes: number;
+  arquetipos: ArquetipoMeta[];
 }
 
 const LOCAL_TAG_DEFS: TagDefinition[] = TAGS.map(({ id, label, group, hint }) => ({ id, label, group, hint }));

@@ -215,3 +215,18 @@ export async function excluirCombo(id: string): Promise<void> {
   if (error) throw new Error(`Excluir combo: ${error.message}`);
   if (!count) throw new Error("Excluir combo: só quem criou o combo pode excluí-lo.");
 }
+
+/** Combos da Comunidade de um arquétipo (Guia de Deck → Combos), dos mais recentes */
+export async function combosDoArquetipo(arquetipo: string, limite = 20): Promise<ComboBase[]> {
+  const sb = supabase();
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from("combos")
+    .select(COLS)
+    .eq("origem", "comunidade")
+    .contains("arquetipos", [arquetipo])
+    .order("criado_em", { ascending: false })
+    .limit(limite);
+  if (error) throw new Error(`Combos do arquétipo: ${error.message}`);
+  return (data ?? []) as ComboBase[];
+}

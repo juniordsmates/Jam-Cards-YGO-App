@@ -85,6 +85,14 @@ const etapas = {
     await page.waitForTimeout(1500);
     await foto("colecao");
   },
+  // precisa da camada com o metagame do TCG (metaTcg); sem ela, a tela mostra o aviso
+  guia: async () => {
+    await menu();
+    await page.click(".menu-btn:has-text('Guia de Deck')");
+    await page.waitForSelector(".guia-deck", { timeout: 120_000 });
+    await page.waitForTimeout(1500);
+    await foto("guia");
+  },
   conta: async () => {
     await menu();
     await page.click(".menu-conta");
