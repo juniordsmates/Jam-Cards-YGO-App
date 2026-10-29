@@ -28,6 +28,7 @@ import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
 
 const POR_PAGINA = 24;
+const SEM_LIMITE = "cartas-editor-sem-limite";
 // sem Side Deck no editor
 const PARTES: { id: Parte; label: string }[] = [
   { id: "main", label: "Deck" },
@@ -48,6 +49,22 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const conta = useConta();
   const { decks, padrao } = useDecks();
   const [formato, setFormato] = useState<GameFormat>("TCG");
+  // "Desativar limite de cartas": sem banlist e sem conferir o formato (fica salvo neste computador)
+  const [semLimite, setSemLimite] = useState(() => {
+    try {
+      return localStorage.getItem(SEM_LIMITE) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const alternarSemLimite = (v: boolean) => {
+    setSemLimite(v);
+    try {
+      localStorage.setItem(SEM_LIMITE, v ? "1" : "0");
+    } catch {
+      // armazenamento indisponível: vale só nesta sessão
+    }
+  };
   const [deckId, setDeckId] = useState<string | undefined>(inicial.deckId ?? padrao ?? decks[0]?.id);
   // cópia de trabalho: as mudanças só vão para os decks salvos em "Salvar"
   const [trabalho, setTrabalho] = useState<Deck | null>(null);
@@ -91,7 +108,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     const destino: Parte = parte ?? (ehExtra(c) ? "extra" : "main");
     // sem deck aberto: a primeira carta cria "Novo deck" já com ela
     const deck: Deck = trabalho ?? { id: "", nome: "Novo deck", main: [], extra: [], side: [], atualizadoEm: "" };
-    const motivo = motivoBloqueio(deck, c, destino, formato);
+    const motivo = motivoBloqueio(deck, c, destino, formato, semLimite);
     if (motivo) return avisar("erro", motivo);
     const lista = [...deck[destino]];
     lista.splice(indice ?? lista.length, 0, c.id);
@@ -117,7 +134,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     }
     // mover entre partes: a carta sai de uma e precisa caber na outra (as cópias não mudam)
     const semEla = { ...trabalho, [de]: trabalho[de].filter((_, i) => i !== indice) };
-    const motivo = motivoBloqueio({ ...semEla, main: semEla.main, extra: semEla.extra, side: semEla.side, [para]: semEla[para] } as Deck, c, para, formato);
+    const motivo = motivoBloqueio({ ...semEla, main: semEla.main, extra: semEla.extra, side: semEla.side, [para]: semEla[para] } as Deck, c, para, formato, semLimite);
     if (motivo && !motivo.startsWith("Limite de") && !motivo.startsWith("Carta proibida")) return avisar("erro", motivo);
     const lista = [...semEla[para]];
     lista.splice(destinoIndice ?? lista.length, 0, id);
@@ -192,7 +209,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
 
   const ready = db.status === "ready";
   const n = trabalho ? contagem(trabalho.main, byId) : { monster: 0, spell: 0, trap: 0 };
-  const listaAvisos = trabalho ? avisos(trabalho, byId, formato) : [];
+  const listaAvisos = trabalho ? avisos(trabalho, byId, formato, semLimite) : [];
   const atualizar = (patch: Partial<Filters>) => setFiltros((f) => ({ ...f, ...patch }));
 
   // função de desenho (não componente): o React não recria a carta a cada redesenho (hover),
@@ -236,13 +253,20 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
               ▶ Teste de Jogo
             </button>
           )}
-        <div className="format-switch combos-format" role="radiogroup" aria-label="Formato">
-          {FORMATS.map((f) => (
-            <button key={f} role="radio" aria-checked={formato === f} className={formato === f ? "active" : ""} onClick={() => setFormato(f)}>
-              {f}
-            </button>
-          ))}
-        </div>
+        <span className="de-formato">
+          <div className="format-switch combos-format" role="radiogroup" aria-label="Formato">
+            {FORMATS.map((f) => (
+              <button key={f} role="radio" aria-checked={formato === f} className={formato === f ? "active" : ""} onClick={() => setFormato(f)}>
+                {f}
+              </button>
+            ))}
+          </div>
+          {!testando && (
+            <label className="de-sem-limite" title="Sem banlist (proibidas, limitadas, semi-limitadas) e sem conferir se a carta saiu no TCG/OCG; continua o máximo de 3 cópias por carta">
+              <input type="checkbox" checked={semLimite} onChange={(e) => alternarSemLimite(e.target.checked)} /> Desativar limite de cartas
+            </label>
+          )}
+        </span>
         </span>
       }
       plain

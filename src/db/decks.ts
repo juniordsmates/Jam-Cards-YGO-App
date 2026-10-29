@@ -201,21 +201,28 @@ export function copiasPermitidas(c: Card, formato: GameFormat): number {
   return ban === "Limited" ? 1 : ban === "Semi-Limited" ? 2 : 3;
 }
 
+/** Máximo de cópias por carta: a banlist do formato ou, com o limite desativado, só a regra do jogo (3) */
+const maximoDe = (c: Card, formato: GameFormat, semLimite: boolean) => (semLimite ? 3 : copiasPermitidas(c, formato));
+
 export const copias = (deck: Pick<Deck, Parte>, id: number) => [...deck.main, ...deck.extra, ...deck.side].filter((x) => x === id).length;
 
-/** Por que a carta não pode entrar nesta parte agora (ou null se pode) */
-export function motivoBloqueio(deck: Deck, c: Card, parte: Parte, formato: GameFormat): string | null {
+/**
+ * Por que a carta não pode entrar nesta parte agora (ou null se pode). `semLimite`: "Desativar
+ * limite de cartas" no editor (sem banlist e sem conferir se a carta saiu no formato).
+ */
+export function motivoBloqueio(deck: Deck, c: Card, parte: Parte, formato: GameFormat, semLimite = false): string | null {
   if (c.frame === "skill" || c.frame === "token") return "Cartas de Habilidade e Fichas não entram em decks.";
   if (parte === "main" && ehExtra(c)) return "Monstros de Fusão, Sincro, Xyz e Link vão para o Extra Deck.";
   if (parte === "extra" && !ehExtra(c)) return "Só monstros de Fusão, Sincro, Xyz e Link vão para o Extra Deck.";
   if (deck[parte].length >= LIMITES[parte][1]) return `O ${parte === "main" ? "Main Deck" : parte === "extra" ? "Extra Deck" : "Side Deck"} já tem o máximo de ${LIMITES[parte][1]} cartas.`;
-  const max = copiasPermitidas(c, formato);
-  if (copias(deck, c.id) >= max) return max === 0 ? `Carta proibida ou não lançada no ${formato}.` : `Limite de ${max} ${max === 1 ? "cópia" : "cópias"} no ${formato}.`;
+  const max = maximoDe(c, formato, semLimite);
+  if (copias(deck, c.id) >= max)
+    return semLimite ? "Máximo de 3 cópias por carta." : max === 0 ? `Carta proibida ou não lançada no ${formato}.` : `Limite de ${max} ${max === 1 ? "cópia" : "cópias"} no ${formato}.`;
   return null;
 }
 
 /** Avisos do deck inteiro (tamanho e cartas acima do limite da banlist) */
-export function avisos(deck: Deck, byId: Map<number, Card>, formato: GameFormat): string[] {
+export function avisos(deck: Deck, byId: Map<number, Card>, formato: GameFormat, semLimite = false): string[] {
   const out: string[] = [];
   if (deck.main.length < LIMITES.main[0] && !deck.temporario) out.push(`Main Deck com ${deck.main.length} cartas (mínimo 40).`);
   const vistos = new Set<number>();
@@ -224,8 +231,8 @@ export function avisos(deck: Deck, byId: Map<number, Card>, formato: GameFormat)
     vistos.add(id);
     const c = byId.get(id);
     if (!c) continue;
-    const max = copiasPermitidas(c, formato);
-    if (copias(deck, id) > max) out.push(`${c.namePt ?? c.name}: ${copias(deck, id)} cópias (máximo ${max} no ${formato}).`);
+    const max = maximoDe(c, formato, semLimite);
+    if (copias(deck, id) > max) out.push(`${c.namePt ?? c.name}: ${copias(deck, id)} cópias (máximo ${max}${semLimite ? " por carta" : ` no ${formato}`}).`);
   }
   return out;
 }
