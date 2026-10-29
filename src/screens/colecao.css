@@ -137,3 +137,21 @@
   outline-offset: 1px;
   border-radius: 4px;
 }
+
+.col-importacao {
+  margin-bottom: 12px;
+}
+
+.col-importacao textarea {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.8rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.col-erro td {
+  color: #b3261e;
+}

@@ -10,11 +10,13 @@ import {
   ESTADOS,
   IDIOMAS,
   juntarColecaoDaConta,
+  lerListaMYP,
   precoUSD,
   quantidadeValida,
   retirarDaColecao,
   useColecao,
   type ItemColecao,
+  type LinhaImportada,
 } from "../db/colecao";
 import { useConta } from "../db/conta";
 import { cardImage } from "../db/images";
@@ -52,6 +54,8 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
   // "Retirar da coleção": item em confirmação e a quantidade digitada
   const [retirando, setRetirando] = useState<{ chave: string; quantidade: string } | null>(null);
   const [filtroLista, setFiltroLista] = useState({ texto: "", raridade: "" });
+  // "Importar lista (MYP Cards)": texto colado ou arquivo, prévia e confirmação
+  const [importacao, setImportacao] = useState<{ texto: string; previa: LinhaImportada[] | null } | null>(null);
 
   useEffect(() => void initCardDb(), []);
   useEffect(() => void getExchangeRates().then(setCotacao), []);
@@ -142,6 +146,25 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
     setRetirando(null);
   };
 
+  const lerImportacao = (texto: string) => setImportacao({ texto, previa: lerListaMYP(texto, db.cards) });
+  const confirmarImportacao = () => {
+    if (!importacao?.previa) return;
+    let cartas = 0;
+    const falhas: string[] = [];
+    for (const l of importacao.previa) {
+      if (!l.detalhes) continue;
+      const erro = adicionarNaColecao(l.detalhes, l.quantidade);
+      if (erro) falhas.push(`${l.linha}: ${erro}`);
+      else cartas += l.quantidade;
+    }
+    const ignoradas = importacao.previa.filter((l) => l.erro).length;
+    setImportacao(null);
+    setMensagem({
+      tipo: falhas.length ? "erro" : "ok",
+      texto: `Importadas ${cartas} cópias.${ignoradas ? ` ${ignoradas} linha(s) não reconhecida(s) ficaram de fora.` : ""}${falhas.length ? ` Não entraram: ${falhas.join(" · ")}` : ""}`,
+    });
+  };
+
   // ---------------------------------------------------------------- render
 
   const ready = db.status === "ready";
@@ -216,6 +239,9 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
             <div className="col-cabecalho">
               <h3>Minha coleção</h3>
               <input placeholder="Filtrar por nome" value={filtroLista.texto} onChange={(e) => setFiltroLista({ ...filtroLista, texto: e.target.value })} aria-label="Filtrar a coleção" />
+              <button className="ghost-btn col-importar" onClick={() => setImportacao(importacao ? null : { texto: "", previa: null })}>
+                Importar lista (MYP Cards)
+              </button>
               <select value={filtroLista.raridade} onChange={(e) => setFiltroLista({ ...filtroLista, raridade: e.target.value })} aria-label="Raridade">
                 <option value="">Raridade: todas</option>
                 {resumo.porRaridade.map(([r]) => (
@@ -225,6 +251,67 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                 ))}
               </select>
             </div>
+            {importacao && (
+              <div className="de-painel col-importacao">
+                {!importacao.previa ? (
+                  <>
+                    <label className="ghost-btn de-arquivo">
+                      Escolher arquivo (.txt)
+                      <input type="file" accept=".txt,.csv" onChange={(e) => void e.target.files?.[0]?.text().then(lerImportacao)} />
+                    </label>
+                    <textarea
+                      rows={6}
+                      placeholder={"Ou cole a lista exportada da MYP Cards, uma carta por linha:\n1 #Mago Negro [GFTP] GFTP-EN128\n1 #Black Chaos (Starlight Rare) [CORI] CORI-EN001"}
+                      value={importacao.texto}
+                      onChange={(e) => setImportacao({ ...importacao, texto: e.target.value })}
+                      aria-label="Lista da MYP Cards"
+                    />
+                    <div className="dialog-actions">
+                      <button className="ghost-btn" onClick={() => setImportacao(null)}>
+                        Cancelar
+                      </button>
+                      <button className="ghost-btn" disabled={!importacao.texto.trim()} onClick={() => lerImportacao(importacao.texto)}>
+                        Ler lista
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <strong>
+                      Prévia: {importacao.previa.filter((l) => l.detalhes).length} reconhecida(s), {importacao.previa.filter((l) => l.erro).length} não reconhecida(s)
+                    </strong>
+                    <table className="col-tabela">
+                      <tbody>
+                        {importacao.previa.map((l, i) => {
+                          const c = l.detalhes && byId.get(l.detalhes.cartaId);
+                          return (
+                            <tr key={i} className={l.erro ? "col-erro" : undefined}>
+                              <td className="col-num">{l.quantidade || "—"}</td>
+                              <td>{c ? displayName(c) : l.linha}</td>
+                              <td>
+                                {l.erro ??
+                                  [l.detalhes!.setCode && `${l.detalhes!.setCode}${l.detalhes!.raridade ? ` · ${l.detalhes!.raridade}` : ""}`, l.detalhes!.idioma]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    <p className="tags-note">Raridade sem indicação na lista e com mais de uma opção no mesmo código fica "Não aplicado". Itens iguais aos que já estão na coleção somam.</p>
+                    <div className="dialog-actions">
+                      <button className="ghost-btn" onClick={() => setImportacao({ ...importacao, previa: null })}>
+                        Voltar
+                      </button>
+                      <button className="ghost-btn col-adicionar-btn" disabled={!importacao.previa.some((l) => l.detalhes)} onClick={confirmarImportacao}>
+                        Importar para a coleção
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             {mensagem && <p className={mensagem.tipo === "erro" ? "db-warning" : "conta-ok"}>{mensagem.texto}</p>}
             {!itens.length ? (
               <div className="combos-empty">
