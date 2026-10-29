@@ -1,6 +1,6 @@
 # Política de Privacidade — Jam Cards - YGO!
 
-Última atualização: 28 de outubro de 2026.
+Última atualização: 29 de outubro de 2026.
 
 Esta política explica quais dados pessoais o app **Jam Cards - YGO!** ("App") trata, para quê, com quem são compartilhados e quais são os seus direitos, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018, "LGPD").
 
@@ -23,7 +23,7 @@ Coletamos o **mínimo necessário** para o App funcionar.
 | E-mail | no cadastro | identificar a conta, confirmar o cadastro e recuperar a senha |
 | Nome de usuário | no cadastro | identificar você no App; é **público** |
 | Senha | no cadastro | acesso à conta; é guardada só como *hash* (não conseguimos lê-la) |
-| Combos, decks e nome de autor | quando você os salva | guardar e exibir o que você criou |
+| Combos, decks e nome de autor | quando você os salva | guardar e exibir o que você criou; formar e melhorar a base de dados do App (veja abaixo) |
 | Configuração de IA (provedor, modelo, endereço e chave de API) | **só se você marcar** "guardar na minha conta" | usar a mesma IA em outros computadores; só você tem acesso |
 | Registros técnicos (endereço IP, data e hora de acesso, tipo de dispositivo) | ao usar os recursos online | segurança, prevenção de abuso e funcionamento do serviço |
 
@@ -31,12 +31,14 @@ Coletamos o **mínimo necessário** para o App funcionar.
 
 **Dados que ficam só no seu dispositivo** e não são enviados aos Desenvolvedores: a base de cartas e as imagens em cache, preferências do App, a chave da TCG API (quando informada) e a chave de API de IA, salvo se você escolher guardá-la na conta.
 
+**Decks e combos na base de dados do App:** conforme os [Termos de Uso](termos-de-uso.md), os decks e combos que você salva (públicos ou privados) podem ser usados para formar e melhorar a base de dados do App, como estatísticas de uso de cartas e o cálculo e a conferência de combos. Os privados só entram de forma agregada ou sem identificar você. Esse uso se limita a decks e combos; nenhum outro dado da conta é usado para esse fim.
+
 **Chave de API de IA guardada na conta:** fica no banco de dados, protegida pelas regras de acesso para que só a sua conta a leia. Ela só é usada pelo App para chamar o provedor de IA que você escolheu. Guardá-la é opcional: se preferir, mantenha a chave só no dispositivo, desmarque a opção e ela é apagada da conta. Recomendamos usar uma chave com limite de gastos no painel do provedor.
 
 ## 3. Bases legais
 
 - **Execução de contrato** (art. 7º, V): criar e manter sua conta e o conteúdo que você salva.
-- **Legítimo interesse** (art. 7º, IX): segurança, prevenção de fraudes e abusos, e melhoria do App.
+- **Legítimo interesse** (art. 7º, IX): segurança, prevenção de fraudes e abusos, melhoria do App e uso de decks e combos na base de dados do App (de forma agregada ou sem identificar você, no caso dos privados). Você pode se opor a esse uso pelo contato do item 1.
 - **Consentimento** (art. 7º, I): publicar combos e decks marcados como públicos, com o nome de autor que você escolher. Você pode tornar o conteúdo privado ou apagá-lo a qualquer momento.
 - **Cumprimento de obrigação legal** (art. 7º, II): guardar registros de acesso quando a lei exigir (Marco Civil da Internet, Lei nº 12.965/2014).
 

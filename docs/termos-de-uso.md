@@ -1,6 +1,6 @@
 # Termos de Uso — Jam Cards - YGO!
 
-Última atualização: 26 de outubro de 2026.
+Última atualização: 29 de outubro de 2026.
 
 Estes termos regem o uso do app **Jam Cards - YGO!** ("App"), um projeto independente e gratuito mantido por seus criadores e desenvolvedores ("Desenvolvedores"). Ao usar o App ou criar uma conta, você concorda com estes termos e com a [Política de Privacidade](politica-de-privacidade.md).
 
@@ -25,6 +25,7 @@ O App não é afiliado, patrocinado nem endossado pela Konami. Yu-Gi-Oh!, os nom
 Combos, decks, títulos, observações e nome de autor que você publica são **conteúdo do usuário**.
 
 - O conteúdo continua sendo seu. Ao marcá-lo como público, você concede aos Desenvolvedores uma licença gratuita, não exclusiva e mundial para armazenar, exibir e permitir que outros usuários vejam e copiem esse conteúdo dentro do App.
+- **Uso dos seus decks e combos na base de dados do App:** você autoriza os Desenvolvedores a usar os decks e combos que você salva no App, públicos ou privados, para formar e melhorar a base de dados do App: por exemplo, estatísticas de uso de cartas, cálculo e conferência de combos e sugestões para outros usuários. Decks e combos privados só entram nesse uso de forma agregada ou sem identificar você, e nunca são exibidos com o seu nome. A autorização vale **apenas para decks e combos**: e-mail, senha, coleção de cartas, chaves e configurações de IA e demais dados da conta não são usados para esse fim.
 - Combos publicados recebem a tag **"Combo da Comunidade"**. Eles não são conferidos previamente pelos Desenvolvedores e podem conter erros.
 - Você declara ter o direito de publicar o que envia e se responsabiliza pelo seu conteúdo.
 - É proibido publicar conteúdo ilegal, ofensivo, discriminatório, enganoso, com dados pessoais de terceiros, que viole direitos autorais ou de marca, ou que contenha links maliciosos.
