@@ -516,7 +516,7 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
 }
 
 /** Sugestão ainda não gravada na base, no formato de exibição */
-function paraComboBase(s: SugestaoIA, i: number): ComboBase {
+export function paraComboBase(s: SugestaoIA, i: number): ComboBase {
   return {
     id: `local-${i}`,
     origem: "ia",

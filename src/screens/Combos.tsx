@@ -3,6 +3,7 @@ import ScreenShell from "./ScreenShell";
 import CardPreview from "../components/CardPreview";
 import CardPicker from "../components/CardPicker";
 import ComboSearch, { ComboCard } from "../components/ComboSearch";
+import ComboDeVideo from "../components/ComboDeVideo";
 import { FontesButton } from "../components/Fontes";
 import KnownCombos from "../components/KnownCombos";
 import VerifiedCombos from "../components/VerifiedCombos";
@@ -77,8 +78,9 @@ export default function Combos({
   const db = useCardDb();
   const [format, setFormat] = useState<GameFormat>("TCG");
   const [hand, setHand] = useState<Card[]>(initialHand);
-  // "mao": o que a mão inicial alcança; "search": Combo Search (iniciais e/ou finais, com IA)
-  const [modo, setModo] = useState<"mao" | "search">("mao");
+  // "mao": o que a mão inicial alcança; "search": Combo Search (iniciais e/ou finais, com IA);
+  // "video": combo lido de um vídeo do YouTube pelo Gemini (experimental)
+  const [modo, setModo] = useState<"mao" | "search" | "video">("mao");
   // interrupções de mão que o oponente poderia ativar em cada passo (calculado no pipeline)
   const [respostas, setRespostas] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -182,6 +184,9 @@ export default function Combos({
       <button role="tab" aria-selected={modo === "search"} className={modo === "search" ? "active" : ""} onClick={() => setModo("search")}>
         Combo Search
       </button>
+      <button role="tab" aria-selected={modo === "video"} className={modo === "video" ? "active" : ""} onClick={() => setModo("video")} title="Experimental: o Gemini lê o combo de um vídeo do YouTube">
+        Vídeo
+      </button>
     </div>
   );
 
@@ -215,7 +220,9 @@ export default function Combos({
           <p>{db.step ?? "Carregando base de cartas…"}</p>
         </div>
       ) : (
-        modo === "search" ? (
+        modo === "video" ? (
+          <ComboDeVideo tabs={modos} all={db.cards} byId={byId} format={format} onHover={onHover} />
+        ) : modo === "search" ? (
           <ComboSearch tabs={modos} extra={toggleRespostas} respostas={respostas} legal={legal} all={db.cards} byId={byId} format={format} combos={combos} known={known} fits={fits} onHover={onHover} />
         ) : (
         <div className="combos">

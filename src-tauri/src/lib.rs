@@ -107,11 +107,14 @@ struct IaResponse {
 
 /// Chamada a uma API de IA no formato da OpenAI (/chat/completions) com a chave do usuário.
 /// Feita aqui no Rust porque vários provedores não aceitam chamadas da janela do app (CORS).
-/// Só aceita endpoints /chat/completions em https, ou http no próprio computador (Ollama, LM Studio).
+/// Só aceita endpoints /chat/completions em https, ou http no próprio computador (Ollama, LM Studio),
+/// e o generateContent do Gemini (importar combo de vídeo do YouTube).
 #[tauri::command]
 async fn ia_chat(url: String, api_key: String, body: String) -> Result<IaResponse, String> {
     let local = url.starts_with("http://localhost") || url.starts_with("http://127.0.0.1");
-    if !(url.starts_with("https://") || local) || !url.ends_with("/chat/completions") {
+    // Gemini (vídeo do YouTube): API própria do Google, com a chave no cabeçalho x-goog-api-key
+    let gemini = url.starts_with("https://generativelanguage.googleapis.com/") && url.ends_with(":generateContent");
+    if !(url.starts_with("https://") || local) || !(url.ends_with("/chat/completions") || gemini) {
         return Err("endereço de IA não permitido".into());
     }
     let mut req = http()
@@ -120,7 +123,7 @@ async fn ia_chat(url: String, api_key: String, body: String) -> Result<IaRespons
         .timeout(std::time::Duration::from_secs(600))
         .body(body);
     if !api_key.is_empty() {
-        req = req.bearer_auth(api_key);
+        req = if gemini { req.header("x-goog-api-key", api_key) } else { req.bearer_auth(api_key) };
     }
     let res = req.send().await.map_err(|e| e.to_string())?;
     let status = res.status().as_u16();

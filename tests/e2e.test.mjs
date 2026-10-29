@@ -496,12 +496,16 @@ test("conta: botão Entrar no menu abre a tela de conta com a integração de IA
   await page.click(".menu-conta");
   await page.waitForSelector(".conta-dialog");
   const text = await page.textContent(".conta-dialog");
-  assert.ok(text.includes("Integração com IA") && text.includes("Política de Privacidade"), text.slice(0, 200));
-  // contas ativas: abre em Entrar, com as abas de cadastro e de recuperar senha
-  assert.ok(text.includes("Criar conta") && text.includes("Esqueci a senha"), text.slice(0, 200));
-  await page.click(".conta-tabs button:has-text('Criar conta')");
-  assert.ok(await page.$(".conta-form input[pattern]"), "campo de usuário no cadastro");
-  assert.ok((await page.textContent(".conta-form")).includes("Li e aceito"));
+  assert.ok(text.includes("IAs") && text.includes("Política de Privacidade"), text.slice(0, 200));
+  // contas ativas: abre em Entrar, com recuperar senha e sem cadastro público (só o administrador cria contas)
+  assert.ok(text.includes("Esqueci a senha") && !text.includes("Criar conta"), text.slice(0, 200));
+  assert.ok(text.includes("criadas pelo administrador"));
+  // um botão por IA; dentro: para que serve, tutorial e cadastro
+  assert.ok((await page.$$(".ia-grade .ia-botao")).length >= 10);
+  await page.click(".ia-botao:has-text('Gemini')");
+  const gemini = await page.textContent(".ia-detalhe");
+  assert.ok(gemini.includes("Para que serve") && gemini.includes("vídeo do YouTube") && gemini.includes("Tutorial"), gemini.slice(0, 300));
+  await page.click(".ia-detalhe .link-btn:has-text('Todas as IAs')");
   // digitar números num campo da conta não aciona o menu por trás (não há atalhos numéricos)
   await page.fill(".conta-form input[type=email]", "");
   await page.type(".conta-form input[type=email]", "1234");

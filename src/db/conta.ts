@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
-import { getConfigIA, iaConfigurada, setConfigIA, type ConfigIA, type ProvedorId } from "./ia";
+import { getConfigDe, iaConfigurada, setConfigIA, type ConfigIA, type ProvedorId } from "./ia";
 
 // Conta do usuário (Supabase Auth): sessão e nome de usuário público.
 
@@ -30,11 +30,8 @@ async function carregarPerfil(session: Session | null) {
   ]);
   conta = { id: session.user.id, email: session.user.email ?? "", usuario: data?.usuario ?? "", admin: admin === true };
   emit();
-  // configuração de IA guardada na conta: vale neste computador se aqui ainda não houver uma
-  if (!iaConfigurada(getConfigIA())) {
-    const cfg = await lerConfigIANaConta();
-    if (cfg) setConfigIA(cfg);
-  }
+  // IAs guardadas na conta: valem neste computador onde aqui ainda não houver configuração
+  for (const cfg of await lerConfigsIANaConta()) if (!iaConfigurada(getConfigDe(cfg.provedor))) setConfigIA(cfg);
 }
 
 /** Restaura a sessão salva e acompanha entrar/sair (idempotente) */
@@ -77,18 +74,16 @@ export async function entrar(email: string, senha: string) {
   if (error) throw new Error(traduzir(error.message));
 }
 
-/** Cadastro: o perfil (nome de usuário) é criado no banco pelo gatilho do cadastro */
-export async function cadastrar(email: string, usuario: string, senha: string): Promise<"confirmar" | "pronto"> {
-  const sb = exigirCliente();
+/**
+ * Cadastro de usuário (só o administrador): o banco cria a conta já confirmada e o perfil com o
+ * nome de usuário. O cadastro público por e-mail fica bloqueado no banco.
+ */
+export async function criarUsuarioComoAdmin(usuario: string, email: string, senha: string) {
   const nome = usuario.trim().toLowerCase();
   if (!USUARIO.test(nome)) throw new Error("Usuário: 3 a 20 letras minúsculas, números ou _.");
   if (senha.length < 8) throw new Error("A senha precisa ter pelo menos 8 caracteres.");
-  const { data: livre } = await sb.rpc("usuario_disponivel", { nome });
-  if (livre === false) throw new Error("Este nome de usuário já está em uso.");
-  const { data, error } = await sb.auth.signUp({ email: email.trim(), password: senha, options: { data: { usuario: nome } } });
-  if (error) throw new Error(traduzir(error.message));
-  // sem sessão: o projeto pede confirmação por e-mail antes do primeiro acesso
-  return data.session ? "pronto" : "confirmar";
+  const { error } = await exigirCliente().rpc("admin_criar_usuario", { p_usuario: nome, p_email: email.trim(), p_senha: senha });
+  if (error) throw new Error(error.message);
 }
 
 export async function recuperarSenha(email: string) {
@@ -102,24 +97,27 @@ export async function sair() {
 
 // ---------------------------------------------------------------- configuração de IA na conta (opcional)
 
-export async function lerConfigIANaConta(): Promise<ConfigIA | null> {
+/** IAs guardadas na conta (uma por provedor) */
+export async function lerConfigsIANaConta(): Promise<ConfigIA[]> {
   const sb = supabase();
-  if (!sb || !conta) return null;
-  const { data } = await sb.from("config_ia").select("provedor, modelo, url, chave").eq("usuario_id", conta.id).maybeSingle();
-  return data ? { provedor: data.provedor as ProvedorId, modelo: data.modelo, url: data.url, chave: data.chave } : null;
+  if (!sb || !conta) return [];
+  const { data } = await sb.from("config_ia").select("provedor, modelo, url, chave").eq("usuario_id", conta.id);
+  return (data ?? []).map((d) => ({ provedor: d.provedor as ProvedorId, modelo: d.modelo, url: d.url, chave: d.chave }));
 }
 
 export async function salvarConfigIANaConta(cfg: ConfigIA) {
   const sb = exigirCliente();
   if (!conta) throw new Error("Entre na sua conta.");
-  const { error } = await sb.from("config_ia").upsert({ usuario_id: conta.id, ...cfg, atualizado_em: new Date().toISOString() });
+  const { error } = await sb
+    .from("config_ia")
+    .upsert({ usuario_id: conta.id, ...cfg, atualizado_em: new Date().toISOString() }, { onConflict: "usuario_id,provedor" });
   if (error) throw new Error(error.message);
 }
 
-export async function removerConfigIADaConta() {
+export async function removerConfigIADaConta(provedor: ProvedorId) {
   const sb = supabase();
   if (!sb || !conta) return;
-  await sb.from("config_ia").delete().eq("usuario_id", conta.id);
+  await sb.from("config_ia").delete().eq("usuario_id", conta.id).eq("provedor", provedor);
 }
 
 // ---------------------------------------------------------------- recálculos (só administradores)

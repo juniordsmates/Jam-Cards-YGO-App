@@ -62,25 +62,71 @@ export interface ConfigIA {
   url: string;
 }
 
-const STORAGE = "cartas-ia";
-const PADRAO: ConfigIA = { provedor: "anthropic", chave: "", modelo: MODELOS[0].id, url: "" };
-
-export function getConfigIA(): ConfigIA {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE) ?? "{}") as Partial<ConfigIA>;
-    // configuração antiga (só Claude) não tinha provedor
-    return { ...PADRAO, ...saved, provedor: saved.provedor ?? "anthropic" };
-  } catch {
-    return PADRAO;
-  }
+// Uma configuração por IA (o usuário pode cadastrar várias); `ativa` é a usada no Combo Search.
+interface ConfigsIA {
+  configs: Partial<Record<ProvedorId, ConfigIA>>;
+  ativa: ProvedorId;
 }
 
-export function setConfigIA(cfg: ConfigIA) {
+const STORAGE = "cartas-ias";
+/** formato antigo: uma configuração só */
+const STORAGE_ANTIGO = "cartas-ia";
+
+/** Configuração inicial de uma IA: endereço do provedor e, no Claude e no Gemini, um modelo sugerido */
+export const configPadrao = (id: ProvedorId): ConfigIA => ({
+  provedor: id,
+  chave: "",
+  modelo: id === "anthropic" ? MODELOS[0].id : id === "gemini" ? "gemini-2.5-flash" : "",
+  url: provedor(id).url,
+});
+
+function lerConfigs(): ConfigsIA {
   try {
-    localStorage.setItem(STORAGE, JSON.stringify({ ...cfg, chave: cfg.chave.trim(), modelo: cfg.modelo.trim(), url: cfg.url.trim().replace(/\/+$/, "") }));
+    const salvo = JSON.parse(localStorage.getItem(STORAGE) ?? "null") as ConfigsIA | null;
+    if (salvo?.configs) return salvo;
+    // migração do formato antigo (uma IA só)
+    const antigo = JSON.parse(localStorage.getItem(STORAGE_ANTIGO) ?? "null") as Partial<ConfigIA> | null;
+    if (antigo?.chave || antigo?.modelo) {
+      const cfg = { ...configPadrao(antigo.provedor ?? "anthropic"), ...antigo } as ConfigIA;
+      return { configs: { [cfg.provedor]: cfg }, ativa: cfg.provedor };
+    }
+  } catch {
+    // armazenamento indisponível ou corrompido: começa vazio
+  }
+  return { configs: {}, ativa: "anthropic" };
+}
+
+function gravarConfigs(c: ConfigsIA) {
+  try {
+    localStorage.setItem(STORAGE, JSON.stringify(c));
   } catch {
     // armazenamento indisponível: a configuração vale só nesta sessão
   }
+}
+
+/** Configuração de uma IA (a inicial, se ainda não foi cadastrada) */
+export const getConfigDe = (id: ProvedorId): ConfigIA => lerConfigs().configs[id] ?? configPadrao(id);
+
+/** IA usada no Combo Search */
+export const getIaAtiva = (): ProvedorId => lerConfigs().ativa;
+export const getConfigIA = (): ConfigIA => getConfigDe(getIaAtiva());
+
+export function setIaAtiva(id: ProvedorId) {
+  gravarConfigs({ ...lerConfigs(), ativa: id });
+}
+
+/** Guarda a configuração da IA (cada provedor tem a sua) */
+export function setConfigIA(cfg: ConfigIA) {
+  const c = lerConfigs();
+  const limpa = { ...cfg, chave: cfg.chave.trim(), modelo: cfg.modelo.trim(), url: cfg.url.trim().replace(/\/+$/, "") };
+  gravarConfigs({ ...c, configs: { ...c.configs, [cfg.provedor]: limpa } });
+}
+
+export function removerConfigIA(id: ProvedorId) {
+  const c = lerConfigs();
+  const configs = { ...c.configs };
+  delete configs[id];
+  gravarConfigs({ ...c, configs });
 }
 
 /** Pronta para buscar: modelo definido e chave (dispensada nas IAs locais) */
@@ -248,7 +294,7 @@ function validarRegistro(input: unknown): input is CombosBrutos {
   );
 }
 
-function converter(bruto: CombosBrutos, ctx: ContextoBusca): SugestaoIA[] {
+function converter(bruto: CombosBrutos, ctx: Pick<ContextoBusca, "acharCarta">): SugestaoIA[] {
   return bruto.combos.map((c) => {
     const faltando = new Set<string>();
     const ids = (nomes: string[]) =>
@@ -426,4 +472,82 @@ async function buscarCompativel(cfg: ConfigIA, ctx: ContextoBusca): Promise<Resu
 /** Busca combos com a IA configurada; devolve as sugestões e o texto final da IA */
 export function buscarCombosComIA(cfg: ConfigIA, ctx: ContextoBusca): Promise<ResultadoIA> {
   return cfg.provedor === "anthropic" ? buscarComClaude(cfg, ctx) : buscarCompativel(cfg, ctx);
+}
+
+// ---------------------------------------------------------------- vídeo do YouTube (Gemini, experimental)
+
+/** Link de vídeo do YouTube (watch, shorts ou youtu.be) */
+export const ehLinkYouTube = (url: string) => /^https:\/\/(www\.|m\.)?(youtube\.com\/(watch\?v=|shorts\/)|youtu\.be\/)[\w-]{6,}/.test(url.trim());
+
+// formato da resposta (o Gemini devolve JSON nesse esquema)
+const lista = (items: unknown) => ({ type: "ARRAY", items });
+const ESQUEMA_VIDEO = {
+  type: "OBJECT",
+  properties: {
+    combos: lista({
+      type: "OBJECT",
+      properties: {
+        titulo: { type: "STRING" },
+        iniciais: lista({ type: "STRING" }),
+        passos: lista({ type: "OBJECT", properties: { texto: { type: "STRING" }, cartas: lista({ type: "STRING" }) }, required: ["texto", "cartas"] }),
+        campo_final: lista({ type: "STRING" }),
+        observacoes: { type: "STRING" },
+      },
+      required: ["titulo", "iniciais", "passos", "campo_final", "observacoes"],
+    }),
+  },
+  required: ["combos"],
+};
+
+const PEDIDO_VIDEO = `Assista a este vídeo de combo de Yu-Gi-Oh! e transcreva o combo jogado, na ordem em que acontece.
+- O vídeo pode ser de um simulador (MDPro, Master Duel, EDOPro, Duelingbook) ou de cartas físicas: leia os nomes que aparecem na tela e no áudio.
+- Nos campos de cartas (iniciais, cartas de cada passo, campo_final), use os nomes oficiais em inglês.
+- Escreva o texto de cada passo em português do Brasil, curto e no formato do app, por exemplo: "Invocação-Normal de X", "Ativa Y da mão e adiciona Z do Deck à mão", "Invocação-Link de W usando A + B".
+- iniciais: as cartas na mão no início do combo. campo_final: as cartas no campo ao fim do turno.
+- Se o vídeo mostrar mais de um combo, registre cada um separadamente (até 5).
+- Se não tiver certeza de uma carta, descreva o que viu no texto do passo e explique em observacoes, em português. Não invente cartas nem passos.
+- Se o vídeo não mostrar um combo de Yu-Gi-Oh!, devolva a lista de combos vazia.`;
+
+/** POST no Gemini: no desktop pelo Rust (evita bloqueio de CORS), na web direto */
+async function postGemini(url: string, chave: string, body: unknown): Promise<{ status: number; body: string }> {
+  if (isDesktop) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return invoke("ia_chat", { url, apiKey: chave, body: JSON.stringify(body) });
+  }
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": chave }, body: JSON.stringify(body) });
+  return { status: res.status, body: await res.text() };
+}
+
+/**
+ * Experimental: o Gemini assiste ao vídeo (público) do YouTube e devolve os combos; as cartas são
+ * convertidas para os ids do app e as que não existem na base são listadas, como no Combo Search.
+ */
+export async function importarComboDeVideo(cfg: ConfigIA, video: string, ctx: Pick<ContextoBusca, "acharCarta" | "onProgresso">): Promise<ResultadoIA> {
+  if (!cfg.chave) throw new Error("Cadastre a chave do Gemini em Minha conta → IAs → Gemini.");
+  if (!ehLinkYouTube(video)) throw new Error("Cole o link de um vídeo do YouTube (youtube.com/watch?v=… ou youtu.be/…).");
+  ctx.onProgresso?.("O Gemini está assistindo ao vídeo (pode levar alguns minutos)…");
+  const modelo = encodeURIComponent(cfg.modelo || "gemini-2.5-flash");
+  const res = await postGemini(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, cfg.chave, {
+    contents: [{ parts: [{ file_data: { file_uri: video.trim() } }, { text: PEDIDO_VIDEO }] }],
+    generationConfig: { responseMimeType: "application/json", responseSchema: ESQUEMA_VIDEO },
+  });
+  let json: { candidates?: { content?: { parts?: { text?: string }[] } }[]; error?: { message?: string }; promptFeedback?: { blockReason?: string } };
+  try {
+    json = JSON.parse(res.body);
+  } catch {
+    throw new Error(`O Gemini respondeu em formato inesperado (HTTP ${res.status}).`);
+  }
+  if (res.status >= 400 || json.error) throw new Error(`Erro do Gemini (HTTP ${res.status}): ${json.error?.message ?? "sem detalhes"}`);
+  if (json.promptFeedback?.blockReason) throw new Error(`O Gemini recusou o vídeo (${json.promptFeedback.blockReason}).`);
+  const texto = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  let bruto: unknown;
+  try {
+    bruto = JSON.parse(texto);
+  } catch {
+    throw new Error("O Gemini não devolveu os combos no formato esperado. Tente de novo.");
+  }
+  const comFontes = { combos: ((bruto as CombosBrutos | null)?.combos ?? []).map((c) => ({ ...c, fontes: [{ nome: "Vídeo do YouTube", url: video.trim() }] })) };
+  if (!validarRegistro(comFontes)) throw new Error("O Gemini não devolveu os combos no formato esperado. Tente de novo.");
+  const sugestoes = converter(comFontes, ctx);
+  return { sugestoes, resposta: sugestoes.length ? "" : "O Gemini não encontrou um combo de Yu-Gi-Oh! neste vídeo." };
 }

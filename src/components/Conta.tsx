@@ -4,10 +4,10 @@ import ExternalLink from "./ExternalLink";
 import politica from "../../docs/politica-de-privacidade.md?raw";
 import termos from "../../docs/termos-de-uso.md?raw";
 import {
-  cadastrar,
   contaAtual,
+  criarUsuarioComoAdmin,
   entrar,
-  lerConfigIANaConta,
+  lerConfigsIANaConta,
   listarRecalculos,
   pedirRecalculo,
   recuperarSenha,
@@ -19,13 +19,26 @@ import {
   type Recalculo,
   type TipoRecalculo,
 } from "../db/conta";
-import { getConfigIA, iaConfigurada, MODELOS, PROVEDORES, provedor, setConfigIA, type ConfigIA, type ProvedorId } from "../db/ia";
+import { GUIAS } from "../data/ias";
+import {
+  getConfigDe,
+  getIaAtiva,
+  iaConfigurada,
+  MODELOS,
+  PROVEDORES,
+  provedor,
+  removerConfigIA,
+  setConfigIA,
+  setIaAtiva,
+  type ConfigIA,
+  type ProvedorId,
+} from "../db/ia";
 import { supabaseReady } from "../db/supabase";
 
-// Tela "Minha conta": entrar, criar conta, recuperar senha, integração com IA e documentos.
-// Abre de qualquer lugar (menu principal, Combo Search) e o Esc fecha só ela.
+// Tela "Minha conta": entrar, recuperar senha, IAs, documentos e (administrador) recálculos e
+// cadastro de usuários. Novas contas só pelo administrador. Abre de qualquer lugar e o Esc fecha só ela.
 
-type Aba = "entrar" | "criar" | "senha" | "politica" | "termos";
+type Aba = "entrar" | "senha" | "politica" | "termos";
 
 let aberta: Aba | "conta" | null = null;
 const listeners = new Set<() => void>();
@@ -45,6 +58,14 @@ export function closeConta() {
   emit();
 }
 export const isContaOpen = () => aberta !== null;
+
+/** IA aberta direto no detalhe ao abrir a tela (ex.: "Cadastrar o Gemini", na aba Vídeo de Combos) */
+let iaInicial: ProvedorId | null = null;
+export function openContaIA(id: ProvedorId) {
+  iaInicial = id;
+  aberta = "conta";
+  emit();
+}
 
 /** Markdown simples dos documentos legais (títulos, listas, tabelas, negrito e links) */
 function Documento({ texto }: { texto: string }) {
@@ -78,55 +99,66 @@ function Documento({ texto }: { texto: string }) {
   return <div className="doc">{blocos}</div>;
 }
 
-function IntegracaoIA() {
+/** Uma IA: para que serve no app, tutorial do cadastro e os campos (modelo, endereço, chave) */
+function DetalheIA({ id, onVoltar }: { id: ProvedorId; onVoltar: () => void }) {
   const conta = useConta();
-  const [cfg, setCfg] = useState(getConfigIA);
+  const p = provedor(id);
+  const guia = GUIAS[id];
+  const [cfg, setCfg] = useState(() => getConfigDe(id));
   const [chave, setChave] = useState("");
+  const [ativa, setAtiva] = useState(() => getIaAtiva() === id);
   // configuração também guardada na conta (opcional), para usar em outros computadores
   const [naConta, setNaConta] = useState(false);
   const [erroConta, setErroConta] = useState("");
-  const p = provedor(cfg.provedor);
   useEffect(() => {
-    if (conta) void lerConfigIANaConta().then((c) => setNaConta(!!c));
-  }, [conta]);
+    if (conta) void lerConfigsIANaConta().then((l) => setNaConta(l.some((c) => c.provedor === id)));
+  }, [conta, id]);
   const salvar = (novo: ConfigIA) => {
     setConfigIA(novo);
-    setCfg(getConfigIA());
-    if (naConta) void salvarConfigIANaConta(getConfigIA()).catch((e) => setErroConta(String(e.message ?? e)));
+    setCfg(getConfigDe(id));
+    if (naConta) void salvarConfigIANaConta(getConfigDe(id)).catch((e) => setErroConta(String(e.message ?? e)));
   };
   const alternarConta = async (guardar: boolean) => {
     setErroConta("");
     try {
-      if (guardar) await salvarConfigIANaConta(getConfigIA());
-      else await removerConfigIADaConta();
+      if (guardar) await salvarConfigIANaConta(getConfigDe(id));
+      else await removerConfigIADaConta(id);
       setNaConta(guardar);
     } catch (e) {
       setErroConta(e instanceof Error ? e.message : String(e));
     }
   };
-  const trocarProvedor = (id: ProvedorId) => {
-    const novo = provedor(id);
-    // ao trocar de provedor, a chave e o modelo do anterior não servem
-    salvar({ provedor: id, chave: "", modelo: id === "anthropic" ? MODELOS[0].id : "", url: novo.url });
-    setChave("");
+  const remover = () => {
+    removerConfigIA(id);
+    setCfg(getConfigDe(id));
+    if (naConta) void removerConfigIADaConta(id).then(() => setNaConta(false));
   };
+  const pronta = iaConfigurada(cfg);
   return (
-    <section className="conta-ia">
-      <h3>Integração com IA</h3>
-      <p className="tags-note">
-        O Combo Search usa a IA que você escolher, com a <strong>sua</strong> chave de API: os custos são cobrados na sua conta
-        do provedor. A chave fica neste dispositivo (e, se você marcar a opção abaixo, também na sua conta) e é usada só para chamar o provedor.
+    <section className="conta-ia ia-detalhe">
+      <div className="conta-row">
+        <h3>{p.nome}</h3>
+        <button className="link-btn" onClick={onVoltar}>
+          ← Todas as IAs
+        </button>
+      </div>
+      <p className="ia-intuito">
+        <strong>Para que serve no app:</strong> {guia.intuito}
       </p>
-      <label className="field">
-        <span className="field-label">Provedor</span>
-        <select value={cfg.provedor} onChange={(e) => trocarProvedor(e.target.value as ProvedorId)} aria-label="Provedor de IA">
-          {PROVEDORES.map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.nome}
-            </option>
+      <details className="ia-tutorial" open={!pronta}>
+        <summary>Tutorial: como cadastrar</summary>
+        <ol>
+          {guia.tutorial.map((passo) => (
+            <li key={passo}>{passo}</li>
           ))}
-        </select>
-      </label>
+        </ol>
+        {p.chaves && (
+          <p className="tags-note">
+            Página das chaves: <ExternalLink href={p.chaves}>{new URL(p.chaves).host}</ExternalLink>
+          </p>
+        )}
+        <p className="tags-note">Custo: {guia.custo}. A chave é sua: os custos são cobrados na sua conta do provedor.</p>
+      </details>
       {p.id === "anthropic" ? (
         <label className="field">
           <span className="field-label">Modelo</span>
@@ -151,8 +183,7 @@ function IntegracaoIA() {
         </>
       )}
       <p className="tags-note">
-        Pesquisa na web: <strong>{p.web}</strong>.{p.web === "não" && " A IA usa os dados do app (texto das cartas e combos registrados) e o próprio conhecimento."}
-        {p.local && " Rode o programa no computador antes de buscar."}
+        Pesquisa na web no Combo Search: <strong>{p.web}</strong>.{p.local && " Rode o programa no computador antes de usar."}
       </p>
       {cfg.chave ? (
         <div className="conta-row">
@@ -162,43 +193,144 @@ function IntegracaoIA() {
           </button>
         </div>
       ) : (
-        <>
-          <div className="tcgapi-key-row">
-            <input
-              type="password"
-              placeholder={p.local ? "Chave (opcional)" : `Chave da API · ${p.nome}`}
-              value={chave}
-              onChange={(e) => setChave(e.target.value)}
-              aria-label="Chave da API de IA"
-            />
-            <button
-              className="ghost-btn"
-              disabled={!chave.trim()}
-              onClick={() => {
-                salvar({ ...cfg, chave });
-                setChave("");
-              }}
-            >
-              Salvar
-            </button>
-          </div>
-          {p.chaves && (
-            <p className="tags-note">
-              Crie uma chave em <ExternalLink href={p.chaves}>{new URL(p.chaves).host}</ExternalLink>.
-            </p>
-          )}
-        </>
+        <div className="tcgapi-key-row">
+          <input
+            type="password"
+            placeholder={p.local ? "Chave (opcional)" : `Chave da API · ${p.nome}`}
+            value={chave}
+            onChange={(e) => setChave(e.target.value)}
+            aria-label="Chave da API de IA"
+          />
+          <button
+            className="ghost-btn"
+            disabled={!chave.trim()}
+            onClick={() => {
+              salvar({ ...cfg, chave });
+              setChave("");
+            }}
+          >
+            Salvar
+          </button>
+        </div>
       )}
       {conta && (
         <label className="conta-aceite">
-          <input type="checkbox" checked={naConta} onChange={(e) => void alternarConta(e.target.checked)} /> Guardar esta configuração (com a
-          chave) na minha conta, para usar em outros computadores
+          <input type="checkbox" checked={naConta} onChange={(e) => void alternarConta(e.target.checked)} /> Guardar esta IA (com a chave) na
+          minha conta, para usar em outros computadores
         </label>
       )}
       {erroConta && <p className="db-warning">{erroConta}</p>}
-      <p className={iaConfigurada(cfg) ? "conta-ok" : "tags-note"}>
-        {iaConfigurada(cfg) ? "Pronta para o Combo Search." : "Falta configurar: " + [!cfg.modelo && "modelo", p.id !== "anthropic" && !cfg.url && "endereço", !cfg.chave && !p.local && "chave"].filter(Boolean).join(", ") + "."}
+      <p className={pronta ? "conta-ok" : "tags-note"}>
+        {pronta
+          ? ativa
+            ? "Pronta e em uso no Combo Search."
+            : "Pronta."
+          : "Falta configurar: " + [!cfg.modelo && "modelo", p.id !== "anthropic" && !cfg.url && "endereço", !cfg.chave && !p.local && "chave"].filter(Boolean).join(", ") + "."}
       </p>
+      <div className="ia-acoes">
+        {pronta && !ativa && (
+          <button
+            className="ghost-btn"
+            onClick={() => {
+              setIaAtiva(id);
+              setAtiva(true);
+            }}
+          >
+            Usar no Combo Search
+          </button>
+        )}
+        {(cfg.chave || naConta) && (
+          <button className="link-btn" onClick={remover}>
+            Remover esta IA
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** As IAs que o usuário pode cadastrar: um botão para cada uma */
+function IntegracaoIA() {
+  const [aberta, setAberta] = useState<ProvedorId | null>(() => {
+    const x = iaInicial;
+    iaInicial = null;
+    return x;
+  });
+  if (aberta) return <DetalheIA id={aberta} onVoltar={() => setAberta(null)} />;
+  const ativa = getIaAtiva();
+  return (
+    <section className="conta-ia">
+      <h3>IAs</h3>
+      <p className="tags-note">
+        Cada IA usa a <strong>sua</strong> chave de API (os custos ficam na sua conta do provedor). A chave fica neste dispositivo e, se você
+        quiser, também na sua conta. Clique numa IA para cadastrar, ver o tutorial e para que ela serve no app.
+      </p>
+      <div className="ia-grade">
+        {PROVEDORES.map((x) => {
+          const pronta = iaConfigurada(getConfigDe(x.id));
+          return (
+            <button key={x.id} className={`ia-botao ${pronta ? "ia-pronta" : ""}`} onClick={() => setAberta(x.id)}>
+              <strong>{x.nome}</strong>
+              <small>
+                {pronta ? (ativa === x.id ? "Configurada · Combo Search" : "Configurada") : "Não configurada"}
+                {x.id === "gemini" && " · vídeo do YouTube"}
+              </small>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** Só o administrador: cadastra um usuário (nome de usuário, e-mail e senha), já confirmado */
+function CadastroUsuarios() {
+  const [form, setForm] = useState({ usuario: "", email: "", senha: "" });
+  const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const cadastrar = async (e: FormEvent) => {
+    e.preventDefault();
+    setEnviando(true);
+    setMsg(null);
+    try {
+      await criarUsuarioComoAdmin(form.usuario, form.email, form.senha);
+      setMsg({ tipo: "ok", texto: `Usuário @${form.usuario.trim().toLowerCase()} cadastrado. Ele já pode entrar com o e-mail e a senha.` });
+      setForm({ usuario: "", email: "", senha: "" });
+    } catch (err) {
+      setMsg({ tipo: "erro", texto: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setEnviando(false);
+    }
+  };
+  return (
+    <section className="conta-ia conta-admin">
+      <h3>Cadastrar usuário</h3>
+      <p className="tags-note">Só o administrador cria contas. A conta já nasce confirmada; passe o e-mail e a senha para a pessoa.</p>
+      <form className="conta-form" onSubmit={(e) => void cadastrar(e)}>
+        <label className="field">
+          <span className="field-label">Usuário (público)</span>
+          <input
+            required
+            pattern="[a-z0-9_]{3,20}"
+            title="3 a 20 letras minúsculas, números ou _"
+            value={form.usuario}
+            onChange={(e) => setForm({ ...form, usuario: e.target.value.toLowerCase() })}
+            autoComplete="off"
+          />
+        </label>
+        <label className="field">
+          <span className="field-label">E-mail</span>
+          <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" />
+        </label>
+        <label className="field">
+          <span className="field-label">Senha (mínimo 8 caracteres)</span>
+          <input type="password" required minLength={8} value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} autoComplete="new-password" />
+        </label>
+        {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
+        <button className="ghost-btn conta-enviar" type="submit" disabled={enviando}>
+          {enviando ? "Cadastrando…" : "Cadastrar usuário"}
+        </button>
+      </form>
     </section>
   );
 }
@@ -273,9 +405,7 @@ function Formulario() {
   const conta = useConta();
   const aba = useSyncExternalStore(subscribe, () => aberta);
   const [email, setEmail] = useState("");
-  const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
-  const [aceite, setAceite] = useState(false);
   const [msg, setMsg] = useState<{ tipo: "erro" | "ok"; texto: string } | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -319,6 +449,7 @@ function Formulario() {
           </div>
         </section>
         <IntegracaoIA />
+        {conta.admin && <CadastroUsuarios />}
         {conta.admin && <Administracao />}
         {docs}
       </>
@@ -327,9 +458,9 @@ function Formulario() {
 
   const abas = (
     <div className="left-tabs conta-tabs" role="tablist">
-      {(["entrar", "criar", "senha"] as const).map((a) => (
+      {(["entrar", "senha"] as const).map((a) => (
         <button key={a} role="tab" aria-selected={aba === a} className={aba === a ? "active" : ""} onClick={() => openConta(a)}>
-          {a === "entrar" ? "Entrar" : a === "criar" ? "Criar conta" : "Esqueci a senha"}
+          {a === "entrar" ? "Entrar" : "Esqueci a senha"}
         </button>
       ))}
     </div>
@@ -346,11 +477,6 @@ function Formulario() {
             className="conta-form"
             onSubmit={(e) =>
               void enviar(e, async () => {
-                if (aba === "criar") {
-                  if (!aceite) throw new Error("Para criar a conta, aceite a Política de Privacidade e os Termos de Uso.");
-                  const r = await cadastrar(email, usuario, senha);
-                  return r === "confirmar" ? "Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre." : undefined;
-                }
                 if (aba === "senha") {
                   await recuperarSenha(email);
                   return "Se o e-mail tiver conta, você vai receber um link para criar uma nova senha.";
@@ -363,29 +489,18 @@ function Formulario() {
               <span className="field-label">E-mail</span>
               <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
-            {aba === "criar" && (
-              <label className="field">
-                <span className="field-label">Usuário (público)</span>
-                <input autoComplete="username" required pattern="[a-z0-9_]{3,20}" title="3 a 20 letras minúsculas, números ou _" value={usuario} onChange={(e) => setUsuario(e.target.value.toLowerCase())} />
-              </label>
-            )}
             {aba !== "senha" && (
               <label className="field">
                 <span className="field-label">Senha</span>
-                <input type="password" autoComplete={aba === "criar" ? "new-password" : "current-password"} required minLength={aba === "criar" ? 8 : undefined} value={senha} onChange={(e) => setSenha(e.target.value)} />
-              </label>
-            )}
-            {aba === "criar" && (
-              <label className="conta-aceite">
-                <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} /> Li e aceito a Política de Privacidade
-                e os Termos de Uso.
+                <input type="password" autoComplete="current-password" required value={senha} onChange={(e) => setSenha(e.target.value)} />
               </label>
             )}
             {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
             <button className="ghost-btn conta-enviar" type="submit" disabled={enviando}>
-              {enviando ? "Aguarde…" : aba === "criar" ? "Criar conta" : aba === "senha" ? "Enviar link" : "Entrar"}
+              {enviando ? "Aguarde…" : aba === "senha" ? "Enviar link" : "Entrar"}
             </button>
           </form>
+          <p className="tags-note">Novas contas são criadas pelo administrador do app. Ao entrar, você aceita a Política de Privacidade e os Termos de Uso.</p>
         </>
       )}
       <IntegracaoIA />
