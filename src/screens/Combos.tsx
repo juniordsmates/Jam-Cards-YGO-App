@@ -12,6 +12,7 @@ import { initCardDb, useCardDb } from "../db/cardStore";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
 import { cardsOfLine, linesForHand, semCartaDoCalculo, uniqueLines, type LinhaCombo } from "../db/motor";
 import { deckDoCombo } from "../db/decks";
+import type { ComboTeste } from "./TesteJogo";
 import { combosDaComunidade, type ComboBase } from "../db/baseCombos";
 import { supabaseReady } from "../db/supabase";
 import { bilingualName, displayName, type Card } from "../db/types";
@@ -73,7 +74,7 @@ export default function Combos({
   onBack: () => void;
   initialHand?: Card[];
   /** abre o Teste de Jogo com um deck temporário da linha */
-  onTestar?: (deckId: string, combo: { mao: number[]; passos: LinhaCombo["passos"]; qualquer?: number }) => void;
+  onTestar?: (deckId: string, combo: ComboTeste) => void;
 }) {
   const db = useCardDb();
   const [format, setFormat] = useState<GameFormat>("TCG");
@@ -165,6 +166,14 @@ export default function Combos({
         onTestar(deck.id, { mao: c.iniciais, passos: c.dados.passos });
       }
     : undefined;
+  // "Editar e Importar" (combo lido de vídeo): Teste de Jogo já no combo, para refazer os passos e
+  // salvar pelo Criar combo com o título e o link do vídeo
+  const editarEImportar = onTestar
+    ? (c: ComboBase) => {
+        const deck = deckDoCombo({ mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo }, byId, format);
+        onTestar(deck.id, { mao: c.iniciais, passos: c.dados.passos, titulo: c.titulo, fontes: c.dados.fontes, iniciar: true });
+      }
+    : undefined;
   const legal = useCallback((id: number) => {
     const c = byId.get(id);
     return !c || legalIn(c, format);
@@ -221,7 +230,7 @@ export default function Combos({
         </div>
       ) : (
         modo === "video" ? (
-          <ComboDeVideo tabs={modos} all={db.cards} byId={byId} format={format} onHover={onHover} />
+          <ComboDeVideo tabs={modos} all={db.cards} byId={byId} format={format} onHover={onHover} onEditar={editarEImportar} />
         ) : modo === "search" ? (
           <ComboSearch tabs={modos} extra={toggleRespostas} respostas={respostas} legal={legal} all={db.cards} byId={byId} format={format} combos={combos} known={known} fits={fits} onHover={onHover} />
         ) : (

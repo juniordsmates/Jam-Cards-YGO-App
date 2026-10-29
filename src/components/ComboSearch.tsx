@@ -65,6 +65,7 @@ export function ComboCard({
   highlight,
   format,
   onTestar,
+  rotuloTestar = "▶ Teste de Jogo",
 }: {
   combo: ComboBase;
   byId: Map<number, Card>;
@@ -72,6 +73,8 @@ export function ComboCard({
   highlight: Set<number>;
   format?: GameFormat;
   onTestar?: (combo: ComboBase) => void;
+  /** texto do botão de onTestar (padrão "▶ Teste de Jogo") */
+  rotuloTestar?: string;
 }) {
   const conta = useConta();
   // cópia local: a edição e a exclusão pelo autor aparecem na hora, sem buscar a lista de novo
@@ -153,7 +156,7 @@ export function ComboCard({
               onTestar(combo);
             }}
           >
-            ▶ Teste de Jogo
+            {rotuloTestar}
           </button>
         )}
       </summary>

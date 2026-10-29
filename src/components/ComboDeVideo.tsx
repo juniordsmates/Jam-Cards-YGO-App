@@ -14,7 +14,22 @@ type Hover = (card: Card | null, el?: HTMLElement) => void;
  * ao vídeo e devolve os passos; cada combo aparece como sugestão de IA, para conferir e, se estiver
  * certo, salvar como Combo da Comunidade.
  */
-export default function ComboDeVideo({ tabs, all, byId, format, onHover }: { tabs: ReactNode; all: Card[]; byId: Map<number, Card>; format: GameFormat; onHover: Hover }) {
+export default function ComboDeVideo({
+  tabs,
+  all,
+  byId,
+  format,
+  onHover,
+  onEditar,
+}: {
+  tabs: ReactNode;
+  all: Card[];
+  byId: Map<number, Card>;
+  format: GameFormat;
+  onHover: Hover;
+  /** "Editar e Importar": abre o combo no Teste de Jogo para refazer os passos */
+  onEditar?: (combo: ComboBase) => void;
+}) {
   const [link, setLink] = useState("");
   const [estado, setEstado] = useState<{ status: "parado" | "lendo" | "pronto" | "erro"; progresso?: string; combos: ComboBase[]; aviso?: string; erro?: string }>({
     status: "parado",
@@ -109,8 +124,14 @@ export default function ComboDeVideo({ tabs, all, byId, format, onHover }: { tab
           <section className="known-combos ia-section" aria-label="Combos do vídeo">
             <h4>Combos do vídeo ({estado.combos.length})</h4>
             {estado.aviso && <p className="tags-note">{estado.aviso}</p>}
+            {onEditar && estado.combos.length > 0 && (
+              <p className="tags-note">
+                <strong>Editar e Importar</strong>: abre o combo no Teste de Jogo, com as cartas dele num deck temporário e os passos lidos
+                do vídeo como guia. Refaça o combo (pulando ou acrescentando etapas) e salve pelo Criar combo.
+              </p>
+            )}
             {estado.combos.map((c) => (
-              <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={new Set()} format={format} />
+              <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={new Set()} format={format} onTestar={onEditar} rotuloTestar="✎ Editar e Importar" />
             ))}
           </section>
         )}

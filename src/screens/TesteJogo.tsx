@@ -60,6 +60,11 @@ export interface ComboTeste {
   passos: Passo[];
   /** cartas quaisquer da mão (para descarte), que o deck temporário não traz */
   qualquer?: number;
+  /** "Editar e Importar" (combo lido de vídeo): título e fontes vão para o Criar combo */
+  titulo?: string;
+  fontes?: { nome: string; url: string }[];
+  /** abre já em "Executar combo" (mão do combo e caixa de passos) */
+  iniciar?: boolean;
 }
 
 export default function TesteJogo({
@@ -182,7 +187,7 @@ export default function TesteJogo({
         {
           iniciais: maoInicial.map((c) => c.id),
           arquetipos: arquetiposDe([...copias.keys()].map((id) => byId.get(id)).filter((c): c is Card => !!c)),
-          dados: { passos: anotados, campo: campoDoTabuleiro(t), copias: Object.fromEntries(copias) },
+          dados: { passos: anotados, campo: campoDoTabuleiro(t), copias: Object.fromEntries(copias), ...(combo?.fontes?.length ? { fontes: combo.fontes } : {}) },
         },
       );
       setGravacao({
@@ -237,6 +242,10 @@ export default function TesteJogo({
     setPasso(0);
     setLog([`Executar combo: mão inicial (${combo.mao.map((id) => (byId.get(id) ? displayName(byId.get(id)!) : id)).join(" + ")}).`]);
   };
+  // "Editar e Importar": começa direto no combo, para o usuário refazer os passos
+  useEffect(() => {
+    if (combo?.iniciar) executarCombo();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------------------------------------------------------------- ações
 
@@ -667,7 +676,7 @@ export default function TesteJogo({
             className="ghost-btn tj-criar-combo"
             onClick={() => {
               setGravacao(null);
-              setCriando({ titulo: tituloSugerido(), obs: "", compartilhar: false });
+              setCriando({ titulo: combo?.titulo?.slice(0, 120) || tituloSugerido(), obs: "", compartilhar: false });
             }}
             title="Cria um combo com os passos feitos neste teste (desde a mão inicial)"
           >
