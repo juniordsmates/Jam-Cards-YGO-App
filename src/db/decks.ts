@@ -248,6 +248,49 @@ export function contagem(ids: number[], byId: Map<number, Card>) {
   return n;
 }
 
+// ---------------------------------------------------------------- importar deck list (.ydk e ydke://)
+
+/** Lê os ids de um link ydke:// (EDOPro, Duelingbook): main!extra!side em base64, 4 bytes por id */
+function idsDeYdke(parte: string): number[] {
+  const bin = atob(parte);
+  const ids: number[] = [];
+  for (let i = 0; i + 3 < bin.length; i += 4)
+    ids.push((bin.charCodeAt(i) | (bin.charCodeAt(i + 1) << 8) | (bin.charCodeAt(i + 2) << 16) | (bin.charCodeAt(i + 3) << 24)) >>> 0);
+  return ids;
+}
+
+/**
+ * Lê uma deck list: arquivo .ydk (#main, #extra, !side) ou link ydke://. Ids de artes alternativas
+ * viram o id da carta; ids desconhecidos são contados. O Side vem separado (o editor não usa).
+ */
+export function lerDeckList(texto: string, idCanonico: (id: number) => number | undefined): { deck: Pick<Deck, Parte>; ignorados: number } {
+  const deck: Pick<Deck, Parte> = { main: [], extra: [], side: [] };
+  let ignorados = 0;
+  const incluir = (parte: Parte, bruto: number) => {
+    const id = idCanonico(bruto);
+    if (id) deck[parte].push(id);
+    else ignorados++;
+  };
+  const ydke = texto.trim().match(/^ydke:\/\/([^!]*)!([^!]*)!([^!]*)!?/);
+  if (ydke) {
+    try {
+      (["main", "extra", "side"] as Parte[]).forEach((parte, i) => idsDeYdke(ydke[i + 1]).forEach((id) => incluir(parte, id)));
+    } catch {
+      // link quebrado: nenhuma carta reconhecida
+    }
+    return { deck, ignorados };
+  }
+  let parte: Parte = "main";
+  for (const bruta of texto.split(/\r?\n/)) {
+    const linha = bruta.trim();
+    if (linha === "#main") parte = "main";
+    else if (linha === "#extra") parte = "extra";
+    else if (linha === "!side") parte = "side";
+    else if (/^\d+$/.test(linha)) incluir(parte, Number(linha));
+  }
+  return { deck, ignorados };
+}
+
 /** Ordem do deck como no Duelingbook: monstros, magias, armadilhas; dentro, por nome */
 export function ordenarParte(ids: number[], byId: Map<number, Card>): number[] {
   const ordem = { monster: 0, spell: 1, trap: 2, other: 3 };

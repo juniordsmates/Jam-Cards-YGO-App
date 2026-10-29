@@ -11,6 +11,7 @@ import {
   definirPadrao,
   ehExtra,
   excluirDeck,
+  lerDeckList,
   motivoBloqueio,
   ordenarParte,
   salvarDeck,
@@ -102,6 +103,9 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const [pagina, setPagina] = useState(0);
   const [nomeando, setNomeando] = useState<Nomeando>(null);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
+  // "Importar deck list": painel com arquivo .ydk ou texto/link colado
+  const [importando, setImportando] = useState(false);
+  const [textoImport, setTextoImport] = useState("");
   const [mensagem, setMensagem] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const arrastando = useRef<{ id: number; de?: Parte; indice?: number } | null>(null);
   // Teste de Jogo (Solo Mode) com o deck aberto
@@ -123,6 +127,13 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const byId = useMemo(() => {
     const m = new Map(db.cards.map((c) => [c.id, c]));
     return m;
+  }, [db.cards]);
+
+  // ids de artes alternativas (dos .ydk) → id da carta
+  const idCanonico = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const c of db.cards) for (const img of [c.id, ...c.images]) m.set(img, c.id);
+    return (id: number) => m.get(id);
   }, [db.cards]);
 
   const resultados = useMemo(
@@ -230,6 +241,28 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     if (!trabalho) return;
     salvarDeck(trabalho);
     avisar("ok", conta ? "Deck salvo neste computador e na sua conta." : "Deck salvo neste computador.");
+  };
+
+  /**
+   * Importa uma deck list (.ydk ou ydke://) como deck novo, com o nome do arquivo; se já existir um
+   * deck com esse nome, salva por cima dele (um deck por nome). O Side é ignorado.
+   */
+  const importarDeckList = (texto: string, nomeArquivo?: string) => {
+    const { deck, ignorados } = lerDeckList(texto, idCanonico);
+    if (!deck.main.length && !deck.extra.length) return avisar("erro", "Nenhuma carta reconhecida. Use um arquivo .ydk (#main, #extra, !side) ou um link ydke://.");
+    const nome = nomeArquivo?.replace(/\.(ydk|txt)$/i, "").trim() || "Deck importado";
+    const novo = criarDeck(nome, { main: deck.main, extra: deck.extra, side: [] });
+    setDeckId(novo.id);
+    setTrabalho({ ...novo, main: [...novo.main], extra: [...novo.extra], side: [] });
+    setImportando(false);
+    setTextoImport("");
+    avisar(
+      "ok",
+      `Importado "${novo.nome}": ${deck.main.length} no Main e ${deck.extra.length} no Extra${deck.side.length ? ` (Side ignorado: ${deck.side.length})` : ""}${ignorados ? ` (${ignorados} cartas não reconhecidas)` : ""}.`,
+    );
+  };
+  const lerArquivo = (f?: File | null) => {
+    if (f) void f.text().then((t) => importarDeckList(t, f.name));
   };
 
   // trocar de deck com alterações não salvas pede confirmação na própria tela
@@ -379,7 +412,8 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                       Salvar{alterado ? " •" : ""}
                     </button>
                     <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "salvarComo", valor: `${trabalho?.nome ?? ""} (cópia)` })}>Salvar como</button>
-                    <button className="ghost-btn" disabled={!trabalho || trabalho.id === padrao} onClick={() => trabalho && definirPadrao(trabalho.id)}>Definir padrão</button>
+                    <button className="ghost-btn de-importar" onClick={() => setImportando(!importando)}>Importar deck list</button>
+                  <button className="ghost-btn" disabled={!trabalho || trabalho.id === padrao} onClick={() => trabalho && definirPadrao(trabalho.id)}>Definir padrão</button>
                     {confirmarExclusao ? (
                       <button
                         className="danger-btn"
@@ -397,7 +431,26 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                   </div>
                 )}
 
-                {trocaPendente && (
+                {importando && (
+                <div className="de-painel">
+                  <label className="ghost-btn de-arquivo">
+                    Escolher arquivo .ydk
+                    <input type="file" accept=".ydk,.txt" onChange={(e) => lerArquivo(e.target.files?.[0])} />
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder={"Ou cole o conteúdo do .ydk ou um link ydke://"}
+                    value={textoImport}
+                    onChange={(e) => setTextoImport(e.target.value)}
+                    aria-label="Deck list"
+                  />
+                  <button className="ghost-btn" disabled={!textoImport.trim()} onClick={() => importarDeckList(textoImport)}>
+                    Importar
+                  </button>
+                  <p className="tags-note">Vira um deck novo (com o nome do arquivo). O Side é ignorado.</p>
+                </div>
+              )}
+              {trocaPendente && (
                   <div className="de-painel">
                     <p className="db-warning">Há alterações não salvas neste deck.</p>
                     <div className="de-botoes">

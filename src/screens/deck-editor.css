@@ -375,3 +375,18 @@
   border: 1px solid var(--line);
   border-radius: 8px;
 }
+
+/* "Importar deck list": botão de arquivo com o input invisível por cima */
+.de-arquivo {
+  position: relative;
+  text-align: center;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.de-arquivo input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
