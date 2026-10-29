@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent }
 import ScreenShell from "./ScreenShell";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { useConta } from "../db/conta";
+import { copiasPorCarta, juntarColecaoDaConta, useColecao } from "../db/colecao";
 import {
   avisos,
   contagem,
@@ -29,6 +30,15 @@ import "./deck-editor.css";
 
 const POR_PAGINA = 24;
 const SEM_LIMITE = "cartas-editor-sem-limite";
+const ESTOQUE = "cartas-editor-estoque";
+
+/** Estoque de cartas (Minha Coleção) no editor: não aplicar, listar todas ou só as que possuo */
+type Estoque = "nao" | "todas" | "possuo";
+const ESTOQUES: { id: Estoque; label: string }[] = [
+  { id: "nao", label: "Não Aplicar Estoque de Cartas" },
+  { id: "todas", label: "Listar todas as cartas" },
+  { id: "possuo", label: "Listar apenas cartas que possuo" },
+];
 // sem Side Deck no editor
 const PARTES: { id: Parte; label: string }[] = [
   { id: "main", label: "Deck" },
@@ -57,6 +67,25 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
       return false;
     }
   });
+  // estoque: compara o deck com Minha Coleção (fica salvo neste computador)
+  const [estoque, setEstoque] = useState<Estoque>(() => {
+    try {
+      const v = localStorage.getItem(ESTOQUE);
+      return v === "todas" || v === "possuo" ? v : "nao";
+    } catch {
+      return "nao";
+    }
+  });
+  const escolherEstoque = (v: Estoque) => {
+    setEstoque(v);
+    try {
+      localStorage.setItem(ESTOQUE, v);
+    } catch {
+      // armazenamento indisponível: vale só nesta sessão
+    }
+  };
+  const { itens: itensColecao } = useColecao();
+  const naColecao = useMemo(() => copiasPorCarta(itensColecao), [itensColecao]);
   const alternarSemLimite = (v: boolean) => {
     setSemLimite(v);
     try {
@@ -82,6 +111,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   // com conta: traz os decks salvos nela que ainda não estão neste computador
   useEffect(() => {
     if (conta) void trazerDecksDaConta();
+    if (conta) void juntarColecaoDaConta();
   }, [conta]);
 
   const salvo = decks.find((d) => d.id === deckId) ?? null;
@@ -95,7 +125,13 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     return m;
   }, [db.cards]);
 
-  const resultados = useMemo(() => searchCards(db.cards, filtros, db.archetypePt).filter((c) => c.frame !== "skill" && c.frame !== "token"), [db.cards, filtros, db.archetypePt]);
+  const resultados = useMemo(
+    () =>
+      searchCards(db.cards, filtros, db.archetypePt).filter(
+        (c) => c.frame !== "skill" && c.frame !== "token" && (estoque !== "possuo" || (naColecao.get(c.id) ?? 0) > 0),
+      ),
+    [db.cards, filtros, db.archetypePt, estoque, naColecao],
+  );
   const paginas = Math.max(1, Math.ceil(resultados.length / POR_PAGINA));
   useEffect(() => setPagina(0), [filtros]);
 
@@ -214,13 +250,25 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
 
   // função de desenho (não componente): o React não recria a carta a cada redesenho (hover),
   // o que quebraria arrastos e cliques começados nela
+  // estoque (Minha Coleção): no deck, a cópia além das que o usuário possui fica escurecida (conta
+  // só a quantidade, somando as raridades; Main antes do Extra); na busca, a carta sem cópia livre
+  const possuo = (id: number) => naColecao.get(id) ?? 0;
+  const noDeck = (id: number) => (trabalho ? [...trabalho.main, ...trabalho.extra].filter((x) => x === id).length : 0);
+  const semEstoque = (id: number, parte?: Parte, indice?: number) => {
+    if (estoque === "nao") return false;
+    if (!parte || indice === undefined || !trabalho) return possuo(id) - noDeck(id) <= 0;
+    const antes = parte === "main" ? trabalho.main.slice(0, indice) : [...trabalho.main, ...trabalho.extra.slice(0, indice)];
+    return antes.filter((x) => x === id).length >= possuo(id);
+  };
+
   const thumb = (id: number, parte?: Parte, indice?: number, key?: string) => {
     const c = byId.get(id);
     if (!c) return <div key={key} className="de-thumb de-desconhecida">#{id}</div>;
+    const faltando = semEstoque(id, parte, indice);
     return (
       <div
         key={key}
-        className="de-thumb"
+        className={`de-thumb ${faltando ? "de-sem-estoque" : ""}`}
         draggable
         onDragStart={arrastar(id, parte, indice)}
         onDragOver={parte ? (e) => e.preventDefault() : undefined}
@@ -237,6 +285,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
       >
         <img src={cardImage(c.id, "small")} alt={displayName(c)} loading="lazy" draggable={false} />
         <CardSelos card={c} formato={formato} />
+        {estoque !== "nao" && !parte && <span className="selo-possuo">possuo {possuo(id)}</span>}
       </div>
     );
   };
@@ -265,6 +314,15 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
             <label className="de-sem-limite" title="Sem banlist (proibidas, limitadas, semi-limitadas) e sem conferir se a carta saiu no TCG/OCG; continua o máximo de 3 cópias por carta">
               <input type="checkbox" checked={semLimite} onChange={(e) => alternarSemLimite(e.target.checked)} /> Desativar limite de cartas
             </label>
+          )}
+          {!testando && (
+            <select className="de-estoque" value={estoque} onChange={(e) => escolherEstoque(e.target.value as Estoque)} aria-label="Estoque de cartas" title="Compara o deck com Minha Coleção">
+              {ESTOQUES.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
           )}
         </span>
         </span>

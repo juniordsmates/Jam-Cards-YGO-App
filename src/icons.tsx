@@ -25,6 +25,14 @@ export const DeckIcon = () => (
   </svg>
 );
 
+export const CollectionIcon = () => (
+  <svg {...base}>
+    <rect x="3" y="10" width="18" height="11" rx="2" />
+    <path d="M7 10V5.5A1.5 1.5 0 0 1 8.5 4h7A1.5 1.5 0 0 1 17 5.5V10" />
+    <path d="M10 14.5h4" />
+  </svg>
+);
+
 export const ComboIcon = () => (
   <svg {...base}>
     <circle cx="6" cy="6" r="2.5" />

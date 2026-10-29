@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { ComboIcon, DeckIcon, ExitIcon, SearchIcon } from "../icons";
+import { CollectionIcon, ComboIcon, DeckIcon, ExitIcon, SearchIcon } from "../icons";
 import { isDesktop } from "../platform";
 import { BUILD_LABEL, VERSION_LABEL } from "../version";
 import { useConta } from "../db/conta";
@@ -15,6 +15,8 @@ type Props = {
   onDeck: () => void;
   /** Teste de Jogo (Solo Mode) com o deck padrão */
   onTeste: () => void;
+  /** Minha Coleção: as cartas que o usuário possui */
+  onColecao: () => void;
   onExit: () => void;
   /** abre a tela de conta (entrar, criar conta, integração com IA) */
   onConta: () => void;
@@ -28,13 +30,14 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onDeck, onTeste, onExit, onConta }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onDeck, onTeste, onColecao, onExit, onConta }: Props) {
   const conta = useConta();
   const items: Item[] = [
     { label: "Buscar Carta", hint: "Encontre qualquer carta", icon: <SearchIcon />, accent: "cyan", action: onSearch },
     { label: "Combos", hint: "Mão inicial e Combo Search", icon: <ComboIcon />, accent: "cyan", action: onCombos },
     { label: "Editor de Deck", hint: "Monte e ajuste seus decks", icon: <DeckIcon />, accent: "magenta", action: onDeck },
     { label: "Teste de Jogo", hint: "Teste de mão e jogadas com o seu deck", icon: <DeckIcon />, accent: "magenta", action: onTeste },
+    { label: "Minha Coleção", hint: "Cartas que você possui, raridades e valor", icon: <CollectionIcon />, accent: "magenta", action: onColecao },
     { label: "Sair", hint: isDesktop ? "Fechar o aplicativo" : "Encerrar a sessão", icon: <ExitIcon />, accent: "red", action: onExit },
   ];
 

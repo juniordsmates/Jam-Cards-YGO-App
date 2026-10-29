@@ -58,3 +58,20 @@
   font-size: 0.68rem;
   box-shadow: none;
 }
+
+/* "possuo N" (Minha Coleção) sobre a miniatura, na Coleção e no Editor de Deck */
+.selo-possuo {
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  transform: translateX(-50%);
+  padding: 0 5px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: #fff;
+  background: rgb(16 120 80 / 90%);
+  border-radius: 4px;
+  pointer-events: none;
+}

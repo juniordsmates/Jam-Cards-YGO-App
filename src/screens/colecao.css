@@ -1,0 +1,139 @@
+/* Minha Coleção: mesmo layout do Editor de Deck (deck-editor.css), com resumo, tabela e formulário */
+
+.col-resumo dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+.col-resumo dt {
+  color: var(--text-dim);
+}
+
+.col-resumo dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.col-total {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--magenta);
+}
+
+.col-raridades {
+  width: 100%;
+  font-size: 0.76rem;
+  border-collapse: collapse;
+}
+
+.col-raridades td {
+  padding: 3px 0;
+  border-top: 1px solid var(--line);
+}
+
+.col-raridades td + td {
+  text-align: right;
+  padding-left: 8px;
+  white-space: nowrap;
+}
+
+.col-cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.col-cabecalho h3 {
+  margin: 0 auto 0 0;
+}
+
+.col-cabecalho input,
+.col-cabecalho select,
+.col-retirar input {
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.col-tabela {
+  width: 100%;
+  font-size: 0.84rem;
+  border-collapse: collapse;
+}
+
+.col-tabela th {
+  padding: 6px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line);
+}
+
+.col-tabela td {
+  padding: 6px 8px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--line);
+}
+
+.col-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.col-na {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.col-acoes {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.col-retirar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.col-retirar input {
+  width: 72px;
+}
+
+.col-retirar-btn {
+  padding: 4px 10px;
+  font-size: 0.76rem;
+}
+
+.col-adicionar {
+  gap: 8px;
+}
+
+.col-adicionar .field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.col-adicionar-btn {
+  font-weight: 700;
+  color: var(--magenta);
+}
+
+.col-ativa {
+  outline: 2px solid var(--magenta);
+  outline-offset: 1px;
+  border-radius: 4px;
+}

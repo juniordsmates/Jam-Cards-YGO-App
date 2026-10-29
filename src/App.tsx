@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import MainMenu from "./screens/MainMenu";
 import CardSearch from "./screens/CardSearch";
 import Combos from "./screens/Combos";
+import Colecao from "./screens/Colecao";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
 import ExitDialog from "./components/ExitDialog";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
@@ -12,7 +13,7 @@ import { exitApp } from "./platform";
 import { initCardDb } from "./db/cardStore";
 import type { Card } from "./db/types";
 
-export type Screen = "menu" | "search" | "combos" | "deck";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("menu");
@@ -90,6 +91,7 @@ export default function App() {
             setDeckFrom("menu");
             setScreen("deck");
           }}
+          onColecao={() => setScreen("colecao")}
           onExit={() => setConfirmingExit(true)}
           onConta={() => openConta()}
         />
@@ -116,6 +118,7 @@ export default function App() {
         />
       )}
 
+      {screen === "colecao" && <Colecao onBack={() => setScreen("menu")} />}
       {screen === "deck" && <DeckEditor key={JSON.stringify(deckInicial)} inicial={deckInicial} onBack={() => setScreen(deckFrom)} />}
 
       <FontesDialog />

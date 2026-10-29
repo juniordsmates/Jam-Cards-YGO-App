@@ -361,3 +361,17 @@
   white-space: nowrap;
   cursor: pointer;
 }
+
+/* estoque de cartas: cópia além das que o usuário possui (ou sem cópia livre, na busca) */
+.de-sem-estoque img {
+  filter: brightness(0.45) saturate(0.6);
+}
+
+.de-estoque {
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 0.74rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
