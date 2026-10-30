@@ -1,6 +1,7 @@
 import { useCardDb } from "./cardStore";
 import { displayName, type Card } from "./types";
 import { RESPOSTAS } from "../data/respostas";
+import { respostasDaLinha, uniqueLines, type CombosCalculados } from "./motor";
 
 // Ordem e classificação das respostas (cartas que o oponente pode ativar):
 //   1. mais usadas em torneios (decklists recentes da YGOPRODeck), da mais usada para a menos
@@ -78,3 +79,46 @@ export function useContextoRespostas(byId: Map<number, Card>): ContextoRespostas
   const extras = useCardDb().extras;
   return { byId, uso: extras?.uso, respondedores: extras?.respondedores };
 }
+
+// ---------------------------------------------------------------- índice do motor de regras
+
+export type Contagem = Map<number, number>;
+
+export interface IndiceRespostas {
+  /** carta → quem pode responder quando ela ativa / é invocada (nº de linhas) */
+  aoAtivar: Map<number, Contagem>;
+  aoInvocar: Map<number, Contagem>;
+  /** interrupção → cartas que ela pode responder (nº de linhas) */
+  responde: Map<number, Contagem>;
+}
+
+let cache: { combos: CombosCalculados; indice: IndiceRespostas } | undefined;
+
+/** Índice das respostas em todas as linhas calculadas (montado uma vez por camada) */
+export function indiceDeRespostas(combos: CombosCalculados): IndiceRespostas {
+  if (cache?.combos === combos) return cache.indice;
+  const indice: IndiceRespostas = { aoAtivar: new Map(), aoInvocar: new Map(), responde: new Map() };
+  const somar = (m: Map<number, Contagem>, a: number, b: number) => {
+    const c = m.get(a) ?? new Map<number, number>();
+    c.set(b, (c.get(b) ?? 0) + 1);
+    m.set(a, c);
+  };
+  for (const l of uniqueLines(combos.linhas)) {
+    const { porPasso } = respostasDaLinha(l);
+    // cada par (carta, resposta) conta uma vez por linha
+    const vistos = new Set<string>();
+    for (const p of l.passos) {
+      if (p.t !== "ativa" && p.t !== "normal" && p.t !== "invoca") continue;
+      for (const r of porPasso(p)) {
+        const key = `${p.t === "ativa" ? "a" : "i"}:${p.c}:${r}`;
+        if (vistos.has(key)) continue;
+        vistos.add(key);
+        somar(p.t === "ativa" ? indice.aoAtivar : indice.aoInvocar, p.c, r);
+        somar(indice.responde, r, p.c);
+      }
+    }
+  }
+  cache = { combos, indice };
+  return indice;
+}
+

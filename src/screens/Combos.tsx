@@ -15,6 +15,8 @@ import { deckDoCombo } from "../db/decks";
 import type { ComboTeste } from "./TesteJogo";
 import { combosDaComunidade, type ComboBase } from "../db/baseCombos";
 import { supabaseReady } from "../db/supabase";
+import { exportarTodos, useCombosLocais } from "../db/combosLocais";
+import { temRecursosAvancados, useConta } from "../db/conta";
 import { bilingualName, displayName, type Card } from "../db/types";
 import "./combos.css";
 
@@ -42,6 +44,20 @@ function CombosComunidade({
   onTestar?: (combo: ComboBase) => void;
 }) {
   const [lista, setLista] = useState<ComboBase[]>([]);
+  const conta = useConta();
+  // combos só neste aparelho (Usuário Padrão), com a mesma regra da mão
+  const todosLocais = useCombosLocais();
+  const locais = todosLocais.filter((c) => mao.every((id) => c.iniciais.includes(id)));
+  const [exportacao, setExportacao] = useState<{ tipo: "ok" | "erro" | "enviando"; texto: string } | null>(null);
+  const exportarLocais = async (compartilhar: boolean) => {
+    setExportacao({ tipo: "enviando", texto: "Exportando…" });
+    const r = await exportarTodos(compartilhar);
+    setExportacao(
+      r.erros.length
+        ? { tipo: "erro", texto: `${r.enviados} exportado(s); falharam: ${r.erros.join(" · ")}` }
+        : { tipo: "ok", texto: `${r.enviados} combo(s) exportado(s) para a base${compartilhar ? " e compartilhado(s)" : ""}.` },
+    );
+  };
   const chave = mao.join(",");
   useEffect(() => {
     let vivo = true;
@@ -52,15 +68,41 @@ function CombosComunidade({
       vivo = false;
     };
   }, [chave]);
-  if (!supabaseReady() || !lista.length) return null;
+  if ((!supabaseReady() || !lista.length) && !locais.length) return null;
   const destaque = new Set(mao);
   return (
     <section className="combos-comunidade">
+      {locais.length > 0 && (
+        <div className="combos-locais">
+          <h3>Meus combos neste aparelho ({locais.length})</h3>
+          <p className="tags-note">
+            Criados como Usuário Padrão: ficam só aqui. {temRecursosAvancados(conta) ? "Exporte para levá-los à base (Combos da Comunidade)." : "Usuários Avançado ou Mentor podem exportá-los para a base."}
+          </p>
+          {temRecursosAvancados(conta) && todosLocais.length > 0 && (
+            <div className="combos-exportar-todos">
+              <button className="ghost-btn" disabled={exportacao?.tipo === "enviando"} onClick={() => void exportarLocais(false)}>
+                Exportar todos ({todosLocais.length})
+              </button>
+              <button className="ghost-btn" disabled={exportacao?.tipo === "enviando"} onClick={() => void exportarLocais(true)}>
+                Exportar e compartilhar todos
+              </button>
+            </div>
+          )}
+          {exportacao && <p className={exportacao.tipo === "erro" ? "db-warning" : "conta-ok"}>{exportacao.texto}</p>}
+          {locais.map((c) => (
+            <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} format={format} onTestar={onTestar} />
+          ))}
+        </div>
+      )}
+      {supabaseReady() && lista.length > 0 && (
+      <>
       <h3>{mao.length ? "Combos da Comunidade com esta mão" : "Combos da Comunidade recentes"}</h3>
       {lista.map((c) => (
         <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} format={format} onTestar={onTestar} />
       ))}
       <p className="tags-note">Criados por usuários no Teste de Jogo e compartilhados: confira antes de usar.</p>
+      </>
+      )}
     </section>
   );
 }

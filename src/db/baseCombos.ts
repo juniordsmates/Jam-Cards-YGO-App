@@ -169,6 +169,31 @@ export async function criarComboDoTeste(
 }
 
 /**
+ * Exporta para a base um combo que estava só no aparelho (combos locais do Usuário Padrão):
+ * entra como Combo da Comunidade do usuário, compartilhado ou não, com a data original nas observações.
+ */
+export async function exportarParaBase(combo: ComboBase, compartilhar: boolean): Promise<ComboBase> {
+  const sb = supabase();
+  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  const { data, error } = await sb
+    .from("combos")
+    .insert({
+      origem: "comunidade",
+      autor_nome: (combo.autor_nome ?? "").trim().slice(0, 60) || "autor",
+      titulo: combo.titulo.trim().slice(0, 120),
+      arquetipos: combo.arquetipos,
+      iniciais: combo.iniciais.slice(0, 10),
+      finais: combo.finais.slice(0, 20),
+      dados: combo.dados,
+      publico: compartilhar,
+    })
+    .select(COLS)
+    .single();
+  if (error) throw new Error(`Exportar combo: ${error.message}`);
+  return data as ComboBase;
+}
+
+/**
  * Combos da Comunidade para a aba Combos: os que começam com todas as cartas da mão escolhida
  * (ou, sem mão, os mais recentes). Os compartilhados aparecem para todos; os não compartilhados,
  * só para o autor (regra do banco).

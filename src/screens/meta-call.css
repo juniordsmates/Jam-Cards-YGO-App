@@ -1,0 +1,380 @@
+/* Meta Call: decks esperados à esquerda, leitura dos decks e recomendação à direita */
+
+.meta-call {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: clamp(250px, 19vw, 330px) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.mc-decks,
+.mc-resultado {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.mc-decks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mc-decks .tags-note {
+  margin: 0;
+}
+
+.mc-atalhos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.mc-atalhos button {
+  padding: 5px;
+  font-size: 0.78rem;
+}
+
+.mc-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-lista li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+}
+
+.mc-lista li.on {
+  background: color-mix(in srgb, var(--cyan) 12%, transparent);
+}
+
+.mc-lista label {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 20px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.mc-pos {
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  text-align: right;
+  opacity: 0.6;
+}
+
+.mc-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-lista small {
+  font-size: 0.74rem;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+.mc-lista .sobe {
+  color: #1d7a46;
+}
+
+.mc-lista .desce {
+  color: #b3261e;
+}
+
+.mc-peso {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.76rem;
+}
+
+.mc-peso input {
+  width: 48px;
+  padding: 2px 4px;
+  font: inherit;
+  text-align: right;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.mc-meu select {
+  width: 100%;
+}
+
+.mc-resultado {
+  padding: 16px clamp(14px, 2vw, 30px);
+}
+
+.mc-vazio {
+  max-width: 640px;
+  margin: 8vh auto;
+  text-align: center;
+  line-height: 1.55;
+}
+
+.mc-vazio h3,
+.mc-titulo {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  color: var(--cyan);
+}
+
+.mc-titulo small {
+  font-family: inherit;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.mc-perfis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mc-perfil {
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.mc-perfil summary {
+  cursor: pointer;
+}
+
+.mc-perfil summary small {
+  color: var(--text-dim);
+}
+
+.mc-tracos {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.mc-linha {
+  margin: 4px 0;
+  line-height: 1.45;
+}
+
+.mc-listas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mc-sugestao {
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--cyan) 6%, var(--bg-elev));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.mc-sugestao-cab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.mc-sugestao h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.mc-sugestao h4 small {
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.mc-sugestao .tags-note {
+  margin: 2px 0 6px;
+}
+
+.mc-sugestao ul {
+  columns: 2 160px;
+  margin: 0;
+  padding: 0;
+  font-size: 0.84rem;
+  list-style: none;
+}
+
+.mc-sugestao li {
+  break-inside: avoid;
+  padding: 1px 0;
+}
+
+.mc-possuo {
+  color: #1d7a46;
+}
+
+.mc-cats {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  margin-bottom: 8px;
+}
+
+.mc-recs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-rec {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.mc-rec img {
+  width: 56px;
+  border-radius: 4px;
+}
+
+.mc-rec-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mc-rec-topo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mc-ban {
+  color: #8a5a00;
+}
+
+.mc-papel {
+  color: var(--text-dim);
+}
+
+.mc-nota {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.mc-nota strong {
+  font-family: var(--font-display);
+}
+
+.mc-nota small {
+  color: var(--text-dim);
+}
+
+.mc-barra {
+  width: 120px;
+  height: 7px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--cyan) 14%, transparent);
+  border-radius: 4px;
+}
+
+.mc-barra span {
+  display: block;
+  height: 100%;
+  background: var(--cyan);
+}
+
+.mc-por-deck {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* cada deck: mais forte, mais cor */
+.mc-chip {
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--cyan) calc(var(--nota) * 30%), transparent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: help;
+}
+
+.mc-motivo,
+.mc-detalhe {
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.mc-requisito {
+  color: #8a5a00;
+}
+
+.mc-aviso {
+  color: #b3261e;
+}
+
+.mc-detalhe {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.mc-ver {
+  align-self: flex-start;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .meta-call {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .mc-decks {
+    max-height: 38vh;
+  }
+}
+
+/* selos da recomendação: tipo, limite da banlist e coleção */
+.mc-selo {
+  padding: 1px 7px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.mc-selo-ban {
+  color: #8a5a00;
+}
+
+.mc-selo-possuo {
+  color: #1d7a46;
+}

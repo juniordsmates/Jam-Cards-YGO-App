@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, ExitIcon, HelpIcon, SearchIcon } from "../icons";
+import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, ExitIcon, HelpIcon, SearchIcon, TargetIcon } from "../icons";
 import { isDesktop } from "../platform";
 import { BUILD_LABEL, VERSION_LABEL } from "../version";
 import { useConta } from "../db/conta";
@@ -14,6 +14,8 @@ type Props = {
   onCombos: () => void;
   /** Guia de Deck: os decks do meta, com ideias, combos e interações */
   onGuia: () => void;
+  /** Meta Call: decks esperados no torneio → cartas boas contra eles */
+  onMetaCall: () => void;
   onDeck: () => void;
   /** Teste de Jogo (Solo Mode) com o deck padrão */
   onTeste: () => void;
@@ -34,12 +36,13 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onGuia, onDeck, onTeste, onColecao, onManual, onExit, onConta }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onManual, onExit, onConta }: Props) {
   const conta = useConta();
   const items: Item[] = [
     { label: "Buscar Carta", hint: "Encontre qualquer carta", icon: <SearchIcon />, accent: "cyan", action: onSearch },
     { label: "Combos", hint: "Mão inicial e Combo Search", icon: <ComboIcon />, accent: "cyan", action: onCombos },
     { label: "Guia de Deck", hint: "Decks do meta: ideias, combos e interações", icon: <BookIcon />, accent: "cyan", action: onGuia },
+    { label: "Meta Call", hint: "Decks esperados no torneio → cartas contra eles", icon: <TargetIcon />, accent: "cyan", action: onMetaCall },
     { label: "Editor de Deck", hint: "Monte e ajuste seus decks", icon: <DeckIcon />, accent: "magenta", action: onDeck },
     { label: "Teste de Jogo", hint: "Teste de mão e jogadas com o seu deck", icon: <DeckIcon />, accent: "magenta", action: onTeste },
     { label: "Minha Coleção", hint: "Cartas que você possui, raridades e valor", icon: <CollectionIcon />, accent: "magenta", action: onColecao },

@@ -1,49 +1,8 @@
 import { useMemo } from "react";
 import { openRespostas } from "./RespostasDialog";
-import { ordenarRespostas, TIPOS, useContextoRespostas } from "../db/respostas";
+import { indiceDeRespostas, ordenarRespostas, TIPOS, useContextoRespostas, type Contagem } from "../db/respostas";
 import { useCardDb } from "../db/cardStore";
-import { respostasDaLinha, uniqueLines, type CombosCalculados } from "../db/motor";
 import { displayName, type Card } from "../db/types";
-
-type Contagem = Map<number, number>;
-
-interface Indice {
-  /** carta → quem pode responder quando ela ativa / é invocada (nº de linhas) */
-  aoAtivar: Map<number, Contagem>;
-  aoInvocar: Map<number, Contagem>;
-  /** interrupção → cartas que ela pode responder (nº de linhas) */
-  responde: Map<number, Contagem>;
-}
-
-let cache: { combos: CombosCalculados; indice: Indice } | undefined;
-
-/** Índice das respostas em todas as linhas calculadas (montado uma vez por camada) */
-function indiceDe(combos: CombosCalculados): Indice {
-  if (cache?.combos === combos) return cache.indice;
-  const indice: Indice = { aoAtivar: new Map(), aoInvocar: new Map(), responde: new Map() };
-  const somar = (m: Map<number, Contagem>, a: number, b: number) => {
-    const c = m.get(a) ?? new Map<number, number>();
-    c.set(b, (c.get(b) ?? 0) + 1);
-    m.set(a, c);
-  };
-  for (const l of uniqueLines(combos.linhas)) {
-    const { porPasso } = respostasDaLinha(l);
-    // cada par (carta, resposta) conta uma vez por linha
-    const vistos = new Set<string>();
-    for (const p of l.passos) {
-      if (p.t !== "ativa" && p.t !== "normal" && p.t !== "invoca") continue;
-      for (const r of porPasso(p)) {
-        const key = `${p.t === "ativa" ? "a" : "i"}:${p.c}:${r}`;
-        if (vistos.has(key)) continue;
-        vistos.add(key);
-        somar(p.t === "ativa" ? indice.aoAtivar : indice.aoInvocar, p.c, r);
-        somar(indice.responde, r, p.c);
-      }
-    }
-  }
-  cache = { combos, indice };
-  return indice;
-}
 
 /** Registros por lista no painel; o "+" abre a lista completa */
 const MAX_PAINEL = 15;
@@ -51,7 +10,7 @@ const MAX_PAINEL = 15;
 export default function CardRespostas({ card, byId, onOpen }: { card: Card; byId: Map<number, Card>; onOpen: (card: Card) => void }) {
   const combos = useCardDb().extras?.combos;
   const ctx = useContextoRespostas(byId);
-  const indice = useMemo(() => (combos ? indiceDe(combos) : null), [combos]);
+  const indice = useMemo(() => (combos ? indiceDeRespostas(combos) : null), [combos]);
   if (!indice) return null;
 
   const contagem = (m: Map<number, Contagem>) => m.get(card.id) ?? new Map<number, number>();

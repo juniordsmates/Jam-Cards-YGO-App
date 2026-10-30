@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { ehExtra } from "../db/decks";
 import { cardImage } from "../db/images";
 import { kindLabel, levelLabel } from "../db/labels";
 import {
+  acharCarta,
+  adicionarCarta,
   aleatorio,
+  removerCarta,
   alternar,
   anotarPasso,
   campoDoTabuleiro,
@@ -23,6 +26,7 @@ import {
   MONSTROS_EXTRA,
   mover,
   NOMES_ZONA,
+  tabuleiroInicial,
   testeDeMao,
   ZONAS_UNICAS,
   type CartaJogo,
@@ -37,11 +41,22 @@ import { contarPapeis } from "../db/classificacao";
 import { FontesButton } from "../components/Fontes";
 import { isContaOpen, openConta } from "../components/Conta";
 import { arquetiposDe, criarComboDoTeste, validadeNoFormato } from "../db/baseCombos";
-import { useConta } from "../db/conta";
-import { FORMATS, type GameFormat } from "../db/legality";
+import { temRecursosAvancados, useConta } from "../db/conta";
+import { salvarComboLocal } from "../db/combosLocais";
+import { FORMATS, legalIn, type GameFormat } from "../db/legality";
+import { useCardDb } from "../db/cardStore";
+import { indiceDeRespostas } from "../db/respostas";
+import { outroLado, type Evento, type Lado, type LadoCampo, type Situacao } from "../db/indicacoes";
+import { indicar, type CartaDoLado } from "../db/indicar";
+import IndicacoesResposta, { type EntradaIndicacao } from "../components/IndicacoesResposta";
+import AdicionarCarta, { type Destino } from "../components/AdicionarCarta";
 import "./teste-jogo.css";
 
 // Teste de Jogo (Solo Mode): sem regras de jogo; o jogador move as cartas à vontade.
+// Teste Avançado (Usuário Avançado ou Mentor): o mesmo teste embaixo e o campo do oponente espelhado
+// em cima, com cartas adicionadas à mão (não saem de deck nenhum), e as Indicações de resposta a cada
+// ação. É um facilitador: as indicações vêm de regras escritas pelo texto das cartas, do motor de
+// combos e do uso em torneios, sem simular a corrente.
 
 const FASES = ["DP", "SP", "M1", "BP", "M2", "EP"] as const;
 const PILHAS: ZonaId[] = ["deck", "extra", "cemiterio", "banido"];
@@ -75,6 +90,8 @@ export default function TesteJogo({
   formato = "TCG",
   onFechar,
   combo,
+  avancado = false,
+  onModo,
 }: {
   nome: string;
   main: number[];
@@ -85,6 +102,10 @@ export default function TesteJogo({
   onFechar: () => void;
   /** aberto pela tela de Combos: habilita o "Executar combo" */
   combo?: ComboTeste;
+  /** Teste Avançado: campo do oponente e Indicações de resposta */
+  avancado?: boolean;
+  /** troca entre o Teste de Jogo e o Teste Avançado (só para Avançado e Mentor) */
+  onModo?: (avancado: boolean) => void;
 }) {
   // passo atual do "Executar combo" (null: caixa de passos fechada)
   const [passo, setPasso] = useState<number | null>(null);
@@ -120,10 +141,15 @@ export default function TesteJogo({
    * (mão, campo, Cemitério e banidas continuam como estão), como no Duelingbook
    */
   const fecharLista = () => {
-    if (lista === "deck") embaralhar();
+    if (lista === "deck" && listaLado === "eu") embaralhar();
     setLista(null);
   };
   const [lista, setLista] = useState<ZonaId | null>(null);
+  const [listaLado, setListaLado] = useState<Lado>("eu");
+  const abrirLista = (z: ZonaId, lado: Lado = "eu") => {
+    setListaLado(lado);
+    setLista(z);
+  };
   const [log, setLog] = useState<string[]>(["Teste de Mão: Deck embaralhado, 5 cartas compradas."]);
   const arrastando = useRef<string | null>(null);
 
@@ -141,11 +167,13 @@ export default function TesteJogo({
     usadas.current = new Map();
     setGravacao(null);
   };
-  const anotar = (p: Passo | null, c?: CartaJogo) => {
+  /** `virada`: Magia/Armadilha baixada que acabou de ser virada (ativação da carta) */
+  const anotar = (p: Passo | null, c?: CartaJogo, opts: { virada?: boolean } = {}) => {
     if (!p) return;
     setAnotados((ps) => anotarPasso(ps, p));
     // tokens não contam como cópias de cartas do deck
     if (c && !c.ficha) usadas.current.set(c.uid, c.id);
+    avaliar(p, "eu", opts);
   };
   /** Passo de combo de um movimento (null: sem passo, como trocar de zona no próprio campo) */
   const passoDoMovimento = (c: CartaJogo, de: ZonaId, para: ZonaId | "material", opts: { baixada?: boolean; normal?: boolean } = {}): Passo | null => {
@@ -181,15 +209,21 @@ export default function TesteJogo({
     if (!criando || !conta) return;
     const copias = copiasUsadas();
     setGravacao({ tipo: "gravando", texto: "Criando o combo…" });
+    const autorNome = conta.usuario || conta.email.split("@")[0];
+    const dadosCombo = {
+      iniciais: maoInicial.map((c) => c.id),
+      arquetipos: arquetiposDe([...copias.keys()].map((id) => byId.get(id)).filter((c): c is Card => !!c)),
+      dados: { passos: anotados, campo: campoDoTabuleiro(t), copias: Object.fromEntries(copias), teste: true, ...(combo?.fontes?.length ? { fontes: combo.fontes } : {}) },
+    };
+    // Usuário Padrão: o combo fica só neste aparelho (aba Combos → Meus combos neste aparelho)
+    if (!temRecursosAvancados(conta)) {
+      salvarComboLocal({ autorId: conta.id, autorNome, titulo: criando.titulo, observacoes: criando.obs }, dadosCombo);
+      setGravacao({ tipo: "ok", texto: "Combo criado neste aparelho (Usuário Padrão): está na aba Combos, em Meus combos neste aparelho, de onde pode ser exportado depois." });
+      setCriando(null);
+      return;
+    }
     try {
-      await criarComboDoTeste(
-        { autorNome: conta.usuario || conta.email.split("@")[0], titulo: criando.titulo, observacoes: criando.obs, compartilhar: criando.compartilhar },
-        {
-          iniciais: maoInicial.map((c) => c.id),
-          arquetipos: arquetiposDe([...copias.keys()].map((id) => byId.get(id)).filter((c): c is Card => !!c)),
-          dados: { passos: anotados, campo: campoDoTabuleiro(t), copias: Object.fromEntries(copias), ...(combo?.fontes?.length ? { fontes: combo.fontes } : {}) },
-        },
-      );
+      await criarComboDoTeste({ autorNome, titulo: criando.titulo, observacoes: criando.obs, compartilhar: criando.compartilhar }, dadosCombo);
       setGravacao({
         tipo: "ok",
         texto: criando.compartilhar ? "Combo criado e compartilhado: aparece para todos na aba Combos, com o seu nome e a data." : "Combo criado. Só você vê (aba Combos).",
@@ -214,6 +248,120 @@ export default function TesteJogo({
   };
   const registrar = (msg: string) => setLog((l) => [msg, ...l].slice(0, 60));
 
+  // ---------------------------------------------------------------- Teste Avançado
+
+  // campo do oponente: cartas adicionadas pelo jogador (sem Deck nem Extra Deck)
+  const [op, setOp] = useState<Tabuleiro>(() => tabuleiroInicial([], []));
+  const [lpOp, setLpOp] = useState(8000);
+  const [lpOpAjuste, setLpOpAjuste] = useState("");
+  const [turno, setTurno] = useState<Lado>("eu");
+  const [adicionando, setAdicionando] = useState(false);
+  const [indicacoes, setIndicacoes] = useState<EntradaIndicacao[]>([]);
+  const [painelInd, setPainelInd] = useState(true);
+  // por lado, neste turno: Invocações, Invocações-Especiais e efeito de monstro ativado na mão/Cemitério
+  const novoTurno = () => ({ eu: { inv: 0, esp: 0, maoGY: false }, op: { inv: 0, esp: 0, maoGY: false } });
+  const [contagens, setContagens] = useState(novoTurno);
+  const contagensRef = useRef(contagens);
+  const zerarTurno = () => {
+    contagensRef.current = novoTurno();
+    setContagens(contagensRef.current);
+  };
+  const tabuleiro = (l: Lado) => (l === "eu" ? t : op);
+  /** de que lado é a carta (as duas mesas têm uids diferentes) */
+  const ladoDe = (uid: string): Lado | null => (acharCarta(t, uid) ? "eu" : acharCarta(op, uid) ? "op" : null);
+
+  const extrasDb = useCardDb().extras;
+  const indice = useMemo(() => (avancado && extrasDb?.combos ? indiceDeRespostas(extrasDb.combos) : null), [avancado, extrasDb?.combos]);
+  const todas = useMemo(() => (avancado ? [...byId.values()] : []), [avancado, byId]);
+  const byName = useMemo(() => new Map(todas.map((c) => [c.name, c])), [todas]);
+
+  const ZONAS_CAMPO: ZonaId[] = [...MONSTROS, ...MONSTROS_EXTRA, ...MAGIAS, "campo-magia"];
+  const campoDe = (b: Tabuleiro): LadoCampo => {
+    const monstros = [...MONSTROS, ...MONSTROS_EXTRA].flatMap((z) => b[z]);
+    const magias = (["campo-magia", ...MAGIAS] as ZonaId[]).flatMap((z) => b[z]);
+    return {
+      cartas: monstros.length + magias.length,
+      monstros: monstros.length,
+      magias: magias.length,
+      monstrosEfeito: monstros.filter((c) => !c.baixada && !c.ficha && byId.get(c.id)?.frame !== "normal").length,
+    };
+  };
+  /** cartas com que um lado pode responder: mão e campo (monstros baixados não respondem) */
+  const cartasDoLado = (b: Tabuleiro): CartaDoLado[] => [
+    ...b.mao.map((c): CartaDoLado => ({ id: c.id, card: byId.get(c.id), onde: "mao" })),
+    ...ZONAS_CAMPO.flatMap((z) => b[z])
+      .filter((c) => !c.ficha)
+      .flatMap((c): CartaDoLado[] => {
+        const card = byId.get(c.id);
+        if (!c.baixada) return [{ id: c.id, card, onde: "campo" }];
+        return card && categoryOf(card) !== "monster" ? [{ id: c.id, card, onde: "baixada" }] : [];
+      }),
+  ];
+
+  /** Indicações de resposta: o que o outro lado pode fazer depois desta ação */
+  const avaliar = (p: Passo, lado: Lado, opts: { virada?: boolean } = {}) => {
+    if (!avancado || p.t === "texto") return;
+    const id = p.t === "compra" ? p.c[0] : p.c;
+    const card = byId.get(id);
+    const monstro = !!card && categoryOf(card) === "monster";
+    const de = p.t === "compra" ? "deck" : p.t === "normal" || p.t === "baixa" ? "mao" : p.de;
+    const ev: Evento = {
+      lado,
+      tipo: p.t,
+      id,
+      card,
+      de,
+      para: p.t === "move" ? p.para : undefined,
+      metodo: p.t === "invoca" ? p.m : undefined,
+      cartaAtivada: p.t === "ativa" && !monstro && (p.de === "mao" || !!opts.virada),
+    };
+    // contagens do turno, já com esta ação
+    const k = { ...contagensRef.current[lado] };
+    if (p.t === "normal" || p.t === "invoca") k.inv++;
+    if (p.t === "invoca") k.esp++;
+    if (p.t === "ativa" && monstro && (p.de === "mao" || p.de === "cemiterio")) k.maoGY = true;
+    contagensRef.current = { ...contagensRef.current, [lado]: k };
+    setContagens(contagensRef.current);
+    // o tabuleiro ainda não tem a carta que acabou de entrar no campo
+    const agente = campoDe(tabuleiro(lado));
+    if (p.t === "normal" || p.t === "invoca") {
+      agente.cartas++;
+      agente.monstros++;
+      if (card?.frame !== "normal") agente.monstrosEfeito++;
+    } else if (ev.cartaAtivada && p.t === "ativa" && p.de === "mao") {
+      agente.cartas++;
+      agente.magias++;
+    }
+    const outro = outroLado(lado);
+    const resp = tabuleiro(outro);
+    const fadas = resp.mao.filter((c) => byId.get(c.id)?.race === "Fairy").length;
+    const herald = resp.mao.some((c) => byId.get(c.id)?.name === "Herald of Orange Light");
+    const s: Situacao = {
+      fase,
+      turno,
+      invocacoes: k.inv,
+      especiais: k.esp,
+      ativouMaoOuGY: k.maoGY,
+      agente,
+      respondente: {
+        ...campoDe(resp),
+        cemiterio: resp.cemiterio.length,
+        // o Main Deck de quem responde só é conhecido do seu lado (Crossout Designator)
+        deck: outro === "eu" ? main : undefined,
+        fadasNaMao: fadas - (herald ? 1 : 0),
+      },
+    };
+    const r = indicar(ev, s, cartasDoLado(resp), {
+      byName,
+      byId,
+      uso: extrasDb?.uso,
+      respondedores: extrasDb?.respondedores,
+      indice,
+      legal: (c) => legalIn(c, formato),
+    });
+    setIndicacoes((l) => [{ r, passo: p, lado }, ...l].slice(0, 30));
+  };
+
   // Esc fecha o menu ou a lista; sem eles, volta ao editor (sem ir ao menu principal)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -222,6 +370,7 @@ export default function TesteJogo({
       e.preventDefault();
       e.stopPropagation();
       if (menu) setMenu(null);
+      else if (adicionando) setAdicionando(false);
       else if (criando) setCriando(null);
       else if (selecionada) setSelecionada(null);
       else if (lista) fecharLista();
@@ -230,7 +379,7 @@ export default function TesteJogo({
     };
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, [menu, criando, selecionada, lista, passo, onFechar]);
+  }, [menu, adicionando, criando, selecionada, lista, passo, onFechar]);
 
   const executarCombo = () => {
     if (!combo) return;
@@ -240,6 +389,8 @@ export default function TesteJogo({
     setLp(8000);
     setFase("M1");
     setPasso(0);
+    setIndicacoes([]);
+    zerarTurno();
     setLog([`Executar combo: mão inicial (${combo.mao.map((id) => (byId.get(id) ? displayName(byId.get(id)!) : id)).join(" + ")}).`]);
   };
   // "Editar e Importar": começa direto no combo, para o usuário refazer os passos
@@ -268,15 +419,126 @@ export default function TesteJogo({
     setMenu(null);
   };
 
-  const livre = (zonas: ZonaId[]) => zonas.find((z) => !t[z].length);
+  /** zona do outro lado que ocupa a mesma Zona de Monstros Extra (compartilhada no Teste Avançado) */
+  const espelhoEMZ = (z: ZonaId): ZonaId => (z === "em0" ? "em1" : "em0");
+  const emzOcupada = (z: ZonaId, lado: Lado) => avancado && MONSTROS_EXTRA.includes(z) && tabuleiro(outroLado(lado))[espelhoEMZ(z)].length > 0;
+  const livreNo = (lado: Lado, zonas: ZonaId[]) => zonas.find((z) => !tabuleiro(lado)[z].length && !emzOcupada(z, lado));
+  const livre = (zonas: ZonaId[]) => livreNo("eu", zonas);
+
+  // ---------------------------------------------------------------- oponente (Teste Avançado)
+
+  /** Move uma carta do oponente; a ação gera as indicações do que você pode responder */
+  const moverOp = (uid: string, para: ZonaId, opts: Parameters<typeof mover>[3] & { normal?: boolean } = {}, texto?: string) => {
+    const achada = acharCarta(op, uid);
+    setMenu(null);
+    if (!achada) return;
+    if (bloqueadoNoExtra(achada.carta, para)) return;
+    const p: Passo | null = achada.dono ? { t: "move", c: achada.carta.id, de: "material", para: zonaDoPasso(para) } : passoDoMovimento(achada.carta, achada.zona, para, opts);
+    setOp((a) => mover(a, uid, para, opts));
+    if (p) avaliar(p, "op");
+    if (texto) registrar(`Oponente: ${texto}`);
+  };
+
+  const ativarOp = (c: CartaJogo, z: ZonaId) => {
+    registrar(`Oponente ativou o efeito de ${nomeDe(c)}.`);
+    avaliar({ t: "ativa", c: c.id, de: zonaDoPasso(z) }, "op");
+    setAtivada(c.uid);
+    setTimeout(() => setAtivada((a) => (a === c.uid ? null : a)), 1200);
+    setMenu(null);
+  };
+
+  const acoesOp = (uid: string): { label: string; fazer: () => void }[] => {
+    const achada = acharCarta(op, uid);
+    if (!achada || achada.dono) return [];
+    const { zona: z, carta: c } = achada;
+    const card = byId.get(c.id);
+    const n = nomeDe(c);
+    const monstro = !!card && categoryOf(card) === "monster";
+    const doExtra = !!card && ehExtra(card);
+    const noCampo = ZONAS_UNICAS.has(z);
+    const out: { label: string; fazer: () => void }[] = [{ label: "Ativar efeito", fazer: () => ativarOp(c, z) }];
+    if (!noCampo && monstro) {
+      const zonaM = livreNo("op", doExtra ? [...MONSTROS_EXTRA, ...MONSTROS] : MONSTROS);
+      if (zonaM) {
+        if (z === "mao" && !doExtra) out.push({ label: "Invocação-Normal", fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: false, normal: true }, `Invocou-Normal ${n}.`) });
+        out.push({ label: "Invocar em ataque", fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: false }, `Invocou ${n}.`) });
+        out.push({ label: "Invocar em defesa", fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: true }, `Invocou ${n} em defesa.`) });
+        if (!doExtra) out.push({ label: "Baixar (virado para baixo)", fazer: () => moverOp(uid, zonaM, { baixada: true, defesa: true }, "Baixou um monstro.") });
+      }
+    }
+    if (!noCampo && card && !monstro) {
+      const zonaS = card.race === "Field" ? (op["campo-magia"].length ? undefined : "campo-magia") : livreNo("op", MAGIAS);
+      if (zonaS) {
+        out.push({ label: "Ativar", fazer: () => moverOp(uid, zonaS, { baixada: false }, `Ativou ${n}.`) });
+        out.push({ label: "Baixar", fazer: () => moverOp(uid, zonaS, { baixada: true }, "Baixou uma carta.") });
+      }
+    }
+    if (noCampo) {
+      out.push({
+        label: c.baixada ? "Virar para cima" : "Virar para baixo",
+        fazer: () => {
+          setOp((a) => alternar(a, uid, "baixada"));
+          registrar(`Oponente ${c.baixada ? "virou para cima" : "virou para baixo"} ${n}.`);
+          if (c.baixada && !monstro) avaliar({ t: "ativa", c: c.id, de: "magia" }, "op", { virada: true });
+          setMenu(null);
+        },
+      });
+      if (monstro) out.push({ label: c.defesa ? "Posição de ataque" : "Posição de defesa", fazer: () => { setOp((a) => alternar(a, uid, "defesa")); registrar(`Oponente mudou a posição de ${n}.`); setMenu(null); } });
+      if (c.materiais.length) out.push({ label: `Desanexar matéria (${c.materiais.length})`, fazer: () => moverOp(c.materiais[0].uid, "cemiterio", {}, `Desanexou ${nomeDe(c.materiais[0])}.`) });
+    }
+    out.push({ label: "Mover (clique na zona)", fazer: () => { setSelecionada(uid); setMenu(null); } });
+    if (z !== "mao" && !doExtra) out.push({ label: "Para a mão", fazer: () => moverOp(uid, "mao", {}, `${n} voltou para a mão.`) });
+    if (z !== "cemiterio") out.push({ label: "Para o Cemitério", fazer: () => moverOp(uid, "cemiterio", {}, `${n} foi para o Cemitério.`) });
+    if (z !== "banido") out.push({ label: "Banir", fazer: () => moverOp(uid, "banido", {}, `Baniu ${n}.`) });
+    out.push({ label: "Tirar do teste", fazer: () => { setOp((a) => removerCarta(a, uid)); registrar(`Oponente: ${n} saiu do teste.`); setMenu(null); } });
+    return out;
+  };
+
+  /** "+ Carta do oponente": coloca a carta (cenário) ou a joga como ação do oponente */
+  const adicionarAoOponente = (card: Card, destino: Destino, comoAcao: boolean) => {
+    const monstro = categoryOf(card) === "monster";
+    const doExtra = ehExtra(card);
+    const zona: ZonaId | undefined =
+      destino === "mao" || destino === "cemiterio" || destino === "banido"
+        ? destino
+        : destino.startsWith("monstro")
+          ? livreNo("op", doExtra ? [...MONSTROS_EXTRA, ...MONSTROS] : MONSTROS)
+          : card.race === "Field"
+            ? op["campo-magia"].length
+              ? undefined
+              : "campo-magia"
+            : livreNo("op", MAGIAS);
+    if (!zona) return registrar(`Oponente: sem zona livre para ${displayName(card)}.`);
+    const opts = { baixada: destino === "monstro-baixado" || destino === "magia-baixada", defesa: destino === "monstro-defesa" || destino === "monstro-baixado" };
+    setOp((a) => adicionarCarta(a, card.id, zona, opts).t);
+    registrar(`Oponente: ${displayName(card)} → ${NOMES_ZONA[zona]}${comoAcao ? "" : " (cenário)"}.`);
+    if (comoAcao)
+      avaliar(monstro ? { t: "invoca", c: card.id, de: doExtra ? "extra" : "mao", m: doExtra ? metodoDoExtra(card.frame) : undefined } : { t: "ativa", c: card.id, de: "mao" }, "op");
+    setAdicionando(false);
+  };
+
+  /** Coloca uma carta do oponente na zona dele (em zona ocupada, vira matéria Xyz) */
+  const colocarOp = (uid: string, para: ZonaId) => {
+    const achada = acharCarta(op, uid);
+    if (!achada || achada.zona === para) return;
+    const n = nomeDe(achada.carta);
+    if (ZONAS_UNICAS.has(para) && op[para].length) {
+      if (bloqueadoNoExtra(achada.carta, para)) return;
+      const p = passoDoMovimento(achada.carta, achada.zona, "material");
+      setOp((a) => mover(a, uid, para));
+      if (p) avaliar(p, "op");
+      return registrar(`Oponente: ${n} foi anexada como matéria.`);
+    }
+    moverOp(uid, para, {}, `${n} → ${NOMES_ZONA[para]}.`);
+  };
 
   const acoes = (uid: string): { label: string; fazer: () => void }[] => {
     if (uid === MENU_DECK)
       return [
-        { label: "Abrir deck", fazer: () => { setLista("deck"); setMenu(null); } },
+        { label: "Abrir deck", fazer: () => { abrirLista("deck"); setMenu(null); } },
         { label: "Comprar uma carta", fazer: () => { comprarUma(); setMenu(null); } },
       ];
-    if (uid === MENU_EXTRA) return [{ label: "Abrir Extra Deck", fazer: () => { setLista("extra"); setMenu(null); } }];
+    if (uid === MENU_EXTRA) return [{ label: "Abrir Extra Deck", fazer: () => { abrirLista("extra"); setMenu(null); } }];
     if (uid === MENU_TOKEN) {
       const zona = menu?.zona ?? livre(MONSTROS);
       if (!zona) return [{ label: "Sem Zona de Monstros livre", fazer: () => setMenu(null) }];
@@ -292,6 +554,7 @@ export default function TesteJogo({
         { label: "Criar token em defesa", fazer: () => criar(true) },
       ];
     }
+    if (ladoDe(uid) === "op") return acoesOp(uid);
     const achada = (Object.keys(t) as ZonaId[]).map((z) => ({ z, c: t[z].find((c) => c.uid === uid) })).find((x) => x.c);
     if (!achada?.c) return [];
     const { z, c } = achada;
@@ -343,7 +606,7 @@ export default function TesteJogo({
           setT((a) => alternar(a, uid, "baixada"));
           registrar(`${c.baixada ? "Virou para cima" : "Virou para baixo"} ${n}.`);
           // Magia/Armadilha baixada que vira para cima: ativação
-          if (c.baixada && !monstro) anotar({ t: "ativa", c: c.id, de: "magia" }, c);
+          if (c.baixada && !monstro) anotar({ t: "ativa", c: c.id, de: "magia" }, c, { virada: true });
           setMenu(null);
         },
       });
@@ -378,17 +641,21 @@ export default function TesteJogo({
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", uid);
   };
-  const soltar = (para: ZonaId) => (e: DragEvent) => {
+  const soltar = (para: ZonaId, lado: Lado = "eu") => (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const uid = arrastando.current;
     arrastando.current = null;
-    if (uid) colocar(uid, para);
+    if (uid) colocar(uid, para, lado);
   };
 
   /** Coloca a carta na zona (arrastando ou clicando); em zona ocupada, vira matéria Xyz */
-  const colocar = (uid: string, para: ZonaId) => {
+  const colocar = (uid: string, para: ZonaId, ladoAlvo: Lado = "eu") => {
     setSelecionada(null);
+    const ladoCarta = ladoDe(uid);
+    if (ladoCarta && ladoCarta !== ladoAlvo) return registrar("Cada carta fica do lado do dono: as do oponente no campo dele, as suas no seu.");
+    if (emzOcupada(para, ladoAlvo)) return registrar("Essa Zona de Monstros Extra está ocupada pelo outro jogador.");
+    if (ladoCarta === "op") return colocarOp(uid, para);
     const atual = (Object.keys(t) as ZonaId[]).find((z) => t[z].some((c) => c.uid === uid));
     if (atual === para) return;
     const c = (atual && t[atual].find((x) => x.uid === uid)) || null;
@@ -418,16 +685,18 @@ export default function TesteJogo({
     return (
       <div
         key={c.uid}
-        className={`tj-carta ${c.defesa ? "tj-defesa" : ""} ${pequena ? "tj-pequena" : ""} ${selecionada === c.uid ? "tj-sel" : ""} ${ativada === c.uid ? "tj-ativa" : ""}`}
+        className={`tj-carta ${c.defesa ? "tj-defesa" : ""} ${pequena ? "tj-pequena" : ""} ${selecionada === c.uid ? "tj-sel" : ""} ${ativada === c.uid ? "tj-ativa" : ""} ${avancado && ladoDe(c.uid) === "op" ? "tj-carta-op" : ""}`}
         draggable
         onDragStart={arrastar(c.uid)}
         onMouseEnter={() => (c.id === TOKEN_GENERICO ? setPreview("token") : card && setPreview(card))}
         onClick={(e) => {
           e.stopPropagation();
-          const zonaDela = (Object.keys(t) as ZonaId[]).find((z) => t[z].some((x) => x.uid === c.uid));
+          const ladoDela = ladoDe(c.uid) ?? "eu";
+          const b = tabuleiro(ladoDela);
+          const zonaDela = (Object.keys(b) as ZonaId[]).find((z) => b[z].some((x) => x.uid === c.uid));
           // com outra carta selecionada, clicar nesta coloca a selecionada na zona dela
-          if (selecionada && selecionada !== c.uid && zonaDela) return colocar(selecionada, zonaDela);
-          if (!selecionada && zonaDela && PILHAS.includes(zonaDela) && !pequena) return setLista(zonaDela);
+          if (selecionada && selecionada !== c.uid && zonaDela) return colocar(selecionada, zonaDela, ladoDela);
+          if (!selecionada && zonaDela && PILHAS.includes(zonaDela) && !pequena) return abrirLista(zonaDela, ladoDela);
           if (pequena && !selecionada) return setMenu({ uid: c.uid, x: e.clientX, y: e.clientY });
           setSelecionada(selecionada === c.uid ? null : c.uid);
         }}
@@ -455,39 +724,51 @@ export default function TesteJogo({
     );
   };
 
-  const zona = (id: ZonaId) => {
-    const cartas = t[id];
+  const zona = (id: ZonaId, lado: Lado = "eu") => {
+    const cartas = tabuleiro(lado)[id];
     const pilha = PILHAS.includes(id);
+    // Teste Avançado: as Zonas de Monstros Extra são compartilhadas (a esquerda de um é a direita do outro)
+    const compartilhada = avancado && lado === "eu" && MONSTROS_EXTRA.includes(id);
+    const doOponente = compartilhada ? op[espelhoEMZ(id)] : [];
+    const mostrada = cartas[0] ?? doOponente[0];
+    const alvo = (uid: string): [ZonaId, Lado] => (compartilhada && ladoDe(uid) === "op" ? [espelhoEMZ(id), "op"] : [id, lado]);
     return (
       <div
-        key={id}
-        className={`tj-zona tj-${id.replace(/\d/, "")} ${selecionada ? "tj-alvo" : ""}`}
+        key={`${lado}-${id}`}
+        className={`tj-zona tj-${id.replace(/\d/, "")} ${selecionada ? "tj-alvo" : ""} ${lado === "op" ? "tj-zona-op" : ""}`}
         onDragOver={(e) => e.preventDefault()}
-        onDrop={soltar(id)}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const uid = arrastando.current;
+          arrastando.current = null;
+          if (uid) colocar(uid, ...alvo(uid));
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          if (lado === "op") return;
           if (id === "deck") setMenu({ uid: MENU_DECK, x: e.clientX, y: e.clientY });
           if (id === "extra") setMenu({ uid: MENU_EXTRA, x: e.clientX, y: e.clientY });
-          if ((MONSTROS.includes(id) || MONSTROS_EXTRA.includes(id)) && !cartas.length) setMenu({ uid: MENU_TOKEN, x: e.clientX, y: e.clientY, zona: id });
+          if ((MONSTROS.includes(id) || MONSTROS_EXTRA.includes(id)) && !mostrada) setMenu({ uid: MENU_TOKEN, x: e.clientX, y: e.clientY, zona: id });
         }}
         onClick={() => {
-          if (selecionada) return colocar(selecionada, id);
+          if (selecionada) return colocar(selecionada, ...alvo(selecionada));
           // Deck e Extra Deck só respondem ao botão direito (Abrir / Comprar uma carta)
           if (id === "deck" || id === "extra") return;
-          if (pilha && cartas.length) setLista(id);
+          if (pilha && cartas.length) abrirLista(id, lado);
         }}
-        title={id === "deck" ? "Botão direito: Abrir deck ou Comprar uma carta" : id === "extra" ? "Botão direito: Abrir Extra Deck" : pilha ? `${NOMES_ZONA[id]} — clique para ver` : NOMES_ZONA[id]}
-        data-zona={id}
+        title={`${lado === "op" ? "Oponente — " : ""}${id === "deck" ? "Botão direito: Abrir deck ou Comprar uma carta" : id === "extra" ? "Botão direito: Abrir Extra Deck" : pilha ? `${NOMES_ZONA[id]} — clique para ver` : NOMES_ZONA[id]}`}
+        data-zona={lado === "op" ? `op-${id}` : id}
       >
-        {cartas[0] && (id === "deck" ? <div className="tj-verso" /> : carta(cartas[0]))}
+        {mostrada && (id === "deck" ? <div className="tj-verso" /> : carta(mostrada))}
         {id === "deck" && embaralhando && (
           <span className="tj-embaralhando" aria-label="Embaralhando">
             ⟳
           </span>
         )}
         {pilha && <span className="tj-contagem">{cartas.length}</span>}
-        {!cartas.length && <span className="tj-rotulo">{id === "campo-magia" ? "Campo" : id === "cemiterio" ? "Cemitério" : id === "banido" ? "Banidas" : id === "extra" ? "Extra" : ""}</span>}
+        {!mostrada && <span className="tj-rotulo">{id === "campo-magia" ? "Campo" : id === "cemiterio" ? "Cemitério" : id === "banido" ? "Banidas" : id === "extra" ? "Extra" : ""}</span>}
       </div>
     );
   };
@@ -523,10 +804,47 @@ export default function TesteJogo({
         )}
       </aside>
 
-      <section className="tj-mesa">
+      <section className={`tj-mesa ${avancado ? "tj-mesa-avancada" : ""}`}>
+        {avancado && (
+          <div
+            className="tj-mao tj-mao-op"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={soltar("mao", "op")}
+            onClick={() => selecionada && colocar(selecionada, "mao", "op")}
+            data-zona="op-mao"
+            aria-label="Mão do oponente"
+          >
+            {op.mao.map((c) => (
+              <div key={c.uid} className="tj-mao-carta">
+                {carta(c)}
+              </div>
+            ))}
+            {!op.mao.length && <span className="tags-note">Mão do oponente vazia: use “+ Carta do oponente” para adicionar o que ele pode ter.</span>}
+          </div>
+        )}
         <div className="tj-campo">
+          {avancado && (
+            <>
+              {/* campo do oponente espelhado: Magias/Armadilhas em cima, monstros embaixo */}
+              <div className="tj-l3 tj-linha-op">
+                <button className="tj-op-add" onClick={() => setAdicionando(true)} title="Adiciona uma carta à mão, ao campo, ao Cemitério ou às banidas do oponente">
+                  + Carta do oponente
+                </button>
+                {[...MAGIAS].reverse().map((z) => zona(z, "op"))}
+                <span className="tj-op-lp" title="Pontos de Vida do oponente">
+                  <small>Oponente</small>
+                  <strong>{lpOp}</strong>
+                </span>
+              </div>
+              <div className="tj-l2 tj-linha-op">
+                {zona("cemiterio", "op")}
+                {[...MONSTROS].reverse().map((z) => zona(z, "op"))}
+                {zona("campo-magia", "op")}
+              </div>
+            </>
+          )}
           <div className="tj-l1">
-            <span />
+            {avancado ? zona("banido", "op") : <span />}
             <span />
             {zona("em0")}
             <span />
@@ -614,6 +932,21 @@ export default function TesteJogo({
 
       <aside className="tj-dir">
         <h3>{nome}</h3>
+        {onModo && (
+          <div className="left-tabs tj-modo" role="tablist" aria-label="Modo do teste">
+            <button className={!avancado ? "active" : ""} onClick={() => onModo(false)}>
+              Teste de Jogo
+            </button>
+            <button
+              className={avancado ? "active" : ""}
+              disabled={!temRecursosAvancados(conta)}
+              onClick={() => onModo(true)}
+              title={temRecursosAvancados(conta) ? "Campo do oponente e Indicações de resposta" : "Teste Avançado: disponível para Usuário Avançado ou Mentor"}
+            >
+              Teste Avançado
+            </button>
+          </div>
+        )}
         <div className="tj-lp">
           <strong>{lp}</strong>
           <input
@@ -633,13 +966,69 @@ export default function TesteJogo({
             aria-label="Ajuste de LP (ex.: -1000)"
           />
         </div>
+        {avancado && (
+          <div className="tj-lp tj-lp-op">
+            <strong title="Pontos de Vida do oponente">{lpOp}</strong>
+            <input
+              inputMode="numeric"
+              placeholder="± op"
+              value={lpOpAjuste}
+              onChange={(e) => setLpOpAjuste(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                const v = Number(lpOpAjuste);
+                if (!Number.isNaN(v) && v) {
+                  setLpOp((x) => Math.max(0, x + v));
+                  registrar(`LP do oponente ${v > 0 ? "+" : ""}${v}.`);
+                }
+                setLpOpAjuste("");
+              }}
+              aria-label="Ajuste de LP do oponente (ex.: -1000)"
+            />
+          </div>
+        )}
         <div className="tj-fases">
           {FASES.map((f) => (
-            <button key={f} className={fase === f ? "active" : ""} onClick={() => setFase(f)}>
+            <button
+              key={f}
+              className={fase === f ? "active" : ""}
+              onClick={() => {
+                setFase(f);
+                // Draw Phase: começa um turno novo (zera as Invocações do turno)
+                if (f === "DP" && avancado) zerarTurno();
+              }}
+            >
               {f}
             </button>
           ))}
         </div>
+        {avancado && (
+          <div className="left-tabs tj-turno" role="tablist" aria-label="De quem é o turno">
+            <span className="field-label">Turno</span>
+            {(["eu", "op"] as Lado[]).map((l) => (
+              <button
+                key={l}
+                className={turno === l ? "active" : ""}
+                onClick={() => {
+                  if (turno === l) return;
+                  setTurno(l);
+                  zerarTurno();
+                  registrar(`Turno ${l === "eu" ? "seu" : "do oponente"}.`);
+                }}
+              >
+                {l === "eu" ? "Você" : "Oponente"}
+              </button>
+            ))}
+          </div>
+        )}
+        {avancado && painelInd && (
+          <IndicacoesResposta
+            entradas={indicacoes}
+            byId={byId}
+            invocacoes={{ eu: contagens.eu.inv, op: contagens.op.inv }}
+            onHover={(c) => setPreview(c)}
+          />
+        )}
         <div className="tj-botoes">
           {combo && (
             <button className="ghost-btn tj-executar" onClick={executarCombo}>
@@ -658,14 +1047,36 @@ export default function TesteJogo({
               setFase("M1");
               setSelecionada(null);
               setPasso(null);
+              setIndicacoes([]);
+              zerarTurno();
               setLog(["Reiniciado: cartas recolhidas, Deck embaralhado, 5 cartas compradas."]);
             }}
           >
             Reiniciar (Teste de Mão)
           </button>
+          {avancado && (
+            <>
+              <button className="ghost-btn tj-op-add-btn" onClick={() => setAdicionando(true)}>
+                + Carta do oponente
+              </button>
+              <button
+                className="ghost-btn"
+                onClick={() => {
+                  setOp(tabuleiroInicial([], []));
+                  setLpOp(8000);
+                  registrar("Campo e mão do oponente limpos.");
+                }}
+              >
+                Limpar oponente
+              </button>
+              <button className="ghost-btn" onClick={() => setPainelInd(!painelInd)} aria-pressed={painelInd}>
+                Indicações: {painelInd ? "ligadas" : "desligadas"}
+              </button>
+            </>
+          )}
           <button className="ghost-btn" onClick={comprarUma}>Comprar</button>
           <button className="ghost-btn" onClick={embaralhar}>Embaralhar</button>
-          <button className="ghost-btn tj-visualizar" onClick={() => setLista("deck")}>Visualizar Deck</button>
+          <button className="ghost-btn tj-visualizar" onClick={() => abrirLista("deck")}>Visualizar Deck</button>
           <button className="ghost-btn tj-criar-token" onClick={(e) => setMenu({ uid: MENU_TOKEN, x: e.clientX, y: e.clientY })} title="Cria um token numa Zona de Monstros livre (ou clique com o botão direito numa zona vazia)">
             Criar token
           </button>
@@ -778,10 +1189,17 @@ export default function TesteJogo({
                 <span className="field-label">Observações</span>
                 <textarea rows={2} maxLength={2000} value={criando.obs} onChange={(e) => setCriando({ ...criando, obs: e.target.value })} />
               </label>
-              <label className="tj-criar-compartilhar">
-                <input type="checkbox" checked={criando.compartilhar} onChange={(e) => setCriando({ ...criando, compartilhar: e.target.checked })} />
-                Compartilhar: divulgar para todos na aba Combos, com o seu nome de usuário e a data de criação
-              </label>
+              {conta && !temRecursosAvancados(conta) ? (
+                <p className="tags-note tj-criar-local">
+                  Usuário Padrão: o combo fica só neste aparelho (aba Combos → Meus combos neste aparelho). Para enviá-lo à base, use Exportar
+                  quando a conta for Avançado ou Mentor.
+                </p>
+              ) : (
+                <label className="tj-criar-compartilhar">
+                  <input type="checkbox" checked={criando.compartilhar} onChange={(e) => setCriando({ ...criando, compartilhar: e.target.checked })} />
+                  Compartilhar: divulgar para todos na aba Combos, com o seu nome de usuário e a data de criação
+                </label>
+              )}
               {gravacao && <p className={gravacao.tipo === "erro" ? "db-warning" : "conta-ok"}>{gravacao.texto}</p>}
               <div className="dialog-actions">
                 <button className="ghost-btn" onClick={() => setCriando(null)}>
@@ -807,14 +1225,17 @@ export default function TesteJogo({
         </p>
       )}
 
+      {adicionando && <AdicionarCarta cards={todas} formato={formato} onAdicionar={adicionarAoOponente} onFechar={() => setAdicionando(false)} />}
+
       {lista && (
         <div className="tj-lista" role="dialog" aria-label={NOMES_ZONA[lista]}>
           <div className="fontes-head">
             <h4>
-              {NOMES_ZONA[lista]} ({t[lista].length})
+              {listaLado === "op" ? "Oponente: " : ""}
+              {NOMES_ZONA[lista]} ({tabuleiro(listaLado)[lista].length})
             </h4>
             {/* com o Deck aberto, as opções do Deck continuam à mão */}
-            {lista === "deck" && (
+            {lista === "deck" && listaLado === "eu" && (
               <button className="ghost-btn tj-lista-comprar" onClick={comprarUma} disabled={!t.deck.length}>
                 Comprar uma carta
               </button>
@@ -822,7 +1243,7 @@ export default function TesteJogo({
             <button className="ghost-btn" onClick={fecharLista} aria-label="Fechar">✕</button>
           </div>
           <div className="tj-lista-cartas">
-            {t[lista].map((c) => carta({ ...c, baixada: false }, true))}
+            {tabuleiro(listaLado)[lista].map((c) => carta({ ...c, baixada: false }, true))}
           </div>
           <p className="tags-note">
             Clique numa carta para ver as opções (mão, Cemitério, banir, Invocar, Ativar…) ou arraste-a para o campo.

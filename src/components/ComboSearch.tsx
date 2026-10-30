@@ -14,7 +14,8 @@ import {
   validadeNoFormato,
   type ComboBase,
 } from "../db/baseCombos";
-import { useConta } from "../db/conta";
+import { temRecursosAvancados, useConta } from "../db/conta";
+import { editarComboLocal, ehLocal, excluirComboLocal, exportarComboLocal, salvarComboLocal } from "../db/combosLocais";
 import { buscarCombosComIA, getConfigIA, iaConfigurada, provedor, type SugestaoIA } from "../db/ia";
 import type { GameFormat } from "../db/legality";
 import { cardsOfLine, passoEmTexto, uniqueLines, type CombosCalculados, type LinhaCombo } from "../db/motor";
@@ -85,8 +86,12 @@ export function ComboCard({
   const [edicao, setEdicao] = useState<{ titulo: string; obs: string; compartilhar: boolean; passos: ComboBase["dados"]["passos"] } | null>(null);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [estado, setEstado] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  // combo só neste aparelho (Usuário Padrão): "Exportar" envia para a base
+  const local = ehLocal(combo);
+  const avancado = temRecursosAvancados(conta);
+  const [exportando, setExportando] = useState<{ compartilhar: boolean; enviando: boolean } | null>(null);
   // só quem criou o Combo da Comunidade pode editar ou excluir (o banco também confere)
-  const meu = !!conta && combo.origem === "comunidade" && combo.autor_id === conta.id;
+  const meu = local || (!!conta && combo.origem === "comunidade" && combo.autor_id === conta.id);
   const d = combo.dados;
   const groups = groupSteps(d.passos);
   const validade = format ? validadeNoFormato(copiasDoCombo(combo), byId, format) : null;
@@ -94,7 +99,11 @@ export function ComboCard({
   const salvarEdicao = async () => {
     if (!edicao) return;
     try {
-      setCombo(await editarCombo(combo, { titulo: edicao.titulo, observacoes: edicao.obs, compartilhar: edicao.compartilhar, passos: edicao.passos }));
+      setCombo(
+        local
+          ? editarComboLocal(combo, { titulo: edicao.titulo, observacoes: edicao.obs, passos: edicao.passos })
+          : await editarCombo(combo, { titulo: edicao.titulo, observacoes: edicao.obs, compartilhar: edicao.compartilhar, passos: edicao.passos }),
+      );
       setEdicao(null);
       setEstado({ tipo: "ok", texto: "Combo atualizado." });
     } catch (e) {
@@ -103,7 +112,8 @@ export function ComboCard({
   };
   const excluir = async () => {
     try {
-      await excluirCombo(combo.id);
+      if (local) excluirComboLocal(combo.id);
+      else await excluirCombo(combo.id);
       setExcluido(true);
     } catch (e) {
       setConfirmarExclusao(false);
@@ -114,6 +124,16 @@ export function ComboCard({
   const salvar = async () => {
     if (!form) return;
     try {
+      // Usuário Padrão: o combo fica só neste aparelho (pode ser exportado depois)
+      if (!avancado) {
+        salvarComboLocal(
+          { autorId: conta?.id ?? null, autorNome: form.autor, titulo: form.titulo, observacoes: form.obs },
+          { iniciais: combo.iniciais, finais: combo.finais, arquetipos: combo.arquetipos, dados: { ...d, modelo: undefined } },
+        );
+        setEstado({ tipo: "ok", texto: "Salvo neste aparelho (Usuário Padrão). Para enviar à base depois, use Exportar no combo." });
+        setForm(null);
+        return;
+      }
       await salvarComoComunidade(combo, { autorNome: form.autor, titulo: form.titulo, observacoes: form.obs });
       setEstado({ tipo: "ok", texto: "Salvo como Combo da Comunidade." });
       setForm(null);
@@ -122,6 +142,19 @@ export function ComboCard({
     }
   };
 
+  const exportar = async () => {
+    if (!exportando) return;
+    setExportando({ ...exportando, enviando: true });
+    try {
+      await exportarComboLocal(combo, exportando.compartilhar);
+      setExcluido(true);
+    } catch (e) {
+      setExportando(null);
+      setEstado({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  if (excluido && local && exportando) return <p className="conta-ok combo-excluido">Combo “{combo.titulo}” exportado para a base.</p>;
   if (excluido) return <p className="conta-ok combo-excluido">Combo “{combo.titulo}” excluído.</p>;
 
   return (
@@ -136,7 +169,7 @@ export function ComboCard({
           {ORIGEM_LABEL[combo.origem]}
           {combo.origem === "comunidade" && combo.autor_nome && ` · ${combo.autor_nome}`}
           {combo.origem === "comunidade" && ` · ${new Date(combo.criado_em).toLocaleDateString("pt-BR")}`}
-          {combo.origem === "comunidade" && !combo.publico && " · só você vê"}
+          {local ? " · neste aparelho" : combo.origem === "comunidade" && !combo.publico && " · só você vê"}
           {combo.conferido_em && " · conferido com o App"}
         </span>
         {validade && (
@@ -221,9 +254,23 @@ export function ComboCard({
                 Excluir
               </button>
             )}
+            {local && !exportando && (
+              <>
+                {" · "}
+                <button
+                  className="link-btn combo-exportar"
+                  disabled={!avancado}
+                  title={avancado ? "Envia este combo para a base (Combos da Comunidade)" : "Exportar para a base: disponível para Usuário Avançado ou Mentor"}
+                  onClick={() => setExportando({ compartilhar: false, enviando: false })}
+                >
+                  Exportar
+                </button>
+                {!avancado && <small> (exportar: Usuário Avançado ou Mentor)</small>}
+              </>
+            )}
           </>
         )}
-        {combo.origem !== "comunidade" && supabaseReady() && !form && estado?.tipo !== "ok" && (
+        {combo.origem !== "comunidade" && !local && supabaseReady() && !form && estado?.tipo !== "ok" && (
           <>
             {" · "}
             <button
@@ -261,16 +308,33 @@ export function ComboCard({
             <span className="field-label">Observações</span>
             <textarea rows={3} maxLength={2000} value={edicao.obs} onChange={(e) => setEdicao({ ...edicao, obs: e.target.value })} />
           </label>
-          <label className="respostas-toggle">
+          {!local && <label className="respostas-toggle">
             <input type="checkbox" checked={edicao.compartilhar} onChange={(e) => setEdicao({ ...edicao, compartilhar: e.target.checked })} /> Compartilhar com todos na aba
             Combos
-          </label>
+          </label>}
           <div className="dialog-actions">
             <button className="ghost-btn" onClick={() => setEdicao(null)}>
               Cancelar
             </button>
             <button className="ghost-btn" disabled={!edicao.titulo.trim() || !edicao.passos.length} onClick={() => void salvarEdicao()}>
               Salvar
+            </button>
+          </div>
+        </div>
+      )}
+      {exportando && (
+        <div className="comunidade-form combo-exportacao">
+          <p className="tags-note">O combo sai deste aparelho e vai para a base, como Combo da Comunidade seu.</p>
+          <label className="respostas-toggle">
+            <input type="checkbox" checked={exportando.compartilhar} onChange={(e) => setExportando({ ...exportando, compartilhar: e.target.checked })} /> Compartilhar com
+            todos na aba Combos
+          </label>
+          <div className="dialog-actions">
+            <button className="ghost-btn" onClick={() => setExportando(null)}>
+              Cancelar
+            </button>
+            <button className="ghost-btn combo-exportar-ok" disabled={exportando.enviando} onClick={() => void exportar()}>
+              {exportando.enviando ? "Exportando…" : "Exportar"}
             </button>
           </div>
         </div>

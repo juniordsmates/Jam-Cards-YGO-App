@@ -12,7 +12,23 @@ export interface Conta {
   usuario: string;
   /** pode pedir recálculos (tabela admins no banco) */
   admin: boolean;
+  /** nível definido pelo administrador (Padrão, Avançado ou Mentor) */
+  nivel: Nivel;
 }
+
+export type Nivel = "padrao" | "avancado" | "mentor";
+
+export const NIVEIS: { id: Nivel; label: string; hint: string }[] = [
+  { id: "padrao", label: "Usuário Padrão", hint: "Sem Teste Avançado; os combos que cria ficam só no aparelho" },
+  { id: "avancado", label: "Usuário Avançado", hint: "Todos os recursos" },
+  { id: "mentor", label: "Usuário Mentor", hint: "Todos os recursos" },
+];
+
+/** Avançado e Mentor (e o administrador) têm todos os recursos: Teste Avançado e combos na base */
+export const temRecursosAvancados = (c: Conta | null) =>
+  (!!c && (c.admin || c.nivel !== "padrao")) ||
+  // só no servidor de desenvolvimento: as imagens do manual (scripts/manual-imagens.mjs) mostram o Teste Avançado sem login
+  (import.meta.env.DEV && localStorage.getItem("cartas-dev-avancado") === "1");
 
 let conta: Conta | null = null;
 let iniciado = false;
@@ -26,10 +42,11 @@ async function carregarPerfil(session: Session | null) {
     return emit();
   }
   const [{ data }, { data: admin }] = await Promise.all([
-    sb.from("perfis").select("usuario").eq("id", session.user.id).maybeSingle(),
+    // todas as colunas: funciona com ou sem a coluna "nivel" (migração dos níveis de usuário)
+    sb.from("perfis").select("*").eq("id", session.user.id).maybeSingle(),
     sb.rpc("sou_admin"),
   ]);
-  conta = { id: session.user.id, email: session.user.email ?? "", usuario: data?.usuario ?? "", admin: admin === true };
+  conta = { id: session.user.id, email: session.user.email ?? "", usuario: data?.usuario ?? "", admin: admin === true, nivel: (data?.nivel as Nivel | undefined) ?? "padrao" };
   emit();
   // IAs guardadas na conta: valem neste computador onde aqui ainda não houver configuração
   for (const cfg of await lerConfigsIANaConta()) if (!iaConfigurada(getConfigDe(cfg.provedor))) setConfigIA(cfg);
@@ -92,6 +109,35 @@ export async function criarUsuarioComoAdmin(usuario: string, email: string, senh
   if (senha.length < 8) throw new Error("A senha precisa ter pelo menos 8 caracteres.");
   const { error } = await exigirCliente().rpc("admin_criar_usuario", { p_usuario: nome, p_email: email.trim(), p_senha: senha });
   if (error) throw new Error(error.message);
+}
+
+/** Conta como o administrador vê na lista de usuários */
+export interface UsuarioCadastrado {
+  id: string;
+  usuario: string;
+  email: string;
+  nivel: Nivel;
+  admin: boolean;
+  criado_em: string;
+  ultimo_acesso: string | null;
+}
+
+/** Todas as contas (só o administrador) */
+export async function listarUsuarios(): Promise<UsuarioCadastrado[]> {
+  const { data, error } = await exigirCliente().rpc("admin_listar_usuarios");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as UsuarioCadastrado[];
+}
+
+/** Define o nível de uma conta (só o administrador) */
+export async function definirNivel(id: string, nivel: Nivel) {
+  const { error } = await exigirCliente().rpc("admin_definir_nivel", { p_id: id, p_nivel: nivel });
+  if (error) throw new Error(error.message);
+  // o próprio nível mudou: atualiza a conta aberta
+  if (conta?.id === id) {
+    conta = { ...conta, nivel };
+    emit();
+  }
 }
 
 export async function recuperarSenha(email: string) {

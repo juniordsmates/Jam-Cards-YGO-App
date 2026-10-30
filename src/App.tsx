@@ -5,6 +5,7 @@ import Combos from "./screens/Combos";
 import Colecao from "./screens/Colecao";
 import Manual from "./screens/Manual";
 import GuiaDeck from "./screens/GuiaDeck";
+import MetaCall from "./screens/MetaCall";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
 import ExitDialog from "./components/ExitDialog";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
@@ -15,7 +16,7 @@ import { exitApp } from "./platform";
 import { initCardDb } from "./db/cardStore";
 import type { Card } from "./db/types";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("menu");
@@ -96,6 +97,7 @@ export default function App() {
           onColecao={() => setScreen("colecao")}
           onManual={() => setScreen("manual")}
           onGuia={() => setScreen("guia")}
+          onMetaCall={() => setScreen("metacall")}
           onExit={() => setConfirmingExit(true)}
           onConta={() => openConta()}
         />
@@ -124,6 +126,7 @@ export default function App() {
 
       {screen === "colecao" && <Colecao onBack={() => setScreen("menu")} />}
       {screen === "manual" && <Manual onBack={() => setScreen("menu")} />}
+      {screen === "metacall" && <MetaCall onBack={() => setScreen("menu")} />}
       {screen === "guia" && (
         <GuiaDeck
           onBack={() => setScreen("menu")}

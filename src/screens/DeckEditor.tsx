@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent } from "react";
 import ScreenShell from "./ScreenShell";
 import { initCardDb, useCardDb } from "../db/cardStore";
-import { useConta } from "../db/conta";
+import { temRecursosAvancados, useConta } from "../db/conta";
 import { copiasPorCarta, juntarColecaoDaConta, useColecao } from "../db/colecao";
 import {
   avisos,
@@ -118,6 +118,13 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const arrastando = useRef<{ id: number; de?: Parte; indice?: number } | null>(null);
   // Teste de Jogo (Solo Mode) com o deck aberto
   const [testando, setTestando] = useState(!!inicial.testar);
+  // Teste Avançado (campo do oponente e Indicações de resposta): Usuário Avançado ou Mentor
+  const [avancado, setAvancado] = useState(false);
+  const podeAvancado = temRecursosAvancados(conta);
+  const abrirTeste = (modo: "simples" | "avancado") => {
+    setAvancado(modo === "avancado");
+    setTestando(true);
+  };
 
   useEffect(() => void initCardDb(), []);
   // com conta: traz os decks salvos nela que ainda não estão neste computador
@@ -366,14 +373,24 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
 
   return (
     <ScreenShell
-      title={testando ? "Teste de Jogo" : "Editor de Deck"}
+      title={testando ? (avancado && podeAvancado ? "Teste Avançado" : "Teste de Jogo") : "Editor de Deck"}
       accent="magenta"
       onBack={onBack}
       actions={
         <span className="de-topo">
           {!testando && (
-            <button className="ghost-btn de-teste" disabled={!trabalho?.main.length} onClick={() => setTestando(true)} title="Teste de Jogo (Solo Mode) com este deck">
+            <button className="ghost-btn de-teste" disabled={!trabalho?.main.length} onClick={() => abrirTeste("simples")} title="Teste de Jogo (Solo Mode) com este deck">
               ▶ Teste de Jogo
+            </button>
+          )}
+          {!testando && (
+            <button
+              className="ghost-btn de-teste de-teste-avancado"
+              disabled={!trabalho?.main.length || !podeAvancado}
+              onClick={() => abrirTeste("avancado")}
+              title={podeAvancado ? "Teste com o campo do oponente e as Indicações de resposta" : "Teste Avançado: disponível para Usuário Avançado ou Mentor"}
+            >
+              ▶ Teste Avançado
             </button>
           )}
         <span className="de-formato">
@@ -409,7 +426,17 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           <p>{db.step ?? "Carregando base de cartas…"}</p>
         </div>
       ) : testando && trabalho ? (
-        <TesteJogo nome={trabalho.nome} main={trabalho.main} extra={trabalho.extra} byId={byId} formato={formato} onFechar={() => setTestando(false)} combo={inicial.combo} />
+        <TesteJogo
+          nome={trabalho.nome}
+          main={trabalho.main}
+          extra={trabalho.extra}
+          byId={byId}
+          formato={formato}
+          onFechar={() => setTestando(false)}
+          combo={inicial.combo}
+          avancado={avancado && podeAvancado}
+          onModo={setAvancado}
+        />
       ) : (
         <div className="deck-editor">
           {/* ---------------- esquerda: carta e controles */}

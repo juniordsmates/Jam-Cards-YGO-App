@@ -35,6 +35,8 @@ await page.evaluate(
     localStorage.setItem("cartas-decks", JSON.stringify({ decks: [deck], padrao: deck.id }));
     localStorage.setItem("cartas-colecao", JSON.stringify({ itens: colecao }));
     localStorage.setItem("cartas-editor-estoque", "todas");
+    // Teste Avançado sem login (só vale no servidor de desenvolvimento)
+    localStorage.setItem("cartas-dev-avancado", "1");
   },
   [DECK, COLECAO],
 );
@@ -77,6 +79,41 @@ const etapas = {
     await page.waitForTimeout(1500);
     await foto("teste");
   },
+  // Teste Avançado: Ash Blossom na mão do oponente, Infinite Impermanence baixada e uma ativação sua
+  "teste-avancado": async () => {
+    await menu();
+    await page.click(".menu-btn:has-text('Editor de Deck')");
+    await page.waitForSelector(".de-main .de-thumb", { timeout: 120_000 });
+    await page.click(".de-teste-avancado");
+    await page.waitForSelector(".tj-mesa-avancada");
+    const adicionar = async (busca, destino) => {
+      await page.click(".tj-op-add");
+      await page.fill(".tj-adicionar input", busca);
+      await page.click(".tj-adicionar-sugestoes button >> nth=0");
+      await page.click(`.tj-adicionar-destinos button:has-text('${destino}')`);
+    };
+    await adicionar("ash blossom", "Para a mão");
+    await adicionar("effect veiler", "Para a mão");
+    await adicionar("infinite impermanence", "Baixar no campo");
+    // uma busca no Deck (Centur-Ion Primera) mostra a Ash do oponente; sem ela na mão, a primeira carta
+    const primera = page.locator(".tj-mao-linha .tj-mao .tj-carta[data-card-id='15005145']");
+    for (let i = 0; i < 8 && !(await primera.count()); i++) await page.click(".tj-teste-mao");
+    await ((await primera.count()) ? primera.first() : page.locator(".tj-mao-linha .tj-mao .tj-carta").first()).click({ button: "right" });
+    await page.click(".tj-menu button:has-text('Ativar efeito')");
+    await page.waitForSelector(".tj-ind-acao");
+    await page.waitForTimeout(1500);
+    await foto("teste-avancado");
+  },
+  // Meta Call com o Top 5 do TCG (precisa da camada com o metagame)
+  "meta-call": async () => {
+    await menu();
+    await page.click(".menu-btn:has-text('Meta Call')");
+    await page.waitForSelector(".meta-call", { timeout: 120_000 });
+    await page.click(".mc-atalhos button:has-text('Top 5')");
+    await page.waitForSelector(".mc-rec", { timeout: 60_000 });
+    await page.waitForTimeout(1500);
+    await foto("meta-call");
+  },
   colecao: async () => {
     await menu();
     await page.click(".menu-btn:has-text('Minha Coleção')");
@@ -102,7 +139,10 @@ const etapas = {
   },
 };
 
+// MANUAL_ETAPAS=menu,meta-call gera só essas
+const so = process.env.MANUAL_ETAPAS?.split(",");
 for (const [nome, etapa] of Object.entries(etapas)) {
+  if (so && !so.includes(nome)) continue;
   try {
     await etapa();
     console.log(`ok ${nome}`);

@@ -41,6 +41,15 @@ export const BookIcon = () => (
   </svg>
 );
 
+/** Meta Call: alvo */
+export const TargetIcon = () => (
+  <svg {...base}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1.5" />
+  </svg>
+);
+
 export const HelpIcon = () => (
   <svg {...base}>
     <circle cx="12" cy="12" r="9" />

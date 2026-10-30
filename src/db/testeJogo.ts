@@ -138,9 +138,22 @@ function retirar(t: Tabuleiro, uid: string): { t: Tabuleiro; carta: CartaJogo } 
   return { t: novo, carta: achada.carta };
 }
 
+/** Tira a carta do teste (cartas do oponente no Teste Avançado) */
+export const removerCarta = (t: Tabuleiro, uid: string): Tabuleiro => retirar(t, uid)?.t ?? t;
+
 /** Cria um token na zona (virado para cima, em ataque ou em defesa) */
 export function criarToken(t: Tabuleiro, id: number, para: ZonaId, defesa = false): Tabuleiro {
   return { ...t, [para]: [{ ...carta(id), defesa, ficha: true }, ...t[para]] };
+}
+
+/**
+ * Cria uma carta que não sai de deck nenhum (cartas do oponente no Teste Avançado), na zona
+ * escolhida; em zona de carta única ocupada, não entra.
+ */
+export function adicionarCarta(t: Tabuleiro, id: number, para: ZonaId, opts: { baixada?: boolean; defesa?: boolean } = {}): { t: Tabuleiro; uid?: string } {
+  if (ZONAS_UNICAS.has(para) && t[para].length) return { t };
+  const c = { ...carta(id), baixada: !!opts.baixada, defesa: !!opts.defesa };
+  return { t: { ...t, [para]: para === "mao" ? [...t[para], c] : [c, ...t[para]] }, uid: c.uid };
 }
 
 /** Zonas onde um token pode ficar (fora delas, ele deixa de existir) */

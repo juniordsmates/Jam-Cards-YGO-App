@@ -629,3 +629,339 @@
 .tj-token-grande span {
   font-size: 0.9rem;
 }
+
+/* ---------- Teste Avançado: campo do oponente espelhado em cima e Indicações de resposta ---------- */
+
+.tj-modo,
+.tj-turno {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tj-turno {
+  grid-template-columns: auto repeat(2, minmax(0, 1fr));
+  align-items: center;
+}
+
+.tj-turno .field-label {
+  margin-right: 4px;
+}
+
+/* 5 linhas de zonas + 2 mãos: o campo encolhe para caber na altura da tela */
+.tj-mesa-avancada {
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.tj-mesa-avancada .tj-campo {
+  gap: 6px;
+  max-width: calc((100vh - 400px) * 1.4);
+}
+
+.tj-mesa-avancada .tj-l1,
+.tj-mesa-avancada .tj-l2,
+.tj-mesa-avancada .tj-l3 {
+  gap: 6px;
+}
+
+.tj-mesa-avancada .tj-mao {
+  min-height: 0;
+  padding: 6px;
+}
+
+.tj-mesa-avancada .tj-mao .tj-carta {
+  width: clamp(48px, 4.4vw, 92px);
+}
+
+/* mão do oponente: mesma faixa, em tom vermelho */
+.tj-mao-op {
+  min-height: 72px;
+  background: rgb(194 58 106 / 0.12);
+  border: 1px dashed rgb(194 58 106 / 0.5);
+}
+
+.tj-linha-op .tj-zona,
+.tj-zona-op {
+  background: rgb(194 58 106 / 0.06);
+}
+
+.tj-zona-op.tj-m,
+.tj-zona-op.tj-st,
+.tj-zona-op.tj-campo-magia,
+.tj-zona-op.tj-cemiterio,
+.tj-zona-op.tj-banido {
+  border-style: dashed;
+}
+
+/* cartas do oponente: contorno vermelho (as dele ficam do lado dele) */
+.tj-carta-op img,
+.tj-carta-op .tj-verso {
+  outline: 2px solid #e0243c;
+  outline-offset: 1px;
+}
+
+.tj-op-add {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 4px;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  background: rgb(194 58 106 / 0.35);
+  border: 2px dashed #c23a6a;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tj-op-add:hover {
+  background: rgb(194 58 106 / 0.55);
+}
+
+.tj-op-lp {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: #fff;
+}
+
+.tj-op-lp small {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.tj-op-lp strong {
+  font-family: var(--font-display);
+  font-size: clamp(0.8rem, 1.2vw, 1.2rem);
+}
+
+.tj-lp-op strong {
+  color: #c23a6a;
+}
+
+/* painel das Indicações de resposta (coluna da direita, entre as fases e os botões) */
+.tj-ind {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--magenta);
+  border-radius: 10px;
+}
+
+.tj-ind-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tj-ind h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+}
+
+.tj-ind-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tj-ind-contador {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.tj-ind-acao {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.tj-ind-quem {
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fff;
+  border-radius: 6px;
+}
+
+.tj-ind-eu {
+  background: var(--cyan);
+}
+
+.tj-ind-op {
+  background: #c23a6a;
+}
+
+.tj-ind-faz {
+  display: block;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.tj-ind-grupo h5 {
+  margin: 4px 0;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.tj-ind-grupo h5 span {
+  font-weight: 400;
+}
+
+.tj-ind-tem h5 {
+  color: #c23a6a;
+}
+
+.tj-ind-grupo ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tj-ind-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 7px;
+  align-items: start;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.tj-ind-item:hover {
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+}
+
+.tj-ind-tem .tj-ind-item {
+  background: rgb(194 58 106 / 0.08);
+}
+
+.tj-ind-item img {
+  width: 30px;
+  border-radius: 3px;
+}
+
+.tj-ind-item small {
+  display: block;
+  line-height: 1.35;
+}
+
+.tj-ind-motivo {
+  color: var(--text);
+}
+
+.tj-ind-cond {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.tj-ind-aviso {
+  color: #b3261e;
+}
+
+.tj-ind-impedida {
+  opacity: 0.6;
+}
+
+.tj-ind-onde {
+  font-size: 0.72rem;
+  color: #c23a6a;
+}
+
+.tj-ind-selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.tj-ind-selos span {
+  padding: 0 5px;
+  font-size: 0.64rem;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+/* diálogo "Adicionar carta ao oponente" */
+.tj-adicionar-sugestoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tj-adicionar-sugestoes button {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  padding: 4px;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tj-adicionar-sugestoes button.active {
+  border-color: var(--magenta);
+  box-shadow: 0 0 0 1px var(--magenta) inset;
+}
+
+.tj-adicionar-sugestoes img {
+  width: 26px;
+  border-radius: 2px;
+}
+
+.tj-adicionar-sugestoes em {
+  grid-column: 2;
+  font-size: 0.66rem;
+  color: #b3261e;
+}
+
+.tj-adicionar-destinos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.tj-adicionar-acao {
+  font-weight: 700;
+  color: #c23a6a;
+}
+
+/* as mãos não encolhem (as cartas não invadem o campo) */
+.tj-mesa-avancada .tj-mao,
+.tj-mesa-avancada .tj-mao-linha {
+  flex-shrink: 0;
+}
+
+.tj-turno button,
+.tj-modo button {
+  padding: 5px 2px;
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+}

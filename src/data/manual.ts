@@ -34,7 +34,7 @@ export const CAPITULOS: Capitulo[] = [
       {
         titulo: "Menu principal",
         itens: [
-          "Cada botão abre uma tela: **Buscar Carta**, **Combos**, **Editor de Deck**, **Teste de Jogo**, **Minha Coleção** e este **Como Utilizar**.",
+          "Cada botão abre uma tela: **Buscar Carta**, **Combos**, **Guia de Deck**, **Meta Call**, **Editor de Deck**, **Teste de Jogo**, **Minha Coleção** e este **Como Utilizar**.",
           "Dá para navegar com as setas do teclado e abrir com **Enter**. Em qualquer tela, **Esc** volta para a anterior.",
           "No canto superior direito fica **Entrar**: com uma conta, seus decks, sua coleção e seus combos ficam salvos na nuvem e aparecem em qualquer computador ou navegador.",
           "Embaixo do menu aparecem a versão e se você está no app de computador (**Desktop**) ou no navegador (**Web**).",
@@ -149,6 +149,7 @@ export const CAPITULOS: Capitulo[] = [
           "Abaixo das linhas do App aparecem os **Combos da Comunidade** que começam com a mesma mão (ou os mais recentes, sem mão escolhida).",
           "Cada um mostra o **autor**, a **data** e se ele é **Válido no TCG/OCG** com a banlist atual (cartas proibidas ou cópias acima do limite deixam o combo \"Fora da banlist\").",
           "Quem criou o combo vê **Editar** (título, passos, observações, compartilhar) e **Excluir**.",
+          "**Meus combos neste aparelho**: os combos de Usuário Padrão (Criar combo ou Salvar como Combo da Comunidade) ficam aqui, só neste computador ou navegador. **Exportar** (ou **Exportar todos**) os envia para a base quando a conta for Avançado ou Mentor.",
         ],
       },
     ],
@@ -249,6 +250,53 @@ export const CAPITULOS: Capitulo[] = [
       "**▶ Teste de Jogo** leva a linha para o Teste de Jogo, com um deck temporário.",
       "Os Combos da Comunidade criados no Teste de Jogo (com Compartilhar) aparecem na aba Combos do deck.",
       "As cartas citadas abrem a prévia, como na busca.",
+      "Para escolher as cartas contra vários decks do meta de uma vez, use o **Meta Call**.",
+    ],
+  },
+  {
+    id: "metacall",
+    titulo: "Meta Call",
+    resumo:
+      "Diga quais decks você espera no torneio (e quanto de cada um) e o app indica as cartas boas contra eles: hand traps, respostas, cartas para jogar em segundo e de Side, com o motivo em cada deck e uma sugestão de Main e de Side.",
+    imagem: { arquivo: "meta-call.jpg", legenda: "Meta Call com o Top 5 do TCG" },
+    topicos: [
+      {
+        titulo: "Escolher os decks (esquerda)",
+        itens: [
+          "**TCG / OCG**: no TCG, os decks vêm de 6 meses de decklists de torneio (com a tendência ▲▼ dos últimos 2 meses); no OCG, do Road of the King (o perfil é estimado pelas cartas do arquétipo).",
+          "Marque os decks esperados; o **%** começa com a participação no meta e pode ser trocado (vale como proporção entre eles). **Top 5** e **Top 10** marcam os primeiros.",
+          "**Meu deck (opcional)**: com ele, o app avisa cartas que também travam você (ex.: **Macro Cosmos** num deck que usa o Cemitério; **Dominus** da mão, que tranca Atributos) e confere requisitos (**Herald of Orange Light** precisa de Fadas; **Fydraulis Harmonia**, de Sincros).",
+        ],
+      },
+      {
+        titulo: "Leitura dos decks",
+        itens: [
+          "Cada deck mostra o que o motor dele faz, lido do texto oficial das cartas do núcleo de torneio: **busca no Deck**, **Invoca do Deck**, **usa o Cemitério**, **efeitos de monstro no campo**, **Magias/Armadilhas**.",
+          "Com linhas do motor de regras: Invocações e buscas por combo e o tamanho do campo final; **Onde parar** (os passos que mais respostas param); as hand traps que o deck **joga**; e os **chefes** do campo final.",
+        ],
+      },
+      {
+        titulo: "Recomendação",
+        itens: [
+          "A **nota** (0 a 100) junta **70% o confronto** com os decks escolhidos e **30% o uso real em torneios** (Main e Side dos decklists).",
+          "Os selos de cada deck mostram a nota contra ele; **⚙** quer dizer que veio das linhas do motor: em que passo a carta já entra e **quanto do combo ela corta** (entrar cedo corta mais).",
+          "Filtre por **Hand traps**, **Respostas**, **Jogando em segundo** e **Side e floodgates**. **máx. N** é o limite da banlist; **possuo N**, a sua coleção.",
+          "**Main: interrupções** sugere as cartas boas contra todos; **Side Deck (15)**, as específicas. **Copiar** copia a lista.",
+        ],
+      },
+    ],
+    exemplo: {
+      titulo: "Exemplo: montar o Side para um regional",
+      passos: [
+        "Abra **Meta Call**, deixe **TCG** e clique em **Top 5**.",
+        "Ajuste o %: se você espera mais **Kewl Tune**, aumente o dele.",
+        "Escolha **Meu deck** para ver os avisos (cartas que travam você também).",
+        "Use a sugestão de **Main** e de **Side**, abra **Ver o motivo em cada deck** nas dúvidas e treine no **Teste Avançado**.",
+      ],
+    },
+    ligacoes: [
+      "Usa o metagame e as **Interações** do **Guia de Deck** e as linhas do motor de **Combos**.",
+      "**Minha Coleção** mostra o que você já tem; o **Teste Avançado** treina com as cartas escolhidas na mão do oponente.",
     ],
   },
   {
@@ -297,7 +345,7 @@ export const CAPITULOS: Capitulo[] = [
           "• **Listar todas as cartas**: a busca mostra todas, com **possuo N**; no deck, as cópias **além das que você tem** ficam escurecidas.",
           "• **Listar apenas cartas que possuo**: a busca mostra só as suas cartas.",
           "Só a **quantidade** conta, somando as raridades: com 1 Ash Secret e 1 Ash Common na coleção e 3 Ash no deck, as 2 primeiras ficam claras e **a 3ª fica escurecida**.",
-          "**▶ Teste de Jogo** testa o deck aberto.",
+          "**▶ Teste de Jogo** testa o deck aberto; **▶ Teste Avançado** (Usuário Avançado ou Mentor) testa com o campo do oponente e as Indicações de resposta.",
         ],
       },
     ],
@@ -353,6 +401,7 @@ export const CAPITULOS: Capitulo[] = [
           "Cada ação vira um passo, no mesmo formato da tela de Combos (compras seguidas se juntam; matérias de Link/Xyz entram na invocação).",
           "**Criar combo** mostra a prévia: mão inicial, passos (o **✕** tira um passo), campo final e se o combo é **válido no TCG e no OCG** pela banlist atual.",
           "Dê um título, escreva observações e marque **Compartilhar** para divulgar a todos na aba Combos, com o seu nome de usuário e a data. Precisa estar logado.",
+          "**Usuário Padrão**: o combo fica **só neste aparelho** (Combos → **Meus combos neste aparelho**). Quando a conta passar a Avançado ou Mentor, **Exportar** leva o combo para a base.",
         ],
       },
     ],
@@ -369,6 +418,57 @@ export const CAPITULOS: Capitulo[] = [
       "Vem do **Editor de Deck** (deck aberto), do **menu** (deck padrão) ou de **Combos** (deck temporário com a linha).",
       "**Criar combo** publica em **Combos da Comunidade**.",
       "**Esc** volta para o Editor de Deck.",
+    ],
+  },
+  {
+    id: "teste-avancado",
+    titulo: "Teste Avançado",
+    resumo:
+      "O Teste de Jogo com o campo do oponente espelhado em cima e as **Indicações de resposta**: a cada ação, as cartas que podem responder — as que o oponente tem e as do meta. Um facilitador, não um simulador. Para Usuário Avançado e Mentor.",
+    imagem: { arquivo: "teste-avancado.jpg", legenda: "Teste Avançado: Ash Blossom na mão do oponente e as Indicações de resposta" },
+    topicos: [
+      {
+        titulo: "Abrir",
+        itens: [
+          "No Editor de Deck, **▶ Teste Avançado**; ou, já no teste, a aba **Teste Avançado** no topo da coluna da direita.",
+          "O seu teste fica embaixo, igual ao Teste de Jogo (mão, probabilidades, Criar combo).",
+        ],
+      },
+      {
+        titulo: "Campo do oponente",
+        itens: [
+          "As cartas do oponente **não saem de deck nenhum**: use **+ Carta do oponente** e escolha a carta e onde ela entra (mão, campo, baixada, Cemitério, banidas).",
+          "**Colocar** só monta o cenário; as opções com **(ação)** — Invocar, Ativar — contam como jogada do oponente e mostram o que **você** pode responder.",
+          "Botão direito nas cartas do oponente: Ativar efeito, Invocar, Ativar/Baixar, Virar, Para a mão, Cemitério, Banir e **Tirar do teste**.",
+          "As **Zonas de Monstros Extra** são compartilhadas: a da esquerda de um é a da direita do outro.",
+          "**Limpar oponente** esvazia o campo e a mão dele; **LP do oponente** se ajusta como o seu (ex.: -1000 e Enter).",
+        ],
+      },
+      {
+        titulo: "Indicações de resposta (coluna da direita)",
+        itens: [
+          "A cada ação (ativar, Invocar, buscar, mandar ao Cemitério…), o painel diz **o que o efeito faz** (lido do texto oficial: busca do Deck, Invoca do Cemitério…) e lista:",
+          "• **O oponente tem**: as cartas da mão ou do campo dele que podem responder agora, com o motivo.",
+          "• **Podem responder (meta)**: as interrupções conhecidas para essa ação, das mais usadas em torneios (independente de o oponente tê-las), legais no formato. **motor · N**: confirmada nas linhas do motor de regras.",
+          "• **Outras usadas em torneios (confira)**: cartas de mão do meta que podem interromper, sem regra escrita no app.",
+          "Cada indicação traz as **condições** (ex.: **Effect Veiler** só na Main Phase; **Mulcharmy** só sem cartas no seu campo; **PSY-Framegear Gamma** só sem monstros) e fica apagada com **Agora não** quando não vale.",
+          "**Turno** (Você/Oponente) e a fase **DP** começam um turno novo: o contador de Invocações volta a zero (o **Nibiru** aparece a partir da 5ª).",
+          "**‹ ›** volta às ações anteriores; **Indicações: ligadas/desligadas** esconde o painel. Passe o mouse numa carta do painel para ler o texto dela à esquerda.",
+        ],
+      },
+    ],
+    exemplo: {
+      titulo: "Exemplo: treinar contra Ash Blossom e Infinite Impermanence",
+      passos: [
+        "Abra o seu deck no **▶ Teste Avançado**.",
+        "**+ Carta do oponente** → **Ash Blossom** → **Para a mão**; **Infinite Impermanence** → **Baixar no campo**.",
+        "Comece o combo: ao ativar a busca, o painel mostra **O oponente tem: Ash Blossom** (nega a busca).",
+        "Ative a Ash do oponente (botão direito → Ativar efeito) e veja o que **você** pode responder; refaça a ordem do combo para contornar.",
+      ],
+    },
+    ligacoes: [
+      "O **Meta Call** diz quais hand traps esperar; coloque-as na mão do oponente aqui para treinar.",
+      "**Criar combo** funciona igual ao Teste de Jogo.",
     ],
   },
   {
@@ -425,6 +525,14 @@ export const CAPITULOS: Capitulo[] = [
         ],
       },
       {
+        titulo: "Níveis de usuário",
+        itens: [
+          "**Usuário Padrão**: usa o app todo, menos o **Teste Avançado**; os combos que cria ficam **só no aparelho** (podem ser exportados depois).",
+          "**Usuário Avançado** e **Usuário Mentor**: todos os recursos, inclusive o Teste Avançado e os combos na base (com Compartilhar).",
+          "O seu nível aparece ao lado do seu e-mail. Só o administrador muda o nível, em **Usuários cadastrados** (lista com e-mail, data de cadastro e último acesso).",
+        ],
+      },
+      {
         titulo: "IAs",
         itens: [
           "Cada IA tem um botão. Dentro: **para que serve no app**, um **tutorial** do cadastro (onde criar a chave), o custo e os campos.",
@@ -466,6 +574,12 @@ export const CAPITULOS: Capitulo[] = [
         itens: ["**Guia de Deck** → deck do topo → **Interações** (o que o para) → **Combos** → **▶ Teste de Jogo** para treinar contra ele."],
       },
       {
+        titulo: "Do meta ao Side",
+        itens: [
+          "**Meta Call** → decks esperados → sugestão de **Main** e **Side** → **Editor de Deck** → **▶ Teste Avançado** com essas hand traps na mão do oponente.",
+        ],
+      },
+      {
         titulo: "Do arquivo ao teste",
         itens: ["**Editor de Deck** → **Importar deck list** (.ydk ou ydke://) → **▶ Teste de Jogo** → veja as probabilidades da mão."],
       },
@@ -502,6 +616,8 @@ export const CAPITULOS: Capitulo[] = [
           "**Combo da Comunidade**: combo criado por um usuário (no Teste de Jogo ou salvo de uma sugestão); não é conferido previamente.",
           "**Sugestão de IA**: combo sugerido pela IA; confira antes de usar.",
           "**Deck temporário**: deck criado para testar um combo (\"<arquétipo> Temporário\"), sem mínimo de 40 cartas.",
+          "**Indicações de resposta**: no Teste Avançado, as cartas que podem responder a cada ação, pelas regras escritas a partir do texto das cartas, pelo motor de regras e pelo uso em torneios.",
+          "**Combos neste aparelho**: combos de Usuário Padrão, guardados só no computador ou navegador; **Exportar** os leva para a base.",
         ],
       },
     ],

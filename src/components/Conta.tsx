@@ -7,11 +7,14 @@ import {
   aoRecuperarSenha,
   contaAtual,
   criarUsuarioComoAdmin,
+  definirNivel,
   definirNovaSenha,
   emRecuperacao,
   entrar,
   lerConfigsIANaConta,
   listarRecalculos,
+  listarUsuarios,
+  NIVEIS,
   pedirRecalculo,
   recuperarSenha,
   removerConfigIADaConta,
@@ -19,8 +22,10 @@ import {
   salvarConfigIANaConta,
   situacao,
   useConta,
+  type Nivel,
   type Recalculo,
   type TipoRecalculo,
+  type UsuarioCadastrado,
 } from "../db/conta";
 import { GUIAS } from "../data/ias";
 import {
@@ -347,6 +352,82 @@ function CadastroUsuarios() {
   );
 }
 
+/** Só o administrador: todas as contas, com o nível de cada uma (Padrão, Avançado ou Mentor) */
+function UsuariosCadastrados() {
+  const [lista, setLista] = useState<UsuarioCadastrado[] | null>(null);
+  const [filtro, setFiltro] = useState("");
+  const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  const [salvando, setSalvando] = useState<string | null>(null);
+  const atualizar = () =>
+    void listarUsuarios()
+      .then(setLista)
+      .catch((e) => setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) }));
+  useEffect(atualizar, []);
+
+  const mudar = async (u: UsuarioCadastrado, nivel: Nivel) => {
+    setSalvando(u.id);
+    setMsg(null);
+    try {
+      await definirNivel(u.id, nivel);
+      setLista((l) => l?.map((x) => (x.id === u.id ? { ...x, nivel } : x)) ?? l);
+      setMsg({ tipo: "ok", texto: `@${u.usuario} agora é ${NIVEIS.find((n) => n.id === nivel)!.label}.` });
+    } catch (e) {
+      setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSalvando(null);
+    }
+  };
+
+  const f = filtro.trim().toLowerCase();
+  const visiveis = (lista ?? []).filter((u) => !f || u.usuario.includes(f) || u.email.toLowerCase().includes(f));
+  const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "nunca");
+  return (
+    <section className="conta-ia conta-admin conta-usuarios">
+      <h3>Usuários cadastrados{lista ? ` (${lista.length})` : ""}</h3>
+      <p className="tags-note">
+        {NIVEIS.map((n) => (
+          <span key={n.id} className="conta-nivel-dica">
+            <strong>{n.label}:</strong> {n.hint}.{" "}
+          </span>
+        ))}
+      </p>
+      <label className="field">
+        <span className="field-label">Procurar (usuário ou e-mail)</span>
+        <input value={filtro} onChange={(e) => setFiltro(e.target.value)} autoComplete="off" />
+      </label>
+      {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
+      {!lista && !msg && <p className="tags-note">Carregando…</p>}
+      {visiveis.length > 0 && (
+        <ul className="conta-usuarios-lista">
+          {visiveis.map((u) => (
+            <li key={u.id}>
+              <span>
+                <strong>@{u.usuario}</strong>
+                {u.admin && <span className="vc-badge"> administrador</span>}
+                <small>
+                  {u.email} · desde {data(u.criado_em)} · último acesso {data(u.ultimo_acesso)}
+                </small>
+              </span>
+              <select
+                value={u.nivel}
+                disabled={salvando === u.id}
+                onChange={(e) => void mudar(u, e.target.value as Nivel)}
+                aria-label={`Nível de @${u.usuario}`}
+              >
+                {NIVEIS.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.label}
+                  </option>
+                ))}
+              </select>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** Só administradores: pede o recálculo das ações (combos e respostas) no pipeline da base */
 function Administracao() {
   const [tipo, setTipo] = useState<TipoRecalculo>("tudo");
@@ -455,6 +536,7 @@ function Formulario() {
           <div className="conta-row">
             <span>
               <strong>@{conta.usuario}</strong> · {conta.email}
+              <small className="conta-nivel"> · {NIVEIS.find((n) => n.id === (conta.admin ? "mentor" : conta.nivel))!.label}</small>
             </span>
             <button className="ghost-btn" onClick={() => void sair()}>
               Sair
@@ -462,6 +544,7 @@ function Formulario() {
           </div>
         </section>
         <IntegracaoIA />
+        {conta.admin && <UsuariosCadastrados />}
         {conta.admin && <CadastroUsuarios />}
         {conta.admin && <Administracao />}
         {docs}
