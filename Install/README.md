@@ -4,7 +4,8 @@ Escolha a versão e baixe o instalador do seu sistema: abra o arquivo e clique e
 
 | Versão | Windows | macOS (Apple Silicon e Intel) |
 | --- | --- | --- |
-| **1.0.1** (mais recente) | [Jam.Cards.-.YGO._1.0.1_x64-setup.exe](1.0.1/Jam.Cards.-.YGO._1.0.1_x64-setup.exe) (3.0 MB) | [Jam.Cards.-.YGO._1.0.1_universal.dmg](1.0.1/Jam.Cards.-.YGO._1.0.1_universal.dmg) (7.5 MB) |
+| **1.0.2** (mais recente) | [Jam.Cards.-.YGO._1.0.2_x64-setup.exe](1.0.2/Jam.Cards.-.YGO._1.0.2_x64-setup.exe) (3.4 MB) | [Jam.Cards.-.YGO._1.0.2_universal.dmg](1.0.2/Jam.Cards.-.YGO._1.0.2_universal.dmg) (8.2 MB) |
+| **1.0.1** | [Jam.Cards.-.YGO._1.0.1_x64-setup.exe](1.0.1/Jam.Cards.-.YGO._1.0.1_x64-setup.exe) (3.0 MB) | [Jam.Cards.-.YGO._1.0.1_universal.dmg](1.0.1/Jam.Cards.-.YGO._1.0.1_universal.dmg) (7.5 MB) |
 | **1.0.0** | [Cartas_1.0.0_x64-setup.exe](1.0.0/Cartas_1.0.0_x64-setup.exe) (2.1 MB) | [Cartas_1.0.0_universal.dmg](1.0.0/Cartas_1.0.0_universal.dmg) (5.6 MB) |
 
 Os mesmos arquivos ficam na página de [Releases](https://github.com/juniordsmates/Jam-Cards-YGO-App/releases). Esta pasta é atualizada automaticamente a cada versão publicada.
