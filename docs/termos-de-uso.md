@@ -1,6 +1,6 @@
 # Termos de Uso — Jam Cards - YGO!
 
-Última atualização: 29 de outubro de 2026.
+Última atualização: 1º de novembro de 2026.
 
 Estes termos regem o uso do app **Jam Cards - YGO!** ("App"), um projeto independente e gratuito mantido por seus criadores e desenvolvedores ("Desenvolvedores"). Ao usar o App ou criar uma conta, você concorda com estes termos e com a [Política de Privacidade](politica-de-privacidade.md).
 
@@ -38,15 +38,23 @@ Não é permitido:
 - tentar acessar contas, dados ou áreas do sistema sem autorização;
 - sobrecarregar o serviço, automatizar cadastros ou envios em massa;
 - contornar as regras de acesso, explorar falhas ou fazer engenharia reversa para fins ilícitos;
-- usar o App para qualquer finalidade ilegal.
+- usar o App para qualquer finalidade ilegal;
+- coletar de forma automatizada (robôs, *crawlers*, *scrapers* ou ferramentas semelhantes) o conteúdo do App, do site ou dos dados que o App baixa, sem autorização por escrito dos Desenvolvedores;
+- usar o conteúdo ou os dados do App para treinar, ajustar, avaliar ou alimentar modelos de inteligência artificial, ou para criar bases de dados ou produtos concorrentes, sem autorização por escrito dos Desenvolvedores.
 
-## 5. Disponibilidade e garantias
+Os Desenvolvedores reservam expressamente os direitos de mineração de textos e dados sobre o App e seu conteúdo (inclusive pelo `robots.txt` e pelo protocolo TDM Reservation).
+
+## 5. Conteúdo e dados do App
+
+As cartas de Yu-Gi-Oh! pertencem à Konami e as fontes públicas estão listadas na tela **Fontes**. São dos Desenvolvedores a seleção, a organização e os dados produzidos pelo App, como os combos calculados pelo motor de regras, as análises de metagame, as indicações de resposta, as recomendações do Meta Call e os textos dos guias. Essa base é protegida como obra de compilação e base de dados (Lei nº 9.610/1998, art. 7º, XIII, e art. 87). O uso pessoal dentro do App é livre; cópia, extração ou reutilização fora dele dependem de autorização.
+
+## 6. Disponibilidade e garantias
 
 O App é oferecido **gratuitamente e no estado em que se encontra**, sem garantias de qualquer tipo, expressas ou implícitas, incluindo funcionamento contínuo, ausência de erros, exatidão dos dados de cartas, preços ou combos, ou adequação a um propósito específico.
 
 O serviço pode ser alterado, suspenso ou encerrado a qualquer momento. Recomendamos guardar uma cópia do que for importante para você.
 
-## 6. Limitação de responsabilidade
+## 7. Limitação de responsabilidade
 
 **Na máxima extensão permitida pela legislação aplicável**, os Desenvolvedores não respondem por:
 
@@ -58,12 +66,12 @@ O serviço pode ser alterado, suspenso ou encerrado a qualquer momento. Recomend
 
 A seção 8 da Política de Privacidade detalha a limitação de responsabilidade sobre dados pessoais. Nada nestes termos afasta direitos irrenunciáveis garantidos pela legislação brasileira, inclusive pela LGPD e pelo Código de Defesa do Consumidor.
 
-## 7. Encerramento
+## 8. Encerramento
 
 - Você pode parar de usar o App e pedir a exclusão da sua conta a qualquer momento.
 - Os Desenvolvedores podem suspender ou excluir contas que violem estes termos.
 
-## 8. Alterações e lei aplicável
+## 9. Alterações e lei aplicável
 
 Estes termos podem ser atualizados. A data no topo indica a versão em vigor, e mudanças relevantes serão avisadas no App.
 

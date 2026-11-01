@@ -46,6 +46,7 @@ import {
   type ProvedorId,
 } from "../db/ia";
 import { supabaseReady } from "../db/supabase";
+import { publicarCamada } from "../db/overlay";
 
 // documentos no idioma do app (as traduções avisam que vale a versão em português)
 const politica = IDIOMA === "en" ? politicaEn : IDIOMA === "es" ? politicaEs : politicaPt;
@@ -428,6 +429,38 @@ function UsuariosCadastrados() {
   );
 }
 
+/** Só o administrador: publica a camada de dados no bucket privado do Supabase (o app lê de lá) */
+function PublicarCamada() {
+  const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const enviar = async (arquivo: File | undefined) => {
+    if (!arquivo) return;
+    setEnviando(true);
+    setMsg(null);
+    try {
+      const o = await publicarCamada(arquivo);
+      setMsg({ tipo: "ok", texto: t("Camada publicada (gerada em {0}). O app baixa a nova na próxima abertura.", [new Date(o.geradoEm).toLocaleString(LOCALE)]) });
+    } catch (e) {
+      setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setEnviando(false);
+    }
+  };
+  return (
+    <section className="conta-ia conta-admin">
+      <h3>{t("Publicar camada de dados")}</h3>
+      <p className="tags-note">
+        {t("Envia a camada (camada.json, gerada pelo pipeline da base) para o bucket privado do Supabase: só o app consegue ler, sem link aberto para robôs.")}
+      </p>
+      <label className="ghost-btn conta-enviar">
+        {enviando ? t("Enviando…") : t("Escolher camada.json e publicar")}
+        <input type="file" accept="application/json,.json" hidden disabled={enviando} onChange={(e) => void enviar(e.target.files?.[0])} />
+      </label>
+      {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
+    </section>
+  );
+}
+
 /** Só administradores: pede o recálculo das ações (combos e respostas) no pipeline da base */
 function Administracao() {
   const [tipo, setTipo] = useState<TipoRecalculo>("tudo");
@@ -542,6 +575,7 @@ function Formulario() {
         {conta.admin && <UsuariosCadastrados />}
         {conta.admin && <CadastroUsuarios />}
         {conta.admin && <Administracao />}
+        {conta.admin && <PublicarCamada />}
         {docs}
       </>
     );

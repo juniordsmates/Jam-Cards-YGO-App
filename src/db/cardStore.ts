@@ -110,8 +110,8 @@ function publish(cards: Card[], patch: Partial<CardDbState> = {}) {
 /** Baixa a camada; se falhar, segue com a que já está salva (ou com as regras locais) */
 async function refreshOverlay(): Promise<boolean> {
   try {
-    const fresh = await fetchOverlay();
-    if (fresh.geradoEm === overlay?.geradoEm) return false;
+    const fresh = await fetchOverlay(overlay?.geradoEm);
+    if (!fresh || fresh.geradoEm === overlay?.geradoEm) return false;
     overlay = fresh;
     await idbSetMany({ [OVERLAY_KEY]: fresh });
     return true;

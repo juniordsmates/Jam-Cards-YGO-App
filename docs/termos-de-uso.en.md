@@ -1,6 +1,6 @@
 # Terms of Use — Jam Cards - YGO!
 
-Last updated: October 29, 2026.
+Last updated: November 1, 2026.
 
 *This is a translation of the original Portuguese version. In case of any difference, the Portuguese version prevails.*
 
@@ -40,15 +40,23 @@ It is not allowed to:
 - try to access accounts, data or areas of the system without authorization;
 - overload the service, automate sign-ups or mass submissions;
 - bypass access rules, exploit flaws or reverse engineer for unlawful purposes;
-- use the App for any illegal purpose.
+- use the App for any illegal purpose;
+- collect, by automated means (bots, crawlers, scrapers or similar tools), the content of the App, the website or the data the App downloads, without written authorization from the Developers;
+- use the App's content or data to train, fine-tune, evaluate or feed artificial intelligence models, or to create competing databases or products, without written authorization from the Developers.
 
-## 5. Availability and warranties
+The Developers expressly reserve the text and data mining rights over the App and its content (including through `robots.txt` and the TDM Reservation protocol).
+
+## 5. App content and data
+
+Yu-Gi-Oh! cards belong to Konami and the public sources are listed on the **Sources** screen. The selection, organization and data produced by the App belong to the Developers, such as the combos calculated by the rules engine, the metagame analyses, the answer hints, the Meta Call recommendations and the guide texts. This base is protected as a compilation work and database (Brazilian Law No. 9,610/1998, art. 7, XIII, and art. 87). Personal use within the App is free; copying, extracting or reusing it outside the App requires authorization.
+
+## 6. Availability and warranties
 
 The App is offered **free of charge and as is**, without warranties of any kind, express or implied, including continuous operation, absence of errors, accuracy of card, price or combo data, or fitness for a particular purpose.
 
 The service may be changed, suspended or shut down at any time. We recommend keeping a copy of whatever is important to you.
 
-## 6. Limitation of liability
+## 7. Limitation of liability
 
 **To the fullest extent permitted by applicable law**, the Developers are not liable for:
 
@@ -60,12 +68,12 @@ The service may be changed, suspended or shut down at any time. We recommend kee
 
 Section 8 of the Privacy Policy details the limitation of liability regarding personal data. Nothing in these terms removes non-waivable rights guaranteed by Brazilian law, including the LGPD (General Data Protection Law) and the Consumer Protection Code.
 
-## 7. Termination
+## 8. Termination
 
 - You can stop using the App and ask for your account to be deleted at any time.
 - The Developers may suspend or delete accounts that violate these terms.
 
-## 8. Changes and governing law
+## 9. Changes and governing law
 
 These terms may be updated. The date at the top shows the version in force, and relevant changes will be announced in the App.
 

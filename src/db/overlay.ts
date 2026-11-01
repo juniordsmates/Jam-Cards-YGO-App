@@ -3,11 +3,16 @@ import type { Card } from "./types";
 import type { CombosCalculados } from "./motor";
 import { normalize } from "./search";
 import { t } from "../i18n";
+import { supabase } from "./supabase";
 
-// Camada pública de marcações (dados/camada.json do repositório público Jam-Cards-YGO, o mesmo dos
-// instaladores): tags e ajustes de leitura revisados, sem textos de cartas. O app aplica a
-// camada sobre os dados da YGOPRODeck.
-export const OVERLAY_URL = "https://raw.githubusercontent.com/juniordsmates/Jam-Cards-YGO/main/dados/camada.json";
+// Camada de dados do app (tags revisadas, combos calculados, metagame, respostas), sem textos de
+// cartas; o app aplica a camada sobre os dados da YGOPRODeck. Fica no bucket privado "camada" do
+// Supabase (supabase/migrations/20261101000000_camada_privada.sql): só o app lê, com a chave dele,
+// e não há link aberto para robôs. versao.json traz só o geradoEm, para baixar a camada inteira
+// apenas quando ela muda.
+const BUCKET = "camada";
+/** Endereço antigo (repositório público), só enquanto o bucket não estiver ativo */
+export const OVERLAY_URL_ANTIGA = "https://raw.githubusercontent.com/juniordsmates/Jam-Cards-YGO/main/dados/camada.json";
 
 const SUPPORTED_FORMAT = 1;
 
@@ -80,11 +85,43 @@ export interface MetaTcg {
 
 const LOCAL_TAG_DEFS: TagDefinition[] = TAGS.map(({ id, label, group, hint }) => ({ id, label, group, hint }));
 
-export async function fetchOverlay(): Promise<Overlay> {
-  const res = await fetch(OVERLAY_URL, { cache: "no-cache" });
-  if (!res.ok) throw new Error(t("camada: HTTP {0}", [res.status]));
-  const overlay = (await res.json()) as Overlay;
+const conferir = (overlay: Overlay) => {
   if (overlay.formato !== SUPPORTED_FORMAT) throw new Error(t("camada: formato {0} não suportado", [overlay.formato]));
+  return overlay;
+};
+
+/**
+ * Baixa a camada; null quando ela não mudou desde `atual` (geradoEm da camada salva).
+ * Primeiro o bucket privado do Supabase; sem ele (ainda não ativado), o endereço antigo.
+ */
+export async function fetchOverlay(atual?: string): Promise<Overlay | null> {
+  const sb = supabase();
+  if (sb) {
+    const versao = await sb.storage.from(BUCKET).download("versao.json");
+    if (!versao.error && versao.data) {
+      const { geradoEm } = JSON.parse(await versao.data.text()) as { geradoEm?: string };
+      if (geradoEm && geradoEm === atual) return null;
+      const camada = await sb.storage.from(BUCKET).download("camada.json");
+      if (!camada.error && camada.data) return conferir(JSON.parse(await camada.data.text()) as Overlay);
+    }
+  }
+  const res = await fetch(OVERLAY_URL_ANTIGA, { cache: "no-cache" });
+  if (!res.ok) throw new Error(t("camada: HTTP {0}", [res.status]));
+  return conferir((await res.json()) as Overlay);
+}
+
+/** Administrador: publica a camada no bucket (camada.json e versao.json) */
+export async function publicarCamada(arquivo: File): Promise<Overlay> {
+  const sb = supabase();
+  if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
+  const overlay = conferir(JSON.parse(await arquivo.text()) as Overlay);
+  if (!overlay.geradoEm || !Array.isArray(overlay.ids)) throw new Error(t("O arquivo não é uma camada do app."));
+  const corpo = new Blob([JSON.stringify(overlay)], { type: "application/json" });
+  const a = await sb.storage.from(BUCKET).upload("camada.json", corpo, { upsert: true, contentType: "application/json", cacheControl: "0" });
+  if (a.error) throw new Error(a.error.message);
+  const v = new Blob([JSON.stringify({ geradoEm: overlay.geradoEm, versao: overlay.versao })], { type: "application/json" });
+  const b = await sb.storage.from(BUCKET).upload("versao.json", v, { upsert: true, contentType: "application/json", cacheControl: "0" });
+  if (b.error) throw new Error(b.error.message);
   return overlay;
 }
 
