@@ -19,6 +19,8 @@ import { supabaseReady } from "../db/supabase";
 import { displayName, type Card } from "../db/types";
 import type { ComboTeste } from "./TesteJogo";
 import "./guia-deck.css";
+import BotaoLink from "../components/BotaoLink";
+import type { Rota } from "../rotas";
 import { IDIOMA, t as tr, LOCALE } from "../i18n";
 
 // Guia de Deck: os arquétipos do topo do meta do TCG (6 meses de decklists de torneio), cada um com
@@ -258,16 +260,32 @@ const TAGS_INTERRUPCAO = ["hand-trap", "negacao", "omni-negate", "board-breaker"
 
 const LIMITE_LINHAS = 12;
 
-export default function GuiaDeck({ onBack, onTestar }: { onBack: () => void; onTestar?: (deckId: string, combo: ComboTeste) => void }) {
+export default function GuiaDeck({
+  onBack,
+  onTestar,
+  inicial,
+  onRota,
+}: {
+  onBack: () => void;
+  onTestar?: (deckId: string, combo: ComboTeste) => void;
+  /** link compartilhado: deck e aba (#/guia/<arquétipo>/<aba>) */
+  inicial?: { arquetipo?: string; aba?: string };
+  /** o endereço acompanha o deck e a aba abertos */
+  onRota?: (r: Rota) => void;
+}) {
   const db = useCardDb();
   const conta = useConta();
   // começa no idioma do app; o seletor do guia troca só nesta tela (ex.: ler um artigo em outro idioma)
   const [idioma, escolherIdioma] = useState<Idioma>(IDIOMA);
   const t = T[idioma];
   const meta = db.extras?.metaTcg;
-  const [escolhido, setEscolhido] = useState<string | null>(null);
-  const deck: ArquetipoMeta | undefined = meta?.arquetipos.find((a) => a.arquetipo === escolhido) ?? meta?.arquetipos[0];
-  const [aba, setAba] = useState<Aba>("iniciais");
+  const [escolhido, setEscolhido] = useState<string | null>(inicial?.arquetipo ?? null);
+  const deck: ArquetipoMeta | undefined = meta?.arquetipos.find((a) => a.arquetipo.toLowerCase() === escolhido?.toLowerCase()) ?? meta?.arquetipos[0];
+  const [aba, setAba] = useState<Aba>(() => (["iniciais", "avancadas", "combos", "interacoes", "artigos"].includes(inicial?.aba ?? "") ? (inicial!.aba as Aba) : "iniciais"));
+  // o endereço mostra o deck e a aba (para copiar e para o voltar do navegador)
+  useEffect(() => {
+    if (deck) onRota?.({ tela: "guia", arquetipo: deck.arquetipo, aba });
+  }, [deck?.arquetipo, aba]); // eslint-disable-line react-hooks/exhaustive-deps
   const conteudo = useRef<HTMLDivElement>(null);
 
   useEffect(() => void initCardDb(), []);
@@ -518,6 +536,7 @@ export default function GuiaDeck({ onBack, onTestar }: { onBack: () => void; onT
           <div className="gd-conteudo" ref={conteudo}>
             <header className="gd-topo">
               <h3>{nomeArquetipo(deck.arquetipo)}</h3>
+              {deck && <BotaoLink rota={{ tela: "guia", arquetipo: deck.arquetipo, aba }} className="gd-link" />}
               <div className="gd-numeros">
                 <span>
                   <strong>{deck.pct6m}%</strong> {t.pct6m}

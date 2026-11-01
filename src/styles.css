@@ -674,3 +674,52 @@ kbd {
   background: var(--cyan);
 }
 
+
+/* "Copiar link" (links próprios de cartas, combos, guia e Meta Call) */
+.botao-link {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+  font-size: 0.8rem;
+}
+
+.botao-link .link-btn {
+  white-space: nowrap;
+}
+
+.botao-link-bloqueado {
+  color: var(--text-dim);
+  cursor: help;
+}
+
+.botao-link-aviso {
+  max-width: 320px;
+  color: #8a5a00;
+}
+
+.combo-compartilhado {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--cyan) 6%, var(--bg-elev));
+  border: 1px solid var(--cyan);
+  border-radius: var(--radius);
+}
+
+.combo-compartilhado h3 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--cyan);
+}
+
+.combos-link,
+.gd-link,
+.mc-link {
+  display: flex;
+  margin: 4px 0;
+}
+
+.mc-link {
+  float: right;
+}

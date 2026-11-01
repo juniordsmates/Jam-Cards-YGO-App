@@ -194,6 +194,15 @@ export async function exportarParaBase(combo: ComboBase, compartilhar: boolean):
   return data as ComboBase;
 }
 
+/** Um combo pelo id (link compartilhado): só aparece se for público ou do próprio usuário */
+export async function comboPorId(id: string): Promise<ComboBase | null> {
+  const sb = supabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from("combos").select(COLS).eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as ComboBase | null) ?? null;
+}
+
 /**
  * Combos da Comunidade para a aba Combos: os que começam com todas as cartas da mão escolhida
  * (ou, sem mão, os mais recentes). Os compartilhados aparecem para todos; os não compartilhados,

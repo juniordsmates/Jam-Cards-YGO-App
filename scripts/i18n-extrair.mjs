@@ -31,7 +31,7 @@ const DECL_IGNORADAS = {
   "db/guiaDeck.ts": ["METODO", "ORIGEM", "movimento", "passoNoIdioma"],
 };
 // atributos de texto (HTML e dos componentes do app)
-const ATRIBUTOS = new Set(["title", "placeholder", "aria-label", "alt", "label", "aria-description", "titulo", "rotulo", "texto", "legenda", "hint", "dica", "rotuloTestar"]);
+const ATRIBUTOS = new Set(["title", "placeholder", "aria-label", "alt", "label", "aria-description", "titulo", "rotulo", "texto", "legenda", "hint", "dica", "rotuloTestar", "placeholderMore", "bloqueado", "aviso"]);
 const PROPS_IGNORADAS = new Set(["className", "key", "id", "tipo", "t", "de", "para", "m", "origem", "categoria", "url", "href", "src", "cor", "sigla", "provedor", "modelo", "status", "fonte", "onde", "zona", "race", "frame", "attribute", "path", "method", "headers", "role", "type", "model", "mode", "nome", "name", "busca", "arquivo", "evento", "idioma", "chave", "endpoint", "Authorization", "Content-Type", "arquetipo", "setCode", "raridade", "estado", "edicao", "periodo", "inicio", "fim", "card", "mao", "resultado", "campoFinal", "cartas", "mat", "grupo", "value"]);
 const PROPS_DE_TELA = new Set(["label", "hint", "titulo", "title", "texto", "motivo", "legenda", "resumo", "papel", "descricao", "placeholder", "msg", "aviso", "condicao", "impedida", "rotulo", "proposito", "custo", "dica", "step", "erro", "progresso"]);
 const METODOS_IGNORADOS = new Set(["getItem", "setItem", "removeItem", "querySelector", "querySelectorAll", "closest", "matches", "includes", "startsWith", "endsWith", "indexOf", "lastIndexOf", "split", "replace", "replaceAll", "match", "matchAll", "test", "search", "get", "set", "has", "delete", "from", "select", "eq", "neq", "order", "rpc", "contains", "in", "ilike", "like", "upsert", "addEventListener", "removeEventListener", "setAttribute", "getAttribute", "localeCompare", "padStart", "padEnd", "invoke", "postMessage", "emit", "on", "toLocaleString", "toLocaleDateString", "toLocaleTimeString", "waitForSelector", "click", "fill", "createElement", "error", "warn", "log", "info", "debug", "getElementById"]);
@@ -67,7 +67,9 @@ function tipoFechado(no) {
   const ctx = tipos.getContextualType(no);
   if (!ctx) return false;
   const membros = ctx.isUnion() ? ctx.types : [ctx];
-  const livre = membros.some((m) => m.flags & (ts.TypeFlags.String | ts.TypeFlags.Any | ts.TypeFlags.Unknown) || (m.flags & ts.TypeFlags.Object && !(m.flags & ts.TypeFlags.StringLiteral)));
+  // objetos e funções (ex.: SetStateAction<"a" | "b">) não abrem a lista: só string, any ou ReactNode
+  const ehNo = (m) => m.flags & ts.TypeFlags.Object && /ReactElement|ReactPortal|Iterable|ReactNode/.test(tipos.typeToString(m));
+  const livre = membros.some((m) => m.flags & (ts.TypeFlags.String | ts.TypeFlags.Any | ts.TypeFlags.Unknown) || ehNo(m));
   const literais = membros.some((m) => m.flags & ts.TypeFlags.StringLiteral);
   return literais && !livre;
 }

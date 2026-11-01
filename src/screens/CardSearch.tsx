@@ -10,6 +10,7 @@ import { checkForUpdate, initCardDb, useCardDb, useRelationIndex } from "../db/c
 import { EMPTY_FILTERS, searchCards, type Filters, type SortKey } from "../db/search";
 import type { Card } from "../db/types";
 import "./card-search.css";
+import type { Rota } from "../rotas";
 import { t, LOCALE } from "../i18n";
 
 const PAGE = 60;
@@ -27,7 +28,19 @@ const SORTS: { value: SortKey; label: string }[] = [
 const fmt = (n: number) => n.toLocaleString(LOCALE);
 
 /** `onCombos`: abre a tela de combos (com a carta na mão, se vier do painel) */
-export default function CardSearch({ onBack, onCombos }: { onBack: () => void; onCombos: (card?: Card) => void }) {
+export default function CardSearch({
+  onBack,
+  onCombos,
+  cartaInicial,
+  onRota,
+}: {
+  onBack: () => void;
+  onCombos: (card?: Card) => void;
+  /** link compartilhado: carta a abrir no painel */
+  cartaInicial?: number;
+  /** o endereço acompanha a carta aberta */
+  onRota?: (r: Rota) => void;
+}) {
   const db = useCardDb();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [limit, setLimit] = useState(PAGE);
@@ -125,6 +138,18 @@ export default function CardSearch({ onBack, onCombos }: { onBack: () => void; o
     },
     [remember],
   );
+
+  // link compartilhado (#/carta/<id>): abre a carta assim que a base carregar
+  const aberta = useRef<number | undefined>();
+  useEffect(() => {
+    if (!ready || !cartaInicial || aberta.current === cartaInicial) return;
+    const card = byId.get(cartaInicial);
+    if (!card) return;
+    aberta.current = cartaInicial;
+    openCard(card);
+  });
+  // o endereço mostra a carta aberta (para copiar e para o voltar do navegador)
+  useEffect(() => onRota?.(selected ? { tela: "search", carta: selected.id } : { tela: "search" }), [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Abre uma carta no painel e garante que ela apareça na lista */
   const openCard = useCallback(

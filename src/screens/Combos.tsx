@@ -13,7 +13,9 @@ import { FORMATS, legalIn, type GameFormat } from "../db/legality";
 import { cardsOfLine, linesForHand, semCartaDoCalculo, uniqueLines, type LinhaCombo } from "../db/motor";
 import { deckDoCombo } from "../db/decks";
 import type { ComboTeste } from "./TesteJogo";
-import { combosDaComunidade, type ComboBase } from "../db/baseCombos";
+import { comboPorId, combosDaComunidade, type ComboBase } from "../db/baseCombos";
+import BotaoLink from "../components/BotaoLink";
+import type { Rota } from "../rotas";
 import { supabaseReady } from "../db/supabase";
 import { exportarTodos, useCombosLocais } from "../db/combosLocais";
 import { temRecursosAvancados, useConta } from "../db/conta";
@@ -111,9 +113,18 @@ export default function Combos({
   onBack,
   initialHand = [],
   onTestar,
+  comboId,
+  maoIds,
+  onRota,
 }: {
   onBack: () => void;
   initialHand?: Card[];
+  /** link compartilhado: um Combo da Comunidade (#/combo/<id>) */
+  comboId?: string;
+  /** link compartilhado: a mão inicial (#/combos/mao/<ids>) */
+  maoIds?: number[];
+  /** o endereço acompanha a mão escolhida */
+  onRota?: (r: Rota) => void;
   /** abre o Teste de Jogo com um deck temporário da linha */
   onTestar?: (deckId: string, combo: ComboTeste) => void;
 }) {
@@ -131,6 +142,36 @@ export default function Combos({
   useEffect(() => inputRef.current?.focus(), [db.status]);
 
   const byId = useMemo(() => new Map(db.cards.map((c) => [c.id, c])), [db.cards]);
+
+  // link da mão (#/combos/mao/…): as cartas entram assim que a base carregar
+  const maoDoLink = useRef(false);
+  useEffect(() => {
+    if (maoDoLink.current || !maoIds?.length || !byId.size) return;
+    maoDoLink.current = true;
+    setHand(maoIds.map((id) => byId.get(id)).filter((c): c is Card => !!c));
+  }, [maoIds, byId]);
+  // link de um combo (#/combo/<id>): busca na base (só os compartilhados, ou os do próprio autor)
+  const [compartilhado, setCompartilhado] = useState<{ status: "carregando" | "ok" | "nao" | "erro"; combo?: ComboBase; erro?: string } | null>(comboId ? { status: "carregando" } : null);
+  useEffect(() => {
+    if (!comboId) return setCompartilhado(null);
+    let vivo = true;
+    setCompartilhado({ status: "carregando" });
+    comboPorId(comboId)
+      .then((c) => vivo && setCompartilhado(c ? { status: "ok", combo: c } : { status: "nao" }))
+      .catch((e) => vivo && setCompartilhado({ status: "erro", erro: e instanceof Error ? e.message : String(e) }));
+    return () => {
+      vivo = false;
+    };
+  }, [comboId]);
+  // o endereço mostra a mão escolhida (o do combo compartilhado fica até a mão mudar)
+  const primeiraMao = useRef(true);
+  useEffect(() => {
+    if (primeiraMao.current) {
+      primeiraMao.current = false;
+      if (comboId) return;
+    }
+    onRota?.({ tela: "combos", mao: hand.map((c) => c.id) });
+  }, [hand]); // eslint-disable-line react-hooks/exhaustive-deps
   const byName = useMemo(() => new Map(db.cards.map((c) => [c.name, c])), [db.cards]);
 
   const combos = db.extras?.combos;
@@ -282,12 +323,24 @@ export default function Combos({
               format={format}
               inputRef={inputRef}
               placeholder={t("Escolha uma carta (ex.: Mitsurugi Prayers)")}
-              placeholderMore="Acrescentar outra carta à mão…"
+              placeholderMore={t("Acrescentar outra carta à mão…")}
             />
+            {hand.length > 0 && <BotaoLink rota={{ tela: "combos", mao: hand.map((c) => c.id) }} className="combos-link" />}
             {toggleRespostas}
           </section>
 
           <section className="combos-result">
+            {compartilhado && (
+              <section className="combo-compartilhado">
+                <h3>{t("Combo compartilhado")}</h3>
+                {compartilhado.status === "carregando" && <p className="tags-note">{t("Carregando o combo…")}</p>}
+                {compartilhado.status === "ok" && compartilhado.combo && (
+                  <ComboCard combo={compartilhado.combo} byId={byId} onHover={onHover} highlight={new Set()} format={format} onTestar={testarDaComunidade} />
+                )}
+                {compartilhado.status === "nao" && <p className="db-warning">{t("Este combo não existe ou não foi compartilhado pelo autor.")}</p>}
+                {compartilhado.status === "erro" && <p className="db-warning">{t("Não foi possível carregar o combo: {0}", [compartilhado.erro])}</p>}
+              </section>
+            )}
             {!combos ? (
               <div className="combos-empty">
                 <p>{t("Os combos calculados ainda não foram baixados.")}</p>

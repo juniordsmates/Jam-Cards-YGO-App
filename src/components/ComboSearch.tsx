@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import CardPicker from "./CardPicker";
 import { openConta } from "./Conta";
+import BotaoLink from "./BotaoLink";
 import { FontesButton } from "./Fontes";
 import VerifiedCombos, { groupSteps, join, Name, StepText } from "./VerifiedCombos";
 import type { KnownCombo } from "../data/combos";
@@ -180,6 +181,14 @@ export function ComboCard({
           >
             {validade.valido ? t("Válido no {0}", [format]) : t("Fora da banlist do {0}", [format])}
           </span>
+        )}
+        {(combo.origem === "comunidade" || combo.origem === "ia") && (
+          <BotaoLink
+            rota={{ tela: "combos", combo: combo.id }}
+            bloqueado={local ? t("Combo só neste aparelho: exporte para a base para ter um link") : !/^[0-9a-f-]{36}$/i.test(combo.id) ? t("Este combo ainda não está na base") : undefined}
+            aviso={!local && !combo.publico ? t("Só você vê este combo: em Editar, marque Compartilhar para o link abrir para outras pessoas.") : undefined}
+            className="combo-link"
+          />
         )}
         {onTestar && (
           <button
@@ -477,7 +486,7 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
           all={all}
           format={format}
           placeholder={t("Opcional (ex.: Ice Ryzeal)")}
-          placeholderMore="Acrescentar outra inicial…"
+          placeholderMore={t("Acrescentar outra inicial…")}
         />
         <CardPicker
           label={t("Cartas finais")}
@@ -487,7 +496,7 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
           all={all}
           format={format}
           placeholder={t("Onde o combo deve chegar")}
-          placeholderMore="Acrescentar outra final…"
+          placeholderMore={t("Acrescentar outra final…")}
         />
         <button className="ghost-btn cs-buscar" disabled={!podeBuscar} onClick={buscar}>
           {t("Buscar")}</button>

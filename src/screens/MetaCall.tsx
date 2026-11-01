@@ -25,6 +25,8 @@ import { normalize } from "../db/search";
 import { useContextoRespostas } from "../db/respostas";
 import { displayName, type Card } from "../db/types";
 import "./meta-call.css";
+import BotaoLink from "../components/BotaoLink";
+import type { Rota } from "../rotas";
 import { IDIOMA, t, LOCALE } from "../i18n";
 
 // Meta Call: escolha os decks esperados no torneio (e quanto de cada um) e veja as cartas boas
@@ -64,7 +66,17 @@ function nucleoDoDeck(d: Deck): DeckDoMeta {
   return { arquetipo: d.nome, pct: 0, pctRecente: 0, nucleo: { main: conta(d.main), extra: conta(d.extra), side: [] }, fonte: "arquetipo" };
 }
 
-export default function MetaCall({ onBack }: { onBack: () => void }) {
+export default function MetaCall({
+  onBack,
+  inicial,
+  onRota,
+}: {
+  onBack: () => void;
+  /** link compartilhado: formato e decks com o % de cada um */
+  inicial?: { formato?: GameFormat; decks?: Record<string, number> };
+  /** o endereço acompanha a seleção */
+  onRota?: (r: Rota) => void;
+}) {
   const db = useCardDb();
   useEffect(() => void initCardDb(), []);
   const byId = useMemo(() => new Map(db.cards.map((c) => [c.id, c])), [db.cards]);
@@ -75,7 +87,15 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
   const colecao = useColecao();
   const possuo = useMemo(() => copiasPorCarta(colecao.itens), [colecao.itens]);
 
-  const [escolha, setEscolha] = useState<Escolha>(lerEscolha);
+  // um link com decks vale no lugar da seleção salva (o seu deck continua o salvo)
+  const [escolha, setEscolha] = useState<Escolha>(() => {
+    const salva = lerEscolha();
+    return inicial?.decks ? { ...salva, formato: inicial.formato ?? "TCG", pesos: inicial.decks } : salva;
+  });
+  useEffect(() => {
+    const decks = Object.fromEntries(Object.entries(escolha.pesos).filter(([, p]) => p > 0));
+    onRota?.({ tela: "metacall", formato: escolha.formato, decks: Object.keys(decks).length ? decks : undefined });
+  }, [escolha.formato, escolha.pesos]); // eslint-disable-line react-hooks/exhaustive-deps
   const salvar = (e: Escolha) => {
     setEscolha(e);
     try {
@@ -324,6 +344,10 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
               </div>
             ) : (
               <>
+                <BotaoLink
+                  rota={{ tela: "metacall", formato: escolha.formato, decks: Object.fromEntries(Object.entries(pesos).filter(([, p]) => p > 0)) }}
+                  className="mc-link"
+                />
                 <h3 className="mc-titulo">
                   {t("{0} {1} · soma {2}%", [sel.length, sel.length === 1 ? t("deck esperado") : t("decks esperados"), somaPesos])}{somaPesos !== 100 && <small> {" "}{t("(os % valem como proporção entre eles)")}</small>}
                 </h3>

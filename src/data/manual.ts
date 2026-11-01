@@ -39,6 +39,7 @@ export const CAPITULOS: Capitulo[] = [
           t("Dá para navegar com as setas do teclado e abrir com **Enter**. Em qualquer tela, **Esc** volta para a anterior."),
           t("No canto superior direito fica **Entrar**: com uma conta, seus decks, sua coleção e seus combos ficam salvos na nuvem e aparecem em qualquer computador ou navegador."),
           t("Ao lado, **Português / English / Español** troca o idioma de todo o app (ele recarrega na hora). Em inglês e espanhol, as cartas aparecem com o nome e o texto oficiais em inglês; a busca continua aceitando o nome em português."),
+          t("**Links**: o endereço do site acompanha a tela. **🔗 Copiar link** (no painel da carta, nos combos, na mão escolhida em Combos, no Guia de Deck e no Meta Call) copia um link que abre direto naquilo; no app de computador, o link é o do site. Combos só neste aparelho ou não compartilhados não têm link para outras pessoas."),
           t("Embaixo do menu aparecem a versão e se você está no app de computador (**Desktop**) ou no navegador (**Web**)."),
         ],
       },

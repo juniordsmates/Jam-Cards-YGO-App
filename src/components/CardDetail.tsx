@@ -4,6 +4,7 @@ import { isContaOpen } from "./Conta";
 import { isRespostasOpen } from "./RespostasDialog";
 import CardRespostas from "./CardRespostas";
 import CartasRespostas from "./CartasRespostas";
+import BotaoLink from "./BotaoLink";
 import { cardImage } from "../db/images";
 import { readCard } from "../db/effects";
 import CardEffects, { readingSummary } from "./CardEffects";
@@ -160,6 +161,7 @@ export default function CardDetail({
         )}
         <button className="ghost-btn drawer-combos" onClick={() => onCombos(card)} title={tr("Abrir a tela de combos com esta carta na mão")}>
           {tr("Combos com esta carta")}</button>
+        <BotaoLink rota={{ tela: "search", carta: card.id }} className="drawer-link" />
         <button className="drawer-close ghost-btn" onClick={onClose} aria-label={tr("Fechar")}>
           ✕
         </button>

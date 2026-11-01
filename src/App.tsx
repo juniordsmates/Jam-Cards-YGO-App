@@ -15,19 +15,55 @@ import { iniciarConta } from "./db/conta";
 import { exitApp } from "./platform";
 import { initCardDb } from "./db/cardStore";
 import type { Card } from "./db/types";
+import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
 export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall";
 
+/** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
+const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
+
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("menu");
+  // rota do endereço: tela e o que abrir nela (carta, combo, deck do guia, seleção do Meta Call)
+  const [rota, setRota] = useState<Rota>(lerRota);
+  const [screen, setScreen] = useState<Screen>(() => telaDa(rota));
   // Combos aberta pela busca: volta para a busca e já abre com a carta na mão
   const [combosFrom, setCombosFrom] = useState<{ screen: Screen; hand: Card[] }>({ screen: "menu", hand: [] });
   // Editor de Deck aberto direto no Teste de Jogo (menu principal ou atalho de um combo)
-  const [deckInicial, setDeckInicial] = useState<EditorInicial>({});
+  const [deckInicial, setDeckInicial] = useState<EditorInicial>(() => (rota.tela === "teste" ? { testar: true } : {}));
   const [deckFrom, setDeckFrom] = useState<Screen>("menu");
   const [confirmingExit, setConfirmingExit] = useState(false);
   const [exited, setExited] = useState(false);
+
+  // o endereço acompanha a tela; ao trocar de tela, o que estava aberto na anterior não vale mais
+  useEffect(() => {
+    const atual: Rota["tela"] = screen === "deck" && deckInicial.testar ? "teste" : screen;
+    if (lerRota().tela === atual) return;
+    const nova = { tela: atual } as Rota;
+    setRota(nova);
+    escreverRota(nova);
+  }, [screen, deckInicial.testar]);
+  // voltar/avançar do navegador e link aberto com o app já aberto
+  useEffect(() => {
+    const aoMudar = () => {
+      const r = lerRota();
+      setRota(r);
+      if (r.tela === "teste") setDeckInicial({ testar: true });
+      if (r.tela === "combos") setCombosFrom({ screen: "menu", hand: [] });
+      setScreen(telaDa(r));
+    };
+    window.addEventListener("popstate", aoMudar);
+    window.addEventListener("hashchange", aoMudar);
+    return () => {
+      window.removeEventListener("popstate", aoMudar);
+      window.removeEventListener("hashchange", aoMudar);
+    };
+  }, []);
+  /**
+   * detalhe aberto dentro da tela (carta, combo, aba…): troca o endereço sem criar histórico; se a
+   * tela é outra (a tela nova avisa antes do App), entra como nova entrada, para o voltar funcionar
+   */
+  const aoRota = (r: Rota) => escreverRota(r, lerRota().tela === r.tela);
 
   // Carrega a base de cartas já na abertura, para a busca abrir pronta
   useEffect(() => void initCardDb(), []);
@@ -105,6 +141,8 @@ export default function App() {
 
       {screen === "search" && (
         <CardSearch
+          cartaInicial={rota.tela === "search" ? rota.carta : undefined}
+          onRota={aoRota}
           onBack={() => setScreen("menu")}
           onCombos={(card) => {
             setCombosFrom({ screen: "search", hand: card ? [card] : [] });
@@ -116,6 +154,9 @@ export default function App() {
         <Combos
           onBack={() => setScreen(combosFrom.screen)}
           initialHand={combosFrom.hand}
+          comboId={rota.tela === "combos" ? rota.combo : undefined}
+          maoIds={rota.tela === "combos" ? rota.mao : undefined}
+          onRota={aoRota}
           onTestar={(deckId, combo) => {
             setDeckInicial({ deckId, testar: true, combo });
             setDeckFrom("combos");
@@ -126,9 +167,11 @@ export default function App() {
 
       {screen === "colecao" && <Colecao onBack={() => setScreen("menu")} />}
       {screen === "manual" && <Manual onBack={() => setScreen("menu")} />}
-      {screen === "metacall" && <MetaCall onBack={() => setScreen("menu")} />}
+      {screen === "metacall" && <MetaCall onBack={() => setScreen("menu")} inicial={rota.tela === "metacall" ? rota : undefined} onRota={aoRota} />}
       {screen === "guia" && (
         <GuiaDeck
+          inicial={rota.tela === "guia" ? rota : undefined}
+          onRota={aoRota}
           onBack={() => setScreen("menu")}
           onTestar={(deckId, combo) => {
             setDeckInicial({ deckId, testar: true, combo });
