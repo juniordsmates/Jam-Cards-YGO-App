@@ -30,7 +30,12 @@ export interface ItemCatalogo {
   requisito?: string;
   /** peso da carta sem saber o seu deck (padrão 0,5) */
   fatorSemDeck?: number;
+  /** choke points além da regra de resposta da carta (src/data/interrupcoes.ts) */
+  alvo?: TipoAlvo;
 }
+
+/** Que cartas do deck a carta acerta, quando não é (só) uma resposta a uma ação */
+export type TipoAlvo = "nibiru" | "chefes" | "finais" | "finais-monstros" | "backrow" | "permanentes" | "handtraps" | "magias" | "cemiterio" | "efeitoCampo" | "tipo" | "maquinas";
 
 const L = (x: number) => Math.max(0, Math.min(1, x));
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -66,24 +71,28 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Infinite Impermanence",
+    alvo: "efeitoCampo",
     categoria: "hand-trap",
     papel: t("nega os efeitos de um monstro (da mão, sem cartas no seu campo)"),
     nota: (p) => ({ nota: p.efeitoCampo * 1.5, motivo: t("{0} do deck depende de efeitos de monstro no campo", [pct(p.efeitoCampo)]) }),
   },
   {
     nome: "Effect Veiler",
+    alvo: "efeitoCampo",
     categoria: "hand-trap",
     papel: t("nega os efeitos de um monstro (só na Main Phase do oponente)"),
     nota: (p) => ({ nota: p.efeitoCampo * 1.4, motivo: t("{0} do deck depende de efeitos de monstro no campo", [pct(p.efeitoCampo)]) }),
   },
   {
     nome: "Ghost Ogre & Snow Rabbit",
+    alvo: "efeitoCampo",
     categoria: "hand-trap",
     papel: t("destrói a carta que ativou efeito no campo (não nega)"),
     nota: (p) => ({ nota: (p.efeitoCampo + p.permanentes) * 1.0, motivo: t("efeitos no campo em {0} do deck e {1} de Magias/Armadilhas que ficam no campo", [pct(p.efeitoCampo), pct(p.permanentes)]) }),
   },
   {
     nome: "Ghost Belle & Haunted Mansion",
+    alvo: "cemiterio",
     categoria: "hand-trap",
     papel: t("nega efeitos que tiram cartas do Cemitério"),
     nota: (p) => ({ nota: p.usaGY * 1.9, motivo: t("{0} do motor adiciona, Invoca ou bane do Cemitério", [pct(p.usaGY)]) }),
@@ -99,6 +108,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Nibiru, the Primal Being",
+    alvo: "nibiru",
     categoria: "hand-trap",
     papel: t("depois de 5 Invocações, troca o campo do oponente por uma Ficha"),
     nota: (p) =>
@@ -108,6 +118,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "D.D. Crow",
+    alvo: "cemiterio",
     categoria: "hand-trap",
     papel: t("bane uma carta do Cemitério do oponente"),
     nota: (p) => ({ nota: p.efeitoGY * 1.1, motivo: t("{0} do motor tem efeito no Cemitério", [pct(p.efeitoGY)]) }),
@@ -181,6 +192,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Skull Meister",
+    alvo: "cemiterio",
     categoria: "hand-trap",
     papel: t("nega um efeito ativado no Cemitério"),
     nota: (p) => ({ nota: p.efeitoGY * 0.9, motivo: t("{0} do motor ativa efeitos no Cemitério", [pct(p.efeitoGY)]) }),
@@ -223,6 +235,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Dimension Shifter",
+    alvo: "cemiterio",
     categoria: "hand-trap",
     papel: t("sem cartas no seu Cemitério: até o fim do próximo turno, o que iria ao Cemitério é banido"),
     nota: (p) => ({ nota: (p.efeitoGY + p.usaGY + p.enviaDeck) * 0.9, motivo: t("o deck depende do Cemitério ({0} com efeito lá)", [pct(p.efeitoGY)]) }),
@@ -250,18 +263,21 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Solemn Accusation",
+    alvo: "backrow",
     categoria: "resposta",
     papel: t("nega a ativação de Magia/Armadilha (destrói ou bane, e trava o nome)"),
     nota: (p) => ({ nota: (p.magias + p.armadilhas) * 1.4, motivo: t("{0} do motor são Magias/Armadilhas", [pct(p.magias + p.armadilhas)]) }),
   },
   {
     nome: "Red Reboot",
+    alvo: "backrow",
     categoria: "resposta",
     papel: t("nega uma Armadilha e o oponente não ativa mais Armadilhas no turno"),
     nota: (p) => ({ nota: p.armadilhas * 2.2, motivo: t("{0} do motor são Armadilhas", [pct(p.armadilhas)]) }),
   },
   {
     nome: "Called by the Grave",
+    alvo: "handtraps",
     categoria: "resposta",
     papel: t("bane um monstro do Cemitério e nega os efeitos das cópias (vence hand traps)"),
     nota: (p) => ({
@@ -271,42 +287,49 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Crossout Designator",
+    alvo: "handtraps",
     categoria: "resposta",
     papel: t("declara um nome e nega as cópias até o fim do turno (precisa de uma no seu Deck)"),
     nota: (p) => ({ nota: hts(p) * 0.22, motivo: t("o deck joga ~{0} hand traps; declare uma que você também joga", [n1(hts(p))]) }),
   },
   {
     nome: "Cosmic Cyclone",
+    alvo: "backrow",
     categoria: "resposta",
     papel: t("bane uma Magia/Armadilha (1000 PV)"),
     nota: (p) => ({ nota: p.permanentes * 1.6 + p.armadilhas * 0.5, motivo: t("{0} de Magias/Armadilhas que ficam no campo", [pct(p.permanentes)]) }),
   },
   {
     nome: "Twin Twisters",
+    alvo: "backrow",
     categoria: "resposta",
     papel: t("descarta 1 e destrói até 2 Magias/Armadilhas"),
     nota: (p) => ({ nota: p.permanentes * 1.5 + p.armadilhas * 0.6, motivo: t("{0} de Magias/Armadilhas que ficam no campo", [pct(p.permanentes)]) }),
   },
   {
     nome: "Mystical Space Typhoon",
+    alvo: "backrow",
     categoria: "resposta",
     papel: t("destrói uma Magia/Armadilha"),
     nota: (p) => ({ nota: (p.permanentes * 1.5 + p.armadilhas * 0.5) * 0.9, motivo: t("{0} de Magias/Armadilhas que ficam no campo", [pct(p.permanentes)]) }),
   },
   {
     nome: "Typhoon",
+    alvo: "permanentes",
     categoria: "resposta",
     papel: t("destrói uma Magia/Armadilha virada para cima (da mão, se o oponente tiver 2+ e você nenhuma)"),
     nota: (p) => ({ nota: p.permanentes * 1.5, motivo: t("{0} de Magias/Armadilhas que ficam no campo", [pct(p.permanentes)]) }),
   },
   {
     nome: "Book of Moon",
+    alvo: "chefes",
     categoria: "resposta",
     papel: t("vira um monstro para baixo"),
     nota: (p) => ({ nota: (p.efeitoCampo * 0.8 + Math.min(1, chefes(p)) * 0.2) * 0.6, motivo: t("tira os efeitos de campo de um monstro") }),
   },
   {
     nome: "Skill Drain",
+    alvo: "efeitoCampo",
     categoria: "resposta",
     papel: t("nega os efeitos de todos os monstros virados para cima no campo (1000 PV)"),
     nota: (p) => ({ nota: p.efeitoCampo * 0.8, motivo: t("{0} do deck depende de efeitos de monstro no campo", [pct(p.efeitoCampo)]) }),
@@ -316,6 +339,7 @@ export const CATALOGO: ItemCatalogo[] = [
   // ------------------------------------------------------------------ jogando em segundo
   {
     nome: "Dark Ruler No More",
+    alvo: "chefes",
     categoria: "segundo",
     papel: t("nega os efeitos de todos os monstros do oponente no turno (sem resposta de monstros)"),
     nota: (p) =>
@@ -325,6 +349,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Evenly Matched",
+    alvo: "finais",
     categoria: "segundo",
     papel: t("no fim da Battle Phase, o oponente bane virado para baixo até ficar com o mesmo número de cartas"),
     nota: (p) =>
@@ -334,6 +359,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Lightning Storm",
+    alvo: "finais",
     categoria: "segundo",
     papel: t("sem cartas viradas para cima: destrói os monstros em ataque ou as Magias/Armadilhas do oponente"),
     nota: (p) =>
@@ -343,6 +369,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Harpie's Feather Duster",
+    alvo: "backrow",
     categoria: "segundo",
     papel: t("destrói todas as Magias/Armadilhas do oponente"),
     nota: (p) => ({
@@ -352,30 +379,35 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Raigeki",
+    alvo: "finais-monstros",
     categoria: "segundo",
     papel: t("destrói todos os monstros do oponente"),
     nota: (p) => (p.linhas ? { nota: p.linhas.monstrosFinais / 4, motivo: t("{0} monstros no campo final", [n1(p.linhas.monstrosFinais)]) } : { nota: 0.4, motivo: t("contra campos de monstros") }),
   },
   {
     nome: "Forbidden Droplet",
+    alvo: "chefes",
     categoria: "segundo",
     papel: t("nega e corta o ATK de vários monstros; o oponente não responde com o mesmo tipo de carta"),
     nota: (p) => ({ nota: Math.min(1, chefes(p)) * 0.35 + p.efeitoCampo * 0.4, motivo: p.chefes.length ? t("contra os monstros com negação do campo final") : t("contra efeitos de monstro no campo") }),
   },
   {
     nome: "Gameciel, the Sea Turtle Kaiju",
+    alvo: "chefes",
     categoria: "segundo",
     papel: t("oferece um monstro do oponente para Invocar no campo dele (tira um chefe)"),
     nota: (p) => ({ nota: Math.min(1, chefes(p)) * 0.55 * (p.linhas && p.linhas.monstrosFinais > 3 ? 0.7 : 1), motivo: p.chefes.length ? t("tira um chefe que nega sem destruí-lo nem mirá-lo") : t("tira um monstro do campo") }),
   },
   {
     nome: "Dogoran, the Mad Flame Kaiju",
+    alvo: "chefes",
     categoria: "segundo",
     papel: t("oferece um monstro do oponente; depois, pode destruir todos os monstros dele"),
     nota: (p) => ({ nota: Math.min(1, chefes(p)) * 0.45, motivo: t("tira um chefe sem destruí-lo nem mirá-lo") }),
   },
   {
     nome: "Super Polymerization",
+    alvo: "chefes",
     categoria: "segundo",
     papel: t("Fusão com monstros do campo do oponente, sem resposta"),
     nota: (p) => ({ nota: (Math.min(1, chefes(p)) * 0.3 + (p.linhas ? p.linhas.monstrosFinais / 8 : 0.2)) * 0.8, motivo: t("usa os monstros do oponente como matéria") }),
@@ -385,12 +417,14 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Triple Tactics Talent",
+    alvo: "handtraps",
     categoria: "segundo",
     papel: t("se o oponente ativou efeito de monstro no seu turno: compra 2, rouba um monstro ou tira uma carta da mão"),
     nota: (p) => ({ nota: hts(p) * 0.25, motivo: t("o deck joga ~{0} hand traps (ativados no seu turno)", [n1(hts(p))]) }),
   },
   {
     nome: "Triple Tactics Thrust",
+    alvo: "handtraps",
     categoria: "segundo",
     papel: t("se o oponente ativou efeito de monstro no turno: baixa uma Magia/Armadilha Normal do Deck"),
     nota: (p) => ({ nota: hts(p) * 0.2, motivo: t("o deck joga ~{0} hand traps (ativados no seu turno)", [n1(hts(p))]) }),
@@ -405,6 +439,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Imperial Order",
+    alvo: "magias",
     categoria: "side",
     papel: t("nega os efeitos das Magias no campo"),
     nota: (p) => ({ nota: p.magias * 1.8, motivo: t("{0} do motor são Magias", [pct(p.magias)]) }),
@@ -412,6 +447,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Anti-Spell Fragrance",
+    alvo: "magias",
     categoria: "side",
     papel: t("Magias precisam ser baixadas e esperar um turno"),
     nota: (p) => ({ nota: p.magias * 1.6, motivo: t("{0} do motor são Magias", [pct(p.magias)]) }),
@@ -419,6 +455,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Macro Cosmos",
+    alvo: "cemiterio",
     categoria: "side",
     papel: t("no campo, o que iria ao Cemitério é banido"),
     nota: (p) => ({ nota: (p.efeitoGY + p.usaGY) * 1.1, motivo: t("o deck depende do Cemitério ({0} com efeito lá)", [pct(p.efeitoGY)]) }),
@@ -435,6 +472,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "There Can Be Only One",
+    alvo: "tipo",
     categoria: "side",
     papel: t("cada jogador só controla 1 monstro de cada Tipo"),
     nota: (p) => ({ nota: (p.tipoPrincipal.fracao - 0.45) * 1.8, motivo: t("{0} dos monstros são {1}", [pct(p.tipoPrincipal.fracao), p.tipoPrincipal.race]) }),
@@ -442,6 +480,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Rivalry of Warlords",
+    alvo: "tipo",
     categoria: "side",
     papel: t("cada jogador só controla monstros de 1 Tipo"),
     nota: (p) => ({ nota: (p.tipos - 1) * 0.3, motivo: t("{0} Tipos de monstro no deck", [p.tipos]) }),
@@ -449,6 +488,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "Gozen Match",
+    alvo: "tipo",
     categoria: "side",
     papel: t("cada jogador só controla monstros de 1 Atributo"),
     nota: (p) => ({ nota: (p.atributos - 1) * 0.3, motivo: t("{0} Atributos de monstro no deck", [p.atributos]) }),
@@ -456,6 +496,7 @@ export const CATALOGO: ItemCatalogo[] = [
   },
   {
     nome: "System Down",
+    alvo: "maquinas",
     categoria: "side",
     papel: t("bane todos os monstros Máquina do campo e do Cemitério do oponente"),
     nota: (p) => ({ nota: p.maquinas * 1.4, motivo: t("{0} dos monstros são Máquina", [pct(p.maquinas)]) }),

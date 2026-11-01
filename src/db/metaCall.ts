@@ -1,7 +1,9 @@
 import { CATALOGO, type CategoriaMeta, type ItemCatalogo } from "../data/metaCall";
 import { copiasPermitidas } from "./decks";
 import { calcularInteracoes, linhasDoArquetipo } from "./guiaDeck";
-import { acoesDoTexto, type Acao } from "./indicacoes";
+import { acoesDoTexto, analisar, type Acao, type Analise, type Evento, type Situacao } from "./indicacoes";
+import { REGRA_POR_NOME } from "../data/interrupcoes";
+import { metodoDoExtra } from "./testeJogo";
 import { isActivated, readCard } from "./effects";
 import { legalIn, type GameFormat } from "./legality";
 import type { CombosCalculados, LinhaCombo, Passo } from "./motor";
@@ -31,7 +33,12 @@ export interface DeckDoMeta {
 }
 
 /** Decks do formato: TCG pelos decklists (6 meses); OCG pelo Road of the King (dois últimos trimestres) */
-export function decksDoFormato(overlay: Pick<Overlay, "metaTcg" | "meta"> | undefined, formato: GameFormat, cards: Card[]): DeckDoMeta[] {
+export function decksDoFormato(
+  overlay: Pick<Overlay, "metaTcg" | "meta"> | undefined,
+  formato: GameFormat,
+  cards: Card[],
+  uso?: { decks: number; cartas: Record<string, number> },
+): DeckDoMeta[] {
   if (!overlay) return [];
   if (formato === "TCG")
     return (overlay.metaTcg?.arquetipos ?? []).map((a) => ({ arquetipo: a.arquetipo, pct: a.pct6m, pctRecente: a.pct2m, nucleo: a.nucleo, fonte: "torneio" }));
@@ -46,24 +53,92 @@ export function decksDoFormato(overlay: Pick<Overlay, "metaTcg" | "meta"> | unde
   const total = (ps: string[]) => ps.reduce((s, p) => s + totalDe(p), 0) || Object.values(meta.porArquetipo).reduce((s, l) => s + soma(l, ps), 0);
   const t2 = total(ultimos);
   const t1 = total(ultimos.slice(0, 1));
-  const porArq = new Map<string, Card[]>();
-  for (const c of cards) if (c.archetype) porArq.set(c.archetype.toLowerCase(), [...(porArq.get(c.archetype.toLowerCase()) ?? []), c]);
   return Object.entries(meta.porArquetipo)
-    .map(([arquetipo, l]) => {
-      const doArq = (porArq.get(arquetipo.toLowerCase()) ?? []).filter((c) => legalIn(c, "OCG"));
-      const ehExtraC = (c: Card) => /^(fusion|synchro|xyz|link)/.test(c.frame);
-      const nuc = (cs: Card[]): CartaNucleo[] => cs.map((c) => ({ id: c.id, pct: 1, copias: 1 }));
-      return {
-        arquetipo,
-        pct: t2 ? (soma(l, ultimos) / t2) * 100 : 0,
-        pctRecente: t1 ? (soma(l, ultimos.slice(0, 1)) / t1) * 100 : 0,
-        nucleo: { main: nuc(doArq.filter((c) => !ehExtraC(c))), extra: nuc(doArq.filter(ehExtraC)), side: [] },
-        fonte: "arquetipo" as const,
-      };
-    })
+    .map(([arquetipo, l]) => ({
+      arquetipo,
+      pct: t2 ? (soma(l, ultimos) / t2) * 100 : 0,
+      pctRecente: t1 ? (soma(l, ultimos.slice(0, 1)) / t1) * 100 : 0,
+      nucleo: nucleoDoArquetipo(arquetipo, cards, "OCG", uso),
+      fonte: "arquetipo" as const,
+    }))
     .filter((d) => d.pct > 0)
     .sort((a, b) => b.pct - a.pct)
     .slice(0, 30);
+}
+
+// ---------------------------------------------------------------- consultar decks
+
+/** Qualquer arquétipo, com o quanto ele pesa (ou pesou) no meta */
+export interface DeckConsultavel {
+  arquetipo: string;
+  /** TCG (decklists de 6 meses): % no período e nos últimos 2 meses */
+  tcg?: { pct: number; recente: number };
+  /** OCG (Road of the King, 2 anos por trimestre): % no último trimestre e o pico */
+  ocg?: { atual: number; pico: number; periodoPico: string };
+  /** "agora": relevante no meta atual; "passado": já foi; "outro": nunca chegou ao meta */
+  relevancia: "agora" | "passado" | "outro";
+}
+
+/** Todos os arquétipos consultáveis: meta do TCG, histórico do OCG e os demais da base */
+export function catalogoDeDecks(overlay: Pick<Overlay, "metaTcg" | "meta" | "arquetipos"> | undefined): DeckConsultavel[] {
+  const mapa = new Map<string, DeckConsultavel>();
+  const pega = (a: string) => {
+    let d = mapa.get(a.toLowerCase());
+    if (!d) mapa.set(a.toLowerCase(), (d = { arquetipo: a, relevancia: "outro" }));
+    return d;
+  };
+  for (const a of overlay?.metaTcg?.arquetipos ?? []) pega(a.arquetipo).tcg = { pct: a.pct6m, recente: a.pct2m };
+  const meta = overlay?.meta;
+  if (meta) {
+    const totais = new Map(meta.periodos.map((p) => [p.periodo, p.total]));
+    const ultimo = [...totais.keys()].sort().pop() ?? "";
+    for (const [arq, lista] of Object.entries(meta.porArquetipo)) {
+      let pico = 0;
+      let periodoPico = "";
+      let atual = 0;
+      for (const [periodo, n] of lista) {
+        const total = totais.get(periodo);
+        if (!total) continue;
+        const parte = (n / total) * 100;
+        if (parte > pico) [pico, periodoPico] = [parte, periodo];
+        if (periodo === ultimo) atual = parte;
+      }
+      pega(arq).ocg = { atual, pico, periodoPico };
+    }
+  }
+  for (const a of overlay?.arquetipos ?? []) pega(a);
+  for (const d of mapa.values()) {
+    const agora = (d.tcg && (d.tcg.pct >= 1 || d.tcg.recente >= 1)) || (d.ocg && d.ocg.atual >= 2);
+    const passado = (d.tcg && d.tcg.pct >= 0.5) || (d.ocg && d.ocg.pico >= 2);
+    d.relevancia = agora ? "agora" : passado ? "passado" : "outro";
+  }
+  return [...mapa.values()];
+}
+
+/**
+ * Núcleo estimado de um arquétipo pelas cartas dele na base (sem decklists): as mais usadas em
+ * torneios pesam mais; as nunca usadas, pouco.
+ */
+function nucleoDoArquetipo(arquetipo: string, cards: Card[], formato: GameFormat, uso?: { decks: number; cartas: Record<string, number> }): DeckDoMeta["nucleo"] {
+  const doArq = cards.filter((c) => c.archetype?.toLowerCase() === arquetipo.toLowerCase() && legalIn(c, formato));
+  const usoDe = (c: Card) => (uso ? (uso.cartas[c.id] ?? 0) / uso.decks : 0);
+  const maior = Math.max(0, ...doArq.map(usoDe));
+  const nuc = (cs: Card[]): CartaNucleo[] => cs.map((c) => ({ id: c.id, pct: maior > 0 ? Math.max(0.15, usoDe(c) / maior) : 1, copias: 1 }));
+  const ehExtraC = (c: Card) => /^(fusion|synchro|xyz|link)/.test(c.frame);
+  return { main: nuc(doArq.filter((c) => !ehExtraC(c))), extra: nuc(doArq.filter(ehExtraC)), side: [] };
+}
+
+/** Deck de qualquer arquétipo: o núcleo de torneio (TCG) quando existe; senão, estimado pelas cartas */
+export function deckDoArquetipo(
+  arquetipo: string,
+  overlay: Pick<Overlay, "metaTcg"> | undefined,
+  cards: Card[],
+  formato: GameFormat,
+  uso?: { decks: number; cartas: Record<string, number> },
+): DeckDoMeta {
+  const tcg = formato === "TCG" ? overlay?.metaTcg?.arquetipos.find((a) => a.arquetipo.toLowerCase() === arquetipo.toLowerCase()) : undefined;
+  if (tcg) return { arquetipo: tcg.arquetipo, pct: tcg.pct6m, pctRecente: tcg.pct2m, nucleo: tcg.nucleo, fonte: "torneio" };
+  return { arquetipo, pct: 0, pctRecente: 0, nucleo: nucleoDoArquetipo(arquetipo, cards, formato, uso), fonte: "arquetipo" };
 }
 
 // ---------------------------------------------------------------- perfil do deck
@@ -144,6 +219,39 @@ export interface PerfilDeck {
   handTraps: { id: number; pct: number; side: boolean }[];
   /** monstros do campo final que negam ou removem (chefes) */
   chefes: { id: number; pct: number }[];
+  /** linhas do motor: por resposta, os passos em que ela entra com mais frequência */
+  passosResposta: Map<number, { passo: Passo; vezes: number }[]>;
+  /** cartas mais frequentes no campo final das linhas (fração das linhas) */
+  finais: { id: number; pct: number }[];
+  /** carta que costuma ser a 5ª Invocação do combo (Nibiru) */
+  quintaInvocacao: { id: number; pct: number }[];
+  /** cartas do motor do deck (sem hand traps e staples), das mais jogadas */
+  cartasMotor: { id: number; pct: number }[];
+  /** o que cada carta do motor faz em jogo (ativações e Invocações), lido do texto oficial */
+  eventos: { id: number; pct: number; ev: Evento; a: Analise }[];
+}
+
+/** As ações que uma carta do deck faz em jogo: ativações (por lugar) e a Invocação */
+export function eventosDaCarta(c: Card): Evento[] {
+  const base = { lado: "op" as const, id: c.id, card: c };
+  const zonas = leitura(c).zonas;
+  const out: Evento[] = [];
+  const cat = categoryOf(c);
+  if (cat !== "monster") {
+    // Magia da mão, Armadilha virada; e, se fica no campo, o efeito da carta já virada
+    out.push({ ...base, tipo: "ativa", de: cat === "trap" ? "magia" : "mao", cartaAtivada: true });
+    if (["Continuous", "Field", "Equip"].includes(c.race)) out.push({ ...base, tipo: "ativa", de: c.race === "Field" ? "campo-magia" : "magia" });
+    if (zonas.has("Cemitério")) out.push({ ...base, tipo: "ativa", de: "cemiterio" });
+    return out;
+  }
+  if (zonas.has("Mão")) out.push({ ...base, tipo: "ativa", de: "mao" });
+  if (zonas.has("Campo")) out.push({ ...base, tipo: "ativa", de: "campo" });
+  if (zonas.has("Cemitério")) out.push({ ...base, tipo: "ativa", de: "cemiterio" });
+  if (zonas.has("Banido")) out.push({ ...base, tipo: "ativa", de: "banido" });
+  if (zonas.has("Zona de Pêndulo")) out.push({ ...base, tipo: "ativa", de: "magia" });
+  if (/^(fusion|synchro|xyz|link)/.test(c.frame)) out.push({ ...base, tipo: "invoca", de: "extra", metodo: metodoDoExtra(c.frame) });
+  else if ((c.level ?? 0) <= 4 && c.frame !== "token") out.push({ ...base, tipo: "normal", de: "mao" });
+  return out;
 }
 
 const ehGenerica = (c: Card) => !!c.tags?.some((t) => t === "hand-trap" || t === "staple");
@@ -247,6 +355,24 @@ export function perfilDoDeck(
     .map(({ id, pct, side }) => ({ id, pct, side }))
     .sort((a, b) => b.pct - a.pct);
 
+  // choke points: passos das linhas, campo final, 5ª Invocação e o que cada carta do motor faz
+  const passosResposta = new Map(inter.respostas.map((r) => [r.id, r.passos.map((x) => ({ passo: x.passo, vezes: x.vezes }))]));
+  const contagem = (pegar: (l: LinhaCombo) => number[]) => {
+    const m = new Map<number, number>();
+    for (const l of linhas) for (const id of new Set(pegar(l))) m.set(id, (m.get(id) ?? 0) + 1);
+    return [...m].map(([id, n]) => ({ id, pct: n / linhas.length })).sort((a, b) => b.pct - a.pct);
+  };
+  const finais = contagem((l) => [...l.campo.monstros, ...l.campo.magias.map(([c]) => c)]).slice(0, 8);
+  const quintaInvocacao = contagem((l) => {
+    const inv = l.passos.filter((p): p is Extract<Passo, { t: "normal" | "invoca" }> => p.t === "normal" || p.t === "invoca");
+    return inv.length >= 5 ? [inv[4].c] : [];
+  }).slice(0, 3);
+  const cartasMotor = [...motor, ...deck.nucleo.extra.filter((x) => byId.get(x.id) && !ehGenerica(byId.get(x.id)!))]
+    .sort((a, b) => b.pct * b.copias - a.pct * a.copias)
+    .slice(0, 30)
+    .map(({ id, pct }) => ({ id, pct }));
+  const eventos = cartasMotor.flatMap((x) => eventosDaCarta(byId.get(x.id)!).map((ev) => ({ id: x.id, pct: x.pct, ev, a: analisar(ev) })));
+
   // chefes: monstros do Extra com negação/remoção no núcleo
   const chefes = deck.nucleo.extra
     .filter((x) => x.pct >= 0.35 && byId.get(x.id)?.tags?.some((t) => t === "negacao" || t === "omni-negate" || t === "board-breaker"))
@@ -307,15 +433,34 @@ export function perfilDoDeck(
     pontos: inter.pontos.slice(0, 3).map((p) => ({ passo: p.passo, respostas: p.respostas.length, linhas: p.linhas })),
     handTraps,
     chefes,
+    passosResposta,
+    finais,
+    quintaInvocacao,
+    cartasMotor,
+    eventos,
   };
 }
 
 // ---------------------------------------------------------------- recomendação
 
+/** Um alvo (choke point) da carta no deck: um passo do combo ou uma carta do deck */
+export interface Alvo {
+  /** carta do deck que a recomendação acerta */
+  id?: number;
+  /** passo das linhas do motor onde ela entra */
+  passo?: Passo;
+  motivo: string;
+  /** frequência: "em 12 de 14 linhas", "em 90% das listas" */
+  peso: string;
+  fonte: "motor" | "regra" | "deck";
+}
+
 export interface NotaNoDeck {
   arquetipo: string;
   nota: number;
   motivo: string;
+  /** choke points: onde, no deck, a carta é útil */
+  alvos: Alvo[];
   /** a nota veio das linhas do motor de regras */
   motor: boolean;
 }
@@ -370,10 +515,128 @@ const DO_MOTOR = new Set([
 const limitar = (x: number) => Math.max(0, Math.min(1, x));
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
+// ---------------------------------------------------------------- choke points
+
+/** Situação típica do deck jogando o combo (quem responde: você, com o campo vazio) */
+const situacaoDoDeck = (p: PerfilDeck): Situacao => ({
+  fase: "M1",
+  turno: "op",
+  invocacoes: 3,
+  especiais: 2,
+  ativouMaoOuGY: p.efeitoMaoGY > 0,
+  agente: { cartas: 3, monstros: 2, magias: 1, monstrosEfeito: 2 },
+  respondente: { cartas: 0, monstros: 0, magias: 0, monstrosEfeito: 0, cemiterio: 0 },
+});
+
+/** Passo das linhas do motor como ação (para a regra da carta dizer o que faz ali) */
+function eventoDoPasso(p: Passo, byId: Map<number, Card>): Evento | null {
+  if (p.t === "texto") return null;
+  if (p.t === "compra") return { lado: "op", tipo: "compra", id: p.c[0], card: byId.get(p.c[0]), de: "deck" };
+  const card = byId.get(p.c);
+  return {
+    lado: "op",
+    tipo: p.t,
+    id: p.c,
+    card,
+    de: p.t === "normal" || p.t === "baixa" ? "mao" : p.de,
+    para: p.t === "move" ? p.para : undefined,
+    metodo: p.t === "invoca" ? p.m : undefined,
+    cartaAtivada: p.t === "ativa" && !!card && categoryOf(card) !== "monster",
+  };
+}
+
+const MAX_ALVOS = 6;
+
+/**
+ * Onde a carta é útil contra o deck, das fontes mais exatas para as estimadas:
+ *   1. os passos das linhas do motor em que ela pode responder (com o que ela faz ali)
+ *   2. Nibiru: a carta que costuma ser a 5ª Invocação
+ *   3. as cartas do motor do deck que a regra da carta acerta (ativações e Invocações)
+ *   4. pelo tipo de alvo da carta: chefes, campo final, Magias/Armadilhas, hand traps…
+ */
+function alvosNoDeck(item: ItemCatalogo, card: Card, p: PerfilDeck, byId: Map<number, Card>): Alvo[] {
+  const out: Alvo[] = [];
+  const vistos = new Set<number>();
+  const regra = REGRA_POR_NOME.get(item.nome);
+  const s = situacaoDoDeck(p);
+  const n = p.linhas?.n ?? 0;
+  for (const x of p.passosResposta.get(card.id) ?? []) {
+    const ev = eventoDoPasso(x.passo, byId);
+    const ind = ev && regra ? regra.quando(ev, analisar(ev), s) : null;
+    out.push({ passo: x.passo, motivo: ind?.motivo ?? t("o motor confirmou que ela pode responder neste passo"), peso: t("em {0} de {1} linhas", [Math.min(x.vezes, n), n]), fonte: "motor" });
+    if (ev) vistos.add(ev.id);
+  }
+  if (item.alvo === "nibiru")
+    for (const q of p.quintaInvocacao)
+      out.push({ id: q.id, motivo: t("costuma ser a 5ª Invocação do combo: o Nibiru entra aqui"), peso: t("em {0} das linhas", [pct(q.pct)]), fonte: "motor" });
+  if (regra)
+    for (const e of p.eventos) {
+      if (out.length >= MAX_ALVOS) break;
+      if (vistos.has(e.id)) continue;
+      const ind = regra.quando(e.ev, e.a, s);
+      if (!ind || ind.impedida) continue;
+      vistos.add(e.id);
+      out.push({ id: e.id, motivo: ind.motivo, peso: t("em {0} das listas", [pct(e.pct)]), fonte: "regra" });
+    }
+  for (const a of alvosPorTipo(item, p, byId)) {
+    if (out.length >= MAX_ALVOS) break;
+    if (a.id && vistos.has(a.id)) continue;
+    if (a.id) vistos.add(a.id);
+    out.push(a);
+  }
+  return out;
+}
+
+/** Alvos pelo tipo da carta (as que não respondem a uma ação: quebram o campo, travam o deck…) */
+function alvosPorTipo(item: ItemCatalogo, p: PerfilDeck, byId: Map<number, Card>): Alvo[] {
+  const carta = (id: number) => byId.get(id);
+  const doMotor = (f: (c: Card) => boolean, motivo: string) =>
+    p.cartasMotor.filter((x) => carta(x.id) && f(carta(x.id)!)).map((x): Alvo => ({ id: x.id, motivo, peso: t("em {0} das listas", [pct(x.pct)]), fonte: "deck" }));
+  const nasLinhas = (f: (c: Card) => boolean, motivo: string) =>
+    p.finais.filter((x) => carta(x.id) && f(carta(x.id)!)).map((x): Alvo => ({ id: x.id, motivo, peso: t("no campo final de {0} das linhas", [pct(x.pct)]), fonte: "motor" }));
+  const monstro = (c: Card) => categoryOf(c) === "monster";
+  const mt = (c: Card) => !monstro(c);
+  const permanente = (c: Card) => !monstro(c) && ["Continuous", "Field", "Equip"].includes(c.race);
+  switch (item.alvo) {
+    case "chefes":
+      return [
+        ...p.chefes.map((x): Alvo => ({ id: x.id, motivo: t("chefe do campo final, com negação ou remoção"), peso: t("em {0} das listas", [pct(x.pct)]), fonte: "deck" })),
+        ...nasLinhas(monstro, t("monstro do campo final")),
+      ];
+    case "finais":
+      return nasLinhas(() => true, t("fica no campo final"));
+    case "finais-monstros":
+      return nasLinhas(monstro, t("monstro do campo final"));
+    case "permanentes":
+      return [...nasLinhas(permanente, t("Magia/Armadilha do campo final")), ...doMotor(permanente, t("Magia/Armadilha que fica virada para cima no campo"))];
+    case "backrow":
+      return [
+        ...nasLinhas(mt, t("Magia/Armadilha do campo final")),
+        ...doMotor(permanente, t("Magia/Armadilha que fica virada para cima no campo")),
+        ...doMotor((c) => categoryOf(c) === "trap" && !permanente(c), t("Armadilha que o deck baixa")),
+      ];
+    case "handtraps":
+      return p.handTraps.map((h): Alvo => ({ id: h.id, motivo: h.side ? t("hand trap que o deck traz do Side") : t("hand trap que o deck joga no Main"), peso: t("em {0} das listas", [pct(h.pct)]), fonte: "deck" }));
+    case "magias":
+      return doMotor((c) => categoryOf(c) === "spell", t("Magia do motor do deck"));
+    case "cemiterio":
+      return doMotor((c) => leitura(c).zonas.has("Cemitério"), t("tem efeito no Cemitério"));
+    case "efeitoCampo":
+      return doMotor((c) => monstro(c) && leitura(c).zonas.has("Campo"), t("monstro com efeito no campo"));
+    case "tipo":
+      return doMotor((c) => monstro(c) && c.race === p.tipoPrincipal.race, t("do Tipo principal do deck"));
+    case "maquinas":
+      return doMotor((c) => monstro(c) && c.race === "Machine", t("monstro Máquina"));
+    default:
+      return [];
+  }
+}
+
 export interface EntradaMetaCall {
   decks: { deck: DeckDoMeta; peso: number; perfil: PerfilDeck }[];
   formato: GameFormat;
   byName: Map<string, Card>;
+  byId: Map<number, Card>;
   uso?: { decks: number; cartas: Record<string, number> };
   /** perfil do seu deck (opcional): avisos de cartas que atrapalham você */
   meuDeck?: PerfilDeck;
@@ -390,6 +653,7 @@ export function recomendar(e: EntradaMetaCall): Recomendacao[] {
     const maximo = copiasPermitidas(card, e.formato);
     if (!maximo) continue;
     const porDeck = e.decks.map(({ deck, perfil }): NotaNoDeck => {
+      const alvos = alvosNoDeck(item, card, perfil, e.byId);
       const h = item.nota(perfil);
       const m = DO_MOTOR.has(item.nome) ? perfil.interacoes.get(card.id) : undefined;
       if (m && perfil.linhas) {
@@ -400,10 +664,11 @@ export function recomendar(e: EntradaMetaCall): Recomendacao[] {
           arquetipo: deck.arquetipo,
           nota,
           motor: true,
+          alvos,
           motivo: t("nas {0} linhas do motor, entra no passo {1} de {2} (corta {3} do combo){4}", [perfil.linhas.n, n1(m.primeiro), n1(perfil.linhas.tamanho), pct(m.corte), h.nota > 0.2 ? `; ${h.motivo}` : ""]),
         };
       }
-      return { arquetipo: deck.arquetipo, nota: limitar(h.nota), motivo: h.motivo, motor: false };
+      return { arquetipo: deck.arquetipo, nota: limitar(h.nota), motivo: h.motivo, motor: false, alvos };
     });
     const contra = e.decks.reduce((s, d, i) => s + d.peso * porDeck[i].nota, 0) / pesoTotal;
     const minimo = Math.min(...porDeck.map((p) => p.nota));

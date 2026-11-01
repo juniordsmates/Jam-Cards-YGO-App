@@ -378,3 +378,149 @@
 .mc-selo-possuo {
   color: #1d7a46;
 }
+
+/* consultar decks: qualquer arquétipo, relevante agora ou no passado */
+.mc-consulta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--cyan) 5%, var(--bg-elev));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.mc-consulta .field {
+  margin: 0;
+}
+
+.mc-consulta input {
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.mc-relevancia {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mc-relevancia button {
+  padding: 5px 2px;
+  font-size: 0.7rem;
+  line-height: 1.15;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+
+.mc-resultados {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.mc-resultados li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 5px 6px;
+  font-size: 0.8rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.mc-resultado-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-resultado-nome small {
+  color: var(--text-dim);
+}
+
+.mc-resultado-info {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1;
+  gap: 2px 8px;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.mc-add {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+}
+
+.mc-add.on {
+  color: #1d7a46;
+  border-color: #1d7a46;
+}
+
+.mc-sub {
+  margin: 4px 0 0;
+}
+
+/* choke points de cada deck no detalhe da recomendação */
+.mc-alvos-titulo {
+  display: block;
+  margin: 6px 0 2px;
+}
+
+.mc-alvos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-alvo {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 4px 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: 6px;
+}
+
+.mc-alvo-motor {
+  border-left-color: var(--cyan);
+}
+
+.mc-alvo-regra {
+  border-left-color: var(--magenta);
+}
+
+.mc-alvo img,
+.mc-alvo-img {
+  width: 30px;
+  aspect-ratio: 59 / 86;
+  border-radius: 3px;
+}
+
+.mc-alvo-img {
+  background: var(--line);
+}
+
+.mc-alvo small {
+  display: block;
+  color: var(--text-dim);
+}

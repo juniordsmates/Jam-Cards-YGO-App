@@ -26,6 +26,7 @@ const DECL_IGNORADAS = {
   "db/relations.ts": ["parseQuery", "buildRelations", "targetFollowUp", "descriptorAround", "relationType", "summonMethod", "archetypeNamesPt", "RACES", "ATTRIBUTES", "MONSTER_TYPES"],
   "db/tags.ts": ["applyTags"],
   "db/metaCall.ts": ["DO_MOTOR"],
+  "db/indicar.ts": ["CONTRA_MONSTRO", "CONTRA_MAGIA_ARMADILHA"],
   "db/search.ts": ["normalize", "descKey", "relatedKey", "archetypeKey", "searchCards"],
   "db/guiaDeck.ts": ["METODO", "ORIGEM", "movimento", "passoNoIdioma"],
 };
@@ -296,7 +297,7 @@ if (conferir) {
     const texto = ler(f);
     const faltam = lista.filter((k) => !texto.includes(JSON.stringify(k) + ":"));
     console.log(`${nome}: ${faltam.length} sem tradução`);
-    faltam.slice(0, 40).forEach((k) => console.log("  ", JSON.stringify(k)));
+    faltam.slice(0, 300).forEach((k) => console.log("  ", JSON.stringify(k)));
   }
 } else {
   writeFileSync(resolve(RAIZ, "scripts/i18n-chaves.json"), JSON.stringify(lista, null, 1));

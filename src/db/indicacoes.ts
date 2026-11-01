@@ -206,11 +206,12 @@ export interface Analise {
 
 const PERMANENTES = new Set(["Continuous", "Field", "Equip"]);
 
-export function analisar(ev: Evento): Analise {
+/** `efeitos`: analisa só estes efeitos (ex.: um efeito específico da carta), em vez dos do lugar */
+export function analisar(ev: Evento, efeitosEscolhidos?: ParsedEffect[]): Analise {
   const c = ev.card;
   const cat = c ? categoryOf(c) : "monster";
   const monstro = cat === "monster";
-  const efeitos = ev.tipo === "ativa" && c ? efeitosNaZona(c, ev.de) : [];
+  const efeitos = efeitosEscolhidos ?? (ev.tipo === "ativa" && c ? efeitosNaZona(c, ev.de) : []);
   const acoes = new Set<Acao>();
   for (const e of efeitos) {
     const res = e.resolution ?? e.text;

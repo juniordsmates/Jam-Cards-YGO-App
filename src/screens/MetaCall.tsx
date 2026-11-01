@@ -8,11 +8,24 @@ import { useDecks, type Deck } from "../db/decks";
 import { passoNoIdioma } from "../db/guiaDeck";
 import { cardImage } from "../db/images";
 import { FORMATS, type GameFormat } from "../db/legality";
-import { decksDoFormato, perfilDoDeck, recomendar, sugerirListas, type DeckDoMeta, type PerfilDeck, type Recomendacao } from "../db/metaCall";
+import {
+  catalogoDeDecks,
+  deckDoArquetipo,
+  decksDoFormato,
+  perfilDoDeck,
+  recomendar,
+  sugerirListas,
+  type Alvo,
+  type DeckConsultavel,
+  type DeckDoMeta,
+  type PerfilDeck,
+  type Recomendacao,
+} from "../db/metaCall";
+import { normalize } from "../db/search";
 import { useContextoRespostas } from "../db/respostas";
 import { displayName, type Card } from "../db/types";
 import "./meta-call.css";
-import { t, LOCALE } from "../i18n";
+import { IDIOMA, t, LOCALE } from "../i18n";
 
 // Meta Call: escolha os decks esperados no torneio (e quanto de cada um) e veja as cartas boas
 // contra eles — hand traps, respostas, cartas para jogar em segundo e de Side —, com o motivo em
@@ -75,9 +88,33 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
   const [aberta, setAberta] = useState<number | null>(null);
   const [copiado, setCopiado] = useState<string | null>(null);
 
-  const decks = useMemo(() => decksDoFormato(extras, escolha.formato, db.cards), [extras, escolha.formato, db.cards]);
+  const decks = useMemo(() => decksDoFormato(extras, escolha.formato, db.cards, extras?.uso), [extras, escolha.formato, db.cards]);
+  // decks consultados (fora da lista do meta): qualquer arquétipo, relevante agora ou no passado
+  const catalogo = useMemo(() => catalogoDeDecks(extras), [extras]);
+  const [consulta, setConsulta] = useState("");
+  const [relevancia, setRelevancia] = useState<"todos" | DeckConsultavel["relevancia"]>("todos");
   const pesos = escolha.pesos;
-  const escolhidos = decks.filter((d) => (pesos[d.arquetipo] ?? 0) > 0);
+  const consultados = useMemo(
+    () =>
+      Object.keys(escolha.pesos)
+        .filter((a) => (escolha.pesos[a] ?? 0) > 0 && !decks.some((d) => d.arquetipo.toLowerCase() === a.toLowerCase()))
+        .map((a) => deckDoArquetipo(a, extras, db.cards, escolha.formato, extras?.uso)),
+    [escolha.pesos, escolha.formato, decks, extras, db.cards],
+  );
+  const escolhidos = [...consultados, ...decks].filter((d) => (pesos[d.arquetipo] ?? 0) > 0);
+  const resultados = useMemo(() => {
+    const q = normalize(consulta);
+    if (q.length < 2 && relevancia === "todos") return [];
+    const ordem = { agora: 0, passado: 1, outro: 2 };
+    return catalogo
+      .filter((d) => relevancia === "todos" || d.relevancia === relevancia)
+      // começo de palavra: "ange" acha Angelechy, não "Change"
+      .filter((d) => !q || ` ${normalize(`${d.arquetipo} ${db.archetypePt.get(d.arquetipo) ?? ""}`).replace(/[-!.]/g, " ")}`.includes(` ${q}`))
+      .sort((a, b) => ordem[a.relevancia] - ordem[b.relevancia] || (b.tcg?.pct ?? 0) - (a.tcg?.pct ?? 0) || (b.ocg?.pico ?? 0) - (a.ocg?.pico ?? 0) || a.arquetipo.localeCompare(b.arquetipo))
+      .slice(0, 15);
+  }, [consulta, relevancia, catalogo, db.archetypePt]);
+  /** % inicial de um deck consultado: o do meta (TCG ou OCG) ou 5% */
+  const pesoInicial = (d: DeckConsultavel) => Math.max(1, Math.round((escolha.formato === "TCG" ? d.tcg?.pct : d.ocg?.atual) || d.tcg?.pct || d.ocg?.atual || 5));
 
   // perfis: um por deck (o cálculo lê o texto das cartas; fica em cache por deck)
   // (cache novo quando a base ou a camada mudam)
@@ -98,7 +135,7 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
 
   const sel = useMemo(() => escolhidos.map((deck) => ({ deck, peso: pesos[deck.arquetipo], perfil: perfilDe(deck) })), [escolhidos, pesos, perfilDe]);
   const recs = useMemo(
-    () => (sel.length ? recomendar({ decks: sel, formato: escolha.formato, byName, uso: extras?.uso, meuDeck: meuPerfil, meusIds }) : []),
+    () => (sel.length ? recomendar({ decks: sel, formato: escolha.formato, byName, byId, uso: extras?.uso, meuDeck: meuPerfil, meusIds }) : []),
     [sel, escolha.formato, byName, extras?.uso, meuPerfil, meusIds],
   );
   const listas = useMemo(() => sugerirListas(recs), [recs]);
@@ -131,6 +168,24 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
     });
   };
   const nome = (id: number) => (byId.get(id) ? displayName(byId.get(id)!) : `#${id}`);
+  /** um choke point: o passo do combo (motor) ou a carta do deck, o que a recomendação faz ali e a frequência */
+  const alvo = (a: Alvo, i: number) => {
+    const id = a.id ?? (a.passo && "c" in a.passo ? (Array.isArray(a.passo.c) ? a.passo.c[0] : a.passo.c) : undefined);
+    const card = id !== undefined ? byId.get(id) : undefined;
+    const texto = a.passo ? passoNoIdioma(a.passo, nome, IDIOMA) : id !== undefined ? nome(id) : "";
+    return (
+      <li key={i} className={`mc-alvo mc-alvo-${a.fonte}`}>
+        {card ? <img src={cardImage(card.id, "small")} alt="" loading="lazy" {...comPrevia(card)} /> : <span className="mc-alvo-img" />}
+        <span>
+          <strong>{texto}</strong>
+          <small>
+            {a.motivo} · {a.peso}
+            {a.fonte === "motor" && <span title={t("Calculado com as linhas do motor de regras")}> ⚙</span>}
+          </small>
+        </span>
+      </li>
+    );
+  };
 
   const pronto = db.status === "ready";
   return (
@@ -163,20 +218,68 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
               <button className="ghost-btn" onClick={() => salvar({ ...escolha, pesos: {} })}>
                 {t("Limpar")}</button>
             </div>
+            <div className="mc-consulta">
+              <label className="field">
+                <span className="field-label">{t("Consultar deck")}</span>
+                <input value={consulta} onChange={(e) => setConsulta(e.target.value)} placeholder={t("ex.: Angelechy")} aria-label={t("Consultar deck")} />
+              </label>
+              <div className="left-tabs mc-relevancia" role="tablist" aria-label={t("Relevância no meta")}>
+                {(["todos", "agora", "passado"] as const).map((r) => (
+                  <button key={r} className={relevancia === r ? "active" : ""} onClick={() => setRelevancia(r)}>
+                    {r === "todos" ? t("Todos") : r === "agora" ? t("Relevantes agora") : t("Já foram relevantes")}
+                  </button>
+                ))}
+              </div>
+              {resultados.length > 0 && (
+                <ul className="mc-resultados">
+                  {resultados.map((d) => {
+                    const on = (pesos[d.arquetipo] ?? 0) > 0;
+                    return (
+                      <li key={d.arquetipo}>
+                        <span className="mc-resultado-nome">
+                          <strong>{d.arquetipo}</strong>
+                          {IDIOMA === "pt" && db.archetypePt.get(d.arquetipo) && <small> · {db.archetypePt.get(d.arquetipo)}</small>}
+                        </span>
+                        <span className="mc-resultado-info">
+                          {d.tcg && <span title={t("TCG: decklists de torneio dos últimos 6 meses")}>{t("TCG {0}% · {1}% recente", [n1(d.tcg.pct), n1(d.tcg.recente)])}</span>}
+                          {d.ocg && d.ocg.pico > 0 && (
+                            <span title={t("OCG: participação nos decks colocados por trimestre (Road of the King)")}>
+                              {t("OCG pico {0}% em {1}", [n1(d.ocg.pico), d.ocg.periodoPico])}
+                              {d.ocg.atual > 0 && ` · ${t("atual {0}%", [n1(d.ocg.atual)])}`}
+                            </span>
+                          )}
+                          {d.relevancia === "outro" && <span>{t("sem dados de torneio: perfil pelas cartas")}</span>}
+                        </span>
+                        <button className={`ghost-btn mc-add ${on ? "on" : ""}`} onClick={() => definirPeso(d.arquetipo, on ? 0 : pesoInicial(d))}>
+                          {on ? t("✓ Adicionado") : t("+ Adicionar")}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {(consulta.length >= 2 || relevancia !== "todos") && !resultados.length && <p className="tags-note">{t("Nenhum arquétipo encontrado.")}</p>}
+            </div>
             {!decks.length && <p className="db-warning">{t("O metagame ainda não foi baixado. Ele chega com a camada de dados do app.")}</p>}
+            {consultados.length > 0 && <p className="field-label mc-sub">{t("Consultados")}</p>}
             <ul className="mc-lista">
-              {decks.map((d, i) => {
+              {[...consultados, ...decks].map((d, j) => {
+                const i = j - consultados.length;
                 const on = (pesos[d.arquetipo] ?? 0) > 0;
                 const tend = d.pctRecente - d.pct;
                 return (
                   <li key={d.arquetipo} className={on ? "on" : ""}>
                     <label>
                       <input type="checkbox" checked={on} onChange={(e) => marcar(d, e.target.checked)} />
-                      <span className="mc-pos">{i + 1}</span>
+                      <span className="mc-pos">{i >= 0 ? i + 1 : "•"}</span>
                       <span className="mc-nome">{d.arquetipo}</span>
-                      <small title={t("{0}% no período; {1}% no mais recente", [n1(d.pct), n1(d.pctRecente)])}>
-                        {n1(d.pct)}%{Math.abs(tend) >= 1 && <span className={tend > 0 ? "sobe" : "desce"}>{tend > 0 ? " ▲" : " ▼"}</span>}
-                      </small>
+                      {d.pct > 0 ? (
+                        <small title={t("{0}% no período; {1}% no mais recente", [n1(d.pct), n1(d.pctRecente)])}>
+                          {n1(d.pct)}%{Math.abs(tend) >= 1 && <span className={tend > 0 ? "sobe" : "desce"}>{tend > 0 ? " ▲" : " ▼"}</span>}
+                        </small>
+                      ) : (
+                        <small title={t("Perfil estimado pelas cartas do arquétipo (sem decklists deste formato).")}>{t("estimado")}</small>
+                      )}
                     </label>
                     {on && (
                       <span className="mc-peso">
@@ -363,6 +466,12 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                               {r.porDeck.map((d) => (
                                 <li key={d.arquetipo}>
                                   <strong>{d.arquetipo}</strong> ({Math.round(d.nota * 100)}): {d.motivo}
+                                  {d.alvos.length > 0 && (
+                                    <>
+                                      <span className="field-label mc-alvos-titulo">{t("Choke points: onde ela acerta o deck")}</span>
+                                      <ul className="mc-alvos">{d.alvos.map((a, i) => alvo(a, i))}</ul>
+                                    </>
+                                  )}
                                 </li>
                               ))}
                               <li>
@@ -371,10 +480,9 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                               </li>
                             </ul>
                           ) : (
-                            r.porDeck.length > 1 && (
-                              <button className="link-btn mc-ver" onClick={() => setAberta(r.id)}>
-                                {t("Ver o motivo em cada deck")}</button>
-                            )
+                            <button className="link-btn mc-ver" onClick={() => setAberta(r.id)}>
+                              {r.porDeck.length > 1 ? t("Ver o motivo e os choke points em cada deck") : t("Ver os choke points")}
+                            </button>
                           )}
                         </div>
                       </li>

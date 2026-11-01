@@ -94,6 +94,7 @@ export const CAPITULOS: Capitulo[] = [
           t("**Tags**: clique numa tag para buscar todas as cartas com ela."),
           t("**Relacionamentos**: cartas que esta busca, invoca ou ajuda, e o inverso. **Combinar com filtros** mantém os filtros que você já tinha."),
           t("**Respostas**: cartas que o oponente costuma usar contra esta (ex.: a Ash Blossom responde a efeitos que buscam no Deck)."),
+          t("**Cartas respostas**: para cada efeito ativado da carta, o que pode responder a ele; também **Quando é Invocada** e **Parada no campo** (o que costuma ser usado contra ela no campo, como **Typhoon** e **Cosmic Cyclone** contra Magias de Campo e Contínuas). Das mais usadas em torneios; **só OCG** marca as proibidas no TCG."),
           t("**Coleções e Preços**: cada impressão (código e raridade) com o preço convertido para reais pela cotação do dia."),
           t("**Informações** e metagame: arquétipo, datas de lançamento, situação na banlist e uso em torneios."),
           t("O botão **Voltar** do painel retorna à carta anterior quando você navega por links."),
@@ -266,6 +267,7 @@ export const CAPITULOS: Capitulo[] = [
         titulo: t("Escolher os decks (esquerda)"),
         itens: [
           t("**TCG / OCG**: no TCG, os decks vêm de 6 meses de decklists de torneio (com a tendência ▲▼ dos últimos 2 meses); no OCG, do Road of the King (o perfil é estimado pelas cartas do arquétipo)."),
+          t("**Consultar deck**: procure qualquer arquétipo (ex.: **Angelechy**). Os filtros **Relevantes agora** (meta do TCG e último trimestre do OCG) e **Já foram relevantes** (pico no OCG nos últimos 2 anos) ajudam a achar decks que podem aparecer; **+ Adicionar** põe o deck na lista. Sem decklists, o perfil é estimado pelas cartas do arquétipo (as mais usadas em torneios pesam mais)."),
           t("Marque os decks esperados; o **%** começa com a participação no meta e pode ser trocado (vale como proporção entre eles). **Top 5** e **Top 10** marcam os primeiros."),
           t("**Meu deck (opcional)**: com ele, o app avisa cartas que também travam você (ex.: **Macro Cosmos** num deck que usa o Cemitério; **Dominus** da mão, que tranca Atributos) e confere requisitos (**Herald of Orange Light** precisa de Fadas; **Fydraulis Harmonia**, de Sincros)."),
         ],
@@ -284,6 +286,7 @@ export const CAPITULOS: Capitulo[] = [
           t("Os selos de cada deck mostram a nota contra ele; **⚙** quer dizer que veio das linhas do motor: em que passo a carta já entra e **quanto do combo ela corta** (entrar cedo corta mais)."),
           t("Filtre por **Hand traps**, **Respostas**, **Jogando em segundo** e **Side e floodgates**. **máx. N** é o limite da banlist; **possuo N**, a sua coleção."),
           t("**Main: interrupções** sugere as cartas boas contra todos; **Side Deck (15)**, as específicas. **Copiar** copia a lista."),
+          t("**Ver o motivo e os choke points em cada deck** mostra, para cada deck, onde a carta acerta: os **passos do combo** em que ela entra (⚙, das linhas do motor, com a frequência), as **cartas do deck** que ela para (pelas regras da carta) e, para as cartas de jogar em segundo, os **chefes** e o **campo final**. Ex.: Ash Blossom contra Kewl Tune nega o efeito de Kewl Tune Synchro, que busca no Deck, em 14 de 14 linhas."),
         ],
       },
     ],

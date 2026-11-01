@@ -1997,3 +1997,49 @@
 .respostas-lista small {
   color: var(--text-dim);
 }
+
+/* Buscar Carta → Cartas respostas: por efeito, na Invocação e parada no campo */
+.cartas-respostas .cr-grupo {
+  margin: 6px 0;
+  padding: 6px 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.cartas-respostas summary {
+  cursor: pointer;
+}
+
+.cartas-respostas summary small {
+  color: var(--text-dim);
+}
+
+.cr-efeito {
+  margin: 4px 0;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.cartas-respostas ul {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 4px 0;
+  padding-left: 16px;
+  font-size: 0.82rem;
+}
+
+.cartas-respostas li small {
+  color: var(--text-dim);
+}
+
+.cr-selo {
+  margin-left: 4px;
+  padding: 0 5px;
+  font-size: 0.64rem;
+  color: #8a5a00;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}

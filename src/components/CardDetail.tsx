@@ -3,6 +3,7 @@ import { FontesButton, isFontesOpen } from "./Fontes";
 import { isContaOpen } from "./Conta";
 import { isRespostasOpen } from "./RespostasDialog";
 import CardRespostas from "./CardRespostas";
+import CartasRespostas from "./CartasRespostas";
 import { cardImage } from "../db/images";
 import { readCard } from "../db/effects";
 import CardEffects, { readingSummary } from "./CardEffects";
@@ -238,6 +239,8 @@ export default function CardDetail({
       />
 
       <CardRespostas card={card} byId={byId} onOpen={onOpen} />
+
+      <CartasRespostas card={card} byId={byId} byName={byName} onOpen={onOpen} />
 
       {references.length > 0 && (
         <section className="drawer-section">
