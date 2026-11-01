@@ -1,8 +1,12 @@
 import { useEffect, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import ExternalLink from "./ExternalLink";
-import politica from "../../docs/politica-de-privacidade.md?raw";
-import termos from "../../docs/termos-de-uso.md?raw";
+import politicaPt from "../../docs/politica-de-privacidade.md?raw";
+import politicaEn from "../../docs/politica-de-privacidade.en.md?raw";
+import politicaEs from "../../docs/politica-de-privacidade.es.md?raw";
+import termosPt from "../../docs/termos-de-uso.md?raw";
+import termosEn from "../../docs/termos-de-uso.en.md?raw";
+import termosEs from "../../docs/termos-de-uso.es.md?raw";
 import {
   aoRecuperarSenha,
   contaAtual,
@@ -42,6 +46,11 @@ import {
   type ProvedorId,
 } from "../db/ia";
 import { supabaseReady } from "../db/supabase";
+
+// documentos no idioma do app (as traduções avisam que vale a versão em português)
+const politica = IDIOMA === "en" ? politicaEn : IDIOMA === "es" ? politicaEs : politicaPt;
+const termos = IDIOMA === "en" ? termosEn : IDIOMA === "es" ? termosEs : termosPt;
+import { IDIOMA, t, LOCALE } from "../i18n";
 
 // Tela "Minha conta": entrar, recuperar senha, IAs, documentos e (administrador) recálculos e
 // cadastro de usuários. Novas contas só pelo administrador. Abre de qualquer lugar e o Esc fecha só ela.
@@ -156,14 +165,13 @@ function DetalheIA({ id, onVoltar }: { id: ProvedorId; onVoltar: () => void }) {
       <div className="conta-row">
         <h3>{p.nome}</h3>
         <button className="link-btn" onClick={onVoltar}>
-          ← Todas as IAs
-        </button>
+          {t("← Todas as IAs")}</button>
       </div>
       <p className="ia-intuito">
-        <strong>Para que serve no app:</strong> {guia.intuito}
+        <strong>{t("Para que serve no app:")}</strong> {guia.intuito}
       </p>
       <details className="ia-tutorial" open={!pronta}>
-        <summary>Tutorial: como cadastrar</summary>
+        <summary>{t("Tutorial: como cadastrar")}</summary>
         <ol>
           {guia.tutorial.map((passo) => (
             <li key={passo}>{passo}</li>
@@ -171,14 +179,14 @@ function DetalheIA({ id, onVoltar }: { id: ProvedorId; onVoltar: () => void }) {
         </ol>
         {p.chaves && (
           <p className="tags-note">
-            Página das chaves: <ExternalLink href={p.chaves}>{new URL(p.chaves).host}</ExternalLink>
+            {t("Página das chaves:")}{" "}<ExternalLink href={p.chaves}>{new URL(p.chaves).host}</ExternalLink>
           </p>
         )}
-        <p className="tags-note">Custo: {guia.custo}. A chave é sua: os custos são cobrados na sua conta do provedor.</p>
+        <p className="tags-note">{t("Custo: {0}. A chave é sua: os custos são cobrados na sua conta do provedor.", [guia.custo])}</p>
       </details>
       {p.id === "anthropic" ? (
         <label className="field">
-          <span className="field-label">Modelo</span>
+          <span className="field-label">{t("Modelo")}</span>
           <select value={cfg.modelo} onChange={(e) => salvar({ ...cfg, modelo: e.target.value })}>
             {MODELOS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -190,33 +198,32 @@ function DetalheIA({ id, onVoltar }: { id: ProvedorId; onVoltar: () => void }) {
       ) : (
         <>
           <label className="field">
-            <span className="field-label">Endereço da API (formato OpenAI)</span>
-            <input value={cfg.url} placeholder="https://…/v1" onChange={(e) => setCfg({ ...cfg, url: e.target.value })} onBlur={() => salvar(cfg)} aria-label="Endereço da API" />
+            <span className="field-label">{t("Endereço da API (formato OpenAI)")}</span>
+            <input value={cfg.url} placeholder={t("https://…/v1")} onChange={(e) => setCfg({ ...cfg, url: e.target.value })} onBlur={() => salvar(cfg)} aria-label={t("Endereço da API")} />
           </label>
           <label className="field">
-            <span className="field-label">Modelo</span>
-            <input value={cfg.modelo} placeholder={p.exemplo} onChange={(e) => setCfg({ ...cfg, modelo: e.target.value })} onBlur={() => salvar(cfg)} aria-label="Modelo" />
+            <span className="field-label">{t("Modelo")}</span>
+            <input value={cfg.modelo} placeholder={p.exemplo} onChange={(e) => setCfg({ ...cfg, modelo: e.target.value })} onBlur={() => salvar(cfg)} aria-label={t("Modelo")} />
           </label>
         </>
       )}
       <p className="tags-note">
-        Pesquisa na web no Combo Search: <strong>{p.web}</strong>.{p.local && " Rode o programa no computador antes de usar."}
+        {t("Pesquisa na web no Combo Search:")}{" "}<strong>{p.web}</strong>.{p.local && t(" Rode o programa no computador antes de usar.")}
       </p>
       {cfg.chave ? (
         <div className="conta-row">
-          <span>Chave cadastrada (…{cfg.chave.slice(-4)})</span>
+          <span>{t("Chave cadastrada (…{0})", [cfg.chave.slice(-4)])}</span>
           <button className="link-btn" onClick={() => salvar({ ...cfg, chave: "" })}>
-            Remover chave
-          </button>
+            {t("Remover chave")}</button>
         </div>
       ) : (
         <div className="tcgapi-key-row">
           <input
             type="password"
-            placeholder={p.local ? "Chave (opcional)" : `Chave da API · ${p.nome}`}
+            placeholder={p.local ? t("Chave (opcional)") : t("Chave da API · {0}", [p.nome])}
             value={chave}
             onChange={(e) => setChave(e.target.value)}
-            aria-label="Chave da API de IA"
+            aria-label={t("Chave da API de IA")}
           />
           <button
             className="ghost-btn"
@@ -226,23 +233,20 @@ function DetalheIA({ id, onVoltar }: { id: ProvedorId; onVoltar: () => void }) {
               setChave("");
             }}
           >
-            Salvar
-          </button>
+            {t("Salvar")}</button>
         </div>
       )}
       {conta && (
         <label className="conta-aceite">
-          <input type="checkbox" checked={naConta} onChange={(e) => void alternarConta(e.target.checked)} /> Guardar esta IA (com a chave) na
-          minha conta, para usar em outros computadores
-        </label>
+          <input type="checkbox" checked={naConta} onChange={(e) => void alternarConta(e.target.checked)} /> {" "}{t("Guardar esta IA (com a chave) na minha conta, para usar em outros computadores")}</label>
       )}
       {erroConta && <p className="db-warning">{erroConta}</p>}
       <p className={pronta ? "conta-ok" : "tags-note"}>
         {pronta
           ? ativa
-            ? "Pronta e em uso no Combo Search."
-            : "Pronta."
-          : "Falta configurar: " + [!cfg.modelo && "modelo", p.id !== "anthropic" && !cfg.url && "endereço", !cfg.chave && !p.local && "chave"].filter(Boolean).join(", ") + "."}
+            ? t("Pronta e em uso no Combo Search.")
+            : t("Pronta.")
+          : t("Falta configurar: ") + [!cfg.modelo && t("modelo"), p.id !== "anthropic" && !cfg.url && t("endereço"), !cfg.chave && !p.local && t("chave")].filter(Boolean).join(", ") + "."}
       </p>
       <div className="ia-acoes">
         {pronta && !ativa && (
@@ -253,13 +257,11 @@ function DetalheIA({ id, onVoltar }: { id: ProvedorId; onVoltar: () => void }) {
               setAtiva(true);
             }}
           >
-            Usar no Combo Search
-          </button>
+            {t("Usar no Combo Search")}</button>
         )}
         {(cfg.chave || naConta) && (
           <button className="link-btn" onClick={remover}>
-            Remover esta IA
-          </button>
+            {t("Remover esta IA")}</button>
         )}
       </div>
     </section>
@@ -277,11 +279,9 @@ function IntegracaoIA() {
   const ativa = getIaAtiva();
   return (
     <section className="conta-ia">
-      <h3>IAs</h3>
+      <h3>{t("IAs")}</h3>
       <p className="tags-note">
-        Cada IA usa a <strong>sua</strong> chave de API (os custos ficam na sua conta do provedor). A chave fica neste dispositivo e, se você
-        quiser, também na sua conta. Clique numa IA para cadastrar, ver o tutorial e para que ela serve no app.
-      </p>
+        {t("Cada IA usa a")}{" "}<strong>{t("sua")}</strong> {" "}{t("chave de API (os custos ficam na sua conta do provedor). A chave fica neste dispositivo e, se você quiser, também na sua conta. Clique numa IA para cadastrar, ver o tutorial e para que ela serve no app.")}</p>
       <div className="ia-grade">
         {PROVEDORES.map((x) => {
           const pronta = iaConfigurada(getConfigDe(x.id));
@@ -289,8 +289,8 @@ function IntegracaoIA() {
             <button key={x.id} className={`ia-botao ${pronta ? "ia-pronta" : ""}`} onClick={() => setAberta(x.id)}>
               <strong>{x.nome}</strong>
               <small>
-                {pronta ? (ativa === x.id ? "Configurada · Combo Search" : "Configurada") : "Não configurada"}
-                {x.id === "gemini" && " · vídeo do YouTube"}
+                {pronta ? (ativa === x.id ? t("Configurada · Combo Search") : t("Configurada")) : t("Não configurada")}
+                {x.id === "gemini" && t(" · vídeo do YouTube")}
               </small>
             </button>
           );
@@ -311,7 +311,7 @@ function CadastroUsuarios() {
     setMsg(null);
     try {
       await criarUsuarioComoAdmin(form.usuario, form.email, form.senha);
-      setMsg({ tipo: "ok", texto: `Usuário @${form.usuario.trim().toLowerCase()} cadastrado. Ele já pode entrar com o e-mail e a senha.` });
+      setMsg({ tipo: "ok", texto: t("Usuário @{0} cadastrado. Ele já pode entrar com o e-mail e a senha.", [form.usuario.trim().toLowerCase()]) });
       setForm({ usuario: "", email: "", senha: "" });
     } catch (err) {
       setMsg({ tipo: "erro", texto: err instanceof Error ? err.message : String(err) });
@@ -321,31 +321,31 @@ function CadastroUsuarios() {
   };
   return (
     <section className="conta-ia conta-admin">
-      <h3>Cadastrar usuário</h3>
-      <p className="tags-note">Só o administrador cria contas. A conta já nasce confirmada; passe o e-mail e a senha para a pessoa.</p>
+      <h3>{t("Cadastrar usuário")}</h3>
+      <p className="tags-note">{t("Só o administrador cria contas. A conta já nasce confirmada; passe o e-mail e a senha para a pessoa.")}</p>
       <form className="conta-form" onSubmit={(e) => void cadastrar(e)}>
         <label className="field">
-          <span className="field-label">Usuário (público)</span>
+          <span className="field-label">{t("Usuário (público)")}</span>
           <input
             required
             pattern="[a-z0-9_]{3,20}"
-            title="3 a 20 letras minúsculas, números ou _"
+            title={t("3 a 20 letras minúsculas, números ou _")}
             value={form.usuario}
             onChange={(e) => setForm({ ...form, usuario: e.target.value.toLowerCase() })}
             autoComplete="off"
           />
         </label>
         <label className="field">
-          <span className="field-label">E-mail</span>
+          <span className="field-label">{t("E-mail")}</span>
           <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" />
         </label>
         <label className="field">
-          <span className="field-label">Senha (mínimo 8 caracteres)</span>
+          <span className="field-label">{t("Senha (mínimo 8 caracteres)")}</span>
           <input type="password" required minLength={8} value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} autoComplete="new-password" />
         </label>
         {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
         <button className="ghost-btn conta-enviar" type="submit" disabled={enviando}>
-          {enviando ? "Cadastrando…" : "Cadastrar usuário"}
+          {enviando ? t("Cadastrando…") : t("Cadastrar usuário")}
         </button>
       </form>
     </section>
@@ -370,7 +370,7 @@ function UsuariosCadastrados() {
     try {
       await definirNivel(u.id, nivel);
       setLista((l) => l?.map((x) => (x.id === u.id ? { ...x, nivel } : x)) ?? l);
-      setMsg({ tipo: "ok", texto: `@${u.usuario} agora é ${NIVEIS.find((n) => n.id === nivel)!.label}.` });
+      setMsg({ tipo: "ok", texto: t("@{0} agora é {1}.", [u.usuario, NIVEIS.find((n) => n.id === nivel)!.label]) });
     } catch (e) {
       setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -380,10 +380,10 @@ function UsuariosCadastrados() {
 
   const f = filtro.trim().toLowerCase();
   const visiveis = (lista ?? []).filter((u) => !f || u.usuario.includes(f) || u.email.toLowerCase().includes(f));
-  const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "nunca");
+  const data = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(LOCALE) : "nunca");
   return (
     <section className="conta-ia conta-admin conta-usuarios">
-      <h3>Usuários cadastrados{lista ? ` (${lista.length})` : ""}</h3>
+      <h3>{t("Usuários cadastrados{0}", [lista ? ` (${lista.length})` : ""])}</h3>
       <p className="tags-note">
         {NIVEIS.map((n) => (
           <span key={n.id} className="conta-nivel-dica">
@@ -392,27 +392,27 @@ function UsuariosCadastrados() {
         ))}
       </p>
       <label className="field">
-        <span className="field-label">Procurar (usuário ou e-mail)</span>
+        <span className="field-label">{t("Procurar (usuário ou e-mail)")}</span>
         <input value={filtro} onChange={(e) => setFiltro(e.target.value)} autoComplete="off" />
       </label>
       {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
-      {!lista && !msg && <p className="tags-note">Carregando…</p>}
+      {!lista && !msg && <p className="tags-note">{t("Carregando…")}</p>}
       {visiveis.length > 0 && (
         <ul className="conta-usuarios-lista">
           {visiveis.map((u) => (
             <li key={u.id}>
               <span>
                 <strong>@{u.usuario}</strong>
-                {u.admin && <span className="vc-badge"> administrador</span>}
+                {u.admin && <span className="vc-badge"> {" "}{t("administrador")}</span>}
                 <small>
-                  {u.email} · desde {data(u.criado_em)} · último acesso {data(u.ultimo_acesso)}
+                  {t("{0} · desde {1} · último acesso {2}", [u.email, data(u.criado_em), data(u.ultimo_acesso)])}
                 </small>
               </span>
               <select
                 value={u.nivel}
                 disabled={salvando === u.id}
                 onChange={(e) => void mudar(u, e.target.value as Nivel)}
-                aria-label={`Nível de @${u.usuario}`}
+                aria-label={t("Nível de @{0}", [u.usuario])}
               >
                 {NIVEIS.map((n) => (
                   <option key={n.id} value={n.id}>
@@ -443,12 +443,12 @@ function Administracao() {
     setMsg(null);
     try {
       const r = await pedirRecalculo(tipo, forcar);
-      setMsg({ tipo: r.status.startsWith("sem token") ? "erro" : "ok", texto: `Pedido registrado: ${r.status}. Conferindo a resposta do GitHub…` });
+      setMsg({ tipo: r.status.startsWith("sem token") ? "erro" : "ok", texto: t("Pedido registrado: {0}. Conferindo a resposta do GitHub…", [r.status]) });
       // a chamada ao GitHub sai do banco em segundo plano: a resposta chega em alguns segundos
       setTimeout(() => void listarRecalculos().then((l) => {
         setLista(l);
         const s = l[0] && situacao(l[0]);
-        if (s) setMsg({ tipo: s.ok ? "ok" : "erro", texto: s.ok ? `${s.texto}. O resultado aparece no app quando o cálculo terminar.` : `Falhou: ${s.texto}.` });
+        if (s) setMsg({ tipo: s.ok ? "ok" : "erro", texto: s.ok ? t("{0}. O resultado aparece no app quando o cálculo terminar.", [s.texto]) : t("Falhou: {0}.", [s.texto]) });
       }), 6000);
     } catch (e) {
       setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
@@ -459,33 +459,29 @@ function Administracao() {
 
   return (
     <section className="conta-ia conta-admin">
-      <h3>Administração</h3>
+      <h3>{t("Administração")}</h3>
       <p className="tags-note">
-        Recalcula no pipeline da base (GitHub Actions) as linhas de combo e as respostas, e publica a camada nova. Leva de alguns
-        minutos a algumas horas; o app baixa o resultado ao abrir.
-      </p>
+        {t("Recalcula no pipeline da base (GitHub Actions) as linhas de combo e as respostas, e publica a camada nova. Leva de alguns minutos a algumas horas; o app baixa o resultado ao abrir.")}</p>
       <label className="field">
-        <span className="field-label">O que recalcular</span>
+        <span className="field-label">{t("O que recalcular")}</span>
         <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoRecalculo)}>
-          <option value="tudo">Tudo (combos e respostas)</option>
-          <option value="combos">Combos</option>
-          <option value="respostas">Respostas</option>
+          <option value="tudo">{t("Tudo (combos e respostas)")}</option>
+          <option value="combos">{t("Combos")}</option>
+          <option value="respostas">{t("Respostas")}</option>
         </select>
       </label>
       <label className="conta-aceite">
-        <input type="checkbox" checked={forcar} onChange={(e) => setForcar(e.target.checked)} /> Ignorar o cache e recalcular todos os
-        decks
-      </label>
+        <input type="checkbox" checked={forcar} onChange={(e) => setForcar(e.target.checked)} /> {" "}{t("Ignorar o cache e recalcular todos os decks")}</label>
       <button className="ghost-btn conta-enviar recalcular" disabled={enviando} onClick={() => void pedir()}>
-        {enviando ? "Enviando…" : "Recalcular Ações"}
+        {enviando ? t("Enviando…") : t("Recalcular Ações")}
       </button>
       {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
       {lista.length > 0 && (
         <ul className="respostas-lista">
           {lista.map((r) => (
             <li key={r.id}>
-              {new Date(r.criado_em).toLocaleString("pt-BR")} · {r.tipo}
-              {r.forcar ? " (sem cache)" : ""} · <small>{situacao(r).texto}</small>
+              {new Date(r.criado_em).toLocaleString(LOCALE)} · {r.tipo}
+              {r.forcar ? t(" (sem cache)") : ""} · <small>{situacao(r).texto}</small>
             </li>
           ))}
         </ul>
@@ -524,8 +520,8 @@ function Formulario() {
 
   const docs = (
     <p className="tags-note conta-docs">
-      <button className="link-btn" onClick={() => openConta("politica")}>Política de Privacidade</button> ·{" "}
-      <button className="link-btn" onClick={() => openConta("termos")}>Termos de Uso</button>
+      <button className="link-btn" onClick={() => openConta("politica")}>{t("Política de Privacidade")}</button> ·{" "}
+      <button className="link-btn" onClick={() => openConta("termos")}>{t("Termos de Uso")}</button>
     </p>
   );
 
@@ -539,8 +535,7 @@ function Formulario() {
               <small className="conta-nivel"> · {NIVEIS.find((n) => n.id === (conta.admin ? "mentor" : conta.nivel))!.label}</small>
             </span>
             <button className="ghost-btn" onClick={() => void sair()}>
-              Sair
-            </button>
+              {t("Sair")}</button>
           </div>
         </section>
         <IntegracaoIA />
@@ -556,7 +551,7 @@ function Formulario() {
     <div className="left-tabs conta-tabs" role="tablist">
       {(["entrar", "senha"] as const).map((a) => (
         <button key={a} role="tab" aria-selected={aba === a} className={aba === a ? "active" : ""} onClick={() => openConta(a)}>
-          {a === "entrar" ? "Entrar" : "Esqueci a senha"}
+          {a === "entrar" ? t("Entrar") : t("Esqueci a senha")}
         </button>
       ))}
     </div>
@@ -565,7 +560,7 @@ function Formulario() {
   return (
     <>
       {!supabaseReady() ? (
-        <p className="db-warning">As contas ainda não foram ativadas nesta versão do app.</p>
+        <p className="db-warning">{t("As contas ainda não foram ativadas nesta versão do app.")}</p>
       ) : (
         <>
           {abas}
@@ -582,21 +577,21 @@ function Formulario() {
             }
           >
             <label className="field">
-              <span className="field-label">E-mail</span>
+              <span className="field-label">{t("E-mail")}</span>
               <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
             {aba !== "senha" && (
               <label className="field">
-                <span className="field-label">Senha</span>
+                <span className="field-label">{t("Senha")}</span>
                 <input type="password" autoComplete="current-password" required value={senha} onChange={(e) => setSenha(e.target.value)} />
               </label>
             )}
             {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
             <button className="ghost-btn conta-enviar" type="submit" disabled={enviando}>
-              {enviando ? "Aguarde…" : aba === "senha" ? "Enviar link" : "Entrar"}
+              {enviando ? t("Aguarde…") : aba === "senha" ? t("Enviar link") : t("Entrar")}
             </button>
           </form>
-          <p className="tags-note">Novas contas são criadas pelo administrador do app. Ao entrar, você aceita a Política de Privacidade e os Termos de Uso.</p>
+          <p className="tags-note">{t("Novas contas são criadas pelo administrador do app. Ao entrar, você aceita a Política de Privacidade e os Termos de Uso.")}</p>
         </>
       )}
       <IntegracaoIA />
@@ -612,10 +607,10 @@ function NovaSenha() {
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const enviar = async (e: FormEvent) => {
     e.preventDefault();
-    if (senha !== repetir) return setMsg({ tipo: "erro", texto: "As duas senhas são diferentes." });
+    if (senha !== repetir) return setMsg({ tipo: "erro", texto: t("As duas senhas são diferentes.") });
     try {
       await definirNovaSenha(senha);
-      setMsg({ tipo: "ok", texto: "Senha alterada. Você já está conectado." });
+      setMsg({ tipo: "ok", texto: t("Senha alterada. Você já está conectado.") });
       setSenha("");
       setRepetir("");
     } catch (err) {
@@ -625,17 +620,16 @@ function NovaSenha() {
   return (
     <form className="conta-form" onSubmit={(e) => void enviar(e)}>
       <label className="field">
-        <span className="field-label">Nova senha (mínimo 8 caracteres)</span>
+        <span className="field-label">{t("Nova senha (mínimo 8 caracteres)")}</span>
         <input type="password" autoComplete="new-password" required minLength={8} value={senha} onChange={(e) => setSenha(e.target.value)} />
       </label>
       <label className="field">
-        <span className="field-label">Repita a nova senha</span>
+        <span className="field-label">{t("Repita a nova senha")}</span>
         <input type="password" autoComplete="new-password" required minLength={8} value={repetir} onChange={(e) => setRepetir(e.target.value)} />
       </label>
       {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
       <button className="ghost-btn conta-enviar" type="submit">
-        Salvar a nova senha
-      </button>
+        {t("Salvar a nova senha")}</button>
     </form>
   );
 }
@@ -661,7 +655,7 @@ export function ContaDialog() {
 
   if (!aba) return null;
   const titulo =
-    aba === "novaSenha" ? "Nova senha" : aba === "politica" ? "Política de Privacidade" : aba === "termos" ? "Termos de Uso" : conta ? "Minha conta" : "Conta";
+    aba === "novaSenha" ? t("Nova senha") : aba === "politica" ? t("Política de Privacidade") : aba === "termos" ? t("Termos de Uso") : conta ? t("Minha conta") : "Conta";
 
   return createPortal(
     <div className="overlay fontes-overlay" onClick={closeConta}>
@@ -671,10 +665,9 @@ export function ContaDialog() {
           <span>
             {(aba === "politica" || aba === "termos") && (
               <button className="link-btn" onClick={() => openConta()}>
-                ← Voltar
-              </button>
+                {t("← Voltar")}</button>
             )}{" "}
-            <button className="ghost-btn" onClick={closeConta} aria-label="Fechar">
+            <button className="ghost-btn" onClick={closeConta} aria-label={t("Fechar")}>
               ✕
             </button>
           </span>

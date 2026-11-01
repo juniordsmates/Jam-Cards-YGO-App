@@ -19,6 +19,7 @@ import { supabaseReady } from "../db/supabase";
 import { displayName, type Card } from "../db/types";
 import type { ComboTeste } from "./TesteJogo";
 import "./guia-deck.css";
+import { IDIOMA, t as tr, LOCALE } from "../i18n";
 
 // Guia de Deck: os arquétipos do topo do meta do TCG (6 meses de decklists de torneio), cada um com
 // Ideias Iniciais, Ideias Avançadas, Combos, Interações e Artigos de Jogadores, em 3 idiomas.
@@ -29,7 +30,6 @@ const IDIOMAS: { id: Idioma; label: string }[] = [
   { id: "en", label: "English" },
   { id: "es", label: "Español" },
 ];
-const IDIOMA_SALVO = "cartas-guia-idioma";
 
 // ---------------------------------------------------------------- textos da tela
 
@@ -261,22 +261,8 @@ const LIMITE_LINHAS = 12;
 export default function GuiaDeck({ onBack, onTestar }: { onBack: () => void; onTestar?: (deckId: string, combo: ComboTeste) => void }) {
   const db = useCardDb();
   const conta = useConta();
-  const [idioma, setIdioma] = useState<Idioma>(() => {
-    try {
-      const v = localStorage.getItem(IDIOMA_SALVO);
-      return v === "en" || v === "es" ? v : "pt";
-    } catch {
-      return "pt";
-    }
-  });
-  const escolherIdioma = (v: Idioma) => {
-    setIdioma(v);
-    try {
-      localStorage.setItem(IDIOMA_SALVO, v);
-    } catch {
-      // armazenamento indisponível: vale só nesta sessão
-    }
-  };
+  // começa no idioma do app; o seletor do guia troca só nesta tela (ex.: ler um artigo em outro idioma)
+  const [idioma, escolherIdioma] = useState<Idioma>(IDIOMA);
   const t = T[idioma];
   const meta = db.extras?.metaTcg;
   const [escolhido, setEscolhido] = useState<string | null>(null);
@@ -291,7 +277,7 @@ export default function GuiaDeck({ onBack, onTestar }: { onBack: () => void; onT
   const byName = useMemo(() => new Map(db.cards.map((c) => [c.name, c])), [db.cards]);
   const ctxRespostas = useContextoRespostas(byId);
   const nomeCarta = useCallback((c: Card) => (idioma === "pt" ? displayName(c) : c.name), [idioma]);
-  const nomeId = useCallback((id: number) => (id === 0 ? "Token" : id === CARTA_QUALQUER ? (idioma === "pt" ? "carta qualquer" : idioma === "en" ? "any card" : "carta cualquiera") : byId.get(id) ? nomeCarta(byId.get(id)!) : `#${id}`), [byId, nomeCarta, idioma]);
+  const nomeId = useCallback((id: number) => (id === 0 ? tr("Token") : id === CARTA_QUALQUER ? (idioma === "pt" ? tr("carta qualquer") : idioma === "en" ? tr("any card") : tr("carta cualquiera")) : byId.get(id) ? nomeCarta(byId.get(id)!) : `#${id}`), [byId, nomeCarta, idioma]);
 
   // prévia ao passar o mouse (a mesma das outras telas)
   const [hover, setHover] = useState<{ card: Card; rect: DOMRect } | null>(null);
@@ -356,8 +342,7 @@ export default function GuiaDeck({ onBack, onTestar }: { onBack: () => void; onT
                   <CardSelos card={c} formato="TCG" />
                 </div>
                 <span className="gd-copias">
-                  {n.copias.toLocaleString(idioma)}× · {Math.round(n.pct * 100)}%
-                </span>
+                  {tr("{0}× · {1}%", [n.copias.toLocaleString(idioma), Math.round(n.pct * 100)])}</span>
               </div>
             );
           })}
@@ -485,7 +470,7 @@ export default function GuiaDeck({ onBack, onTestar }: { onBack: () => void; onT
   // ---------------------------------------------------------------- tela
 
   const ready = db.status === "ready";
-  const atualizado = meta ? new Date(meta.atualizadoEm).toLocaleDateString(idioma === "pt" ? "pt-BR" : idioma) : "";
+  const atualizado = meta ? new Date(meta.atualizadoEm).toLocaleDateString(idioma === "pt" ? LOCALE : idioma) : "";
 
   return (
     <ScreenShell
@@ -494,7 +479,7 @@ export default function GuiaDeck({ onBack, onTestar }: { onBack: () => void; onT
       onBack={onBack}
       plain
       actions={
-        <div className="format-switch gd-idiomas" role="radiogroup" aria-label="Idioma / Language">
+        <div className="format-switch gd-idiomas" role="radiogroup" aria-label={tr("Idioma / Language")}>
           {IDIOMAS.map((x) => (
             <button key={x.id} role="radio" aria-checked={idioma === x.id} className={idioma === x.id ? "active" : ""} onClick={() => escolherIdioma(x.id)}>
               {x.label}
@@ -788,7 +773,7 @@ export default function GuiaDeck({ onBack, onTestar }: { onBack: () => void; onT
                             {a.status === "recusado" && <span className="vc-badge gd-recusado">{t.recusado}</span>}
                           </div>
                           <small>
-                            {t.por} @{a.autor_nome} · {new Date(a.criado_em).toLocaleDateString(idioma === "pt" ? "pt-BR" : idioma)}
+                            {t.por} @{a.autor_nome} · {new Date(a.criado_em).toLocaleDateString(idioma === "pt" ? LOCALE : idioma)}
                           </small>
                           {a.resumo && <p>{rico(a.resumo)}</p>}
                           {a.status === "recusado" && a.motivo && <p className="db-warning">{a.motivo}</p>}

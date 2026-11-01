@@ -26,6 +26,7 @@ import { EMPTY_FILTERS, normalize, searchCards, type Filters } from "../db/searc
 import { bilingualName, displayName, type Card } from "../db/types";
 import "./deck-editor.css";
 import "./colecao.css";
+import { t, LOCALE } from "../i18n";
 
 const POR_PAGINA = 24;
 const nomeEdicao = (id: string) => EDICOES.find((e) => e.id === id)?.label ?? "";
@@ -88,7 +89,7 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
       const v = valorBRL(i);
       if (v === undefined) semPreco += i.quantidade;
       else total += v;
-      const r = i.raridade || "Não aplicado";
+      const r = i.raridade || t("Não aplicado");
       const x = porRaridade.get(r) ?? { copias: 0, valor: 0 };
       porRaridade.set(r, { copias: x.copias + i.quantidade, valor: x.valor + (v ?? 0) });
     }
@@ -107,12 +108,12 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
     return itens
       .filter((i) => {
         const c = byId.get(i.cartaId);
-        if (filtroLista.raridade && (i.raridade || "Não aplicado") !== filtroLista.raridade) return false;
+        if (filtroLista.raridade && (i.raridade || t("Não aplicado")) !== filtroLista.raridade) return false;
         return !termos.length || (!!c && termos.every((t) => c.key.includes(t)));
       })
       .sort((a, b) => {
         const [ca, cb] = [byId.get(a.cartaId), byId.get(b.cartaId)];
-        return (ca ? displayName(ca) : "").localeCompare(cb ? displayName(cb) : "", "pt-BR") || a.setCode.localeCompare(b.setCode);
+        return (ca ? displayName(ca) : "").localeCompare(cb ? displayName(cb) : "", LOCALE) || a.setCode.localeCompare(b.setCode);
       });
   }, [itens, byId, filtroLista]);
 
@@ -127,22 +128,22 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
   const adicionar = () => {
     if (!carta) return;
     const n = quantidadeValida(novo.quantidade);
-    if (n === null) return setMensagem({ tipo: "erro", texto: "Digite a quantidade: de 1 a 99." });
+    if (n === null) return setMensagem({ tipo: "erro", texto: t("Digite a quantidade: de 1 a 99.") });
     const [setCode = "", raridade = ""] = novo.impressao ? novo.impressao.split("|") : [];
     const erro = adicionarNaColecao({ cartaId: carta.id, setCode, raridade, idioma: novo.idioma, edicao: novo.edicao, estado: novo.estado }, n);
     if (erro) return setMensagem({ tipo: "erro", texto: erro });
-    setMensagem({ tipo: "ok", texto: `${n} ${n === 1 ? "cópia adicionada" : "cópias adicionadas"}: ${displayName(carta)}.` });
+    setMensagem({ tipo: "ok", texto: `${n} ${n === 1 ? t("cópia adicionada") : t("cópias adicionadas")}: ${displayName(carta)}.` });
     setNovo({ ...novo, quantidade: "" });
   };
 
   const confirmarRetirada = (item: ItemColecao) => {
     if (!retirando) return;
     const n = quantidadeValida(retirando.quantidade, item.quantidade);
-    if (n === null) return setMensagem({ tipo: "erro", texto: `Digite quantas cópias retirar: de 1 a ${item.quantidade}.` });
+    if (n === null) return setMensagem({ tipo: "erro", texto: t("Digite quantas cópias retirar: de 1 a {0}.", [item.quantidade]) });
     const erro = retirarDaColecao(retirando.chave, n);
     if (erro) return setMensagem({ tipo: "erro", texto: erro });
     const c = byId.get(item.cartaId);
-    setMensagem({ tipo: "ok", texto: `${n} ${n === 1 ? "cópia retirada" : "cópias retiradas"}: ${c ? displayName(c) : item.cartaId}.` });
+    setMensagem({ tipo: "ok", texto: `${n} ${n === 1 ? t("cópia retirada") : t("cópias retiradas")}: ${c ? displayName(c) : item.cartaId}.` });
     setRetirando(null);
   };
 
@@ -161,7 +162,7 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
     setImportacao(null);
     setMensagem({
       tipo: falhas.length ? "erro" : "ok",
-      texto: `Importadas ${cartas} cópias.${ignoradas ? ` ${ignoradas} linha(s) não reconhecida(s) ficaram de fora.` : ""}${falhas.length ? ` Não entraram: ${falhas.join(" · ")}` : ""}`,
+      texto: t("Importadas {0} cópias.{1}{2}", [cartas, ignoradas ? t(" {0} linha(s) não reconhecida(s) ficaram de fora.", [ignoradas]) : "", falhas.length ? t(" Não entraram: {0}", [falhas.join(" · ")]) : ""]),
     });
   };
 
@@ -171,35 +172,35 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
   const moeda = (v: number) => formatMoney(v, "BRL");
 
   const thumb = (c: Card) => (
-    <div key={c.id} className={`de-thumb ${carta?.id === c.id ? "col-ativa" : ""}`} onClick={() => abrir(c)} title={`${bilingualName(c)} — clique para adicionar à coleção`} data-card-id={c.id}>
+    <div key={c.id} className={`de-thumb ${carta?.id === c.id ? "col-ativa" : ""}`} onClick={() => abrir(c)} title={t("{0} — clique para adicionar à coleção", [bilingualName(c)])} data-card-id={c.id}>
       <img src={cardImage(c.id, "small")} alt={displayName(c)} loading="lazy" draggable={false} />
       <CardSelos card={c} formato="TCG" />
-      {copias.get(c.id) ? <span className="selo-possuo">possuo {copias.get(c.id)}</span> : null}
+      {copias.get(c.id) ? <span className="selo-possuo">{t("possuo")}{" "}{copias.get(c.id)}</span> : null}
     </div>
   );
 
   return (
-    <ScreenShell title="Minha Coleção" accent="magenta" onBack={onBack} plain>
+    <ScreenShell title={t("Minha Coleção")} accent="magenta" onBack={onBack} plain>
       {!ready ? (
         <div className="db-loading">
           <span className="spinner" />
-          <p>{db.step ?? "Carregando base de cartas…"}</p>
+          <p>{db.step ?? t("Carregando base de cartas…")}</p>
         </div>
       ) : (
         <div className="deck-editor colecao">
           {/* ---------------- esquerda: resumo e carta */}
           <aside className="de-left">
-            <section className="de-bloco col-resumo" aria-label="Resumo da coleção">
-              <h3 className="de-bloco-titulo">Resumo</h3>
+            <section className="de-bloco col-resumo" aria-label={t("Resumo da coleção")}>
+              <h3 className="de-bloco-titulo">{t("Resumo")}</h3>
               <dl>
-                <dt>Cópias</dt>
-                <dd>{resumo.copias.toLocaleString("pt-BR")}</dd>
-                <dt>Cartas diferentes</dt>
-                <dd>{resumo.cartas.toLocaleString("pt-BR")}</dd>
-                <dt>Valor total</dt>
+                <dt>{t("Cópias")}</dt>
+                <dd>{resumo.copias.toLocaleString(LOCALE)}</dd>
+                <dt>{t("Cartas diferentes")}</dt>
+                <dd>{resumo.cartas.toLocaleString(LOCALE)}</dd>
+                <dt>{t("Valor total")}</dt>
                 <dd className="col-total">{cotacao ? moeda(resumo.total) : "—"}</dd>
               </dl>
-              {resumo.semPreco > 0 && <p className="tags-note">{resumo.semPreco} cópia(s) sem preço na YGOPRODeck ficaram fora do total.</p>}
+              {resumo.semPreco > 0 && <p className="tags-note">{t("{0} cópia(s) sem preço na YGOPRODeck ficaram fora do total.", [resumo.semPreco])}</p>}
               {resumo.porRaridade.length > 0 && (
                 <table className="col-raridades">
                   <tbody>
@@ -214,11 +215,10 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                 </table>
               )}
               <p className="tags-note">
-                Preço da impressão na YGOPRODeck (TCGplayer, em dólar) convertido pela cotação do dia
-                {cotacao ? ` (US$ 1 = ${moeda(cotacao.USD)})` : ""}.{conta ? " Coleção guardada também na sua conta." : " Sem login, a coleção fica só neste computador."}
+                {t("Preço da impressão na YGOPRODeck (TCGplayer, em dólar) convertido pela cotação do dia{0}.{1}", [cotacao ? t(" (US$ 1 = {0})", [moeda(cotacao.USD)]) : "", conta ? t(" Coleção guardada também na sua conta.") : t(" Sem login, a coleção fica só neste computador.")])}
               </p>
             </section>
-            <section className="de-bloco de-carta" aria-label="Carta">
+            <section className="de-bloco de-carta" aria-label={t("Carta")}>
               {carta ? (
                 <div className="de-preview">
                   <img src={cardImage(carta.id, "full")} alt={displayName(carta)} />
@@ -229,7 +229,7 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                   </div>
                 </div>
               ) : (
-                <p className="tags-note">Escolha uma carta na busca para ver as impressões e adicionar à coleção.</p>
+                <p className="tags-note">{t("Escolha uma carta na busca para ver as impressões e adicionar à coleção.")}</p>
               )}
             </section>
           </aside>
@@ -237,13 +237,12 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
           {/* ---------------- centro: a coleção */}
           <section className="de-centro col-lista">
             <div className="col-cabecalho">
-              <h3>Minha coleção</h3>
-              <input placeholder="Filtrar por nome" value={filtroLista.texto} onChange={(e) => setFiltroLista({ ...filtroLista, texto: e.target.value })} aria-label="Filtrar a coleção" />
+              <h3>{t("Minha coleção")}</h3>
+              <input placeholder={t("Filtrar por nome")} value={filtroLista.texto} onChange={(e) => setFiltroLista({ ...filtroLista, texto: e.target.value })} aria-label={t("Filtrar a coleção")} />
               <button className="ghost-btn col-importar" onClick={() => setImportacao(importacao ? null : { texto: "", previa: null })}>
-                Importar lista (MYP Cards)
-              </button>
-              <select value={filtroLista.raridade} onChange={(e) => setFiltroLista({ ...filtroLista, raridade: e.target.value })} aria-label="Raridade">
-                <option value="">Raridade: todas</option>
+                {t("Importar lista (MYP Cards)")}</button>
+              <select value={filtroLista.raridade} onChange={(e) => setFiltroLista({ ...filtroLista, raridade: e.target.value })} aria-label={t("Raridade")}>
+                <option value="">{t("Raridade: todas")}</option>
                 {resumo.porRaridade.map(([r]) => (
                   <option key={r} value={r}>
                     {r}
@@ -256,30 +255,26 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                 {!importacao.previa ? (
                   <>
                     <label className="ghost-btn de-arquivo">
-                      Escolher arquivo (.txt)
-                      <input type="file" accept=".txt,.csv" onChange={(e) => void e.target.files?.[0]?.text().then(lerImportacao)} />
+                      {t("Escolher arquivo (.txt)")}<input type="file" accept=".txt,.csv" onChange={(e) => void e.target.files?.[0]?.text().then(lerImportacao)} />
                     </label>
                     <textarea
                       rows={6}
-                      placeholder={"Ou cole a lista exportada da MYP Cards, uma carta por linha:\n1 #Mago Negro [GFTP] GFTP-EN128\n1 #Black Chaos (Starlight Rare) [CORI] CORI-EN001"}
+                      placeholder={t("Ou cole a lista exportada da MYP Cards, uma carta por linha:\n1 #Mago Negro [GFTP] GFTP-EN128\n1 #Black Chaos (Starlight Rare) [CORI] CORI-EN001")}
                       value={importacao.texto}
                       onChange={(e) => setImportacao({ ...importacao, texto: e.target.value })}
-                      aria-label="Lista da MYP Cards"
+                      aria-label={t("Lista da MYP Cards")}
                     />
                     <div className="dialog-actions">
                       <button className="ghost-btn" onClick={() => setImportacao(null)}>
-                        Cancelar
-                      </button>
+                        {t("Cancelar")}</button>
                       <button className="ghost-btn" disabled={!importacao.texto.trim()} onClick={() => lerImportacao(importacao.texto)}>
-                        Ler lista
-                      </button>
+                        {t("Ler lista")}</button>
                     </div>
                   </>
                 ) : (
                   <>
                     <strong>
-                      Prévia: {importacao.previa.filter((l) => l.detalhes).length} reconhecida(s), {importacao.previa.filter((l) => l.erro).length} não reconhecida(s)
-                    </strong>
+                      {t("Prévia: {0} reconhecida(s), {1} não reconhecida(s)", [importacao.previa.filter((l) => l.detalhes).length, importacao.previa.filter((l) => l.erro).length])}</strong>
                     <table className="col-tabela">
                       <tbody>
                         {importacao.previa.map((l, i) => {
@@ -299,14 +294,12 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                         })}
                       </tbody>
                     </table>
-                    <p className="tags-note">Raridade sem indicação na lista e com mais de uma opção no mesmo código fica "Não aplicado". Itens iguais aos que já estão na coleção somam.</p>
+                    <p className="tags-note">{t("Raridade sem indicação na lista e com mais de uma opção no mesmo código fica \"Não aplicado\". Itens iguais aos que já estão na coleção somam.")}</p>
                     <div className="dialog-actions">
                       <button className="ghost-btn" onClick={() => setImportacao({ ...importacao, previa: null })}>
-                        Voltar
-                      </button>
+                        {t("Voltar")}</button>
                       <button className="ghost-btn col-adicionar-btn" disabled={!importacao.previa.some((l) => l.detalhes)} onClick={confirmarImportacao}>
-                        Importar para a coleção
-                      </button>
+                        {t("Importar para a coleção")}</button>
                     </div>
                   </>
                 )}
@@ -315,18 +308,18 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
             {mensagem && <p className={mensagem.tipo === "erro" ? "db-warning" : "conta-ok"}>{mensagem.texto}</p>}
             {!itens.length ? (
               <div className="combos-empty">
-                <p>Sua coleção está vazia.</p>
-                <small>Busque uma carta à direita, escolha a impressão (ou deixe "Não aplicado"), digite a quantidade e clique em Adicionar à coleção.</small>
+                <p>{t("Sua coleção está vazia.")}</p>
+                <small>{t("Busque uma carta à direita, escolha a impressão (ou deixe \"Não aplicado\"), digite a quantidade e clique em Adicionar à coleção.")}</small>
               </div>
             ) : (
               <table className="col-tabela">
                 <thead>
                   <tr>
-                    <th>Carta</th>
-                    <th>Impressão</th>
-                    <th>Detalhes</th>
-                    <th>Qtd.</th>
-                    <th>Valor</th>
+                    <th>{t("Carta")}</th>
+                    <th>{t("Impressão")}</th>
+                    <th>{t("Detalhes")}</th>
+                    <th>{t("Qtd.")}</th>
+                    <th>{t("Valor")}</th>
                     <th />
                   </tr>
                 </thead>
@@ -343,8 +336,8 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                             {c ? displayName(c) : `#${i.cartaId}`}
                           </button>
                         </td>
-                        <td>{i.setCode ? `${i.setCode} · ${i.raridade}` : <span className="col-na">Não aplicado</span>}</td>
-                        <td>{detalhes || <span className="col-na">Não aplicado</span>}</td>
+                        <td>{i.setCode ? `${i.setCode} · ${i.raridade}` : <span className="col-na">{t("Não aplicado")}</span>}</td>
+                        <td>{detalhes || <span className="col-na">{t("Não aplicado")}</span>}</td>
                         <td className="col-num">{i.quantidade}</td>
                         <td className="col-num">{v === undefined ? "—" : moeda(v)}</td>
                         <td className="col-acoes">
@@ -353,23 +346,20 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                               <input
                                 autoFocus
                                 inputMode="numeric"
-                                placeholder={`1 a ${i.quantidade}`}
+                                placeholder={t("1 a {0}", [i.quantidade])}
                                 value={retirando.quantidade}
                                 onChange={(e) => setRetirando({ chave, quantidade: e.target.value.replace(/\D/g, "").slice(0, 2) })}
                                 onKeyDown={(e) => e.key === "Enter" && confirmarRetirada(i)}
-                                aria-label="Quantidade a retirar"
+                                aria-label={t("Quantidade a retirar")}
                               />
                               <button className="danger-btn" onClick={() => confirmarRetirada(i)}>
-                                Confirmar
-                              </button>
+                                {t("Confirmar")}</button>
                               <button className="ghost-btn" onClick={() => setRetirando(null)}>
-                                Cancelar
-                              </button>
+                                {t("Cancelar")}</button>
                             </span>
                           ) : (
                             <button className="ghost-btn col-retirar-btn" onClick={() => setRetirando({ chave, quantidade: "" })}>
-                              Retirar da coleção
-                            </button>
+                              {t("Retirar da coleção")}</button>
                           )}
                         </td>
                       </tr>
@@ -382,43 +372,43 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
 
           {/* ---------------- direita: busca e "Adicionar à coleção" */}
           <aside className="de-busca">
-            <h3>Busca</h3>
-            <input placeholder="Nome" value={filtros.text} onChange={(e) => setFiltros({ ...filtros, text: e.target.value, inDesc: false })} aria-label="Nome" />
-            <select value={filtros.category} onChange={(e) => setFiltros({ ...filtros, category: e.target.value as Filters["category"] })} aria-label="Carta">
-              <option value="all">Carta: todas</option>
-              <option value="monster">Monstro</option>
-              <option value="spell">Magia</option>
-              <option value="trap">Armadilha</option>
+            <h3>{t("Busca")}</h3>
+            <input placeholder={t("Nome")} value={filtros.text} onChange={(e) => setFiltros({ ...filtros, text: e.target.value, inDesc: false })} aria-label={t("Nome")} />
+            <select value={filtros.category} onChange={(e) => setFiltros({ ...filtros, category: e.target.value as Filters["category"] })} aria-label={t("Carta")}>
+              <option value="all">{t("Carta: todas")}</option>
+              <option value="monster">{t("Monstro")}</option>
+              <option value="spell">{t("Magia")}</option>
+              <option value="trap">{t("Armadilha")}</option>
             </select>
 
             {carta && (
-              <div className="de-painel col-adicionar" aria-label="Adicionar à coleção">
+              <div className="de-painel col-adicionar" aria-label={t("Adicionar à coleção")}>
                 <strong>{displayName(carta)}</strong>
                 <label className="field">
-                  <span className="field-label">Impressão</span>
-                  <select value={novo.impressao} onChange={(e) => setNovo({ ...novo, impressao: e.target.value })} aria-label="Impressão">
-                    <option value="">Não aplicado</option>
+                  <span className="field-label">{t("Impressão")}</span>
+                  <select value={novo.impressao} onChange={(e) => setNovo({ ...novo, impressao: e.target.value })} aria-label={t("Impressão")}>
+                    <option value="">{t("Não aplicado")}</option>
                     {carta.sets.map((s) => (
                       <option key={`${s.code}|${s.rarity}`} value={`${s.code}|${s.rarity}`}>
                         {s.code} · {s.rarity}
-                        {Number(s.price) > 0 ? ` · US$ ${Number(s.price).toFixed(2)}` : ""}
+                        {Number(s.price) > 0 ? t(" · US$ {0}", [Number(s.price).toFixed(2)]) : ""}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="field">
-                  <span className="field-label">Idioma</span>
-                  <select value={novo.idioma} onChange={(e) => setNovo({ ...novo, idioma: e.target.value })} aria-label="Idioma">
-                    <option value="">Não aplicado</option>
+                  <span className="field-label">{t("Idioma")}</span>
+                  <select value={novo.idioma} onChange={(e) => setNovo({ ...novo, idioma: e.target.value })} aria-label={t("Idioma")}>
+                    <option value="">{t("Não aplicado")}</option>
                     {IDIOMAS.map((l) => (
                       <option key={l}>{l}</option>
                     ))}
                   </select>
                 </label>
                 <label className="field">
-                  <span className="field-label">Edição</span>
-                  <select value={novo.edicao} onChange={(e) => setNovo({ ...novo, edicao: e.target.value })} aria-label="Edição">
-                    <option value="">Não aplicado</option>
+                  <span className="field-label">{t("Edição")}</span>
+                  <select value={novo.edicao} onChange={(e) => setNovo({ ...novo, edicao: e.target.value })} aria-label={t("Edição")}>
+                    <option value="">{t("Não aplicado")}</option>
                     {EDICOES.map((x) => (
                       <option key={x.id} value={x.id}>
                         {x.label}
@@ -427,9 +417,9 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                   </select>
                 </label>
                 <label className="field">
-                  <span className="field-label">Estado</span>
-                  <select value={novo.estado} onChange={(e) => setNovo({ ...novo, estado: e.target.value })} aria-label="Estado">
-                    <option value="">Não aplicado</option>
+                  <span className="field-label">{t("Estado")}</span>
+                  <select value={novo.estado} onChange={(e) => setNovo({ ...novo, estado: e.target.value })} aria-label={t("Estado")}>
+                    <option value="">{t("Não aplicado")}</option>
                     {ESTADOS.map((x) => (
                       <option key={x.id} value={x.id}>
                         {x.label}
@@ -438,30 +428,28 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                   </select>
                 </label>
                 <label className="field">
-                  <span className="field-label">Quantidade (1 a 99)</span>
+                  <span className="field-label">{t("Quantidade (1 a 99)")}</span>
                   <input
                     inputMode="numeric"
-                    placeholder="Digite a quantidade"
+                    placeholder={t("Digite a quantidade")}
                     value={novo.quantidade}
                     onChange={(e) => setNovo({ ...novo, quantidade: e.target.value.replace(/\D/g, "").slice(0, 2) })}
                     onKeyDown={(e) => e.key === "Enter" && adicionar()}
-                    aria-label="Quantidade"
+                    aria-label={t("Quantidade")}
                   />
                 </label>
                 <button className="ghost-btn col-adicionar-btn" disabled={quantidadeValida(novo.quantidade) === null} onClick={adicionar}>
-                  Adicionar à coleção
-                </button>
+                  {t("Adicionar à coleção")}</button>
               </div>
             )}
 
             <div className="de-paginacao">
-              <button className="link-btn" disabled={pagina === 0} onClick={() => setPagina(pagina - 1)} aria-label="Página anterior">
+              <button className="link-btn" disabled={pagina === 0} onClick={() => setPagina(pagina - 1)} aria-label={t("Página anterior")}>
                 ◀
               </button>
               <span>
-                {resultados.length ? pagina + 1 : 0} / {resultados.length ? paginas : 0} · {resultados.length.toLocaleString("pt-BR")} cartas
-              </span>
-              <button className="link-btn" disabled={pagina >= paginas - 1} onClick={() => setPagina(pagina + 1)} aria-label="Próxima página">
+                {t("{0} / {1} · {2} cartas", [resultados.length ? pagina + 1 : 0, resultados.length ? paginas : 0, resultados.length.toLocaleString(LOCALE)])}</span>
+              <button className="link-btn" disabled={pagina >= paginas - 1} onClick={() => setPagina(pagina + 1)} aria-label={t("Próxima página")}>
                 ▶
               </button>
             </div>

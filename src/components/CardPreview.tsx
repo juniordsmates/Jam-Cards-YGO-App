@@ -7,6 +7,7 @@ import { cardImage } from "../db/images";
 import { BAN_LABELS, frameColor, kindLabel } from "../db/labels";
 import { useTagLookup } from "../db/cardStore";
 import { displayName, type Card } from "../db/types";
+import { t } from "../i18n";
 
 type Props = {
   card: Card;
@@ -81,7 +82,7 @@ export default function CardPreview({ card, anchor }: Props) {
 
       {(tags.length > 0 || ban || card.archetype) && (
         <footer className="preview-foot">
-          {ban && <span className={`tag ban-${ban}`}>TCG: {BAN_LABELS[ban]}</span>}
+          {ban && <span className={`tag ban-${ban}`}>{t("TCG: {0}", [BAN_LABELS[ban]])}</span>}
           {card.archetype && <span className="tag">{card.archetype}</span>}
           {tags.map((t) => (
             <span key={t.id} className="tag preview-tag">

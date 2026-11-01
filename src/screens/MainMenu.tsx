@@ -6,6 +6,7 @@ import { useConta } from "../db/conta";
 import { isContaOpen } from "../components/Conta";
 import { isFontesOpen } from "../components/Fontes";
 import { isRespostasOpen } from "../components/RespostasDialog";
+import { definirIdioma, IDIOMA, IDIOMAS_APP, t } from "../i18n";
 
 type Props = {
   /** false enquanto um diálogo está aberto por cima do menu */
@@ -39,15 +40,15 @@ type Item = {
 export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onManual, onExit, onConta }: Props) {
   const conta = useConta();
   const items: Item[] = [
-    { label: "Buscar Carta", hint: "Encontre qualquer carta", icon: <SearchIcon />, accent: "cyan", action: onSearch },
-    { label: "Combos", hint: "Mão inicial e Combo Search", icon: <ComboIcon />, accent: "cyan", action: onCombos },
-    { label: "Guia de Deck", hint: "Decks do meta: ideias, combos e interações", icon: <BookIcon />, accent: "cyan", action: onGuia },
-    { label: "Meta Call", hint: "Decks esperados no torneio → cartas contra eles", icon: <TargetIcon />, accent: "cyan", action: onMetaCall },
-    { label: "Editor de Deck", hint: "Monte e ajuste seus decks", icon: <DeckIcon />, accent: "magenta", action: onDeck },
-    { label: "Teste de Jogo", hint: "Teste de mão e jogadas com o seu deck", icon: <DeckIcon />, accent: "magenta", action: onTeste },
-    { label: "Minha Coleção", hint: "Cartas que você possui, raridades e valor", icon: <CollectionIcon />, accent: "magenta", action: onColecao },
-    { label: "Como Utilizar", hint: "Manual de cada tela, com exemplos", icon: <HelpIcon />, accent: "cyan", action: onManual },
-    { label: "Sair", hint: isDesktop ? "Fechar o aplicativo" : "Encerrar a sessão", icon: <ExitIcon />, accent: "red", action: onExit },
+    { label: t("Buscar Carta"), hint: t("Encontre qualquer carta"), icon: <SearchIcon />, accent: "cyan", action: onSearch },
+    { label: t("Combos"), hint: t("Mão inicial e Combo Search"), icon: <ComboIcon />, accent: "cyan", action: onCombos },
+    { label: t("Guia de Deck"), hint: t("Decks do meta: ideias, combos e interações"), icon: <BookIcon />, accent: "cyan", action: onGuia },
+    { label: t("Meta Call"), hint: t("Decks esperados no torneio → cartas contra eles"), icon: <TargetIcon />, accent: "cyan", action: onMetaCall },
+    { label: t("Editor de Deck"), hint: t("Monte e ajuste seus decks"), icon: <DeckIcon />, accent: "magenta", action: onDeck },
+    { label: t("Teste de Jogo"), hint: t("Teste de mão e jogadas com o seu deck"), icon: <DeckIcon />, accent: "magenta", action: onTeste },
+    { label: t("Minha Coleção"), hint: t("Cartas que você possui, raridades e valor"), icon: <CollectionIcon />, accent: "magenta", action: onColecao },
+    { label: t("Como Utilizar"), hint: t("Manual de cada tela, com exemplos"), icon: <HelpIcon />, accent: "cyan", action: onManual },
+    { label: t("Sair"), hint: isDesktop ? t("Fechar o aplicativo") : t("Encerrar a sessão"), icon: <ExitIcon />, accent: "red", action: onExit },
   ];
 
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -78,18 +79,27 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
   return (
     <>
     {/* fora do bloco animado do menu: canto superior direito da tela */}
-    <button className="ghost-btn menu-conta" onClick={onConta} title={conta ? "Minha conta" : "Entrar ou criar conta"}>
-      {conta ? `@${conta.usuario}` : "Entrar"}
+    {/* idioma do app (recarrega ao trocar), ao lado da conta */}
+    <div className="menu-topo">
+    <div className="menu-idioma" role="radiogroup" aria-label={t("Idioma / Language / Idioma")}>
+      {IDIOMAS_APP.map((i) => (
+        <button key={i.id} role="radio" aria-checked={IDIOMA === i.id} className={IDIOMA === i.id ? "active" : ""} onClick={() => definirIdioma(i.id)} title={i.label}>
+          {i.label}
+        </button>
+      ))}
+    </div>
+    <button className="ghost-btn menu-conta" onClick={onConta} title={conta ? t("Minha conta") : t("Entrar ou criar conta")}>
+      {conta ? `@${conta.usuario}` : t("Entrar")}
     </button>
+    </div>
     <section className="menu">
       <header className="menu-header">
         <h1 className="logo">
-          Jam Cards - YGO!
-        </h1>
-        <p className="subtitle">Busca · Decks</p>
+          {t("Jam Cards - YGO!")}</h1>
+        <p className="subtitle">{t("Busca · Decks")}</p>
       </header>
 
-      <nav className="menu-list" aria-label="Menu principal">
+      <nav className="menu-list" aria-label={t("Menu principal")}>
         {items.map((item, i) => (
           <button
             key={item.label}
@@ -109,9 +119,9 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
       </nav>
 
       <footer className="menu-footer">
-        <span>↑ ↓ navegar</span>
-        <span>Enter selecionar</span>
-        <span title={BUILD_LABEL}>v{VERSION_LABEL} · {isDesktop ? "Desktop" : "Web"} · {BUILD_LABEL}</span>
+        <span>{t("↑ ↓ navegar")}</span>
+        <span>{t("Enter selecionar")}</span>
+        <span title={BUILD_LABEL}>{t("v{0} · {1} · {2}", [VERSION_LABEL, isDesktop ? t("Desktop") : t("Web"), BUILD_LABEL])}</span>
       </footer>
     </section>
     </>

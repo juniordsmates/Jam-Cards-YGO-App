@@ -8,6 +8,7 @@ import type { CombosCalculados, LinhaCombo, Passo } from "./motor";
 import type { CartaNucleo, Overlay } from "./overlay";
 import type { ContextoRespostas } from "./respostas";
 import { categoryOf, type Card } from "./types";
+import { t, LOCALE } from "../i18n";
 
 // Meta Call: o jogador escolhe os decks que espera no torneio (e quanto de cada um) e o app indica as
 // cartas boas contra eles. Junta tudo o que o app já sabe:
@@ -394,12 +395,12 @@ export function recomendar(e: EntradaMetaCall): Recomendacao[] {
       if (m && perfil.linhas) {
         // linhas do motor: o quanto do combo ela corta (entrar cedo corta mais)
         const nota = limitar(0.6 * m.corte + 0.4 * h.nota);
-        const n1 = (x: number) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+        const n1 = (x: number) => x.toLocaleString(LOCALE, { maximumFractionDigits: 1 });
         return {
           arquetipo: deck.arquetipo,
           nota,
           motor: true,
-          motivo: `nas ${perfil.linhas.n} linhas do motor, entra no passo ${n1(m.primeiro)} de ${n1(perfil.linhas.tamanho)} (corta ${pct(m.corte)} do combo)${h.nota > 0.2 ? `; ${h.motivo}` : ""}`,
+          motivo: t("nas {0} linhas do motor, entra no passo {1} de {2} (corta {3} do combo){4}", [perfil.linhas.n, n1(m.primeiro), n1(perfil.linhas.tamanho), pct(m.corte), h.nota > 0.2 ? `; ${h.motivo}` : ""]),
         };
       }
       return { arquetipo: deck.arquetipo, nota: limitar(h.nota), motivo: h.motivo, motor: false };

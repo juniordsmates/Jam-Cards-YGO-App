@@ -3,6 +3,7 @@ import { openRespostas } from "./RespostasDialog";
 import { indiceDeRespostas, ordenarRespostas, TIPOS, useContextoRespostas, type Contagem } from "../db/respostas";
 import { useCardDb } from "../db/cardStore";
 import { displayName, type Card } from "../db/types";
+import { t } from "../i18n";
 
 /** Registros por lista no painel; o "+" abre a lista completa */
 const MAX_PAINEL = 15;
@@ -40,7 +41,7 @@ export default function CardRespostas({ card, byId, onOpen }: { card: Card; byId
               {comUso && (r.descricao || r.tipos.length) && <small> — {r.descricao ?? r.tipos.map((t) => TIPOS[t] ?? t).join(", ")}</small>}
               <small className="respostas-n">
                 {" "}
-                · {n} {n === 1 ? "linha" : "linhas"}
+                · {n} {n === 1 ? t("linha") : t("linhas")}
               </small>
             </li>
           );
@@ -48,8 +49,7 @@ export default function CardRespostas({ card, byId, onOpen }: { card: Card; byId
         {ordenadas.length > MAX_PAINEL && (
           <li>
             <button className="link-btn vc-resp-mais" onClick={() => openRespostas({ titulo, ids: ordenadas.map((r) => r.id), byId })}>
-              +{ordenadas.length - MAX_PAINEL} (ver todas)
-            </button>
+              {t("+{0} (ver todas)", [ordenadas.length - MAX_PAINEL])}</button>
           </li>
         )}
       </ul>
@@ -58,28 +58,27 @@ export default function CardRespostas({ card, byId, onOpen }: { card: Card; byId
 
   return (
     <section className="drawer-section respostas-section">
-      <h4>Respostas</h4>
+      <h4>{t("Respostas")}</h4>
       {aoAtivar.size > 0 && (
         <>
-          <p className="tags-note">Quando esta carta ativa um efeito, o oponente pode responder com:</p>
-          {lista(aoAtivar, `Respostas quando ${displayName(card)} ativa um efeito`, true)}
+          <p className="tags-note">{t("Quando esta carta ativa um efeito, o oponente pode responder com:")}</p>
+          {lista(aoAtivar, t("Respostas quando {0} ativa um efeito", [displayName(card)]), true)}
         </>
       )}
       {aoInvocar.size > 0 && (
         <>
-          <p className="tags-note">Quando esta carta é Invocada:</p>
-          {lista(aoInvocar, `Respostas quando ${displayName(card)} é Invocada`, true)}
+          <p className="tags-note">{t("Quando esta carta é Invocada:")}</p>
+          {lista(aoInvocar, t("Respostas quando {0} é Invocada", [displayName(card)]), true)}
         </>
       )}
       {responde.size > 0 && (
         <>
-          <p className="tags-note">Esta carta pode responder a:</p>
-          {lista(responde, `${displayName(card)} pode responder a`, false)}
+          <p className="tags-note">{t("Esta carta pode responder a:")}</p>
+          {lista(responde, t("{0} pode responder a", [displayName(card)]), false)}
         </>
       )}
       <p className="tags-note">
-        Calculado com o App: nas linhas de combo calculadas, com todas as cartas ativáveis da mão na mão do oponente.
-      </p>
+        {t("Calculado com o App: nas linhas de combo calculadas, com todas as cartas ativáveis da mão na mão do oponente.")}</p>
     </section>
   );
 }

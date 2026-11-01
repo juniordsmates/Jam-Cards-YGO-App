@@ -6,6 +6,7 @@ import { ehLinkYouTube, getConfigDe, iaConfigurada, importarComboDeVideo } from 
 import type { GameFormat } from "../db/legality";
 import { normalize } from "../db/search";
 import type { Card } from "../db/types";
+import { t } from "../i18n";
 
 type Hover = (card: Card | null, el?: HTMLElement) => void;
 
@@ -50,7 +51,7 @@ export default function ComboDeVideo({
   }, [all]);
 
   const ler = async () => {
-    setEstado({ status: "lendo", progresso: "Enviando o vídeo ao Gemini…", combos: [] });
+    setEstado({ status: "lendo", progresso: t("Enviando o vídeo ao Gemini…"), combos: [] });
     try {
       const r = await importarComboDeVideo(gemini, link, {
         acharCarta: (nome) => porNome.get(normalize(nome)),
@@ -60,7 +61,7 @@ export default function ComboDeVideo({
       setEstado({
         status: "pronto",
         combos: r.sugestoes.map((s, i) => paraComboBase(s, i)),
-        aviso: [r.resposta, faltando.length ? `Cartas que o Gemini citou e não estão na base: ${faltando.join(", ")}.` : ""].filter(Boolean).join(" "),
+        aviso: [r.resposta, faltando.length ? t("Cartas que o Gemini citou e não estão na base: {0}.", [faltando.join(", ")]) : ""].filter(Boolean).join(" "),
       });
     } catch (e) {
       setEstado({ status: "erro", combos: [], erro: e instanceof Error ? e.message : String(e) });
@@ -72,45 +73,41 @@ export default function ComboDeVideo({
       <section className="combos-setup">
         {tabs}
         <label className="field">
-          <span className="field-label">Link do vídeo (YouTube)</span>
+          <span className="field-label">{t("Link do vídeo (YouTube)")}</span>
           <input
             className="cv-link"
             type="url"
-            placeholder="https://www.youtube.com/watch?v=…"
+            placeholder={t("https://www.youtube.com/watch?v=…")}
             value={link}
             onChange={(e) => setLink(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && pronto && ehLinkYouTube(link) && void ler()}
           />
         </label>
         <button className="ghost-btn cs-buscar" disabled={!pronto || !ehLinkYouTube(link) || estado.status === "lendo"} onClick={() => void ler()}>
-          {estado.status === "lendo" ? "Lendo o vídeo…" : "Ler combo do vídeo"}
+          {estado.status === "lendo" ? t("Lendo o vídeo…") : t("Ler combo do vídeo")}
         </button>
         {!pronto ? (
           <p className="db-warning">
-            Precisa do Gemini cadastrado.{" "}
+            {t("Precisa do Gemini cadastrado.")}{" "}
             <button className="link-btn" onClick={() => openContaIA("gemini")}>
-              Cadastrar o Gemini (com tutorial)
-            </button>
+              {t("Cadastrar o Gemini (com tutorial)")}</button>
           </p>
         ) : (
           <p className="tags-note">
-            Usando o Gemini ({gemini.modelo}).{" "}
+            {t("Usando o Gemini ({0}).", [gemini.modelo])}{" "}
             <button className="link-btn" onClick={() => openContaIA("gemini")}>
-              Ver o cadastro
-            </button>
+              {t("Ver o cadastro")}</button>
           </p>
         )}
         <p className="tags-note">
-          <strong>Experimental:</strong> o Gemini assiste ao vídeo (só vídeos públicos) e transcreve o combo. Pode errar cartas ou passos,
-          principalmente em combos rápidos: confira antes de salvar. Cada vídeo usa a sua cota do Gemini.
-        </p>
+          <strong>{t("Experimental:")}</strong> {" "}{t("o Gemini assiste ao vídeo (só vídeos públicos) e transcreve o combo. Pode errar cartas ou passos, principalmente em combos rápidos: confira antes de salvar. Cada vídeo usa a sua cota do Gemini.")}</p>
       </section>
 
       <section className="combos-result">
         {estado.status === "parado" && (
           <div className="combos-empty">
-            <p>Importar combo de vídeo</p>
-            <small>Cole o link de um vídeo de combo do YouTube e clique em Ler combo do vídeo. O resultado aparece aqui para você conferir e salvar como Combo da Comunidade.</small>
+            <p>{t("Importar combo de vídeo")}</p>
+            <small>{t("Cole o link de um vídeo de combo do YouTube e clique em Ler combo do vídeo. O resultado aparece aqui para você conferir e salvar como Combo da Comunidade.")}</small>
           </div>
         )}
         {estado.status === "lendo" && (
@@ -121,17 +118,15 @@ export default function ComboDeVideo({
         )}
         {estado.status === "erro" && <p className="db-warning">{estado.erro}</p>}
         {estado.status === "pronto" && (
-          <section className="known-combos ia-section" aria-label="Combos do vídeo">
-            <h4>Combos do vídeo ({estado.combos.length})</h4>
+          <section className="known-combos ia-section" aria-label={t("Combos do vídeo")}>
+            <h4>{t("Combos do vídeo ({0})", [estado.combos.length])}</h4>
             {estado.aviso && <p className="tags-note">{estado.aviso}</p>}
             {onEditar && estado.combos.length > 0 && (
               <p className="tags-note">
-                <strong>Editar e Importar</strong>: abre o combo no Teste de Jogo, com as cartas dele num deck temporário e os passos lidos
-                do vídeo como guia. Refaça o combo (pulando ou acrescentando etapas) e salve pelo Criar combo.
-              </p>
+                <strong>{t("Editar e Importar")}</strong>{t(": abre o combo no Teste de Jogo, com as cartas dele num deck temporário e os passos lidos do vídeo como guia. Refaça o combo (pulando ou acrescentando etapas) e salve pelo Criar combo.")}</p>
             )}
             {estado.combos.map((c) => (
-              <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={new Set()} format={format} onTestar={onEditar} rotuloTestar="✎ Editar e Importar" />
+              <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={new Set()} format={format} onTestar={onEditar} rotuloTestar={t("✎ Editar e Importar")} />
             ))}
           </section>
         )}

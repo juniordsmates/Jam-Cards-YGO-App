@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { t } from "../i18n";
 
 type Props = {
   onConfirm: () => void;
@@ -23,15 +24,13 @@ export default function ExitDialog({ onConfirm, onCancel }: Props) {
         aria-labelledby="exit-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="exit-title">Deseja sair?</h2>
-        <p>Alterações não salvas serão perdidas.</p>
+        <h2 id="exit-title">{t("Deseja sair?")}</h2>
+        <p>{t("Alterações não salvas serão perdidas.")}</p>
         <div className="dialog-actions">
           <button className="ghost-btn" onClick={onCancel} autoFocus>
-            Cancelar
-          </button>
+            {t("Cancelar")}</button>
           <button className="danger-btn" onClick={onConfirm}>
-            Sair
-          </button>
+            {t("Sair")}</button>
         </div>
       </div>
     </div>

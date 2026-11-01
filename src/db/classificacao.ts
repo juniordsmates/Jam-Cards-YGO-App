@@ -1,5 +1,6 @@
 import { releasedIn, type GameFormat } from "./legality";
 import type { BanStatus, Card } from "./types";
+import { t } from "../i18n";
 
 // Classificação de cada carta pelo papel no deck (tags da comunidade e de efeito, ver tags.ts):
 // a mesma em todas as telas (selos nas cartas do Editor de Deck e do Teste de Jogo, caixa da mão).
@@ -13,12 +14,12 @@ export interface Papel {
 }
 
 export const PAPEIS: Papel[] = [
-  { id: "hand-trap", label: "Hand trap", sigla: "HT", cor: "#7c3aed" },
-  { id: "starter", label: "Starter", sigla: "ST", cor: "#0e9f6e" },
-  { id: "extender", label: "Extender", sigla: "EX", cor: "#0891b2" },
-  { id: "board-breaker", label: "Board breaker", sigla: "BB", cor: "#d9480f" },
-  { id: "floodgate", label: "Floodgate", sigla: "FG", cor: "#b91c1c" },
-  { id: "staple", label: "Staple", sigla: "SP", cor: "#a16207" },
+  { id: "hand-trap", label: t("Hand trap"), sigla: "HT", cor: "#7c3aed" },
+  { id: "starter", label: t("Starter"), sigla: "ST", cor: "#0e9f6e" },
+  { id: "extender", label: t("Extender"), sigla: "EX", cor: "#0891b2" },
+  { id: "board-breaker", label: t("Board breaker"), sigla: "BB", cor: "#d9480f" },
+  { id: "floodgate", label: t("Floodgate"), sigla: "FG", cor: "#b91c1c" },
+  { id: "staple", label: t("Staple"), sigla: "SP", cor: "#a16207" },
 ];
 
 /** Papéis da carta, na ordem de PAPEIS */

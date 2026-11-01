@@ -12,6 +12,7 @@ import { rankCandidates, type Ranked } from "../db/ranking";
 import { MONSTER_RACES } from "../db/labels";
 import type { Overlay } from "../db/overlay";
 import { displayName, type Card } from "../db/types";
+import { t as tr, LOCALE } from "../i18n";
 
 type Props = {
   card: Card;
@@ -34,7 +35,7 @@ const LIST_PAGE = 12;
 
 const raceLabel = (race: string) => MONSTER_RACES[race] ?? race;
 const fmtViews = (n?: number) =>
-  !n ? "" : n >= 1e6 ? `${(n / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi` : `${Math.round(n / 1e3)} mil`;
+  !n ? "" : n >= 1e6 ? `${(n / 1e6).toLocaleString(LOCALE, { maximumFractionDigits: 1 })} mi` : `${Math.round(n / 1e3)} mil`;
 
 /** Conjunto de cartas alcançado por um alvo que não é uma carta só (arquétipo, descrição, "cartas que citam X") */
 interface CardSet {
@@ -67,15 +68,14 @@ function RankedList({ ranked, label, onOpen, onShowSet }: {
           <li key={card.id}>
             <button className="ranked-row" onClick={() => onOpen(card)}>
               <span className="ranked-name">{displayName(card)}</span>
-              {tier === 0 && <span className="badge badge-named">Citada</span>}
-              {tier === 1 && <span className="badge badge-combo">Combo</span>}
+              {tier === 0 && <span className="badge badge-named">{tr("Citada")}</span>}
+              {tier === 1 && <span className="badge badge-combo">{tr("Combo")}</span>}
               {/* só a partir de 1% de participação média: abaixo disso é ruído */}
               {meta * 25 >= 1 && (
-                <span className="badge badge-meta" title="Participação média do arquétipo nos decks colocados do OCG no último ano (Road of the King)">
-                  Meta {(meta * 25).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
-                </span>
+                <span className="badge badge-meta" title={tr("Participação média do arquétipo nos decks colocados do OCG no último ano (Road of the King)")}>
+                  {tr("Meta {0}%", [(meta * 25).toLocaleString(LOCALE, { maximumFractionDigits: 1 })])}</span>
               )}
-              <span className="ranked-views" title="Visualizações na YGOPRODeck">{fmtViews(card.views)}</span>
+              <span className="ranked-views" title={tr("Visualizações na YGOPRODeck")}>{fmtViews(card.views)}</span>
             </button>
           </li>
         ))}
@@ -83,12 +83,10 @@ function RankedList({ ranked, label, onOpen, onShowSet }: {
       <div className="ranked-actions">
         {shown < ranked.length && (
           <button className="link-btn" onClick={() => setShown((n) => n + LIST_PAGE)}>
-            mostrar mais ({ranked.length - shown})
-          </button>
+            {tr("mostrar mais ({0})", [ranked.length - shown])}</button>
         )}
         <button className="link-btn" onClick={() => onShowSet(label, ranked.map((r) => r.card.id), false)}>
-          Ver todas na busca, nesta ordem
-        </button>
+          {tr("Ver todas na busca, nesta ordem")}</button>
       </div>
     </div>
   );
@@ -124,8 +122,8 @@ export default function CardRelations({ card, index, cards, byId, byName, archet
             t.kind === "query"
               ? describeQuery(t.query, raceLabel)
               : t.kind === "archetype"
-                ? `arquétipo ${ptName(t.name)}${t.query ? ` · ${describeQuery(t.query, raceLabel)}` : ""}`
-                : `${t.query ? describeQuery(t.query, raceLabel) : "cartas"} que citam "${ptName(t.name)}"`;
+                ? tr("arquétipo {0}{1}", [ptName(t.name), t.query ? ` · ${describeQuery(t.query, raceLabel)}` : ""])
+                : tr("{0} que citam \"{1}\"", [t.query ? describeQuery(t.query, raceLabel) : tr("cartas"), ptName(t.name)]);
           sets.push({ key: `${key}:${sets.length}`, label: what, ids });
         }
       }
@@ -146,7 +144,7 @@ export default function CardRelations({ card, index, cards, byId, byName, archet
     // alvos genéricos ("1 monstro Mago de TREVAS"): separados, para não misturar com quem cita pelo nome
     for (const type of ["invoca", "busca"] as RelationType[]) {
       const rels = generic.filter((r) => r.type === type);
-      if (rels.length) build(`gen-${type}`, type === "invoca" ? "Pode ser invocada por" : "Pode ser buscada por", rels, "in");
+      if (rels.length) build(`gen-${type}`, type === "invoca" ? tr("Pode ser invocada por") : tr("Pode ser buscada por"), rels, "in");
     }
     return result;
   }, [index, card, cards, byId, byName, archetypePt]);
@@ -160,8 +158,8 @@ export default function CardRelations({ card, index, cards, byId, byName, archet
   if (!index) {
     return (
       <section className="drawer-section">
-        <h4>Relacionamentos</h4>
-        <p className="tags-note">Montando relações entre cartas…</p>
+        <h4>{tr("Relacionamentos")}</h4>
+        <p className="tags-note">{tr("Montando relações entre cartas…")}</p>
       </section>
     );
   }
@@ -171,7 +169,7 @@ export default function CardRelations({ card, index, cards, byId, byName, archet
 
   return (
     <section className="drawer-section">
-      <h4>Relacionamentos</h4>
+      <h4>{tr("Relacionamentos")}</h4>
       <div className="relations">
         {groups.map((g) => {
           const chipsOpen = expandedChips === g.key;
@@ -185,25 +183,23 @@ export default function CardRelations({ card, index, cards, byId, byName, archet
                   {g.label} <span className="relation-count">{g.ids.length}</span>
                 </span>
                 <span className="relation-actions">
-                  <button className="link-btn" onClick={() => onShowSet(setLabel, g.ids, false)} title="Mostrar só estas cartas na busca">
-                    Ver na busca
-                  </button>
-                  <button className="link-btn" onClick={() => onShowSet(setLabel, g.ids, true)} title="Aplicar sobre os filtros atuais">
-                    Combinar com filtros
-                  </button>
+                  <button className="link-btn" onClick={() => onShowSet(setLabel, g.ids, false)} title={tr("Mostrar só estas cartas na busca")}>
+                    {tr("Ver na busca")}</button>
+                  <button className="link-btn" onClick={() => onShowSet(setLabel, g.ids, true)} title={tr("Aplicar sobre os filtros atuais")}>
+                    {tr("Combinar com filtros")}</button>
                 </span>
               </div>
 
               {g.cards.length > 0 && (
                 <div className="chips">
                   {chips.map((c) => (
-                    <button key={c.id} className="chip rel-chip" onClick={() => onOpen(c)} title="Abrir esta carta">
+                    <button key={c.id} className="chip rel-chip" onClick={() => onOpen(c)} title={tr("Abrir esta carta")}>
                       {displayName(c)}
                     </button>
                   ))}
                   {g.cards.length > VISIBLE_CHIPS && (
                     <button className="link-btn" onClick={() => setExpandedChips(chipsOpen ? null : g.key)}>
-                      {chipsOpen ? "mostrar menos" : `+${g.cards.length - VISIBLE_CHIPS}`}
+                      {chipsOpen ? tr("mostrar menos") : `+${g.cards.length - VISIBLE_CHIPS}`}
                     </button>
                   )}
                 </div>
@@ -218,7 +214,7 @@ export default function CardRelations({ card, index, cards, byId, byName, archet
                       aria-expanded={open}
                       onClick={() => setOpenSet(open ? null : s.key)}
                     >
-                      <span className="set-kind">{g.cards.length ? "Outros" : "Possibilidades"}</span>
+                      <span className="set-kind">{g.cards.length ? tr("Outros") : tr("Possibilidades")}</span>
                       {s.label}
                       <span className="relation-count">{s.ids.length}</span>
                     </button>

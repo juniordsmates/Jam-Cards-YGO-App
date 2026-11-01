@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { EFFECT_KIND_LABELS, isActivated, type CardReading, type ParsedEffect } from "../db/effects";
+import { t } from "../i18n";
 
 type Props = {
   reading: CardReading;
@@ -14,16 +15,16 @@ function Badges({ e }: { e: ParsedEffect }) {
     <div className="effect-badges">
       <span className={`kind kind-${e.kind}`}>{EFFECT_KIND_LABELS[e.kind]}</span>
       {e.section && <span>{e.section}</span>}
-      {e.zone && <span>{e.zone}</span>}
-      {e.optional !== undefined && <span>{e.optional ? "Opcional" : "Obrigatório"}</span>}
-      {e.opt && <span className="opt">{e.opt === "hard" ? "1x por turno (hard)" : "1x por turno"}</span>}
+      {e.zone && <span>{t(e.zone)}</span>}
+      {e.optional !== undefined && <span>{e.optional ? t("Opcional") : t("Obrigatório")}</span>}
+      {e.opt && <span className="opt">{e.opt === "hard" ? t("1x por turno (hard)") : t("1x por turno")}</span>}
       {e.duration && <span>{e.duration}</span>}
     </div>
   );
 }
 
 function costTargetLabel(e: ParsedEffect) {
-  if (e.hasCost && e.hasTarget) return "Custo e alvo";
+  if (e.hasCost && e.hasTarget) return t("Custo e alvo");
   if (e.hasTarget) return "Alvo";
   return "Custo";
 }
@@ -32,8 +33,8 @@ function costTargetLabel(e: ParsedEffect) {
 export function readingSummary(reading: CardReading) {
   const active = reading.effects.filter(isActivated);
   if (active.length === 0) return null;
-  const parts = active.map((e) => `${EFFECT_KIND_LABELS[e.kind]}${e.zone ? ` (${e.zone})` : ""}`);
-  return `${active.length} ${active.length === 1 ? "efeito ativado" : "efeitos ativados"}: ${parts.join(", ")}`;
+  const parts = active.map((e) => `${EFFECT_KIND_LABELS[e.kind]}${e.zone ? ` (${t(e.zone)})` : ""}`);
+  return `${active.length} ${active.length === 1 ? t("efeito ativado") : t("efeitos ativados")}: ${parts.join(", ")}`;
 }
 
 export default function CardEffects({ reading, compact, renderExtra }: Props) {
@@ -51,7 +52,7 @@ export default function CardEffects({ reading, compact, renderExtra }: Props) {
             <dl className="effect-parts">
               {e.condition && (
                 <div>
-                  <dt>Condição</dt>
+                  <dt>{t("Condição")}</dt>
                   <dd>{e.condition}</dd>
                 </div>
               )}
@@ -63,7 +64,7 @@ export default function CardEffects({ reading, compact, renderExtra }: Props) {
               )}
               {e.resolution && (
                 <div>
-                  <dt>Efeito</dt>
+                  <dt>{t("Efeito")}</dt>
                   <dd>{e.resolution}</dd>
                 </div>
               )}

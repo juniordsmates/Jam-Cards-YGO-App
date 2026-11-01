@@ -4,6 +4,7 @@ import { legalIn, type GameFormat } from "../db/legality";
 import { ehExtra } from "../db/decks";
 import { archetypeKey, normalize } from "../db/search";
 import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
+import { t } from "../i18n";
 
 // Teste Avançado → "Adicionar carta ao oponente": as cartas do oponente não saem de deck nenhum;
 // o jogador escolhe a carta e onde ela entra (mão, campo, Cemitério, banidas). "Colocar" só monta o
@@ -43,39 +44,37 @@ export default function AdicionarCarta({
     ? []
     : monstro
       ? [
-          ...(extra ? [] : [{ destino: "mao" as const, label: "Para a mão" }]),
-          { destino: "monstro", label: "Colocar no campo (ataque)" },
-          { destino: "monstro-defesa", label: "Colocar no campo (defesa)" },
-          ...(extra ? [] : [{ destino: "monstro-baixado" as const, label: "Colocar baixado" }]),
-          { destino: "monstro", label: extra ? "Invocar do Extra Deck (ação)" : "Invocar por Invocação-Especial (ação)", acao: true },
-          { destino: "cemiterio", label: "Para o Cemitério" },
-          { destino: "banido", label: "Banir" },
+          ...(extra ? [] : [{ destino: "mao" as const, label: t("Para a mão") }]),
+          { destino: "monstro", label: t("Colocar no campo (ataque)") },
+          { destino: "monstro-defesa", label: t("Colocar no campo (defesa)") },
+          ...(extra ? [] : [{ destino: "monstro-baixado" as const, label: t("Colocar baixado") }]),
+          { destino: "monstro", label: extra ? t("Invocar do Extra Deck (ação)") : t("Invocar por Invocação-Especial (ação)"), acao: true },
+          { destino: "cemiterio", label: t("Para o Cemitério") },
+          { destino: "banido", label: t("Banir") },
         ]
       : [
-          { destino: "mao", label: "Para a mão" },
-          { destino: "magia-baixada", label: "Baixar no campo" },
-          { destino: "magia", label: "Colocar virada para cima" },
-          { destino: "magia", label: "Ativar (ação)", acao: true },
-          { destino: "cemiterio", label: "Para o Cemitério" },
-          { destino: "banido", label: "Banir" },
+          { destino: "mao", label: t("Para a mão") },
+          { destino: "magia-baixada", label: t("Baixar no campo") },
+          { destino: "magia", label: t("Colocar virada para cima") },
+          { destino: "magia", label: t("Ativar (ação)"), acao: true },
+          { destino: "cemiterio", label: t("Para o Cemitério") },
+          { destino: "banido", label: t("Banir") },
         ];
 
   return (
     <div className="tj-criar-fundo" onClick={onFechar}>
-      <div className="tj-criar tj-adicionar" role="dialog" aria-label="Adicionar carta ao oponente" onClick={(e) => e.stopPropagation()}>
+      <div className="tj-criar tj-adicionar" role="dialog" aria-label={t("Adicionar carta ao oponente")} onClick={(e) => e.stopPropagation()}>
         <div className="fontes-head">
-          <h4>Adicionar carta ao oponente</h4>
-          <button className="ghost-btn" onClick={onFechar} aria-label="Fechar">
+          <h4>{t("Adicionar carta ao oponente")}</h4>
+          <button className="ghost-btn" onClick={onFechar} aria-label={t("Fechar")}>
             ✕
           </button>
         </div>
         <p className="tags-note">
-          As cartas do oponente não saem de um deck: adicione só o que precisar. “Colocar” monta o cenário; as opções com “(ação)” contam como jogada do
-          oponente e mostram o que você pode responder.
-        </p>
+          {t("As cartas do oponente não saem de um deck: adicione só o que precisar. “Colocar” monta o cenário; as opções com “(ação)” contam como jogada do oponente e mostram o que você pode responder.")}</p>
         <label className="field">
-          <span className="field-label">Carta (português ou inglês)</span>
-          <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="ex.: Ash Blossom, Infinite Impermanence…" aria-label="Buscar carta" />
+          <span className="field-label">{t("Carta (português ou inglês)")}</span>
+          <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder={t("ex.: Ash Blossom, Infinite Impermanence…")} aria-label={t("Buscar carta")} />
         </label>
         {sugestoes.length > 0 && (
           <ul className="tj-adicionar-sugestoes">
@@ -84,7 +83,7 @@ export default function AdicionarCarta({
                 <button className={escolhida?.id === c.id ? "active" : ""} onClick={() => setEscolhida(c)} title={bilingualName(c)}>
                   <img src={cardImage(c.id, "small")} alt="" loading="lazy" />
                   <span>{displayName(c)}</span>
-                  {!legalIn(c, formato) && <em>fora do {formato}</em>}
+                  {!legalIn(c, formato) && <em>{t("fora do {0}", [formato])}</em>}
                 </button>
               </li>
             ))}

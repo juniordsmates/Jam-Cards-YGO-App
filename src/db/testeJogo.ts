@@ -3,6 +3,7 @@
 // em src/screens/TesteJogo.tsx.
 
 import type { CampoFinal, Metodo, Passo, Zona } from "./motor";
+import { t as tr } from "../i18n";
 
 export type ZonaId =
   | "deck"
@@ -39,24 +40,24 @@ export const TOKEN_GENERICO = 0;
 export type Tabuleiro = Record<ZonaId, CartaJogo[]>;
 
 export const NOMES_ZONA: Record<ZonaId, string> = {
-  deck: "Deck",
-  extra: "Extra Deck",
+  deck: tr("Deck"),
+  extra: tr("Extra Deck"),
   mao: "mão",
-  cemiterio: "Cemitério",
-  banido: "Banidas",
-  "campo-magia": "Zona de Campo",
-  m0: "Zona de Monstros 1",
-  m1: "Zona de Monstros 2",
-  m2: "Zona de Monstros 3",
-  m3: "Zona de Monstros 4",
-  m4: "Zona de Monstros 5",
-  em0: "Zona de Monstros Extra (esquerda)",
-  em1: "Zona de Monstros Extra (direita)",
-  st0: "Zona de Magias e Armadilhas 1",
-  st1: "Zona de Magias e Armadilhas 2",
-  st2: "Zona de Magias e Armadilhas 3",
-  st3: "Zona de Magias e Armadilhas 4",
-  st4: "Zona de Magias e Armadilhas 5",
+  cemiterio: tr("Cemitério"),
+  banido: tr("Banidas"),
+  "campo-magia": tr("Zona de Campo"),
+  m0: tr("Zona de Monstros 1"),
+  m1: tr("Zona de Monstros 2"),
+  m2: tr("Zona de Monstros 3"),
+  m3: tr("Zona de Monstros 4"),
+  m4: tr("Zona de Monstros 5"),
+  em0: tr("Zona de Monstros Extra (esquerda)"),
+  em1: tr("Zona de Monstros Extra (direita)"),
+  st0: tr("Zona de Magias e Armadilhas 1"),
+  st1: tr("Zona de Magias e Armadilhas 2"),
+  st2: tr("Zona de Magias e Armadilhas 3"),
+  st3: tr("Zona de Magias e Armadilhas 4"),
+  st4: tr("Zona de Magias e Armadilhas 5"),
 };
 
 let contador = 0;
@@ -273,7 +274,7 @@ export function probabilidadeGeral(deck: number[], mao: number[]): { p: number; 
     for (const k of mult.values()) arranjos /= fatorial(k);
     maos *= arranjos * xs.reduce((s, x) => s * combinacoes(c, x), 1);
     for (const [x, k] of [...mult].sort((a, b) => b[0] - a[0]))
-      partes.push(`${k} ${k === 1 ? "carta" : "cartas"} com ${c} ${c === 1 ? "cópia" : "cópias"}${x > 1 ? ` (${x} na mão${k > 1 ? ", de cada" : ""})` : ""}`);
+      partes.push(tr("{0} {1} com {2} {3}{4}", [k, k === 1 ? tr("carta") : tr("cartas"), c, c === 1 ? tr("cópia") : tr("cópias"), x > 1 ? tr(" ({0} na mão{1})", [x, k > 1 ? tr(", de cada") : ""]) : ""]));
   }
   return { p: maos / combinacoes(deck.length, mao.length), perfil: partes.join(" + ") };
 }

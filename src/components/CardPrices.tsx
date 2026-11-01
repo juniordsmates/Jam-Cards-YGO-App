@@ -18,6 +18,7 @@ import {
 import { rarityInfo } from "../db/rarities";
 import { isDesktop } from "../platform";
 import type { Card } from "../db/types";
+import { t, LOCALE } from "../i18n";
 
 const SIGNUP_URL = "https://tcgapi.dev/signup/";
 
@@ -96,7 +97,7 @@ export default function CardPrices({ card }: { card: Card }) {
       set: s,
       value: tcgValue ?? (ygoPrice > 0 ? ygoPrice : undefined),
       currency: (printing?.currency ?? "USD") as Currency,
-      source: tcgValue !== undefined ? "Preço médio na TCG API" : ygoPrice > 0 ? "Preço na YGOPRODeck" : "Sem preço",
+      source: tcgValue !== undefined ? t("Preço médio na TCG API") : ygoPrice > 0 ? t("Preço na YGOPRODeck") : t("Sem preço"),
     };
   });
   const unmatched = tcgPrices.filter((p) => !matched.has(p));
@@ -107,7 +108,7 @@ export default function CardPrices({ card }: { card: Card }) {
     <>
       {card.sets.length > 0 && (
         <section className="drawer-section">
-          <h4>Coleções ({card.sets.length})</h4>
+          <h4>{t("Coleções ({0})", [card.sets.length])}</h4>
           <ul className="sets">
             {rows.map(({ set, value, currency, source }) => (
               <li key={`${set.code}-${set.rarity}`}>
@@ -123,23 +124,22 @@ export default function CardPrices({ card }: { card: Card }) {
             ))}
           </ul>
           <p className="tags-note">
-            Preço de cada versão: médio na TCG API quando a carta já foi consultada; senão, o da YGOPRODeck.
-          </p>
+            {t("Preço de cada versão: médio na TCG API quando a carta já foi consultada; senão, o da YGOPRODeck.")}</p>
         </section>
       )}
 
       <section className="drawer-section prices-section">
-        <h4>Preços</h4>
+        <h4>{t("Preços")}</h4>
 
         <dl className="price-list">
           <div>
-            <dt>Cardmarket (mínimo)</dt>
+            <dt>{t("Cardmarket (mínimo)")}</dt>
             <dd>
               <Money value={Number(ygo?.cardmarket)} currency="EUR" rates={rates} />
             </dd>
           </div>
           <div>
-            <dt>TCGplayer (mínimo)</dt>
+            <dt>{t("TCGplayer (mínimo)")}</dt>
             <dd>
               <Money value={Number(ygo?.tcgplayer)} currency="USD" rates={rates} />
             </dd>
@@ -148,45 +148,42 @@ export default function CardPrices({ card }: { card: Card }) {
 
         <div className="tcgapi">
           <div className="tcgapi-head">
-            <span className="field-label">TCG API</span>
-            {tcg?.remaining !== undefined && <small>{tcg.remaining} consultas restantes hoje</small>}
+            <span className="field-label">{t("TCG API")}</span>
+            {tcg?.remaining !== undefined && <small>{t("{0} consultas restantes hoje", [tcg.remaining])}</small>}
           </div>
 
           {!isDesktop ? (
-            <p className="tags-note">Disponível no app desktop: a TCG API só aceita consultas fora do navegador.</p>
+            <p className="tags-note">{t("Disponível no app desktop: a TCG API só aceita consultas fora do navegador.")}</p>
           ) : !apiKey ? (
             <div className="tcgapi-key">
               <p className="tags-note">
-                Para ver o preço médio de cada versão, crie uma chave gratuita em{" "}
-                <ExternalLink href={SIGNUP_URL}>tcgapi.dev</ExternalLink> (100 consultas por dia) e cole aqui. Ela
-                fica guardada só neste computador.
-              </p>
+                {t("Para ver o preço médio de cada versão, crie uma chave gratuita em")}{" "}
+                <ExternalLink href={SIGNUP_URL}>{t("tcgapi.dev")}</ExternalLink> {" "}{t("(100 consultas por dia) e cole aqui. Ela fica guardada só neste computador.")}</p>
               <div className="tcgapi-key-row">
                 <input
                   type="password"
-                  placeholder="Chave da TCG API"
+                  placeholder={t("Chave da TCG API")}
                   value={keyDraft}
                   onChange={(e) => setKeyDraft(e.target.value)}
-                  aria-label="Chave da TCG API"
+                  aria-label={t("Chave da TCG API")}
                 />
                 <button className="ghost-btn" onClick={saveKey} disabled={!keyDraft.trim()}>
-                  Salvar
-                </button>
+                  {t("Salvar")}</button>
               </div>
             </div>
           ) : (
             <>
-              {tcg && tcg.prices.length === 0 && <p className="tags-note">A TCG API não tem preços para esta carta.</p>}
+              {tcg && tcg.prices.length === 0 && <p className="tags-note">{t("A TCG API não tem preços para esta carta.")}</p>}
               {unmatched.length > 0 && (
                 <>
-                  <p className="tags-note">Outras impressões na TCG API (fora da lista de coleções):</p>
+                  <p className="tags-note">{t("Outras impressões na TCG API (fora da lista de coleções):")}</p>
                   <table className="price-table">
                     <thead>
                       <tr>
-                        <th>Coleção</th>
-                        <th>Raridade</th>
-                        <th>Médio</th>
-                        <th>Menor</th>
+                        <th>{t("Coleção")}</th>
+                        <th>{t("Raridade")}</th>
+                        <th>{t("Médio")}</th>
+                        <th>{t("Menor")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -206,11 +203,11 @@ export default function CardPrices({ card }: { card: Card }) {
                 </>
               )}
               {!tcg && (
-                <p className="tags-note">Cada consulta gasta 1 das consultas diárias do seu plano; o resultado fica guardado por 24 horas.</p>
+                <p className="tags-note">{t("Cada consulta gasta 1 das consultas diárias do seu plano; o resultado fica guardado por 24 horas.")}</p>
               )}
               <div className="tcgapi-actions">
                 <button className="ghost-btn" onClick={() => void consult()} disabled={loading}>
-                  {loading ? "Consultando…" : tcg ? "Atualizar preços" : "Consultar preços"}
+                  {loading ? t("Consultando…") : tcg ? t("Atualizar preços") : t("Consultar preços")}
                 </button>
                 <button
                   className="link-btn"
@@ -219,19 +216,18 @@ export default function CardPrices({ card }: { card: Card }) {
                     setApiKey("");
                   }}
                 >
-                  Trocar chave
-                </button>
+                  {t("Trocar chave")}</button>
               </div>
               {error && <p className="db-warning">{error}</p>}
-              {tcg && <p className="tags-note">Consultado em {new Date(tcg.fetchedAt).toLocaleString("pt-BR")}.</p>}
+              {tcg && <p className="tags-note">{t("Consultado em {0}.", [new Date(tcg.fetchedAt).toLocaleString(LOCALE)])}</p>}
             </>
           )}
         </div>
 
         <p className="tags-note price-foot">
           {rates
-            ? `Valores em reais convertidos pela cotação de ${rates.quotedAt.slice(8, 10)}/${rates.quotedAt.slice(5, 7)} (US$ 1 = ${formatMoney(rates.USD, "BRL")}, € 1 = ${formatMoney(rates.EUR, "BRL")}). `
-            : "Sem cotação do dia: valores só na moeda original. "}
+            ? t("Valores em reais convertidos pela cotação de {0}/{1} (US$ 1 = {2}, € 1 = {3}). ", [rates.quotedAt.slice(8, 10), rates.quotedAt.slice(5, 7), formatMoney(rates.USD, "BRL"), formatMoney(rates.EUR, "BRL")])
+            : t("Sem cotação do dia: valores só na moeda original. ")}
           <FontesButton sites={["ygoprodeck", "tcgapi", "awesomeapi"]} />
         </p>
       </section>

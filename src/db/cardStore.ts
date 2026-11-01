@@ -4,6 +4,7 @@ import { buildCards, fetchAllCards, fetchDbVersion, fetchStapleIds } from "./ygo
 import { applyOverlay, fetchOverlay, type Overlay, type TagDefinition } from "./overlay";
 import { archetypeNamesPt, buildRelations, type RelationIndex } from "./relations";
 import type { Card } from "./types";
+import { IDIOMA, t } from "../i18n";
 
 // Mude ao alterar o formato de Card para forçar um novo download
 // v3: dados extras (formatos, datas…) e ids canônicos de cartas com artes alternativas
@@ -98,7 +99,12 @@ function publish(cards: Card[], patch: Partial<CardDbState> = {}) {
     : [...new Set(cards.map((c) => c.archetype).filter(Boolean) as string[])].sort();
   const archetypePt = archetypeNamesPt(cards, new Set(archetypes.map((a) => a.toLowerCase())));
   for (const c of cards) c.archetypePt = c.archetype ? archetypePt.get(c.archetype) : undefined;
-  set({ ...patch, cards: [...cards], tagDefs, overlayDate: overlay?.geradoEm, extras, archetypes, archetypePt });
+  // rótulos das tags (a camada traz em português) no idioma do app
+  const defs = tagDefs.map((d) => ({ ...d, label: t(d.label), hint: t(d.hint), group: t(d.group) }));
+  // em inglês e espanhol, as telas mostram o nome e o texto oficiais em inglês: cópias sem os campos
+  // em português (o cache e a busca continuam com eles, então o nome em português ainda encontra a carta)
+  const publicadas = IDIOMA === "pt" ? [...cards] : cards.map((c) => ({ ...c, namePt: undefined, descPt: undefined, archetypePt: undefined }));
+  set({ ...patch, cards: publicadas, tagDefs: defs, overlayDate: overlay?.geradoEm, extras, archetypes, archetypePt: IDIOMA === "pt" ? archetypePt : new Map() });
 }
 
 /** Baixa a camada; se falhar, segue com a que já está salva (ou com as regras locais) */
@@ -163,21 +169,21 @@ export async function checkForUpdate(force = false) {
 async function download(background: boolean) {
   const step = (s: string) => set(background ? { step: s } : { status: "downloading", step: s });
 
-  step("Verificando versão da base…");
+  step(t("Verificando versão da base…"));
   const version = await fetchDbVersion();
-  step("Baixando cartas…");
+  step(t("Baixando cartas…"));
   const en = await fetchAllCards();
-  step("Baixando traduções em português…");
+  step(t("Baixando traduções em português…"));
   const pt = await fetchAllCards("pt");
-  step("Baixando lista de staples…");
+  step(t("Baixando lista de staples…"));
   const staples = new Set(await fetchStapleIds());
-  step("Baixando marcações revisadas…");
+  step(t("Baixando marcações revisadas…"));
   if (!background) await refreshOverlay();
-  step("Organizando cartas…");
+  step(t("Organizando cartas…"));
   const cards = buildCards(en, pt);
   for (const card of cards) if (staples.has(card.id)) card.staple = true;
   const meta: Meta = { ...version, checkedAt: Date.now() };
-  step("Salvando no dispositivo…");
+  step(t("Salvando no dispositivo…"));
   await idbSetMany({ [CARDS_KEY]: cards, [META_KEY]: meta }, OLD_KEYS);
 
   publish(cards, { status: "ready", meta, updating: false, step: undefined, error: undefined });

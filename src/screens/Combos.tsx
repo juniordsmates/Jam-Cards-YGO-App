@@ -19,6 +19,7 @@ import { exportarTodos, useCombosLocais } from "../db/combosLocais";
 import { temRecursosAvancados, useConta } from "../db/conta";
 import { bilingualName, displayName, type Card } from "../db/types";
 import "./combos.css";
+import { t, LOCALE } from "../i18n";
 
 /** Nome do arquétipo (oficial, em inglês) com o nome em português ao lado, quando é outro */
 function arquetipoBilingue(en: string, cards: Card[]) {
@@ -50,12 +51,12 @@ function CombosComunidade({
   const locais = todosLocais.filter((c) => mao.every((id) => c.iniciais.includes(id)));
   const [exportacao, setExportacao] = useState<{ tipo: "ok" | "erro" | "enviando"; texto: string } | null>(null);
   const exportarLocais = async (compartilhar: boolean) => {
-    setExportacao({ tipo: "enviando", texto: "Exportando…" });
+    setExportacao({ tipo: "enviando", texto: t("Exportando…") });
     const r = await exportarTodos(compartilhar);
     setExportacao(
       r.erros.length
-        ? { tipo: "erro", texto: `${r.enviados} exportado(s); falharam: ${r.erros.join(" · ")}` }
-        : { tipo: "ok", texto: `${r.enviados} combo(s) exportado(s) para a base${compartilhar ? " e compartilhado(s)" : ""}.` },
+        ? { tipo: "erro", texto: t("{0} exportado(s); falharam: {1}", [r.enviados, r.erros.join(" · ")]) }
+        : { tipo: "ok", texto: t("{0} combo(s) exportado(s) para a base{1}.", [r.enviados, compartilhar ? t(" e compartilhado(s)") : ""]) },
     );
   };
   const chave = mao.join(",");
@@ -74,18 +75,16 @@ function CombosComunidade({
     <section className="combos-comunidade">
       {locais.length > 0 && (
         <div className="combos-locais">
-          <h3>Meus combos neste aparelho ({locais.length})</h3>
+          <h3>{t("Meus combos neste aparelho ({0})", [locais.length])}</h3>
           <p className="tags-note">
-            Criados como Usuário Padrão: ficam só aqui. {temRecursosAvancados(conta) ? "Exporte para levá-los à base (Combos da Comunidade)." : "Usuários Avançado ou Mentor podem exportá-los para a base."}
+            {t("Criados como Usuário Padrão: ficam só aqui. {0}", [temRecursosAvancados(conta) ? t("Exporte para levá-los à base (Combos da Comunidade).") : t("Usuários Avançado ou Mentor podem exportá-los para a base.")])}
           </p>
           {temRecursosAvancados(conta) && todosLocais.length > 0 && (
             <div className="combos-exportar-todos">
               <button className="ghost-btn" disabled={exportacao?.tipo === "enviando"} onClick={() => void exportarLocais(false)}>
-                Exportar todos ({todosLocais.length})
-              </button>
+                {t("Exportar todos ({0})", [todosLocais.length])}</button>
               <button className="ghost-btn" disabled={exportacao?.tipo === "enviando"} onClick={() => void exportarLocais(true)}>
-                Exportar e compartilhar todos
-              </button>
+                {t("Exportar e compartilhar todos")}</button>
             </div>
           )}
           {exportacao && <p className={exportacao.tipo === "erro" ? "db-warning" : "conta-ok"}>{exportacao.texto}</p>}
@@ -96,11 +95,11 @@ function CombosComunidade({
       )}
       {supabaseReady() && lista.length > 0 && (
       <>
-      <h3>{mao.length ? "Combos da Comunidade com esta mão" : "Combos da Comunidade recentes"}</h3>
+      <h3>{mao.length ? t("Combos da Comunidade com esta mão") : t("Combos da Comunidade recentes")}</h3>
       {lista.map((c) => (
         <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} format={format} onTestar={onTestar} />
       ))}
-      <p className="tags-note">Criados por usuários no Teste de Jogo e compartilhados: confira antes de usar.</p>
+      <p className="tags-note">{t("Criados por usuários no Teste de Jogo e compartilhados: confira antes de usar.")}</p>
       </>
       )}
     </section>
@@ -222,33 +221,29 @@ export default function Combos({
   }, [byId, format]);
   const toggleRespostas = (
     <label className="respostas-toggle">
-      <input type="checkbox" checked={respostas} onChange={(e) => setRespostas(e.target.checked)} /> Mostrar respostas do oponente
-    </label>
+      <input type="checkbox" checked={respostas} onChange={(e) => setRespostas(e.target.checked)} /> {" "}{t("Mostrar respostas do oponente")}</label>
   );
 
   // alternância entre os dois modos, no topo da coluna da esquerda
   const modos = (
-    <div className="left-tabs combos-modos" role="tablist" aria-label="Modo">
+    <div className="left-tabs combos-modos" role="tablist" aria-label={t("Modo")}>
       <button role="tab" aria-selected={modo === "mao"} className={modo === "mao" ? "active" : ""} onClick={() => setModo("mao")}>
-        Mão inicial
-      </button>
+        {t("Mão inicial")}</button>
       <button role="tab" aria-selected={modo === "search"} className={modo === "search" ? "active" : ""} onClick={() => setModo("search")}>
-        Combo Search
-      </button>
-      <button role="tab" aria-selected={modo === "video"} className={modo === "video" ? "active" : ""} onClick={() => setModo("video")} title="Experimental: o Gemini lê o combo de um vídeo do YouTube">
-        Vídeo
-      </button>
+        {t("Combo Search")}</button>
+      <button role="tab" aria-selected={modo === "video"} className={modo === "video" ? "active" : ""} onClick={() => setModo("video")} title={t("Experimental: o Gemini lê o combo de um vídeo do YouTube")}>
+        {t("Vídeo")}</button>
     </div>
   );
 
   return (
     <ScreenShell
-      title="Combos"
+      title={t("Combos")}
       accent="magenta"
       onBack={onBack}
       actions={
         // canto superior direito: o formato vale para a mão, as sugestões e as linhas
-        <div className="format-switch combos-format" role="radiogroup" aria-label="Formato">
+        <div className="format-switch combos-format" role="radiogroup" aria-label={t("Formato")}>
           {FORMATS.map((f) => (
             <button
               key={f}
@@ -256,7 +251,7 @@ export default function Combos({
               aria-checked={format === f}
               className={format === f ? "active" : ""}
               onClick={() => setFormat(f)}
-              title={`Combos em que todas as cartas existem no ${f} e não são proibidas nele`}
+              title={t("Combos em que todas as cartas existem no {0} e não são proibidas nele", [f])}
             >
               {f}
             </button>
@@ -268,7 +263,7 @@ export default function Combos({
       {!ready ? (
         <div className="db-loading">
           <span className="spinner" />
-          <p>{db.step ?? "Carregando base de cartas…"}</p>
+          <p>{db.step ?? t("Carregando base de cartas…")}</p>
         </div>
       ) : (
         modo === "video" ? (
@@ -280,13 +275,13 @@ export default function Combos({
           <section className="combos-setup">
             {modos}
             <CardPicker
-              label="Mão inicial"
+              label={t("Mão inicial")}
               cards={hand}
               onChange={setHand}
               all={db.cards}
               format={format}
               inputRef={inputRef}
-              placeholder="Escolha uma carta (ex.: Mitsurugi Prayers)"
+              placeholder={t("Escolha uma carta (ex.: Mitsurugi Prayers)")}
               placeholderMore="Acrescentar outra carta à mão…"
             />
             {toggleRespostas}
@@ -295,17 +290,14 @@ export default function Combos({
           <section className="combos-result">
             {!combos ? (
               <div className="combos-empty">
-                <p>Os combos calculados ainda não foram baixados.</p>
-                <small>Eles chegam com a camada de marcações da base; confira a conexão e abra a tela de novo.</small>
+                <p>{t("Os combos calculados ainda não foram baixados.")}</p>
+                <small>{t("Eles chegam com a camada de marcações da base; confira a conexão e abra a tela de novo.")}</small>
               </div>
             ) : !hand.length ? (
               <div className="combos-empty">
-                <p>Escolha uma ou mais cartas para a mão inicial.</p>
+                <p>{t("Escolha uma ou mais cartas para a mão inicial.")}</p>
                 <small>
-                  Só aparecem linhas que o App conseguiu jogar, com as regras do EDOPro, usando decklists reais de torneio: custos,
-                  condições de ativação, travas, “uma vez por turno” e o limite de Invocação-Normal são aplicados pelos scripts
-                  oficiais das cartas, no primeiro turno e com o oponente passando.
-                </small>
+                  {t("Só aparecem linhas que o App conseguiu jogar, com as regras do EDOPro, usando decklists reais de torneio: custos, condições de ativação, travas, “uma vez por turno” e o limite de Invocação-Normal são aplicados pelos scripts oficiais das cartas, no primeiro turno e com o oponente passando.")}</small>
                 {starters.map((s) => (
                   <div key={s.deck.url} className="starter-chips">
                     <span className="field-label">{arquetipoBilingue(s.deck.busca, s.cards)}</span>
@@ -319,12 +311,9 @@ export default function Combos({
               </div>
             ) : !lines.length && !reach.length ? (
               <div className="combos-empty">
-                <p>Nenhum combo calculado com esta mão, nem chegando nela, no {format}.</p>
+                <p>{t("Nenhum combo calculado com esta mão, nem chegando nela, no {0}.", [format])}</p>
                 <small>
-                  O App testa cada carta dos decks abaixo sozinha na mão (e as mãos das linhas da comunidade), com a banlist
-                  atual de cada formato. Uma mão sem linha aqui não chegou a um campo com Invocação do Extra Deck ou 3+ Invocações,
-                  ou a linha usa carta proibida ou não lançada no {format}.
-                </small>
+                  {t("O App testa cada carta dos decks abaixo sozinha na mão (e as mãos das linhas da comunidade), com a banlist atual de cada formato. Uma mão sem linha aqui não chegou a um campo com Invocação do Extra Deck ou 3+ Invocações, ou a linha usa carta proibida ou não lançada no {0}.", [format])}</small>
                 <ul className="combos-decks">
                   {combos.decks.map((d) => (
                     <li key={d.url}>
@@ -338,7 +327,7 @@ export default function Combos({
             ) : (
               <>
                 <VerifiedCombos
-                  title="Combos começando com a mão"
+                  title={t("Combos começando com a mão")}
                   lines={lines}
                   combos={combos}
                   byId={byId}
@@ -349,7 +338,7 @@ export default function Combos({
                   onTestar={testar}
                 />
                 <VerifiedCombos
-                  title={`Combos que chegam em ${handNames}`}
+                  title={t("Combos que chegam em {0}", [handNames])}
                   lines={reach}
                   highlight={hand.map((c) => c.id)}
                   combos={combos}
@@ -362,7 +351,7 @@ export default function Combos({
                 />
                 {confirmed.length > 0 && (
                   <KnownCombos
-                    title="Linhas da comunidade conferidas com o App"
+                    title={t("Linhas da comunidade conferidas com o App")}
                     combos={confirmed}
                     byName={byName}
                     format={format}
@@ -370,8 +359,7 @@ export default function Combos({
                   />
                 )}
                 <p className="tags-note combos-disclaimer">
-                  Calculado com o App em {new Date(combos.geradoEm).toLocaleDateString("pt-BR")} (scripts {combos.motor.scripts}). O cálculo
-                  não simula interrupções do oponente. <FontesButton sites={["project-ignis", "ygoprodeck"]} />
+                  {t("Calculado com o App em {0} (scripts {1}). O cálculo não simula interrupções do oponente.", [new Date(combos.geradoEm).toLocaleDateString(LOCALE), combos.motor.scripts])}{" "}<FontesButton sites={["project-ignis", "ygoprodeck"]} />
                 </p>
               </>
             )}

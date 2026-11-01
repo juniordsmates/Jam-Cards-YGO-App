@@ -1,6 +1,7 @@
 import { ATTRIBUTES, BAN_LABELS, MONSTER_CLASSES, MONSTER_RACES, SPELL_TYPES, TRAP_TYPES } from "../db/labels";
 import type { Filters } from "../db/search";
 import type { TagDefinition } from "../db/overlay";
+import { t } from "../i18n";
 
 type Props = {
   filters: Filters;
@@ -19,7 +20,7 @@ export default function ActiveFilters({ filters: f, tagDefs, onChange, onClearAl
   const chips: { key: string; label: string; clear: Partial<Filters> }[] = [];
 
   if (f.idSet) chips.push({ key: "set", label: `${f.idSet.label} (${f.idSet.ids.length})`, clear: { idSet: null } });
-  if (f.text.trim()) chips.push({ key: "text", label: `“${f.text.trim()}”${f.inDesc ? " no texto" : ""}`, clear: { text: "" } });
+  if (f.text.trim()) chips.push({ key: "text", label: `“${f.text.trim()}”${f.inDesc ? t(" no texto") : ""}`, clear: { text: "" } });
   if (f.category !== "all") {
     chips.push({ key: "cat", label: CATEGORY_LABELS[f.category], clear: { category: "all", spellTrapType: "" } });
   }
@@ -34,33 +35,32 @@ export default function ActiveFilters({ filters: f, tagDefs, onChange, onClearAl
   if (f.monsterClass) {
     chips.push({ key: "class", label: MONSTER_CLASSES.find((c) => c.value === f.monsterClass)?.label ?? f.monsterClass, clear: { monsterClass: "" } });
   }
-  if (f.levelMin || f.levelMax) chips.push({ key: "lv", label: range("Nível", f.levelMin, f.levelMax), clear: { levelMin: "", levelMax: "" } });
+  if (f.levelMin || f.levelMax) chips.push({ key: "lv", label: range(t("Nível"), f.levelMin, f.levelMax), clear: { levelMin: "", levelMax: "" } });
   if (f.atkMin || f.atkMax) chips.push({ key: "atk", label: range("ATK", f.atkMin, f.atkMax), clear: { atkMin: "", atkMax: "" } });
   if (f.defMin || f.defMax) chips.push({ key: "def", label: range("DEF", f.defMin, f.defMax), clear: { defMin: "", defMax: "" } });
   for (const t of f.tags) {
     chips.push({ key: `tag-${t}`, label: tagDefs.find((d) => d.id === t)?.label ?? t, clear: { tags: f.tags.filter((x) => x !== t) } });
   }
   if (f.archetype.trim()) {
-    chips.push({ key: "arch", label: `Arquétipo: ${f.archetype.trim()}${f.includeSupport ? " + suporte" : ""}`, clear: { archetype: "", includeSupport: false } });
+    chips.push({ key: "arch", label: t("Arquétipo: {0}{1}", [f.archetype.trim(), f.includeSupport ? t(" + suporte") : ""]), clear: { archetype: "", includeSupport: false } });
   }
   if (f.format) chips.push({ key: "format", label: f.format, clear: { format: "" } });
-  if (f.yearMin || f.yearMax) chips.push({ key: "year", label: range("Lançamento", f.yearMin, f.yearMax), clear: { yearMin: "", yearMax: "" } });
-  if (f.ban) chips.push({ key: "ban", label: `TCG: ${BAN_LABELS[f.ban]}`, clear: { ban: "" } });
+  if (f.yearMin || f.yearMax) chips.push({ key: "year", label: range(t("Lançamento"), f.yearMin, f.yearMax), clear: { yearMin: "", yearMax: "" } });
+  if (f.ban) chips.push({ key: "ban", label: t("TCG: {0}", [BAN_LABELS[f.ban]]), clear: { ban: "" } });
 
   if (chips.length === 0) return null;
 
   return (
-    <div className="active-filters" aria-label="Filtros ativos">
+    <div className="active-filters" aria-label={t("Filtros ativos")}>
       {chips.map((c) => (
-        <button key={c.key} className="active-chip" onClick={() => onChange(c.clear)} title="Remover filtro">
+        <button key={c.key} className="active-chip" onClick={() => onChange(c.clear)} title={t("Remover filtro")}>
           {c.label}
           <span aria-hidden>✕</span>
         </button>
       ))}
       {chips.length > 1 && (
         <button className="link-btn" onClick={onClearAll}>
-          Limpar tudo
-        </button>
+          {t("Limpar tudo")}</button>
       )}
     </div>
   );

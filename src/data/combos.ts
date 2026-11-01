@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Combos conhecidos (linhas reais da comunidade), passo a passo, com ramificações e fonte.
 // Cartas pelo nome em inglês (o app mostra o nome em português). A tela só mostra uma linha
 // depois que o motor de regras a confirma: cadastre a mão e as cartas finais com o mesmo id em
@@ -39,16 +40,16 @@ const MDM_CENTURION = { nome: "Master Duel Meta: guia Centur-Ion", url: "https:/
 
 /** Turno do oponente comum às linhas que terminam com Auxila + Primera e Gargoyle II prontas */
 const CENTURION_OPP_TURN: ComboStep[] = [
-  { card: "Centur-Ion Primera", acao: "Na Fase Principal do oponente, se Invoca da Zona de Magia/Armadilha." },
-  { card: "Centur-Ion Gargoyle II", acao: "Se Invoca (da Zona de Magia/Armadilha ou da mão)." },
+  { card: "Centur-Ion Primera", acao: t("Na Fase Principal do oponente, se Invoca da Zona de Magia/Armadilha.") },
+  { card: "Centur-Ion Gargoyle II", acao: t("Se Invoca (da Zona de Magia/Armadilha ou da mão).") },
   {
     card: "Stand Up Centur-Ion!",
-    acao: "Com a Invocação-Especial, Invocação-Sincro imediata: Crimson Dragon (Primera Nv4 Regulador + Gargoyle II Nv8).",
+    acao: t("Com a Invocação-Especial, Invocação-Sincro imediata: Crimson Dragon (Primera Nv4 Regulador + Gargoyle II Nv8)."),
     resultado: ["Crimson Dragon"],
   },
   {
     card: "Crimson Dragon",
-    acao: "Efeito Rápido mirando a Auxila (Nv12): volta para o Deck Adicional e Invoca um Dragão Sincro de Nível 12.",
+    acao: t("Efeito Rápido mirando a Auxila (Nv12): volta para o Deck Adicional e Invoca um Dragão Sincro de Nível 12."),
     resultado: ["Cosmic Blazar Dragon", "Red Supernova Dragon"],
   },
 ];
@@ -57,38 +58,38 @@ export const KNOWN_COMBOS: KnownCombo[] = [
   {
     id: "centurion-primera-stand-up",
     arquetipo: "Centur-Ion",
-    titulo: "Primera → Stand Up → Trudea → Gargoyle II → Auxila",
+    titulo: t("Primera → Stand Up → Trudea → Gargoyle II → Auxila"),
     mao: ["Centur-Ion Primera"],
-    maoExtra: "+1 carta qualquer para descartar na Stand Up",
+    maoExtra: t("+1 carta qualquer para descartar na Stand Up"),
     passos: [
-      { card: "Centur-Ion Primera", acao: "Invocação-Normal. Ao ser Invocada: busca a Magia de Campo.", resultado: ["Stand Up Centur-Ion!"] },
+      { card: "Centur-Ion Primera", acao: t("Invocação-Normal. Ao ser Invocada: busca a Magia de Campo."), resultado: ["Stand Up Centur-Ion!"] },
       {
         card: "Stand Up Centur-Ion!",
-        acao: "Ativa; descarta 1 carta da mão e coloca a Trudea do Deck como Armadilha Contínua.",
+        acao: t("Ativa; descarta 1 carta da mão e coloca a Trudea do Deck como Armadilha Contínua."),
         resultado: ["Centur-Ion Trudea"],
       },
-      { card: "Centur-Ion Trudea", acao: "Na Fase Principal, se Invoca da Zona de Magia/Armadilha." },
+      { card: "Centur-Ion Trudea", acao: t("Na Fase Principal, se Invoca da Zona de Magia/Armadilha.") },
       {
         card: "Centur-Ion Trudea",
-        acao: "Coloca a si mesma e a Gargoyle II (do Deck) como Armadilhas Contínuas.",
+        acao: t("Coloca a si mesma e a Gargoyle II (do Deck) como Armadilhas Contínuas."),
         resultado: ["Centur-Ion Gargoyle II"],
       },
       {
         card: "Centur-Ion Gargoyle II",
-        acao: "Se Invoca da Zona de Magia/Armadilha; a Stand Up permite uma Invocação-Sincro imediata.",
+        acao: t("Se Invoca da Zona de Magia/Armadilha; a Stand Up permite uma Invocação-Sincro imediata."),
       },
       {
-        acao: "Invocação-Sincro: Auxila (Primera Nv4 Regulador + Gargoyle II Nv8).",
+        acao: t("Invocação-Sincro: Auxila (Primera Nv4 Regulador + Gargoyle II Nv8)."),
         resultado: ["Centur-Ion Auxila"],
       },
       {
         card: "Centur-Ion Auxila",
-        acao: "Ao ser Invocada: busca a Armadilha de Resposta do arquétipo.",
+        acao: t("Ao ser Invocada: busca a Armadilha de Resposta do arquétipo."),
         resultado: ["Centur-Ion True Awakening"],
       },
-      { card: "Centur-Ion Gargoyle II", acao: "Enviada ao Cemitério como material Sincro: volta para a mão." },
+      { card: "Centur-Ion Gargoyle II", acao: t("Enviada ao Cemitério como material Sincro: volta para a mão.") },
       {
-        acao: "End Phase: a Auxila coloca a Primera (do Cemitério) como Armadilha Contínua.",
+        acao: t("End Phase: a Auxila coloca a Primera (do Cemitério) como Armadilha Contínua."),
         resultado: ["Centur-Ion Primera"],
       },
     ],
@@ -103,40 +104,40 @@ export const KNOWN_COMBOS: KnownCombo[] = [
     turnoOponente: CENTURION_OPP_TURN,
     ramificacoes: [
       {
-        titulo: "Trudea sobe para Nível 8: Sincro sem a Gargoyle II",
+        titulo: t("Trudea sobe para Nível 8: Sincro sem a Gargoyle II"),
         aPartirDoPasso: 3,
         passos: [
           {
             card: "Centur-Ion Trudea",
-            acao: "Ao se Invocar da Zona de Magia/Armadilha, aumenta o Nível em 4 (Nv8); a Stand Up permite Sincro imediata.",
+            acao: t("Ao se Invocar da Zona de Magia/Armadilha, aumenta o Nível em 4 (Nv8); a Stand Up permite Sincro imediata."),
           },
           {
-            acao: "Invocação-Sincro: Auxila ou Legatia (Primera Nv4 Regulador + Trudea Nv8).",
+            acao: t("Invocação-Sincro: Auxila ou Legatia (Primera Nv4 Regulador + Trudea Nv8)."),
             resultado: ["Centur-Ion Auxila", "Centur-Ion Legatia"],
           },
         ],
       },
       {
-        titulo: "Buscar Bonds em vez da Armadilha de Resposta",
+        titulo: t("Buscar Bonds em vez da Armadilha de Resposta"),
         aPartirDoPasso: 7,
         passos: [
-          { card: "Centur-Ion Auxila", acao: "Ao ser Invocada: busca a Bonds.", resultado: ["Centur-Ion Bonds"] },
+          { card: "Centur-Ion Auxila", acao: t("Ao ser Invocada: busca a Bonds."), resultado: ["Centur-Ion Bonds"] },
           {
             card: "Centur-Ion Bonds",
-            acao: "Coloca a Gargoyle II (que voltou para a mão) como Armadilha Contínua: mais um corpo para o turno do oponente.",
+            acao: t("Coloca a Gargoyle II (que voltou para a mão) como Armadilha Contínua: mais um corpo para o turno do oponente."),
           },
         ],
       },
       {
-        titulo: "Legatia em vez de Auxila (com Bonds já na mão)",
+        titulo: t("Legatia em vez de Auxila (com Bonds já na mão)"),
         aPartirDoPasso: 6,
         passos: [
           {
-            acao: "Invocação-Sincro: Legatia (Primera + Gargoyle II). Ao ser Invocada: compra 1 e pode destruir o monstro de maior ATK do oponente.",
+            acao: t("Invocação-Sincro: Legatia (Primera + Gargoyle II). Ao ser Invocada: compra 1 e pode destruir o monstro de maior ATK do oponente."),
             resultado: ["Centur-Ion Legatia"],
           },
-          { card: "Centur-Ion Bonds", acao: "Coloca um Centur-Ion da mão ou do Cemitério como Armadilha Contínua." },
-          { acao: "End Phase: a Legatia coloca um Centur-Ion não-Sincro da mão ou do Cemitério como Armadilha Contínua." },
+          { card: "Centur-Ion Bonds", acao: t("Coloca um Centur-Ion da mão ou do Cemitério como Armadilha Contínua.") },
+          { acao: t("End Phase: a Legatia coloca um Centur-Ion não-Sincro da mão ou do Cemitério como Armadilha Contínua.") },
         ],
       },
     ],
@@ -145,23 +146,23 @@ export const KNOWN_COMBOS: KnownCombo[] = [
   {
     id: "centurion-trudea",
     arquetipo: "Centur-Ion",
-    titulo: "Trudea sozinha: coloca a Primera e segue a linha principal",
+    titulo: t("Trudea sozinha: coloca a Primera e segue a linha principal"),
     mao: ["Centur-Ion Trudea"],
     passos: [
-      { card: "Centur-Ion Trudea", acao: "Invocação-Normal." },
+      { card: "Centur-Ion Trudea", acao: t("Invocação-Normal.") },
       {
         card: "Centur-Ion Trudea",
-        acao: "Coloca a si mesma e a Primera (do Deck) como Armadilhas Contínuas.",
+        acao: t("Coloca a si mesma e a Primera (do Deck) como Armadilhas Contínuas."),
         resultado: ["Centur-Ion Primera"],
       },
       {
         card: "Centur-Ion Primera",
-        acao: "Na Fase Principal, se Invoca da Zona de Magia/Armadilha. Ao ser Invocada: busca a Stand Up.",
+        acao: t("Na Fase Principal, se Invoca da Zona de Magia/Armadilha. Ao ser Invocada: busca a Stand Up."),
         resultado: ["Stand Up Centur-Ion!"],
       },
-      { card: "Centur-Ion Trudea", acao: "Se Invoca da Zona de Magia/Armadilha e aumenta o Nível em 4 (Nv8)." },
+      { card: "Centur-Ion Trudea", acao: t("Se Invoca da Zona de Magia/Armadilha e aumenta o Nível em 4 (Nv8).") },
       {
-        acao: "Invocação-Sincro: Auxila (Primera Nv4 Regulador + Trudea Nv8); a partir daqui, como na linha principal.",
+        acao: t("Invocação-Sincro: Auxila (Primera Nv4 Regulador + Trudea Nv8); a partir daqui, como na linha principal."),
         resultado: ["Centur-Ion Auxila"],
       },
     ],
@@ -171,24 +172,24 @@ export const KNOWN_COMBOS: KnownCombo[] = [
   {
     id: "centurion-primera-with-stand-up",
     arquetipo: "Centur-Ion",
-    titulo: "Primera + Stand Up na mão: busca a Gargoyle II",
+    titulo: t("Primera + Stand Up na mão: busca a Gargoyle II"),
     mao: ["Centur-Ion Primera", "Stand Up Centur-Ion!"],
     passos: [
-      { card: "Centur-Ion Primera", acao: "Invocação-Normal. Ao ser Invocada: busca a Gargoyle II.", resultado: ["Centur-Ion Gargoyle II"] },
+      { card: "Centur-Ion Primera", acao: t("Invocação-Normal. Ao ser Invocada: busca a Gargoyle II."), resultado: ["Centur-Ion Gargoyle II"] },
       {
         card: "Stand Up Centur-Ion!",
-        acao: "Ativa; descarta 1 carta e coloca a Trudea do Deck como Armadilha Contínua.",
+        acao: t("Ativa; descarta 1 carta e coloca a Trudea do Deck como Armadilha Contínua."),
         resultado: ["Centur-Ion Trudea"],
       },
       {
         card: "Centur-Ion Gargoyle II",
-        acao: "Se Invoca da mão enviando a Trudea (face para cima) ao Cemitério; a Stand Up permite Sincro imediata.",
+        acao: t("Se Invoca da mão enviando a Trudea (face para cima) ao Cemitério; a Stand Up permite Sincro imediata."),
       },
       {
-        acao: "Invocação-Sincro: Auxila (Primera Nv4 Regulador + Gargoyle II Nv8). Ao ser Invocada: busca um card Centur-Ion.",
+        acao: t("Invocação-Sincro: Auxila (Primera Nv4 Regulador + Gargoyle II Nv8). Ao ser Invocada: busca um card Centur-Ion."),
         resultado: ["Centur-Ion Auxila"],
       },
-      { acao: "End Phase: a Auxila coloca a Primera ou a Trudea (do Cemitério) como Armadilha Contínua." },
+      { acao: t("End Phase: a Auxila coloca a Primera ou a Trudea (do Cemitério) como Armadilha Contínua.") },
     ],
     campoFinal: ["Centur-Ion Auxila", "Stand Up Centur-Ion!", "Centur-Ion Gargoyle II"],
     turnoOponente: CENTURION_OPP_TURN,

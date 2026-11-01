@@ -2,6 +2,7 @@ import { applyTags, TAGS } from "./tags";
 import type { Card } from "./types";
 import type { CombosCalculados } from "./motor";
 import { normalize } from "./search";
+import { t } from "../i18n";
 
 // Camada pública de marcações (dados/camada.json do repositório público Jam-Cards-YGO, o mesmo dos
 // instaladores): tags e ajustes de leitura revisados, sem textos de cartas. O app aplica a
@@ -81,9 +82,9 @@ const LOCAL_TAG_DEFS: TagDefinition[] = TAGS.map(({ id, label, group, hint }) =>
 
 export async function fetchOverlay(): Promise<Overlay> {
   const res = await fetch(OVERLAY_URL, { cache: "no-cache" });
-  if (!res.ok) throw new Error(`camada: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(t("camada: HTTP {0}", [res.status]));
   const overlay = (await res.json()) as Overlay;
-  if (overlay.formato !== SUPPORTED_FORMAT) throw new Error(`camada: formato ${overlay.formato} não suportado`);
+  if (overlay.formato !== SUPPORTED_FORMAT) throw new Error(t("camada: formato {0} não suportado", [overlay.formato]));
   return overlay;
 }
 

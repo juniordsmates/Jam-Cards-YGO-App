@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import ExternalLink from "./ExternalLink";
 import { GRUPOS, SITES, type SiteId } from "../data/referencias";
+import { t } from "../i18n";
 
 /** Link específico do lugar de onde a tela foi aberta (ex.: o deck usado numa linha) */
 export interface FonteLink {
@@ -41,8 +42,7 @@ const subscribe = (l: () => void) => {
 export function FontesButton({ sites = [], links = [], className = "" }: { sites?: SiteId[]; links?: FonteLink[]; className?: string }) {
   return (
     <button type="button" className={`link-btn fontes-btn ${className}`} onClick={() => openFontes(sites, links)}>
-      Fontes
-    </button>
+      {t("Fontes")}</button>
   );
 }
 
@@ -70,15 +70,15 @@ export function FontesDialog() {
     <div className="overlay fontes-overlay" onClick={closeFontes}>
       <div className="dialog fontes-dialog" role="dialog" aria-modal="true" aria-labelledby="fontes-title" onClick={(e) => e.stopPropagation()}>
         <div className="fontes-head">
-          <h2 id="fontes-title">Fontes</h2>
-          <button className="ghost-btn" onClick={closeFontes} aria-label="Fechar" autoFocus>
+          <h2 id="fontes-title">{t("Fontes")}</h2>
+          <button className="ghost-btn" onClick={closeFontes} aria-label={t("Fechar")} autoFocus>
             ✕
           </button>
         </div>
 
         {(ctx.links.length > 0 || here.length > 0) && (
           <section className="fontes-group fontes-here">
-            <h3>Usadas aqui</h3>
+            <h3>{t("Usadas aqui")}</h3>
             <ul>
               {ctx.links.map((l) => (
                 <li key={l.url}>

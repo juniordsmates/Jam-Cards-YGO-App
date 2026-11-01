@@ -1,4 +1,5 @@
 import { categoryOf, type Card } from "./types";
+import { t } from "../i18n";
 
 // Leitura estruturada do texto da carta, baseada na pontuação padrão da Konami (PSCT):
 //   "Condição: Custo/Alvo; Efeito."
@@ -18,16 +19,16 @@ export type EffectKind =
   | "ambientacao";
 
 export const EFFECT_KIND_LABELS: Record<EffectKind, string> = {
-  materiais: "Materiais",
-  invocacao: "Condição de invocação",
-  rapido: "Efeito Rápido",
-  gatilho: "Gatilho",
-  ignicao: "Ignição",
-  continuo: "Contínuo",
-  ativacao: "Ativação",
-  regra: "Regra",
-  restricao: "Restrição",
-  ambientacao: "Ambientação",
+  materiais: t("Materiais"),
+  invocacao: t("Condição de invocação"),
+  rapido: t("Efeito Rápido"),
+  gatilho: t("Gatilho"),
+  ignicao: t("Ignição"),
+  continuo: t("Contínuo"),
+  ativacao: t("Ativação"),
+  regra: t("Regra"),
+  restricao: t("Restrição"),
+  ambientacao: t("Ambientação"),
 };
 
 export type Zone = "Mão" | "Campo" | "Cemitério" | "Banido" | "Zona de Pêndulo";
@@ -70,11 +71,11 @@ const ACTIVATED: EffectKind[] = ["rapido", "gatilho", "ignicao", "ativacao"];
 const EXTRA_DECK = /^(fusion|synchro|xyz|link)/;
 
 const DURATIONS: [RegExp, string][] = [
-  [/until the end of (the|your) next turn|until the end of your opponent's next turn/i, "Até o fim do próximo turno"],
-  [/until the end of (this|the) turn/i, "Até o fim do turno"],
-  [/for the rest of (this|the) turn/i, "Pelo resto do turno"],
-  [/until the end phase/i, "Até a End Phase"],
-  [/until the end of the (battle phase|damage step)/i, "Até o fim da fase de batalha"],
+  [/until the end of (the|your) next turn|until the end of your opponent's next turn/i, t("Até o fim do próximo turno")],
+  [/until the end of (this|the) turn/i, t("Até o fim do turno")],
+  [/for the rest of (this|the) turn/i, t("Pelo resto do turno")],
+  [/until the end phase/i, t("Até a End Phase")],
+  [/until the end of the (battle phase|damage step)/i, t("Até o fim da fase de batalha")],
 ];
 
 /** Divide em frases sem quebrar nomes entre aspas que contenham ponto ("A.I. …") */

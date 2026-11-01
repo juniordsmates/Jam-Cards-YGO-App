@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Raridades resumidas em sigla + cor (o nome completo fica no title).
 // Cobre as raridades presentes na base da YGOPRODeck; nomes fora da lista viram sigla pelas iniciais.
 
@@ -81,5 +82,5 @@ export function rarityInfo(name: string | undefined): RarityInfo {
     .filter(Boolean)
     .map((w) => (/^\d+$/.test(w) ? w : w[0].toUpperCase()))
     .join("");
-  return { code: initials || "?", color: COLORS.common, name: raw || "Raridade desconhecida" };
+  return { code: initials || "?", color: COLORS.common, name: raw || t("Raridade desconhecida") };
 }

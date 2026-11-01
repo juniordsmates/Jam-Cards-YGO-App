@@ -44,6 +44,8 @@ await page.evaluate(
 const etapas = {
   menu: async () => {
     await menu();
+    // espera a animação de entrada do menu terminar
+    await page.waitForTimeout(1500);
     await foto("menu");
   },
   busca: async () => {

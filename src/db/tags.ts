@@ -1,5 +1,6 @@
 import { categoryOf, type Card } from "./types";
 import { exclusiveTo } from "./legality";
+import { t } from "../i18n";
 
 // Tags derivadas do texto em inglês (padronizado pela Konami, mais confiável que o pt).
 // Para criar uma tag nova: acrescente um item em TAGS. Para corrigir uma carta
@@ -63,9 +64,9 @@ export const TAGS: TagDef[] = [
   // ---------- Negação ----------
   {
     id: "negacao",
-    label: "Negação",
+    label: t("Negação"),
     group: "Negação",
-    hint: "Nega efeitos, ativações ou invocações (qualquer tipo de negação)",
+    hint: t("Nega efeitos, ativações ou invocações (qualquer tipo de negação)"),
     test: (ctx) =>
       negEffectActive.test(ctx.negText) ||
       negActivation.test(ctx.negText) ||
@@ -74,9 +75,9 @@ export const TAGS: TagDef[] = [
   },
   {
     id: "nega-efeito",
-    label: "Nega efeito",
+    label: t("Nega efeito"),
     group: "Negação",
-    hint: 'Nega efeitos de cartas ("negate its effects", "negate the effects of…")',
+    hint: t("Nega efeitos de cartas (\"negate its effects\", \"negate the effects of…\")"),
     test: (ctx) =>
       negEffectActive.test(ctx.negText) ||
       // forma passiva só quando afeta o oponente e não é desvantagem de invocação
@@ -84,23 +85,23 @@ export const TAGS: TagDef[] = [
   },
   {
     id: "nega-ativacao",
-    label: "Nega ativação",
+    label: t("Nega ativação"),
     group: "Negação",
-    hint: 'Nega a ativação de cartas ou efeitos ("negate the activation")',
+    hint: t("Nega a ativação de cartas ou efeitos (\"negate the activation\")"),
     test: (ctx) => negActivation.test(ctx.negText),
   },
   {
     id: "nega-invocacao",
-    label: "Nega invocação",
+    label: t("Nega invocação"),
     group: "Negação",
-    hint: 'Nega invocações ("negate the Summon")',
+    hint: t("Nega invocações (\"negate the Summon\")"),
     test: (ctx) => negSummon.test(ctx.negText),
   },
   {
     id: "omni-negate",
-    label: "Omni-negate",
+    label: t("Omni-negate"),
     group: "Negação",
-    hint: "Nega qualquer carta ou efeito ativado, sem restrição de tipo",
+    hint: t("Nega qualquer carta ou efeito ativado, sem restrição de tipo"),
     test: (ctx) =>
       anySentence(
         ctx,
@@ -112,70 +113,70 @@ export const TAGS: TagDef[] = [
   },
   {
     id: "inegavel",
-    label: "Não pode ser negado",
+    label: t("Não pode ser negado"),
     group: "Negação",
-    hint: 'Tem ativação ou efeito que "cannot be negated"',
+    hint: t("Tem ativação ou efeito que \"cannot be negated\""),
     test: (ctx) => /(cannot|can't) be negated/i.test(ctx.text),
   },
 
   // ---------- Comunidade ----------
   {
     id: "staple",
-    label: "Staple",
+    label: t("Staple"),
     group: "Comunidade",
-    hint: "Carta genérica usada em muitos decks (lista da YGOPRODeck)",
+    hint: t("Carta genérica usada em muitos decks (lista da YGOPRODeck)"),
     test: (ctx) => ctx.card.staple === true,
   },
   {
     id: "hand-trap",
-    label: "Hand trap",
+    label: t("Hand trap"),
     group: "Comunidade",
-    hint: "Monstro usado da mão, inclusive no turno do oponente",
+    hint: t("Monstro usado da mão, inclusive no turno do oponente"),
     test: (ctx) => ctx.monster && anySentence(ctx, (s) => HAND_COST.test(s) && OPPONENT_TIMING.test(s)),
   },
   {
     id: "quick-effect",
-    label: "Quick effect",
+    label: t("Quick effect"),
     group: "Comunidade",
-    hint: "Monstro com efeito rápido (pode ser ativado no turno do oponente)",
+    hint: t("Monstro com efeito rápido (pode ser ativado no turno do oponente)"),
     test: (ctx) => ctx.monster && /\(quick effect\)/i.test(ctx.text),
   },
   {
     id: "hopt",
-    label: "HOPT",
+    label: t("HOPT"),
     group: "Comunidade",
-    hint: 'Hard once per turn: "You can only use this effect of … once per turn"',
+    hint: t("Hard once per turn: \"You can only use this effect of … once per turn\""),
     test: (ctx) => /you can only (use|activate) (each|this|the|1)\b[^.]{0,80}?(once per turn|per turn)/i.test(ctx.text),
   },
   {
     id: "floodgate",
-    label: "Floodgate",
+    label: t("Floodgate"),
     group: "Restrição",
-    hint: "Restrição contínua que impede o oponente de invocar, ativar etc.",
+    hint: t("Restrição contínua que impede o oponente de invocar, ativar etc."),
     test: (ctx) => anySentence(ctx, (s) => FLOODGATE.test(s) && !TEMPORARY.test(s)),
   },
 
   // ---------- Remoção ----------
   {
     id: "destroi",
-    label: "Destrói",
+    label: t("Destrói"),
     group: "Remoção",
-    hint: "Destrói cartas (exceto a si mesma)",
+    hint: t("Destrói cartas (exceto a si mesma)"),
     test: (ctx) => /\bdestroy\b(?! this card)/i.test(ctx.text),
   },
   {
     id: "bane",
-    label: "Bane do oponente",
+    label: t("Bane do oponente"),
     group: "Remoção",
-    hint: "Bane cartas do campo, mão, cemitério ou Deck Adicional do oponente",
+    hint: t("Bane cartas do campo, mão, cemitério ou Deck Adicional do oponente"),
     test: (ctx) =>
       /\bbanish\b[^.;]{0,80}?(your opponent controls|on the field|your opponent's (hand|gy|field|extra deck|deck))|your opponent must banish/i.test(ctx.text),
   },
   {
     id: "devolve",
-    label: "Devolve à mão",
+    label: t("Devolve à mão"),
     group: "Remoção",
-    hint: "Devolve cartas do campo para a mão (bounce)",
+    hint: t("Devolve cartas do campo para a mão (bounce)"),
     test: (ctx) =>
       anySentence(
         ctx,
@@ -186,9 +187,9 @@ export const TAGS: TagDef[] = [
   },
   {
     id: "board-breaker",
-    label: "Board breaker",
+    label: t("Board breaker"),
     group: "Remoção",
-    hint: "Remove várias cartas do oponente de uma vez",
+    hint: t("Remove várias cartas do oponente de uma vez"),
     test: (ctx) =>
       /\b(destroy|banish|return|send|shuffle) (all|as many)\b[^.;]{0,60}?(your opponent controls|on the field|your opponent's field)|your opponent must (banish|send|destroy|shuffle)/i.test(ctx.text),
   },
@@ -196,91 +197,91 @@ export const TAGS: TagDef[] = [
   // ---------- Vantagem ----------
   {
     id: "busca",
-    label: "Busca no deck",
+    label: t("Busca no deck"),
     group: "Vantagem",
-    hint: "Adiciona cartas do Deck à mão (searcher)",
+    hint: t("Adiciona cartas do Deck à mão (searcher)"),
     test: (ctx) => /\badd\b[^.;]{0,100}?from your deck to your hand/i.test(ctx.text),
   },
   {
     id: "compra",
-    label: "Compra cartas",
+    label: t("Compra cartas"),
     group: "Vantagem",
-    hint: "Faz comprar cartas",
+    hint: t("Faz comprar cartas"),
     test: (ctx) => /\bdraw (1|2|3|4|5|one|two|three|cards equal)\b/i.test(ctx.text),
   },
   {
     id: "recursao",
-    label: "Recursão",
+    label: t("Recursão"),
     group: "Vantagem",
-    hint: "Recupera cartas do cemitério (para a mão ou o campo)",
+    hint: t("Recupera cartas do cemitério (para a mão ou o campo)"),
     test: (ctx) =>
       /\b(add|special summon)\b[^.;]{0,80}?from (your|either|either player's) (gy|graveyard)|\bfrom your (gy|graveyard) to your hand|\btarget\b[^.;]{0,60}?in (your|either|either player's) (gy|graveyard)[^.]{0,30}?; (special summon|add) (it|them|that)/i.test(ctx.text),
   },
   {
     id: "invoca-deck",
-    label: "Invoca do deck",
+    label: t("Invoca do deck"),
     group: "Vantagem",
-    hint: "Invoca por Invocação-Especial monstros do Deck",
+    hint: t("Invoca por Invocação-Especial monstros do Deck"),
     test: (ctx) => /\bspecial summon\b[^.;]{0,80}?from your deck\b/i.test(ctx.text),
   },
   // ---------- Ação ----------
   {
     id: "mill",
-    label: "Mill",
+    label: t("Mill"),
     group: "Ação",
-    hint: "Envia cartas do Deck para o Cemitério",
+    hint: t("Envia cartas do Deck para o Cemitério"),
     test: (ctx) => /\bsend\b[^.;]{0,80}?from (your|either player's|their) deck to the (gy|graveyard)/i.test(ctx.text),
   },
   {
     id: "burn",
-    label: "Burn",
+    label: t("Burn"),
     group: "Ação",
-    hint: "Causa dano direto aos PV do oponente por efeito",
+    hint: t("Causa dano direto aos PV do oponente por efeito"),
     test: (ctx) => /\binflict\b[^.;]{0,60}?damage to (your opponent|each player|them)|\binflict \d+ damage\b/i.test(ctx.text),
   },
   {
     id: "ganho-pv",
-    label: "Ganho de PV",
+    label: t("Ganho de PV"),
     group: "Ação",
-    hint: "Faz você ganhar Pontos de Vida",
+    hint: t("Faz você ganhar Pontos de Vida"),
     test: (ctx) => /\b(you )?gain\b[^.;]{0,40}?\b(lp|life points)\b/i.test(ctx.text),
   },
   {
     id: "fichas",
-    label: "Gera fichas",
+    label: t("Gera fichas"),
     group: "Ação",
-    hint: "Invoca Fichas (Tokens)",
+    hint: t("Invoca Fichas (Tokens)"),
     test: (ctx) => /\bspecial summon\b[^.;]{0,80}?\btokens?\b/i.test(ctx.text),
   },
   {
     id: "altera-atk",
-    label: "Altera ATK/DEF",
+    label: t("Altera ATK/DEF"),
     group: "Ação",
-    hint: "Aumenta, reduz ou muda ATK/DEF",
+    hint: t("Aumenta, reduz ou muda ATK/DEF"),
     test: (ctx) => /\b(gains?|loses?)\b[^.;]{0,30}?\b(atk|def)\b|\b(atk|def)( and def)? (becomes?|is halved|is doubled)|\bchange (its|their|that monster's) (atk|def)/i.test(ctx.text),
   },
   {
     id: "rouba-controle",
-    label: "Rouba controle",
+    label: t("Rouba controle"),
     group: "Ação",
-    hint: "Toma o controle de monstros do oponente",
+    hint: t("Toma o controle de monstros do oponente"),
     test: (ctx) => /\b(take|gain) control of\b/i.test(ctx.text),
   },
 
   // ---------- Remoção (recursos do oponente) ----------
   {
     id: "ataque-mao",
-    label: "Ataque à mão",
+    label: t("Ataque à mão"),
     group: "Remoção",
-    hint: "Faz o oponente descartar, revela ou mexe na mão dele",
+    hint: t("Faz o oponente descartar, revela ou mexe na mão dele"),
     test: (ctx) =>
       /your opponent (discards|must discard|reveals)|discard[^.;]{0,40}?from your opponent's hand|look at your opponent's hand|(card|cards) in your opponent's hand/i.test(ctx.text),
   },
   {
     id: "ataque-cemiterio",
-    label: "Ataque ao cemitério",
+    label: t("Ataque ao cemitério"),
     group: "Remoção",
-    hint: "Bane ou impede cartas no Cemitério do oponente",
+    hint: t("Bane ou impede cartas no Cemitério do oponente"),
     test: (ctx) =>
       /\bbanish\b[^.;]{0,60}?(from|in) (your opponent's|either|any|either player's) (gy|graveyard)|\btarget\b[^.;]{0,60}?in (your opponent's|either|any|either player's) (gy|graveyard)[^.;]{0,10}; banish (it|them|that)|cards? in your opponent's (gy|graveyard) cannot|send it to the (gy|graveyard), banish it instead/i.test(ctx.text),
   },
@@ -288,25 +289,25 @@ export const TAGS: TagDef[] = [
   // ---------- Defesa ----------
   {
     id: "protecao",
-    label: "Proteção",
+    label: t("Proteção"),
     group: "Defesa",
-    hint: "Protege cartas de destruição, de alvo ou de efeitos",
+    hint: t("Protege cartas de destruição, de alvo ou de efeitos"),
     test: (ctx) =>
       /cannot be (destroyed|targeted|banished|tributed)|unaffected by|cannot target (this card|it|them|cards you control)/i.test(ctx.negText),
   },
   {
     id: "efeito-cemiterio",
-    label: "Efeito no cemitério",
+    label: t("Efeito no cemitério"),
     group: "Defesa",
-    hint: "Tem efeito que funciona a partir do Cemitério ou ao ser enviado para ele",
+    hint: t("Tem efeito que funciona a partir do Cemitério ou ao ser enviado para ele"),
     test: (ctx) =>
       /this card (is )?in your (gy|graveyard)|banish this card from your (gy|graveyard)|this card from your (gy|graveyard)|if this card is sent to the (gy|graveyard)|if this card in your (gy|graveyard)/i.test(ctx.text),
   },
   {
     id: "armadilha-batalha",
-    label: "Armadilha de batalha",
+    label: t("Armadilha de batalha"),
     group: "Defesa",
-    hint: "Armadilha usada na Fase de Batalha (ex.: contra ataques)",
+    hint: t("Armadilha usada na Fase de Batalha (ex.: contra ataques)"),
     test: (ctx) =>
       ctx.card.frame === "trap" && /declares an attack|attack declaration|during the battle phase|during damage calculation|attacking monster/i.test(ctx.text),
   },
@@ -314,9 +315,9 @@ export const TAGS: TagDef[] = [
   // ---------- Restrição ----------
   {
     id: "restricao-propria",
-    label: "Restrição a você",
+    label: t("Restrição a você"),
     group: "Restrição",
-    hint: 'Impõe uma restrição a quem usa a carta (ex.: "você não pode Invocar, exceto…")',
+    hint: t("Impõe uma restrição a quem usa a carta (ex.: \"você não pode Invocar, exceto…\")"),
     test: (ctx) =>
       /\byou cannot (special summon|normal summon|summon|activate|conduct|declare|set)\b|\byou can only (special summon|activate) (once|monsters|cards)\b/i.test(ctx.text),
   },
@@ -324,9 +325,9 @@ export const TAGS: TagDef[] = [
   // ---------- Comunidade (termos de estratégia) ----------
   {
     id: "starter",
-    label: "Starter",
+    label: t("Starter"),
     group: "Comunidade",
-    hint: "Provável início de combo: busca ou invoca do Deck a partir da mão, da Invocação-Normal ou como Magia",
+    hint: t("Provável início de combo: busca ou invoca do Deck a partir da mão, da Invocação-Normal ou como Magia"),
     test: (ctx) => {
       const getsFromDeck = (s: string) => /\b(add|special summon)\b[^.;]{0,100}?from your deck\b/i.test(s);
       if (ctx.card.frame === "spell") return ctx.card.race !== "Continuous" && ctx.card.race !== "Field" && getsFromDeck(ctx.text);
@@ -336,24 +337,24 @@ export const TAGS: TagDef[] = [
   },
   {
     id: "extender",
-    label: "Extender",
+    label: t("Extender"),
     group: "Comunidade",
-    hint: "Monstro que se Invoca por Invocação-Especial da mão ou do Cemitério, dando mais material ao combo",
+    hint: t("Monstro que se Invoca por Invocação-Especial da mão ou do Cemitério, dando mais material ao combo"),
     test: (ctx) =>
       ctx.monster && /special summon this card( \((from your|in) [^)]*\)| from your (hand|gy|graveyard))/i.test(ctx.text),
   },
   {
     id: "generica",
-    label: "Genérica",
+    label: t("Genérica"),
     group: "Comunidade",
-    hint: "Não pertence a arquétipo nem cita outras cartas: cabe em qualquer deck",
+    hint: t("Não pertence a arquétipo nem cita outras cartas: cabe em qualquer deck"),
     test: (ctx) => !ctx.card.archetype && ctx.references.length === 0 && !ctx.card.frame.startsWith("normal"),
   },
   {
     id: "suporte-arquetipo",
-    label: "Suporte a arquétipo",
+    label: t("Suporte a arquétipo"),
     group: "Comunidade",
-    hint: "Cita outro arquétipo no texto, sem pertencer a ele",
+    hint: t("Cita outro arquétipo no texto, sem pertencer a ele"),
     test: (ctx) =>
       !!ctx.extra.archetypes &&
       ctx.references.some((r) => ctx.extra.archetypes!.has(r.toLowerCase()) && r.toLowerCase() !== ctx.card.archetype?.toLowerCase()),
@@ -362,30 +363,30 @@ export const TAGS: TagDef[] = [
   // ---------- Metagame ----------
   {
     id: "meta-ocg-atual",
-    label: "Meta OCG atual",
+    label: t("Meta OCG atual"),
     group: "Metagame",
-    hint: "O arquétipo teve 2%+ dos decks colocados em torneios do OCG no último trimestre (Road of the King)",
+    hint: t("O arquétipo teve 2%+ dos decks colocados em torneios do OCG no último trimestre (Road of the King)"),
     test: (ctx) => !!ctx.card.archetype && !!ctx.extra.metaAtual?.has(ctx.card.archetype),
   },
   {
     id: "exclusiva-tcg",
-    label: "Exclusiva TCG",
+    label: t("Exclusiva TCG"),
     group: "Formato",
-    hint: "Lançada só no TCG (Ocidente) até agora",
+    hint: t("Lançada só no TCG (Ocidente) até agora"),
     test: (ctx) => exclusiveTo(ctx.card) === "TCG",
   },
   {
     id: "exclusiva-ocg",
-    label: "Exclusiva OCG",
+    label: t("Exclusiva OCG"),
     group: "Formato",
-    hint: "Lançada só no OCG (Ásia) até agora",
+    hint: t("Lançada só no OCG (Ásia) até agora"),
     test: (ctx) => exclusiveTo(ctx.card) === "OCG",
   },
   {
     id: "meta-ocg-recente",
-    label: "Meta OCG (2 anos)",
+    label: t("Meta OCG (2 anos)"),
     group: "Metagame",
-    hint: "O arquétipo teve 2%+ dos decks colocados no OCG em algum trimestre dos últimos 2 anos (Road of the King)",
+    hint: t("O arquétipo teve 2%+ dos decks colocados no OCG em algum trimestre dos últimos 2 anos (Road of the King)"),
     test: (ctx) => !!ctx.card.archetype && !!ctx.extra.metaRecente?.has(ctx.card.archetype),
   },
 ];

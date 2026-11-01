@@ -5,6 +5,7 @@ import { CARTA_QUALQUER, METODO_LABEL, moveText, origemText, respostasDaLinha, s
 import { openRespostas } from "./RespostasDialog";
 import { ordenarRespostas, TIPOS, useContextoRespostas } from "../db/respostas";
 import { bilingualName, displayName, type Card } from "../db/types";
+import { t as tr } from "../i18n";
 
 type Hover = (card: Card | null, el?: HTMLElement) => void;
 
@@ -27,8 +28,8 @@ type Props = {
 
 /** Nome da carta em português, com o popup da carta ao passar o mouse (id 0 = Ficha) */
 export function Name({ id, byId, onHover }: { id: number; byId: Map<number, Card>; onHover: Hover }) {
-  if (id === 0) return <span className="kc-card">Ficha</span>;
-  if (id === CARTA_QUALQUER) return <span className="kc-card">carta qualquer</span>;
+  if (id === 0) return <span className="kc-card">{tr("Ficha")}</span>;
+  if (id === CARTA_QUALQUER) return <span className="kc-card">{tr("carta qualquer")}</span>;
   const card = byId.get(id);
   return (
     <span
@@ -49,13 +50,13 @@ export function StepText({ p, byId, onHover }: { p: Passo; byId: Map<number, Car
   const N = (id: number) => <Name key={id} id={id} byId={byId} onHover={onHover} />;
   switch (p.t) {
     case "normal":
-      return <>Invocação-Normal de {N(p.c)}</>;
+      return <>{tr("Invocação-Normal de")}{" "}{N(p.c)}</>;
     case "baixa":
-      return <>Baixa {N(p.c)}</>;
+      return <>{tr("Baixa")}{" "}{N(p.c)}</>;
     case "ativa":
       return (
         <>
-          Ativa {N(p.c)}
+          {tr("Ativa")}{" "}{N(p.c)}
           {p.de === "mao" || p.de === "cemiterio" || p.de === "banido" ? ` ${origemText(p.de)}` : ""}
         </>
       );
@@ -63,14 +64,14 @@ export function StepText({ p, byId, onHover }: { p: Passo; byId: Map<number, Car
       if (p.m)
         return (
           <>
-            {METODO_LABEL[p.m]} de {N(p.c)}
-            {p.mat?.length ? <> usando {join(p.mat.map((m, i) => <Name key={`${m}-${i}`} id={m} byId={byId} onHover={onHover} />), " + ")}</> : null}
+            {tr("{0} de", [METODO_LABEL[p.m]])}{" "}{N(p.c)}
+            {p.mat?.length ? <> {" "}{tr("usando")}{" "}{join(p.mat.map((m, i) => <Name key={`${m}-${i}`} id={m} byId={byId} onHover={onHover} />), " + ")}</> : null}
           </>
         );
       return (
         <>
-          Invocação-Especial de {N(p.c)} {origemText(p.de)}
-          {p.por === p.c ? " (pelo próprio efeito)" : ""}
+          {tr("Invocação-Especial de")}{" "}{N(p.c)} {origemText(p.de)}
+          {p.por === p.c ? tr(" (pelo próprio efeito)") : ""}
         </>
       );
     case "move": {
@@ -82,7 +83,7 @@ export function StepText({ p, byId, onHover }: { p: Passo; byId: Map<number, Car
       );
     }
     case "compra":
-      return <>Compra {join(p.c.map((c, i) => <Name key={`${c}-${i}`} id={c} byId={byId} onHover={onHover} />), ", ")}</>;
+      return <>{tr("Compra")}{" "}{join(p.c.map((c, i) => <Name key={`${c}-${i}`} id={c} byId={byId} onHover={onHover} />), ", ")}</>;
     case "texto":
       return (
         <>
@@ -122,7 +123,7 @@ const MAX_RESPOSTAS = 5;
  * Cartas do oponente que poderiam ser ativadas neste ponto, na ordem de prioridade (mais usadas em
  * torneios, hand trap e staple, hand trap, staple, outras), com o que cada uma faz.
  */
-export function Respostas({ ids, byId, onHover, rotulo = "Pode ser respondido por", max = MAX_RESPOSTAS }: { ids: number[]; byId: Map<number, Card>; onHover: Hover; rotulo?: string; max?: number }) {
+export function Respostas({ ids, byId, onHover, rotulo = tr("Pode ser respondido por"), max = MAX_RESPOSTAS }: { ids: number[]; byId: Map<number, Card>; onHover: Hover; rotulo?: string; max?: number }) {
   const ctx = useContextoRespostas(byId);
   if (!ids.length) return null;
   const ordenadas = ordenarRespostas(ids, ctx);
@@ -140,7 +141,7 @@ export function Respostas({ ids, byId, onHover, rotulo = "Pode ser respondido po
       {ordenadas.length > max && (
         <button
           className="link-btn vc-resp-mais"
-          title={`Ver as ${ordenadas.length} respostas possíveis`}
+          title={tr("Ver as {0} respostas possíveis", [ordenadas.length])}
           onClick={(e) => {
             e.preventDefault();
             openRespostas({ titulo: "Todas as respostas possíveis", ids: ordenadas.map((r) => r.id), byId });
@@ -154,7 +155,7 @@ export function Respostas({ ids, byId, onHover, rotulo = "Pode ser respondido po
 }
 
 /** Linhas de combo jogadas pelo motor de regras do EDOPro para a mão escolhida */
-export default function VerifiedCombos({ title = "Combos calculados", lines, highlight = [], combos, byId, known, onHover, respostas = false, legal = () => true, onTestar }: Props) {
+export default function VerifiedCombos({ title = tr("Combos calculados"), lines, highlight = [], combos, byId, known, onHover, respostas = false, legal = () => true, onTestar }: Props) {
   if (!lines.length) return null;
   const hits = new Set(highlight);
   return (
@@ -179,24 +180,22 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
           <details key={`${l.deck}-${idx}`} className="kc vc" open={idx === 0}>
             <summary>
               <span className="kc-title">
-                {top.length ? join(top.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " · ") : "Campo de Magias e Armadilhas"}
+                {top.length ? join(top.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " · ") : tr("Campo de Magias e Armadilhas")}
                 {l.campo.monstros.length > 3 && ` +${l.campo.monstros.length - 3}`}
               </span>
               <span className="kc-hand">
-                Mão: {join(l.mao.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ")}
-                {l.qualquer ? ` + ${l.qualquer} carta qualquer (para descarte)` : ""}
-                {l.ramo?.length ? <> · adicionando {join(l.ramo.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ")}</> : null}
+                {tr("Mão:")}{" "}{join(l.mao.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ")}
+                {l.qualquer ? tr(" + {0} carta qualquer (para descarte)", [l.qualquer]) : ""}
+                {l.ramo?.length ? <> {" "}{tr("· adicionando")}{" "}{join(l.ramo.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ")}</> : null}
               </span>
               {firstHit >= 0 && (
                 <span className="vc-reach">
-                  Chega em {join(highlight.filter((id) => l.passos.some((p) => stepHas(p, new Set([id])))).map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), ", ")} no passo{" "}
-                  {firstHit + 1}; os passos seguintes continuam a partir dela.
-                </span>
+                  {tr("Chega em")}{" "}{join(highlight.filter((id) => l.passos.some((p) => stepHas(p, new Set([id])))).map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), ", ")} {" "}{tr("no passo")}{" "}
+                  {tr("{0}; os passos seguintes continuam a partir dela.", [firstHit + 1])}</span>
               )}
               <span className="vc-acoes">
-                <span className="vc-badge" title="Linha jogada pelo App com as regras oficiais das cartas: custos, condições, travas e limites aplicados">
-                  Calculado com o App
-                </span>
+                <span className="vc-badge" title={tr("Linha jogada pelo App com as regras oficiais das cartas: custos, condições, travas e limites aplicados")}>
+                  {tr("Calculado com o App")}</span>
                 {onTestar && (
                   <button
                     className="ghost-btn vc-testar"
@@ -206,23 +205,21 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
                       e.stopPropagation();
                       onTestar(l);
                     }}
-                    title="Cria um deck temporário com as cartas desta linha e abre o Teste de Jogo com o Executar combo"
+                    title={tr("Cria um deck temporário com as cartas desta linha e abre o Teste de Jogo com o Executar combo")}
                   >
-                    ▶ Teste de Jogo
-                  </button>
+                    {tr("▶ Teste de Jogo")}</button>
                 )}
               </span>
             </summary>
 
             {community && (
               <p className="vc-community">
-                Confirma a linha da comunidade “{community.titulo}”.
-              </p>
+                {tr("Confirma a linha da comunidade “{0}”.", [community.titulo])}</p>
             )}
 
             {sempre.length > 0 && (
               <p className="vc-resp-sempre">
-                <Respostas ids={sempre} byId={byId} onHover={onHover} rotulo="Em quase toda a linha, o oponente pode ativar" />
+                <Respostas ids={sempre} byId={byId} onHover={onHover} rotulo={tr("Em quase toda a linha, o oponente pode ativar")} />
               </p>
             )}
 
@@ -246,7 +243,7 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
             </ol>
 
             <div className="kc-board">
-              <span className="field-label">Campo final</span>
+              <span className="field-label">{tr("Campo final")}</span>
               <span className="kc-board-cards">
                 {l.campo.monstros.map((id, i) => (
                   <Name key={`m${id}-${i}`} id={id} byId={byId} onHover={onHover} />
@@ -254,14 +251,14 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
                 {l.campo.magias.map(([id, set], i) => (
                   <span key={`s${id}-${i}`} className="vc-spell">
                     <Name id={id} byId={byId} onHover={onHover} />
-                    {set && <small> (baixada)</small>}
+                    {set && <small> {" "}{tr("(baixada)")}</small>}
                   </span>
                 ))}
               </span>
             </div>
             {l.campo.mao.length > 0 && (
               <div className="kc-board">
-                <span className="field-label">Na mão</span>
+                <span className="field-label">{tr("Na mão")}</span>
                 <span className="kc-board-cards">
                   {l.campo.mao.map((id, i) => (
                     <Name key={`h${id}-${i}`} id={id} byId={byId} onHover={onHover} />
@@ -270,9 +267,8 @@ export default function VerifiedCombos({ title = "Combos calculados", lines, hig
               </div>
             )}
             <p className="tags-note">
-              Deck {deck.nome}
-              {deck.evento && ` (${deck.evento})`}. Jogado pelo App no primeiro turno, com o oponente passando; vale em todo formato
-              em que as cartas da linha existem e não são proibidas.{" "}
+              {tr("Deck {0}", [deck.nome])}
+              {tr("{0}. Jogado pelo App no primeiro turno, com o oponente passando; vale em todo formato em que as cartas da linha existem e não são proibidas.", [deck.evento && ` (${deck.evento})`])}{" "}
               <FontesButton
                 sites={["ygoprodeck", "project-ignis"]}
                 links={[

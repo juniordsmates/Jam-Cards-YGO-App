@@ -3,6 +3,7 @@ import { RESPOSTAS } from "../data/respostas";
 import { analisar, outroLado, type Analise, type Evento, type Indicacao, type Regra, type Situacao } from "./indicacoes";
 import type { IndiceRespostas } from "./respostas";
 import { categoryOf, type Card } from "./types";
+import { t } from "../i18n";
 
 // Indicações de resposta do Teste Avançado: para cada ação, o que o outro lado pode fazer.
 //   1. "Na mão/campo do oponente": as cartas que ele tem de verdade (pelas regras ou pelo texto)
@@ -59,12 +60,12 @@ const ordem = (a: ItemIndicacao, b: ItemIndicacao) => Number(!!a.impedida) - Num
 
 /** A regra vale para a carta onde o respondente (lado) a tem? */
 function lugarDaRegra(r: Regra, onde: CartaDoLado["onde"], s: Situacao, lado: Evento["lado"]): string | undefined {
-  if (r.origem === "campo") return onde === "campo" ? undefined : "precisa estar virada para cima no campo";
-  if (r.origem === "mao") return onde === "mao" ? undefined : "funciona da mão";
-  if (r.origem === "baixada") return onde === "baixada" ? undefined : "precisa estar baixada no campo";
+  if (r.origem === "campo") return onde === "campo" ? undefined : t("precisa estar virada para cima no campo");
+  if (r.origem === "mao") return onde === "mao" ? undefined : t("funciona da mão");
+  if (r.origem === "baixada") return onde === "baixada" ? undefined : t("precisa estar baixada no campo");
   // mão ou baixada: Magia Rápida da mão só no próprio turno
-  if (onde === "campo") return "precisa estar na mão ou baixada";
-  if (r.tipo === "magia-rapida" && onde === "mao" && s.turno !== lado) return "Magia Rápida: no turno do oponente, só baixada";
+  if (onde === "campo") return t("precisa estar na mão ou baixada");
+  if (r.tipo === "magia-rapida" && onde === "mao" && s.turno !== lado) return t("Magia Rápida: no turno do oponente, só baixada");
   return undefined;
 }
 
@@ -95,17 +96,17 @@ export function indicar(ev: Evento, s: Situacao, respondente: CartaDoLado[], ctx
       continue;
     }
     if (base.motor) {
-      noJogo.push({ ...base, motivo: `o motor de regras confirmou esta resposta em ${base.motor} ${base.motor === 1 ? "linha" : "linhas"}`, fonte: "motor" });
+      noJogo.push({ ...base, motivo: t("o motor de regras confirmou esta resposta em {0} {1}", [base.motor, base.motor === 1 ? t("linha") : t("linhas")]), fonte: "motor" });
       continue;
     }
     // sem regra: pelo texto e pelos scripts (o jogador confere)
     const tipos = ctx.respondedores?.[c.id];
     if (c.onde === "mao" && tipos?.some((t) => INTERROMPE.has(t))) {
-      noJogo.push({ ...base, motivo: RESPOSTAS[c.card.name] ?? "ativável da mão no turno do oponente", condicao: "confira se responde a esta ação", fonte: "scripts" });
+      noJogo.push({ ...base, motivo: RESPOSTAS[c.card.name] ?? t("ativável da mão no turno do oponente"), condicao: t("confira se responde a esta ação"), fonte: "scripts" });
     } else if (c.onde === "baixada" && (categoryOf(c.card) === "trap" || c.card.race === "Quick-Play")) {
-      noJogo.push({ ...base, motivo: "carta baixada: pode ser ativada em resposta", condicao: "confira o texto", fonte: "texto" });
+      noJogo.push({ ...base, motivo: t("carta baixada: pode ser ativada em resposta"), condicao: t("confira o texto"), fonte: "texto" });
     } else if (c.onde === "campo" && c.card.tags?.includes("quick-effect") && c.card.tags.some((t) => ["negacao", "destroi", "bane", "devolve"].includes(t))) {
-      noJogo.push({ ...base, motivo: "efeito rápido no campo que nega ou remove cartas", condicao: "confira o texto", fonte: "texto" });
+      noJogo.push({ ...base, motivo: t("efeito rápido no campo que nega ou remove cartas"), condicao: t("confira o texto"), fonte: "texto" });
     }
   }
   noJogo.sort(ordem);
@@ -129,7 +130,7 @@ export function indicar(ev: Evento, s: Situacao, respondente: CartaDoLado[], ctx
         card,
         uso: usoDe(ctx, id),
         motor: n,
-        motivo: `${RESPOSTAS[card.name] ?? "responde aqui"} (o motor de regras confirmou em ${n} ${n === 1 ? "linha" : "linhas"})`,
+        motivo: t("{0} (o motor de regras confirmou em {1} {2})", [RESPOSTAS[card.name] ?? t("responde aqui"), n, n === 1 ? t("linha") : t("linhas")]),
         fonte: "motor",
       });
   }
@@ -143,7 +144,7 @@ export function indicar(ev: Evento, s: Situacao, respondente: CartaDoLado[], ctx
       const uso = usoDe(ctx, id);
       const card = ctx.byId.get(id);
       if (uso < USO_OUTRAS || !card || REGRA_POR_NOME.has(card.name) || !ctx.legal(card)) continue;
-      outras.push({ id, card, uso, motivo: RESPOSTAS[card.name] ?? "ativável da mão no turno do oponente", condicao: "confira se responde a esta ação", fonte: "scripts" });
+      outras.push({ id, card, uso, motivo: RESPOSTAS[card.name] ?? t("ativável da mão no turno do oponente"), condicao: t("confira se responde a esta ação"), fonte: "scripts" });
     }
     outras.sort(ordem);
   }

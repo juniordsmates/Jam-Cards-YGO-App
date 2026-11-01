@@ -3,6 +3,7 @@ import { BAN_LABELS } from "../db/labels";
 import type { GameFormat } from "../db/legality";
 import type { Card } from "../db/types";
 import "./selos.css";
+import { t } from "../i18n";
 
 /** Classificação por extenso (painel da carta) */
 export function PapeisDaCarta({ card }: { card: Card }) {
@@ -30,8 +31,8 @@ export default function CardSelos({ card, formato }: { card: Card; formato: Game
   return (
     <>
       {ban && (
-        <span className={`selo-ban ban-${ban}`} title={ban === "fora" ? `Não lançada no ${formato}` : `${BAN_LABELS[ban]} no ${formato}`}>
-          {ban === "fora" ? "Não lançada" : BAN_LABELS[ban]}
+        <span className={`selo-ban ban-${ban}`} title={ban === "fora" ? t("Não lançada no {0}", [formato]) : t("{0} no {1}", [BAN_LABELS[ban], formato])}>
+          {ban === "fora" ? t("Não lançada") : BAN_LABELS[ban]}
         </span>
       )}
       {papeis.length > 0 && (

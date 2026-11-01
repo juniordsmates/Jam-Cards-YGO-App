@@ -10,20 +10,21 @@ import { checkForUpdate, initCardDb, useCardDb, useRelationIndex } from "../db/c
 import { EMPTY_FILTERS, searchCards, type Filters, type SortKey } from "../db/search";
 import type { Card } from "../db/types";
 import "./card-search.css";
+import { t, LOCALE } from "../i18n";
 
 const PAGE = 60;
 
 const SORTS: { value: SortKey; label: string }[] = [
-  { value: "relevance", label: "Relevância" },
-  { value: "name", label: "Nome" },
-  { value: "atk", label: "Maior ATK" },
-  { value: "def", label: "Maior DEF" },
-  { value: "level", label: "Maior nível" },
-  { value: "new", label: "Mais recentes" },
-  { value: "popular", label: "Mais populares" },
+  { value: "relevance", label: t("Relevância") },
+  { value: "name", label: t("Nome") },
+  { value: "atk", label: t("Maior ATK") },
+  { value: "def", label: t("Maior DEF") },
+  { value: "level", label: t("Maior nível") },
+  { value: "new", label: t("Mais recentes") },
+  { value: "popular", label: t("Mais populares") },
 ];
 
-const fmt = (n: number) => n.toLocaleString("pt-BR");
+const fmt = (n: number) => n.toLocaleString(LOCALE);
 
 /** `onCombos`: abre a tela de combos (com a carta na mão, se vier do painel) */
 export default function CardSearch({ onBack, onCombos }: { onBack: () => void; onCombos: (card?: Card) => void }) {
@@ -202,14 +203,13 @@ export default function CardSearch({ onBack, onCombos }: { onBack: () => void; o
     <span className="db-status">
       {db.updating ? (
         <>
-          <span className="spinner small" /> {db.step ?? "Verificando atualizações…"}
+          <span className="spinner small" /> {db.step ?? t("Verificando atualizações…")}
         </>
       ) : db.meta ? (
         <>
-          {fmt(db.cards.length)} cartas · base v{db.meta.version}
-          <button className="link-btn" onClick={() => void checkForUpdate()} title="Procurar nova versão da base">
-            Atualizar
-          </button>
+          {t("{0} cartas · base v{1}", [fmt(db.cards.length), db.meta.version])}
+          <button className="link-btn" onClick={() => void checkForUpdate()} title={t("Procurar nova versão da base")}>
+            {t("Atualizar")}</button>
         </>
       ) : null}
     </span>
@@ -217,15 +217,14 @@ export default function CardSearch({ onBack, onCombos }: { onBack: () => void; o
 
   return (
     <ScreenShell
-      title="Buscar Carta"
+      title={t("Buscar Carta")}
       accent="cyan"
       onBack={onBack}
       actions={
         <span className="search-actions">
           {status}
-          <button className="ghost-btn combos-shortcut" onClick={() => onCombos()} title="Abrir a tela de combos">
-            Combos
-          </button>
+          <button className="ghost-btn combos-shortcut" onClick={() => onCombos()} title={t("Abrir a tela de combos")}>
+            {t("Combos")}</button>
         </span>
       }
       plain
@@ -234,18 +233,17 @@ export default function CardSearch({ onBack, onCombos }: { onBack: () => void; o
         <div className="db-loading">
           {db.status === "error" ? (
             <>
-              <p className="db-error">Não foi possível carregar a base de cartas.</p>
+              <p className="db-error">{t("Não foi possível carregar a base de cartas.")}</p>
               <code>{db.error}</code>
               <button className="ghost-btn" onClick={() => void initCardDb()}>
-                Tentar novamente
-              </button>
+                {t("Tentar novamente")}</button>
             </>
           ) : (
             <>
               <span className="spinner" />
-              <p>{db.step ?? "Carregando base de cartas…"}</p>
+              <p>{db.step ?? t("Carregando base de cartas…")}</p>
               {db.status === "downloading" && (
-                <small>Primeiro acesso: a base completa é baixada uma vez e fica salva no dispositivo.</small>
+                <small>{t("Primeiro acesso: a base completa é baixada uma vez e fica salva no dispositivo.")}</small>
               )}
             </>
           )}
@@ -254,13 +252,11 @@ export default function CardSearch({ onBack, onCombos }: { onBack: () => void; o
         <div className={`search ${selected ? "has-detail" : ""}`}>
           <div className="left-col">
             {selected && (
-              <div className="left-tabs" role="tablist" aria-label="Coluna da esquerda">
+              <div className="left-tabs" role="tablist" aria-label={t("Coluna da esquerda")}>
                 <button role="tab" aria-selected={leftTab === "carta"} className={leftTab === "carta" ? "active" : ""} onClick={() => setLeftTab("carta")}>
-                  Carta
-                </button>
+                  {t("Carta")}</button>
                 <button role="tab" aria-selected={leftTab === "filtros"} className={leftTab === "filtros" ? "active" : ""} onClick={() => setLeftTab("filtros")}>
-                  Filtros
-                </button>
+                  {t("Filtros")}</button>
               </div>
             )}
             {selected && leftTab === "carta" ? (
@@ -315,20 +311,19 @@ export default function CardSearch({ onBack, onCombos }: { onBack: () => void; o
                 <input
                   ref={inputRef}
                   type="search"
-                  placeholder="Nome da carta (português ou inglês)"
+                  placeholder={t("Nome da carta (português ou inglês)")}
                   value={filters.text}
                   onChange={(e) => patch({ text: e.target.value })}
                 />
               </label>
               <label className="check">
                 <input type="checkbox" checked={filters.inDesc} onChange={(e) => patch({ inDesc: e.target.checked })} />
-                Buscar no texto
-              </label>
+                {t("Buscar no texto")}</label>
               <select
                 className="sort"
                 value={filters.sort}
                 onChange={(e) => patch({ sort: e.target.value as SortKey })}
-                aria-label="Ordenar"
+                aria-label={t("Ordenar")}
               >
                 {SORTS.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -339,8 +334,8 @@ export default function CardSearch({ onBack, onCombos }: { onBack: () => void; o
             </div>
 
             <p className="results-count">
-              {fmt(results.length)} {results.length === 1 ? "carta encontrada" : "cartas encontradas"}
-              {db.error && <span className="db-warning"> · Falha ao atualizar: {db.error}</span>}
+              {fmt(results.length)} {results.length === 1 ? t("carta encontrada") : t("cartas encontradas")}
+              {db.error && <span className="db-warning"> {" "}{t("· Falha ao atualizar: {0}", [db.error])}</span>}
             </p>
 
             <ActiveFilters filters={filters} tagDefs={db.tagDefs} onChange={patch} onClearAll={() => setFilters({ ...EMPTY_FILTERS, sort: filters.sort })} />
@@ -348,14 +343,13 @@ export default function CardSearch({ onBack, onCombos }: { onBack: () => void; o
             <div className="grid" ref={gridRef} onScroll={hover ? hideHover : undefined}>
               {pinned && !results.some((c) => c.id === pinned.id) && (
                 <div className="pinned-slot">
-                  <span className="pinned-label" title="Aberta no painel; não faz parte da lista atual">
-                    Aberta no painel
-                  </span>
+                  <span className="pinned-label" title={t("Aberta no painel; não faz parte da lista atual")}>
+                    {t("Aberta no painel")}</span>
                   <CardTile card={pinned} selected={pinned.id === selected?.id} onSelect={select} onHover={onHover} />
                 </div>
               )}
               {results.length === 0 ? (
-                <p className="empty">Nenhuma carta corresponde aos filtros.</p>
+                <p className="empty">{t("Nenhuma carta corresponde aos filtros.")}</p>
               ) : (
                 results
                   .slice(0, limit)

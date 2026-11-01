@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from "react";
 import { isDesktop } from "../platform";
+import { t } from "../i18n";
 
 /** Abre um endereço da web no navegador padrão (desktop) ou numa aba nova (web) */
 export async function openExternal(url: string) {
@@ -26,7 +27,7 @@ export default function ExternalLink({ href, className, title, children }: Props
     void openExternal(href);
   };
   return (
-    <a className={className} href={href} title={title ?? "Abrir no navegador"} target="_blank" rel="noreferrer" onClick={onClick}>
+    <a className={className} href={href} title={title ?? t("Abrir no navegador")} target="_blank" rel="noreferrer" onClick={onClick}>
       {children}
     </a>
   );

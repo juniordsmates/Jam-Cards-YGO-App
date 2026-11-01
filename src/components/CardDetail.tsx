@@ -17,6 +17,7 @@ import type { Overlay } from "../db/overlay";
 import { BAN_LABELS, frameColor, kindLabel } from "../db/labels";
 import { useTagLookup } from "../db/cardStore";
 import { displayName, type Card } from "../db/types";
+import { t as tr } from "../i18n";
 
 type Props = {
   card: Card;
@@ -126,8 +127,8 @@ export default function CardDetail({
             t.kind === "query"
               ? describeQuery(t.query, race)
               : t.kind === "archetype"
-                ? `arquétipo ${archetypePt.get(t.name) ?? t.name}`
-                : `${t.query ? describeQuery(t.query, race) : "cartas"} que citam "${archetypePt.get(t.name) ?? byName.get(t.name)?.namePt ?? t.name}"`;
+                ? tr("arquétipo {0}", [archetypePt.get(t.name) ?? t.name])
+                : tr("{0} que citam \"{1}\"", [t.query ? describeQuery(t.query, race) : tr("cartas"), archetypePt.get(t.name) ?? byName.get(t.name)?.namePt ?? t.name]);
           return (
             <button
               key={`${r.type}${r.name}${i}${what}`}
@@ -148,18 +149,17 @@ export default function CardDetail({
       ref={drawerRef}
       className="drawer docked"
       style={{ "--frame": frameColor(card.frame) } as CSSProperties}
-      aria-label={`Detalhes: ${displayName(card)}`}
+      aria-label={tr("Detalhes: {0}", [displayName(card)])}
     >
       <div className="drawer-nav">
         {previous && (
-          <button className="ghost-btn drawer-back" onClick={onBack} title={`Voltar para ${displayName(previous)}`}>
+          <button className="ghost-btn drawer-back" onClick={onBack} title={tr("Voltar para {0}", [displayName(previous)])}>
             ← <span>{displayName(previous)}</span>
           </button>
         )}
-        <button className="ghost-btn drawer-combos" onClick={() => onCombos(card)} title="Abrir a tela de combos com esta carta na mão">
-          Combos com esta carta
-        </button>
-        <button className="drawer-close ghost-btn" onClick={onClose} aria-label="Fechar">
+        <button className="ghost-btn drawer-combos" onClick={() => onCombos(card)} title={tr("Abrir a tela de combos com esta carta na mão")}>
+          {tr("Combos com esta carta")}</button>
+        <button className="drawer-close ghost-btn" onClick={onClose} aria-label={tr("Fechar")}>
           ✕
         </button>
       </div>
@@ -168,7 +168,7 @@ export default function CardDetail({
         {artFailed ? (
           <div className="art-fallback">
             <strong>{displayName(card)}</strong>
-            <span>Imagem indisponível</span>
+            <span>{tr("Imagem indisponível")}</span>
           </div>
         ) : (
           <img src={cardImage(card.images[art] ?? card.id, "full")} alt={displayName(card)} onError={() => setArtFailed(true)} />
@@ -176,7 +176,7 @@ export default function CardDetail({
       </div>
 
       {card.images.length > 1 && (
-        <div className="art-picker" aria-label="Artes alternativas">
+        <div className="art-picker" aria-label={tr("Artes alternativas")}>
           {card.images.map((imgId, i) => (
             <button
               key={imgId}
@@ -185,7 +185,7 @@ export default function CardDetail({
                 setArt(i);
                 setArtFailed(false);
               }}
-              aria-label={`Arte ${i + 1}`}
+              aria-label={tr("Arte {0}", [i + 1])}
             >
               <img src={cardImage(imgId, "small")} alt="" loading="lazy" />
             </button>
@@ -203,14 +203,14 @@ export default function CardDetail({
 
       <section className="drawer-section">
         <div className="section-title">
-          <h4>{plainText ? "Texto" : "Leitura da carta"}</h4>
+          <h4>{plainText ? tr("Texto") : tr("Leitura da carta")}</h4>
           <span className="section-actions">
             <button className="link-btn" onClick={() => setPlainText((v) => !v)}>
-              {plainText ? "Ver leitura" : "Ver texto corrido"}
+              {plainText ? tr("Ver leitura") : tr("Ver texto corrido")}
             </button>
             {card.descPt && (
               <button className="link-btn" onClick={() => setShowOriginal((v) => !v)}>
-                {showOriginal ? "Português" : "Original (inglês)"}
+                {showOriginal ? tr("Português") : tr("Original (inglês)")}
               </button>
             )}
           </span>
@@ -241,16 +241,16 @@ export default function CardDetail({
 
       {references.length > 0 && (
         <section className="drawer-section">
-          <h4>Cartas citadas</h4>
+          <h4>{tr("Cartas citadas")}</h4>
           <div className="chips">
             {references.map(({ name, card: ref, archetype }) => (
               <button
                 key={name}
                 className={`chip ref-chip ${!ref && archetype ? "is-archetype" : ""}`}
-                title={ref ? "Abrir esta carta" : archetype ? "Ver o arquétipo e as cartas de suporte" : "Buscar por este nome"}
+                title={ref ? tr("Abrir esta carta") : archetype ? tr("Ver o arquétipo e as cartas de suporte") : tr("Buscar por este nome")}
                 onClick={() => (!ref && archetype ? onArchetype(name) : onReference(name, ref))}
               >
-                {!ref && archetype && <span className="ref-kind">Arquétipo</span>}
+                {!ref && archetype && <span className="ref-kind">{tr("Arquétipo")}</span>}
                 {ref ? displayName(ref) : name}
               </button>
             ))}
@@ -260,28 +260,28 @@ export default function CardDetail({
 
       {card.tags && card.tags.length > 0 && (
         <section className="drawer-section">
-          <h4>Tags</h4>
+          <h4>{tr("Tags")}</h4>
           <div className="chips">
             {card.tags.map((id) => {
               const tag = tagById(id);
               return (
                 tag && (
-                  <button key={id} className="chip tag-chip" title={`${tag.hint} — clique para buscar`} onClick={() => onTag(id)}>
+                  <button key={id} className="chip tag-chip" title={tr("{0} — clique para buscar", [tag.hint])} onClick={() => onTag(id)}>
                     {tag.label}
                   </button>
                 )
               );
             })}
           </div>
-          <p className="tags-note">Tags geradas por regras sobre o texto em inglês e revisadas na base curada.</p>
+          <p className="tags-note">{tr("Tags geradas por regras sobre o texto em inglês e revisadas na base curada.")}</p>
         </section>
       )}
 
       {(card.archetype || bans.length > 0) && (
         <section className="drawer-section tags">
           {card.archetype && (
-            <button className="tag tag-btn" onClick={() => onArchetype(card.archetype!)} title="Ver o arquétipo e as cartas de suporte">
-              Arquétipo: {card.archetype}
+            <button className="tag tag-btn" onClick={() => onArchetype(card.archetype!)} title={tr("Ver o arquétipo e as cartas de suporte")}>
+              {tr("Arquétipo: {0}", [card.archetype])}
             </button>
           )}
           {bans.map(([fmt, status]) => (

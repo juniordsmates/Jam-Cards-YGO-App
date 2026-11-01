@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import type { Idioma } from "../data/guias";
+import { t } from "../i18n";
 
 // Guia de Deck → Artigos de Jogadores (tabela artigos): o jogador envia, o administrador aprova ou
 // recusa, e os aprovados aparecem para todos no guia do deck.
@@ -26,7 +27,7 @@ const COLS = "id, autor_id, autor_nome, arquetipo, idioma, tipo, titulo, resumo,
 
 const cliente = () => {
   const sb = supabase();
-  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
   return sb;
 };
 

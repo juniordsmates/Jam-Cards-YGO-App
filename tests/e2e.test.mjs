@@ -674,7 +674,8 @@ test("editor de deck: selos de banlist e classificação, adicionar pela busca, 
   assert.equal(await page.$(".de-side"), null);
   // sem Importar, Exportar e Limpar; opções do deck num bloco separado da carta
   const botoes = await page.$$eval(".de-botoes button", (b) => b.map((x) => x.textContent));
-  assert.ok(!botoes.some((b) => /Importar|Exportar|Limpar/.test(b)), botoes.join(" | "));
+  // (o "Importar deck list" de .ydk/ydke:// é outro recurso e continua)
+  assert.ok(!botoes.some((b) => /^Importar$|Exportar|Limpar/.test(b)), botoes.join(" | "));
   assert.ok(await page.$(".de-left .de-opcoes .de-controles"));
   assert.ok(await page.$(".de-left .de-carta .de-preview"));
   // Pote da Ganância é proibido no TCG: selo como na busca e aviso

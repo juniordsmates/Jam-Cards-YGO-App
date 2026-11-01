@@ -28,6 +28,7 @@ import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
 import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
 import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
+import { t, LOCALE } from "../i18n";
 
 const POR_PAGINA = 24;
 // grade do deck: 10 cartas por linha no Main (4 a 6 linhas, até 60) e as 15 do Extra numa linha só
@@ -41,14 +42,14 @@ const ESTOQUE = "cartas-editor-estoque";
 /** Estoque de cartas (Minha Coleção) no editor: não aplicar, listar todas ou só as que possuo */
 type Estoque = "nao" | "todas" | "possuo";
 const ESTOQUES: { id: Estoque; label: string }[] = [
-  { id: "nao", label: "Não Aplicar Estoque de Cartas" },
-  { id: "todas", label: "Listar todas as cartas" },
-  { id: "possuo", label: "Listar apenas cartas que possuo" },
+  { id: "nao", label: t("Não Aplicar Estoque de Cartas") },
+  { id: "todas", label: t("Listar todas as cartas") },
+  { id: "possuo", label: t("Listar apenas cartas que possuo") },
 ];
 // sem Side Deck no editor
 const PARTES: { id: Parte; label: string }[] = [
-  { id: "main", label: "Deck" },
-  { id: "extra", label: "Extra" },
+  { id: "main", label: t("Deck") },
+  { id: "extra", label: t("Extra") },
 ];
 
 type Nomeando = { modo: "novo" | "renomear" | "salvarComo"; valor: string } | null;
@@ -175,7 +176,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     const lista = [...deck[destino]];
     lista.splice(indice ?? lista.length, 0, c.id);
     setMensagem(null);
-    if (!trabalho) return setDeckId(criarDeck("Novo deck", { main: [], extra: [], side: [], [destino]: lista }).id);
+    if (!trabalho) return setDeckId(criarDeck(t("Novo deck"), { main: [], extra: [], side: [], [destino]: lista }).id);
     setTrabalho({ ...deck, [destino]: lista });
   };
 
@@ -248,14 +249,14 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
       const d = salvarDeck({ ...(salvo ?? trabalho), nome });
       setTrabalho({ ...trabalho, nome: d.nome });
     }
-    if (existente) avisar("ok", nomeando.modo === "novo" ? `Já existe um deck "${existente.nome}": ele foi aberto.` : `Salvo por cima do deck "${existente.nome}", que já existia.`);
+    if (existente) avisar("ok", nomeando.modo === "novo" ? t("Já existe um deck \"{0}\": ele foi aberto.", [existente.nome]) : t("Salvo por cima do deck \"{0}\", que já existia.", [existente.nome]));
     setNomeando(null);
   };
 
   const salvar = () => {
     if (!trabalho) return;
     salvarDeck(trabalho);
-    avisar("ok", conta ? "Deck salvo neste computador e na sua conta." : "Deck salvo neste computador.");
+    avisar("ok", conta ? t("Deck salvo neste computador e na sua conta.") : t("Deck salvo neste computador."));
   };
 
   /**
@@ -265,7 +266,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const importarDeckList = (texto: string, nomeArquivo?: string) => {
     const { deck, ignorados } = lerDeckList(texto, idCanonico);
     if (!deck.main.length && !deck.extra.length) return avisar("erro", "Nenhuma carta reconhecida. Use um arquivo .ydk (#main, #extra, !side) ou um link ydke://.");
-    const nome = nomeArquivo?.replace(/\.(ydk|txt)$/i, "").trim() || "Deck importado";
+    const nome = nomeArquivo?.replace(/\.(ydk|txt)$/i, "").trim() || t("Deck importado");
     const novo = criarDeck(nome, { main: deck.main, extra: deck.extra, side: [] });
     setDeckId(novo.id);
     setTrabalho({ ...novo, main: [...novo.main], extra: [...novo.extra], side: [] });
@@ -273,7 +274,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     setTextoImport("");
     avisar(
       "ok",
-      `Importado "${novo.nome}": ${deck.main.length} no Main e ${deck.extra.length} no Extra${deck.side.length ? ` (Side ignorado: ${deck.side.length})` : ""}${ignorados ? ` (${ignorados} cartas não reconhecidas)` : ""}.`,
+      t("Importado \"{0}\": {1} no Main e {2} no Extra{3}{4}.", [novo.nome, deck.main.length, deck.extra.length, deck.side.length ? t(" (Side ignorado: {0})", [deck.side.length]) : "", ignorados ? t(" ({0} cartas não reconhecidas)", [ignorados]) : ""]),
     );
   };
   const lerArquivo = (f?: File | null) => {
@@ -361,40 +362,38 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           if (parte && indice !== undefined) remover(parte, indice);
           else adicionar(c);
         }}
-        title={parte ? `${bilingualName(c)} — botão direito retira` : `${bilingualName(c)} — clique adiciona ao Deck (ou ao Extra)`}
+        title={parte ? t("{0} — botão direito retira", [bilingualName(c)]) : t("{0} — clique adiciona ao Deck (ou ao Extra)", [bilingualName(c)])}
         data-card-id={c.id}
       >
         <img src={cardImage(c.id, "small")} alt={displayName(c)} loading="lazy" draggable={false} />
         <CardSelos card={c} formato={formato} />
-        {estoque !== "nao" && !parte && <span className="selo-possuo">possuo {possuo(id)}</span>}
+        {estoque !== "nao" && !parte && <span className="selo-possuo">{t("possuo {0}", [possuo(id)])}</span>}
       </div>
     );
   };
 
   return (
     <ScreenShell
-      title={testando ? (avancado && podeAvancado ? "Teste Avançado" : "Teste de Jogo") : "Editor de Deck"}
+      title={testando ? (avancado && podeAvancado ? t("Teste Avançado") : t("Teste de Jogo")) : t("Editor de Deck")}
       accent="magenta"
       onBack={onBack}
       actions={
         <span className="de-topo">
           {!testando && (
-            <button className="ghost-btn de-teste" disabled={!trabalho?.main.length} onClick={() => abrirTeste("simples")} title="Teste de Jogo (Solo Mode) com este deck">
-              ▶ Teste de Jogo
-            </button>
+            <button className="ghost-btn de-teste" disabled={!trabalho?.main.length} onClick={() => abrirTeste("simples")} title={t("Teste de Jogo (Solo Mode) com este deck")}>
+              {t("▶ Teste de Jogo")}</button>
           )}
           {!testando && (
             <button
               className="ghost-btn de-teste de-teste-avancado"
               disabled={!trabalho?.main.length || !podeAvancado}
               onClick={() => abrirTeste("avancado")}
-              title={podeAvancado ? "Teste com o campo do oponente e as Indicações de resposta" : "Teste Avançado: disponível para Usuário Avançado ou Mentor"}
+              title={podeAvancado ? t("Teste com o campo do oponente e as Indicações de resposta") : t("Teste Avançado: disponível para Usuário Avançado ou Mentor")}
             >
-              ▶ Teste Avançado
-            </button>
+              {t("▶ Teste Avançado")}</button>
           )}
         <span className="de-formato">
-          <div className="format-switch combos-format" role="radiogroup" aria-label="Formato">
+          <div className="format-switch combos-format" role="radiogroup" aria-label={t("Formato")}>
             {FORMATS.map((f) => (
               <button key={f} role="radio" aria-checked={formato === f} className={formato === f ? "active" : ""} onClick={() => setFormato(f)}>
                 {f}
@@ -402,12 +401,11 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
             ))}
           </div>
           {!testando && (
-            <label className="de-sem-limite" title="Sem banlist (proibidas, limitadas, semi-limitadas) e sem conferir se a carta saiu no TCG/OCG; continua o máximo de 3 cópias por carta">
-              <input type="checkbox" checked={semLimite} onChange={(e) => alternarSemLimite(e.target.checked)} /> Desativar limite de cartas
-            </label>
+            <label className="de-sem-limite" title={t("Sem banlist (proibidas, limitadas, semi-limitadas) e sem conferir se a carta saiu no TCG/OCG; continua o máximo de 3 cópias por carta")}>
+              <input type="checkbox" checked={semLimite} onChange={(e) => alternarSemLimite(e.target.checked)} /> {" "}{t("Desativar limite de cartas")}</label>
           )}
           {!testando && (
-            <select className="de-estoque" value={estoque} onChange={(e) => escolherEstoque(e.target.value as Estoque)} aria-label="Estoque de cartas" title="Compara o deck com Minha Coleção">
+            <select className="de-estoque" value={estoque} onChange={(e) => escolherEstoque(e.target.value as Estoque)} aria-label={t("Estoque de cartas")} title={t("Compara o deck com Minha Coleção")}>
               {ESTOQUES.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.label}
@@ -423,7 +421,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
       {!ready ? (
         <div className="db-loading">
           <span className="spinner" />
-          <p>{db.step ?? "Carregando base de cartas…"}</p>
+          <p>{db.step ?? t("Carregando base de cartas…")}</p>
         </div>
       ) : testando && trabalho ? (
         <TesteJogo
@@ -442,15 +440,15 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           {/* ---------------- esquerda: carta e controles */}
           <aside className="de-left">
             {/* opções do deck (escolher, criar, salvar…), num bloco separado da carta */}
-            <section className="de-bloco de-opcoes" aria-label="Opções do deck">
-              <h3 className="de-bloco-titulo">Deck</h3>
+            <section className="de-bloco de-opcoes" aria-label={t("Opções do deck")}>
+              <h3 className="de-bloco-titulo">{t("Deck")}</h3>
               <div className="de-controles">
-                <select value={deckId ?? ""} onChange={(e) => trocarDeck(e.target.value)} aria-label="Deck">
-                  {!decks.length && <option value="">Nenhum deck</option>}
+                <select value={deckId ?? ""} onChange={(e) => trocarDeck(e.target.value)} aria-label={t("Deck")}>
+                  {!decks.length && <option value="">{t("Nenhum deck")}</option>}
                   {decks.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.nome}
-                      {d.id === padrao ? " (padrão)" : ""}
+                      {d.id === padrao ? t(" (padrão)") : ""}
                     </option>
                   ))}
                 </select>
@@ -459,29 +457,27 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                     <input
                       autoFocus
                       value={nomeando.valor}
-                      placeholder="Nome do deck"
+                      placeholder={t("Nome do deck")}
                       maxLength={80}
                       onChange={(e) => setNomeando({ ...nomeando, valor: e.target.value })}
                       onKeyDown={(e) => e.key === "Enter" && confirmarNome()}
-                      aria-label="Nome do deck"
+                      aria-label={t("Nome do deck")}
                     />
                     <button className="ghost-btn" onClick={confirmarNome}>
-                      OK
-                    </button>
+                      {t("OK")}</button>
                     <button className="ghost-btn" onClick={() => setNomeando(null)}>
-                      Cancelar
-                    </button>
+                      {t("Cancelar")}</button>
                   </div>
                 ) : (
                   <div className="de-botoes">
-                    <button className="ghost-btn" onClick={() => setNomeando({ modo: "novo", valor: "" })}>Novo</button>
-                    <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "renomear", valor: trabalho?.nome ?? "" })}>Renomear</button>
+                    <button className="ghost-btn" onClick={() => setNomeando({ modo: "novo", valor: "" })}>{t("Novo")}</button>
+                    <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "renomear", valor: trabalho?.nome ?? "" })}>{t("Renomear")}</button>
                     <button className="ghost-btn de-salvar" disabled={!trabalho} onClick={salvar}>
-                      Salvar{alterado ? " •" : ""}
+                      {t("Salvar{0}", [alterado ? " •" : ""])}
                     </button>
-                    <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "salvarComo", valor: `${trabalho?.nome ?? ""} (cópia)` })}>Salvar como</button>
-                    <button className="ghost-btn de-importar" onClick={() => setImportando(!importando)}>Importar deck list</button>
-                  <button className="ghost-btn" disabled={!trabalho || trabalho.id === padrao} onClick={() => trabalho && definirPadrao(trabalho.id)}>Definir padrão</button>
+                    <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "salvarComo", valor: `${trabalho?.nome ?? ""} (cópia)` })}>{t("Salvar como")}</button>
+                    <button className="ghost-btn de-importar" onClick={() => setImportando(!importando)}>{t("Importar deck list")}</button>
+                  <button className="ghost-btn" disabled={!trabalho || trabalho.id === padrao} onClick={() => trabalho && definirPadrao(trabalho.id)}>{t("Definir padrão")}</button>
                     {confirmarExclusao ? (
                       <button
                         className="danger-btn"
@@ -491,10 +487,9 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                           setConfirmarExclusao(false);
                         }}
                       >
-                        Confirmar exclusão
-                      </button>
+                        {t("Confirmar exclusão")}</button>
                     ) : (
-                      <button className="ghost-btn" disabled={!trabalho} onClick={() => setConfirmarExclusao(true)}>Excluir</button>
+                      <button className="ghost-btn" disabled={!trabalho} onClick={() => setConfirmarExclusao(true)}>{t("Excluir")}</button>
                     )}
                   </div>
                 )}
@@ -502,29 +497,27 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                 {importando && (
                 <div className="de-painel">
                   <label className="ghost-btn de-arquivo">
-                    Escolher arquivo .ydk
-                    <input type="file" accept=".ydk,.txt" onChange={(e) => lerArquivo(e.target.files?.[0])} />
+                    {t("Escolher arquivo .ydk")}<input type="file" accept=".ydk,.txt" onChange={(e) => lerArquivo(e.target.files?.[0])} />
                   </label>
                   <textarea
                     rows={4}
                     placeholder={"Ou cole o conteúdo do .ydk ou um link ydke://"}
                     value={textoImport}
                     onChange={(e) => setTextoImport(e.target.value)}
-                    aria-label="Deck list"
+                    aria-label={t("Deck list")}
                   />
                   <button className="ghost-btn" disabled={!textoImport.trim()} onClick={() => importarDeckList(textoImport)}>
-                    Importar
-                  </button>
-                  <p className="tags-note">Vira um deck novo (com o nome do arquivo). O Side é ignorado.</p>
+                    {t("Importar")}</button>
+                  <p className="tags-note">{t("Vira um deck novo (com o nome do arquivo). O Side é ignorado.")}</p>
                 </div>
               )}
               {trocaPendente && (
                   <div className="de-painel">
-                    <p className="db-warning">Há alterações não salvas neste deck.</p>
+                    <p className="db-warning">{t("Há alterações não salvas neste deck.")}</p>
                     <div className="de-botoes">
-                      <button className="ghost-btn" onClick={() => { salvar(); trocarDeck(trocaPendente, true); }}>Salvar e trocar</button>
-                      <button className="ghost-btn" onClick={() => trocarDeck(trocaPendente, true)}>Descartar e trocar</button>
-                      <button className="ghost-btn" onClick={() => setTrocaPendente(null)}>Cancelar</button>
+                      <button className="ghost-btn" onClick={() => { salvar(); trocarDeck(trocaPendente, true); }}>{t("Salvar e trocar")}</button>
+                      <button className="ghost-btn" onClick={() => trocarDeck(trocaPendente, true)}>{t("Descartar e trocar")}</button>
+                      <button className="ghost-btn" onClick={() => setTrocaPendente(null)}>{t("Cancelar")}</button>
                     </div>
                   </div>
                 )}
@@ -540,7 +533,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
             </section>
 
             {/* apresentação da carta em foco (passar o mouse ou clicar) */}
-            <section className="de-bloco de-carta" aria-label="Carta">
+            <section className="de-bloco de-carta" aria-label={t("Carta")}>
               <div className="de-preview">
                 {preview ? (
                   <>
@@ -550,14 +543,14 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                       <small>
                         {kindLabel(preview)}
                         {categoryOf(preview) === "monster" && levelLabel(preview) && ` · ${levelLabel(preview)}`}
-                        {categoryOf(preview) === "monster" && ` · ATK ${preview.atk ?? "?"}${preview.frame === "link" ? "" : ` / DEF ${preview.def ?? "?"}`}`}
+                        {categoryOf(preview) === "monster" && t(" · ATK {0}{1}", [preview.atk ?? "?", preview.frame === "link" ? "" : t(" / DEF {0}", [preview.def ?? "?"])])}
                       </small>
                       <PapeisDaCarta card={preview} />
                       <p>{preview.descPt ?? preview.desc}</p>
                     </div>
                   </>
                 ) : (
-                  <p className="tags-note">Passe o mouse sobre uma carta para ver os detalhes.</p>
+                  <p className="tags-note">{t("Passe o mouse sobre uma carta para ver os detalhes.")}</p>
                 )}
               </div>
             </section>
@@ -571,28 +564,27 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           >
             {!trabalho ? (
               <div className="combos-empty">
-                <p>Nenhum deck aberto.</p>
-                <small>Clique em Novo ou simplesmente clique numa carta da busca para começar.</small>
+                <p>{t("Nenhum deck aberto.")}</p>
+                <small>{t("Clique em Novo ou simplesmente clique numa carta da busca para começar.")}</small>
               </div>
             ) : (
               <>
                 <div className="de-titulo">
                   <strong>{trabalho.nome}</strong>
-                  {alterado && <small> · alterações não salvas</small>}
+                  {alterado && <small> {" "}{t("· alterações não salvas")}</small>}
                 </div>
                 {PARTES.map(({ id: parte, label }) => (
                   <div key={parte} className={`de-parte de-${parte}`} onDragOver={(e) => e.preventDefault()} onDrop={soltar(parte)}>
                     <div className="de-lateral">
                       <span className="de-rotulo">{label}</span>
-                      <span className="de-total" title="Total">{trabalho[parte].length}</span>
+                      <span className="de-total" title={t("Total")}>{trabalho[parte].length}</span>
                       {parte === "main" && (
                         <>
-                          <span className="de-n de-n-monster" title="Monstros">{n.monster}</span>
-                          <span className="de-n de-n-spell" title="Magias">{n.spell}</span>
-                          <span className="de-n de-n-trap" title="Armadilhas">{n.trap}</span>
-                          <button className="link-btn de-ordenar" onClick={() => setTrabalho({ ...trabalho, main: ordenarParte(trabalho.main, byId) })} title="Ordenar: monstros, magias, armadilhas">
-                            A-Z
-                          </button>
+                          <span className="de-n de-n-monster" title={t("Monstros")}>{n.monster}</span>
+                          <span className="de-n de-n-spell" title={t("Magias")}>{n.spell}</span>
+                          <span className="de-n de-n-trap" title={t("Armadilhas")}>{n.trap}</span>
+                          <button className="link-btn de-ordenar" onClick={() => setTrabalho({ ...trabalho, main: ordenarParte(trabalho.main, byId) })} title={t("Ordenar: monstros, magias, armadilhas")}>
+                            {t("A-Z")}</button>
                         </>
                       )}
                     </div>
@@ -607,44 +599,44 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
 
           {/* ---------------- direita: busca */}
           <aside className="de-busca" onDragOver={(e) => e.preventDefault()} onDrop={soltarFora}>
-            <h3>Busca</h3>
-            <input placeholder="Nome" value={filtros.inDesc ? "" : filtros.text} onChange={(e) => atualizar({ text: e.target.value, inDesc: false })} aria-label="Nome" />
-            <input placeholder="Texto da carta" value={filtros.inDesc ? filtros.text : ""} onChange={(e) => atualizar({ text: e.target.value, inDesc: true })} aria-label="Texto da carta" />
+            <h3>{t("Busca")}</h3>
+            <input placeholder={t("Nome")} value={filtros.inDesc ? "" : filtros.text} onChange={(e) => atualizar({ text: e.target.value, inDesc: false })} aria-label={t("Nome")} />
+            <input placeholder={t("Texto da carta")} value={filtros.inDesc ? filtros.text : ""} onChange={(e) => atualizar({ text: e.target.value, inDesc: true })} aria-label={t("Texto da carta")} />
             <div className="de-linha">
-              <select value={filtros.category} onChange={(e) => atualizar({ category: e.target.value as Filters["category"], monsterClass: "", spellTrapType: "", race: "", attributes: [] })} aria-label="Carta">
-                <option value="all">Carta: todas</option>
-                <option value="monster">Monstro</option>
-                <option value="spell">Magia</option>
-                <option value="trap">Armadilha</option>
+              <select value={filtros.category} onChange={(e) => atualizar({ category: e.target.value as Filters["category"], monsterClass: "", spellTrapType: "", race: "", attributes: [] })} aria-label={t("Carta")}>
+                <option value="all">{t("Carta: todas")}</option>
+                <option value="monster">{t("Monstro")}</option>
+                <option value="spell">{t("Magia")}</option>
+                <option value="trap">{t("Armadilha")}</option>
               </select>
               {filtros.category === "monster" ? (
-                <select value={filtros.monsterClass} onChange={(e) => atualizar({ monsterClass: e.target.value })} aria-label="Tipo de monstro">
-                  <option value="">Tipo: todos</option>
+                <select value={filtros.monsterClass} onChange={(e) => atualizar({ monsterClass: e.target.value })} aria-label={t("Tipo de monstro")}>
+                  <option value="">{t("Tipo: todos")}</option>
                   {MONSTER_CLASSES.map((m) => (
                     <option key={m.value} value={m.value}>{m.label}</option>
                   ))}
                 </select>
               ) : filtros.category === "spell" || filtros.category === "trap" ? (
-                <select value={filtros.spellTrapType} onChange={(e) => atualizar({ spellTrapType: e.target.value })} aria-label="Tipo">
-                  <option value="">Tipo: todos</option>
+                <select value={filtros.spellTrapType} onChange={(e) => atualizar({ spellTrapType: e.target.value })} aria-label={t("Tipo")}>
+                  <option value="">{t("Tipo: todos")}</option>
                   {Object.entries(filtros.category === "spell" ? SPELL_TYPES : TRAP_TYPES).map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
                   ))}
                 </select>
               ) : (
-                <select disabled aria-label="Tipo"><option>Tipo</option></select>
+                <select disabled aria-label={t("Tipo")}><option>{t("Tipo")}</option></select>
               )}
             </div>
             {filtros.category === "monster" && (
               <div className="de-linha">
-                <select value={filtros.race} onChange={(e) => atualizar({ race: e.target.value })} aria-label="Tipo do monstro">
-                  <option value="">Raça: todas</option>
+                <select value={filtros.race} onChange={(e) => atualizar({ race: e.target.value })} aria-label={t("Tipo do monstro")}>
+                  <option value="">{t("Raça: todas")}</option>
                   {Object.entries(MONSTER_RACES).map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
                   ))}
                 </select>
-                <select value={filtros.attributes[0] ?? ""} onChange={(e) => atualizar({ attributes: e.target.value ? [e.target.value] : [] })} aria-label="Atributo">
-                  <option value="">Atributo: todos</option>
+                <select value={filtros.attributes[0] ?? ""} onChange={(e) => atualizar({ attributes: e.target.value ? [e.target.value] : [] })} aria-label={t("Atributo")}>
+                  <option value="">{t("Atributo: todos")}</option>
                   {Object.entries(ATTRIBUTES).map(([v, l]) => (
                     <option key={v} value={v}>{l}</option>
                   ))}
@@ -654,49 +646,48 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
             {filtros.category === "monster" && (
               <>
                 <div className="de-faixa">
-                  <input inputMode="numeric" value={filtros.levelMin} onChange={(e) => atualizar({ levelMin: e.target.value })} aria-label="Nível mínimo" />
-                  <span>≤ Nível/Rank/Link ≤</span>
-                  <input inputMode="numeric" value={filtros.levelMax} onChange={(e) => atualizar({ levelMax: e.target.value })} aria-label="Nível máximo" />
+                  <input inputMode="numeric" value={filtros.levelMin} onChange={(e) => atualizar({ levelMin: e.target.value })} aria-label={t("Nível mínimo")} />
+                  <span>{t("≤ Nível/Rank/Link ≤")}</span>
+                  <input inputMode="numeric" value={filtros.levelMax} onChange={(e) => atualizar({ levelMax: e.target.value })} aria-label={t("Nível máximo")} />
                 </div>
                 <div className="de-faixa">
-                  <input inputMode="numeric" value={filtros.atkMin} onChange={(e) => atualizar({ atkMin: e.target.value })} aria-label="ATK mínimo" />
-                  <span>≤ ATK ≤</span>
-                  <input inputMode="numeric" value={filtros.atkMax} onChange={(e) => atualizar({ atkMax: e.target.value })} aria-label="ATK máximo" />
+                  <input inputMode="numeric" value={filtros.atkMin} onChange={(e) => atualizar({ atkMin: e.target.value })} aria-label={t("ATK mínimo")} />
+                  <span>{t("≤ ATK ≤")}</span>
+                  <input inputMode="numeric" value={filtros.atkMax} onChange={(e) => atualizar({ atkMax: e.target.value })} aria-label={t("ATK máximo")} />
                 </div>
                 <div className="de-faixa">
-                  <input inputMode="numeric" value={filtros.defMin} onChange={(e) => atualizar({ defMin: e.target.value })} aria-label="DEF mínima" />
-                  <span>≤ DEF ≤</span>
-                  <input inputMode="numeric" value={filtros.defMax} onChange={(e) => atualizar({ defMax: e.target.value })} aria-label="DEF máxima" />
+                  <input inputMode="numeric" value={filtros.defMin} onChange={(e) => atualizar({ defMin: e.target.value })} aria-label={t("DEF mínima")} />
+                  <span>{t("≤ DEF ≤")}</span>
+                  <input inputMode="numeric" value={filtros.defMax} onChange={(e) => atualizar({ defMax: e.target.value })} aria-label={t("DEF máxima")} />
                 </div>
               </>
             )}
             <div className="de-linha">
-              <select value={filtros.ban} onChange={(e) => atualizar({ ban: e.target.value as Filters["ban"] })} aria-label="Limite">
-                <option value="">Limite: todos</option>
-                <option value="Forbidden">Proibida</option>
-                <option value="Limited">Limitada</option>
-                <option value="Semi-Limited">Semi-limitada</option>
+              <select value={filtros.ban} onChange={(e) => atualizar({ ban: e.target.value as Filters["ban"] })} aria-label={t("Limite")}>
+                <option value="">{t("Limite: todos")}</option>
+                <option value="Forbidden">{t("Proibida")}</option>
+                <option value="Limited">{t("Limitada")}</option>
+                <option value="Semi-Limited">{t("Semi-limitada")}</option>
               </select>
-              <select value={filtros.sort} onChange={(e) => atualizar({ sort: e.target.value as SortKey })} aria-label="Ordem">
-                <option value="name">Ordem: nome</option>
-                <option value="popular">Mais populares</option>
-                <option value="new">Mais recentes</option>
-                <option value="atk">ATK</option>
-                <option value="def">DEF</option>
-                <option value="level">Nível</option>
+              <select value={filtros.sort} onChange={(e) => atualizar({ sort: e.target.value as SortKey })} aria-label={t("Ordem")}>
+                <option value="name">{t("Ordem: nome")}</option>
+                <option value="popular">{t("Mais populares")}</option>
+                <option value="new">{t("Mais recentes")}</option>
+                <option value="atk">{t("ATK")}</option>
+                <option value="def">{t("DEF")}</option>
+                <option value="level">{t("Nível")}</option>
               </select>
             </div>
             <div className="de-paginacao">
-              <button className="ghost-btn" disabled={pagina === 0} onClick={() => setPagina((p) => p - 1)} aria-label="Página anterior">◀</button>
+              <button className="ghost-btn" disabled={pagina === 0} onClick={() => setPagina((p) => p - 1)} aria-label={t("Página anterior")}>◀</button>
               <span>
-                {resultados.length ? pagina + 1 : 0} / {resultados.length ? paginas : 0} · {resultados.length.toLocaleString("pt-BR")} cartas
-              </span>
-              <button className="ghost-btn" disabled={pagina >= paginas - 1} onClick={() => setPagina((p) => p + 1)} aria-label="Próxima página">▶</button>
+                {t("{0} / {1} · {2} cartas", [resultados.length ? pagina + 1 : 0, resultados.length ? paginas : 0, resultados.length.toLocaleString(LOCALE)])}</span>
+              <button className="ghost-btn" disabled={pagina >= paginas - 1} onClick={() => setPagina((p) => p + 1)} aria-label={t("Próxima página")}>▶</button>
             </div>
             <div className="de-resultados">
               {resultados.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA).map((c) => thumb(c.id, undefined, undefined, String(c.id)))}
             </div>
-            <p className="tags-note">Clique adiciona ao Deck (ou ao Extra). Arraste para mover; solte aqui para retirar.</p>
+            <p className="tags-note">{t("Clique adiciona ao Deck (ou ao Extra). Arraste para mover; solte aqui para retirar.")}</p>
           </aside>
         </div>
       )}

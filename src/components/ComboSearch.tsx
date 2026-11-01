@@ -22,6 +22,7 @@ import { cardsOfLine, passoEmTexto, uniqueLines, type CombosCalculados, type Lin
 import { normalize } from "../db/search";
 import { supabaseReady } from "../db/supabase";
 import { displayName, type Card } from "../db/types";
+import { t, LOCALE } from "../i18n";
 
 type Hover = (card: Card | null, el?: HTMLElement) => void;
 
@@ -49,9 +50,9 @@ interface Consulta {
 }
 
 const ORIGEM_LABEL: Record<ComboBase["origem"], string> = {
-  app: "Calculado com o App",
-  comunidade: "Combo da Comunidade",
-  ia: "Sugestão de IA · não conferida",
+  app: t("Calculado com o App"),
+  comunidade: t("Combo da Comunidade"),
+  ia: t("Sugestão de IA · não conferida"),
 };
 
 /**
@@ -66,7 +67,7 @@ export function ComboCard({
   highlight,
   format,
   onTestar,
-  rotuloTestar = "▶ Teste de Jogo",
+  rotuloTestar = t("▶ Teste de Jogo"),
 }: {
   combo: ComboBase;
   byId: Map<number, Card>;
@@ -105,7 +106,7 @@ export function ComboCard({
           : await editarCombo(combo, { titulo: edicao.titulo, observacoes: edicao.obs, compartilhar: edicao.compartilhar, passos: edicao.passos }),
       );
       setEdicao(null);
-      setEstado({ tipo: "ok", texto: "Combo atualizado." });
+      setEstado({ tipo: "ok", texto: t("Combo atualizado.") });
     } catch (e) {
       setEstado({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
     }
@@ -130,12 +131,12 @@ export function ComboCard({
           { autorId: conta?.id ?? null, autorNome: form.autor, titulo: form.titulo, observacoes: form.obs },
           { iniciais: combo.iniciais, finais: combo.finais, arquetipos: combo.arquetipos, dados: { ...d, modelo: undefined } },
         );
-        setEstado({ tipo: "ok", texto: "Salvo neste aparelho (Usuário Padrão). Para enviar à base depois, use Exportar no combo." });
+        setEstado({ tipo: "ok", texto: t("Salvo neste aparelho (Usuário Padrão). Para enviar à base depois, use Exportar no combo.") });
         setForm(null);
         return;
       }
       await salvarComoComunidade(combo, { autorNome: form.autor, titulo: form.titulo, observacoes: form.obs });
-      setEstado({ tipo: "ok", texto: "Salvo como Combo da Comunidade." });
+      setEstado({ tipo: "ok", texto: t("Salvo como Combo da Comunidade.") });
       setForm(null);
     } catch (e) {
       setEstado({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
@@ -154,30 +155,30 @@ export function ComboCard({
     }
   };
 
-  if (excluido && local && exportando) return <p className="conta-ok combo-excluido">Combo “{combo.titulo}” exportado para a base.</p>;
-  if (excluido) return <p className="conta-ok combo-excluido">Combo “{combo.titulo}” excluído.</p>;
+  if (excluido && local && exportando) return <p className="conta-ok combo-excluido">{t("Combo “{0}” exportado para a base.", [combo.titulo])}</p>;
+  if (excluido) return <p className="conta-ok combo-excluido">{t("Combo “{0}” excluído.", [combo.titulo])}</p>;
 
   return (
     <details className={`kc vc base-combo origem-${combo.origem}`} open>
       <summary>
         <span className="kc-title">{combo.titulo}</span>
         <span className="kc-hand">
-          Mão: {combo.iniciais.length ? join(combo.iniciais.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ") : "—"}
+          {t("Mão:")}{" "}{combo.iniciais.length ? join(combo.iniciais.map((id) => <Name key={id} id={id} byId={byId} onHover={onHover} />), " + ") : "—"}
           {combo.arquetipos.length > 0 && ` · ${combo.arquetipos.join(", ")}`}
         </span>
         <span className={`vc-badge badge-${combo.origem}`}>
           {ORIGEM_LABEL[combo.origem]}
           {combo.origem === "comunidade" && combo.autor_nome && ` · ${combo.autor_nome}`}
-          {combo.origem === "comunidade" && ` · ${new Date(combo.criado_em).toLocaleDateString("pt-BR")}`}
-          {local ? " · neste aparelho" : combo.origem === "comunidade" && !combo.publico && " · só você vê"}
-          {combo.conferido_em && " · conferido com o App"}
+          {combo.origem === "comunidade" && ` · ${new Date(combo.criado_em).toLocaleDateString(LOCALE)}`}
+          {local ? t(" · neste aparelho") : combo.origem === "comunidade" && !combo.publico && t(" · só você vê")}
+          {combo.conferido_em && t(" · conferido com o App")}
         </span>
         {validade && (
           <span
             className={`vc-badge combo-validade ${validade.valido ? "valido" : "invalido"}`}
-            title={validade.valido ? `Todas as cartas e cópias permitidas na banlist atual do ${format}.` : validade.problemas.join("\n")}
+            title={validade.valido ? t("Todas as cartas e cópias permitidas na banlist atual do {0}.", [format]) : validade.problemas.join("\n")}
           >
-            {validade.valido ? `Válido no ${format}` : `Fora da banlist do ${format}`}
+            {validade.valido ? t("Válido no {0}", [format]) : t("Fora da banlist do {0}", [format])}
           </span>
         )}
         {onTestar && (
@@ -212,7 +213,7 @@ export function ComboCard({
       </ol>
       {(d.campo.monstros.length > 0 || d.campo.magias.length > 0) && (
         <div className="kc-board">
-          <span className="field-label">Campo final</span>
+          <span className="field-label">{t("Campo final")}</span>
           <span className="kc-board-cards">
             {d.campo.monstros.map((id, i) => (
               <Name key={`m${id}-${i}`} id={id} byId={byId} onHover={onHover} />
@@ -225,7 +226,7 @@ export function ComboCard({
       )}
       {d.observacoes && <p className="vc-community">{d.observacoes}</p>}
       <p className="tags-note">
-        {combo.origem === "ia" && `Sugerido por IA${combo.dados.modelo ? ` (${combo.dados.modelo})` : ""}: confira antes de usar. `}
+        {combo.origem === "ia" && t("Sugerido por IA{0}: confira antes de usar. ", [combo.dados.modelo ? ` (${combo.dados.modelo})` : ""])}
         <FontesButton links={(d.fontes ?? []).map((f) => ({ nome: f.nome, url: f.url }))} />
         {meu && !edicao && (
           <>
@@ -237,22 +238,18 @@ export function ComboCard({
                 setEdicao({ titulo: combo.titulo, obs: d.observacoes ?? "", compartilhar: combo.publico, passos: d.passos });
               }}
             >
-              Editar
-            </button>
+              {t("Editar")}</button>
             {" · "}
             {confirmarExclusao ? (
               <>
                 <button className="link-btn combo-excluir-ok" onClick={() => void excluir()}>
-                  Confirmar exclusão
-                </button>{" "}
+                  {t("Confirmar exclusão")}</button>{" "}
                 <button className="link-btn" onClick={() => setConfirmarExclusao(false)}>
-                  Cancelar
-                </button>
+                  {t("Cancelar")}</button>
               </>
             ) : (
               <button className="link-btn combo-excluir" onClick={() => setConfirmarExclusao(true)}>
-                Excluir
-              </button>
+                {t("Excluir")}</button>
             )}
             {local && !exportando && (
               <>
@@ -260,12 +257,11 @@ export function ComboCard({
                 <button
                   className="link-btn combo-exportar"
                   disabled={!avancado}
-                  title={avancado ? "Envia este combo para a base (Combos da Comunidade)" : "Exportar para a base: disponível para Usuário Avançado ou Mentor"}
+                  title={avancado ? t("Envia este combo para a base (Combos da Comunidade)") : t("Exportar para a base: disponível para Usuário Avançado ou Mentor")}
                   onClick={() => setExportando({ compartilhar: false, enviando: false })}
                 >
-                  Exportar
-                </button>
-                {!avancado && <small> (exportar: Usuário Avançado ou Mentor)</small>}
+                  {t("Exportar")}</button>
+                {!avancado && <small> {" "}{t("(exportar: Usuário Avançado ou Mentor)")}</small>}
               </>
             )}
           </>
@@ -277,18 +273,17 @@ export function ComboCard({
               className="link-btn salvar-comunidade"
               onClick={() => (conta ? setForm({ autor: conta.usuario, titulo: combo.titulo, obs: d.observacoes ?? "" }) : openConta())}
             >
-              Salvar como Combo da Comunidade
-            </button>
+              {t("Salvar como Combo da Comunidade")}</button>
           </>
         )}
       </p>
       {edicao && (
         <div className="comunidade-form combo-edicao">
           <label className="field">
-            <span className="field-label">Título</span>
-            <input value={edicao.titulo} maxLength={120} onChange={(e) => setEdicao({ ...edicao, titulo: e.target.value })} aria-label="Título do combo" />
+            <span className="field-label">{t("Título")}</span>
+            <input value={edicao.titulo} maxLength={120} onChange={(e) => setEdicao({ ...edicao, titulo: e.target.value })} aria-label={t("Título do combo")} />
           </label>
-          <span className="field-label">Passos</span>
+          <span className="field-label">{t("Passos")}</span>
           <ol className="combo-edicao-passos">
             {edicao.passos.map((p, i) => (
               <li key={i}>
@@ -296,8 +291,8 @@ export function ComboCard({
                 <button
                   className="link-btn"
                   onClick={() => setEdicao({ ...edicao, passos: edicao.passos.filter((_, j) => j !== i) })}
-                  aria-label={`Tirar o passo ${i + 1}`}
-                  title="Tirar este passo"
+                  aria-label={t("Tirar o passo {0}", [i + 1])}
+                  title={t("Tirar este passo")}
                 >
                   ✕
                 </button>
@@ -305,36 +300,29 @@ export function ComboCard({
             ))}
           </ol>
           <label className="field">
-            <span className="field-label">Observações</span>
+            <span className="field-label">{t("Observações")}</span>
             <textarea rows={3} maxLength={2000} value={edicao.obs} onChange={(e) => setEdicao({ ...edicao, obs: e.target.value })} />
           </label>
           {!local && <label className="respostas-toggle">
-            <input type="checkbox" checked={edicao.compartilhar} onChange={(e) => setEdicao({ ...edicao, compartilhar: e.target.checked })} /> Compartilhar com todos na aba
-            Combos
-          </label>}
+            <input type="checkbox" checked={edicao.compartilhar} onChange={(e) => setEdicao({ ...edicao, compartilhar: e.target.checked })} /> {" "}{t("Compartilhar com todos na aba Combos")}</label>}
           <div className="dialog-actions">
             <button className="ghost-btn" onClick={() => setEdicao(null)}>
-              Cancelar
-            </button>
+              {t("Cancelar")}</button>
             <button className="ghost-btn" disabled={!edicao.titulo.trim() || !edicao.passos.length} onClick={() => void salvarEdicao()}>
-              Salvar
-            </button>
+              {t("Salvar")}</button>
           </div>
         </div>
       )}
       {exportando && (
         <div className="comunidade-form combo-exportacao">
-          <p className="tags-note">O combo sai deste aparelho e vai para a base, como Combo da Comunidade seu.</p>
+          <p className="tags-note">{t("O combo sai deste aparelho e vai para a base, como Combo da Comunidade seu.")}</p>
           <label className="respostas-toggle">
-            <input type="checkbox" checked={exportando.compartilhar} onChange={(e) => setExportando({ ...exportando, compartilhar: e.target.checked })} /> Compartilhar com
-            todos na aba Combos
-          </label>
+            <input type="checkbox" checked={exportando.compartilhar} onChange={(e) => setExportando({ ...exportando, compartilhar: e.target.checked })} /> {" "}{t("Compartilhar com todos na aba Combos")}</label>
           <div className="dialog-actions">
             <button className="ghost-btn" onClick={() => setExportando(null)}>
-              Cancelar
-            </button>
+              {t("Cancelar")}</button>
             <button className="ghost-btn combo-exportar-ok" disabled={exportando.enviando} onClick={() => void exportar()}>
-              {exportando.enviando ? "Exportando…" : "Exportar"}
+              {exportando.enviando ? t("Exportando…") : t("Exportar")}
             </button>
           </div>
         </div>
@@ -342,24 +330,22 @@ export function ComboCard({
       {form && (
         <div className="comunidade-form">
           <label className="field">
-            <span className="field-label">Nome do autor</span>
+            <span className="field-label">{t("Nome do autor")}</span>
             <input value={form.autor} maxLength={60} onChange={(e) => setForm({ ...form, autor: e.target.value })} />
           </label>
           <label className="field">
-            <span className="field-label">Título</span>
+            <span className="field-label">{t("Título")}</span>
             <input value={form.titulo} maxLength={120} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
           </label>
           <label className="field">
-            <span className="field-label">Observações</span>
+            <span className="field-label">{t("Observações")}</span>
             <textarea rows={3} maxLength={2000} value={form.obs} onChange={(e) => setForm({ ...form, obs: e.target.value })} />
           </label>
           <div className="dialog-actions">
             <button className="ghost-btn" onClick={() => setForm(null)}>
-              Cancelar
-            </button>
+              {t("Cancelar")}</button>
             <button className="ghost-btn" disabled={!form.autor.trim() || !form.titulo.trim()} onClick={() => void salvar()}>
-              Publicar
-            </button>
+              {t("Publicar")}</button>
           </div>
         </div>
       )}
@@ -430,18 +416,18 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
       .filter((l) => fits(l) && ids.some((id) => cardsOfLine(l).includes(id)))
       .sort((x, y) => y.pontos - x.pontos)
       .slice(0, 8)
-      .map((l) => `Calculado pelo App (deck ${combos!.decks[l.deck].nome}). Mão: ${l.mao.map(nome).join(" + ")}${l.qualquer ? " + 1 carta qualquer" : ""}.\n${l.passos.map((p, i) => `${i + 1}. ${passoEmTexto(p, nome)}`).join("\n")}\nCampo final: ${[...l.campo.monstros, ...l.campo.magias.map(([c]) => c)].map(nome).join(", ")}`);
+      .map((l) => t("Calculado pelo App (deck {0}). Mão: {1}{2}.\n{3}\nCampo final: {4}", [combos!.decks[l.deck].nome, l.mao.map(nome).join(" + "), l.qualquer ? t(" + 1 carta qualquer") : "", l.passos.map((p, i) => `${i + 1}. ${passoEmTexto(p, nome)}`).join("\n"), [...l.campo.monstros, ...l.campo.magias.map(([c]) => c)].map(nome).join(", ")]));
     const daBase = base.combos
       .filter((c) => ids.some((id) => c.iniciais.includes(id) || c.finais.includes(id)))
       .slice(0, 6)
-      .map((c) => `${ORIGEM_LABEL[c.origem]}: ${c.titulo}. Mão: ${c.iniciais.map(nome).join(" + ")}.\n${c.dados.passos.map((p, i) => `${i + 1}. ${passoEmTexto(p, nome)}`).join("\n")}`);
+      .map((c) => t("{0}: {1}. Mão: {2}.\n{3}", [ORIGEM_LABEL[c.origem], c.titulo, c.iniciais.map(nome).join(" + "), c.dados.passos.map((p, i) => `${i + 1}. ${passoEmTexto(p, nome)}`).join("\n")]));
     return [...linhas, ...daBase].join("\n\n");
   };
 
   const buscarComIA = async () => {
     if (!consulta) return;
     const cfg = getConfigIA();
-    setIa({ status: "buscando", progresso: "Consultando a IA…", combos: [] });
+    setIa({ status: "buscando", progresso: t("Consultando a IA…"), combos: [] });
     try {
       const { sugestoes, resposta } = await buscarCombosComIA(cfg, {
         ...consulta,
@@ -461,10 +447,10 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
             (ids) => ids.map((id) => byId.get(id)).filter((c): c is Card => !!c),
           );
         } catch (e) {
-          aviso = `Os combos não foram gravados na base: ${e instanceof Error ? e.message : String(e)}`;
+          aviso = t("Os combos não foram gravados na base: {0}", [e instanceof Error ? e.message : String(e)]);
         }
       } else {
-        aviso = "Entre na sua conta para gravar esta busca na base de combos e publicar como Combo da Comunidade.";
+        aviso = t("Entre na sua conta para gravar esta busca na base de combos e publicar como Combo da Comunidade.");
       }
       // sem gravação, mostra as sugestões do mesmo jeito (sem id na base)
       const mostrar = gravados.length ? gravados : sugestoes.map((s, i) => paraComboBase(s, i));
@@ -484,45 +470,42 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
       <section className="combos-setup">
         {tabs}
         <CardPicker
-          label="Cartas iniciais (starters)"
+          label={t("Cartas iniciais (starters)")}
           className="cs-iniciais"
           cards={iniciais}
           onChange={setIniciais}
           all={all}
           format={format}
-          placeholder="Opcional (ex.: Ice Ryzeal)"
+          placeholder={t("Opcional (ex.: Ice Ryzeal)")}
           placeholderMore="Acrescentar outra inicial…"
         />
         <CardPicker
-          label="Cartas finais"
+          label={t("Cartas finais")}
           className="cs-finais"
           cards={finais}
           onChange={setFinais}
           all={all}
           format={format}
-          placeholder="Onde o combo deve chegar"
+          placeholder={t("Onde o combo deve chegar")}
           placeholderMore="Acrescentar outra final…"
         />
         <button className="ghost-btn cs-buscar" disabled={!podeBuscar} onClick={buscar}>
-          Buscar
-        </button>
-        <p className="tags-note">Declare 0 ou mais cartas iniciais e/ou 1 ou mais cartas finais.</p>
+          {t("Buscar")}</button>
+        <p className="tags-note">{t("Declare 0 ou mais cartas iniciais e/ou 1 ou mais cartas finais.")}</p>
         {extra}
       </section>
 
       <section className="combos-result">
         {!consulta ? (
           <div className="combos-empty">
-            <p>Combo Search</p>
+            <p>{t("Combo Search")}</p>
             <small>
-              Escolha as cartas iniciais e/ou as finais e clique em Buscar. O App procura nas linhas que ele calculou, na base de
-              combos (comunidade e buscas anteriores) e, com a sua chave de IA, pesquisa novos combos na web.
-            </small>
+              {t("Escolha as cartas iniciais e/ou as finais e clique em Buscar. O App procura nas linhas que ele calculou, na base de combos (comunidade e buscas anteriores) e, com a sua chave de IA, pesquisa novos combos na web.")}</small>
           </div>
         ) : (
           <>
             <VerifiedCombos
-              title="Calculados pelo App"
+              title={t("Calculados pelo App")}
               lines={linhasApp}
               highlight={consulta.finais.map((c) => c.id)}
               combos={combos!}
@@ -534,8 +517,8 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
             />
 
             {supabaseReady() && (
-              <section className="known-combos" aria-label="Na base de combos">
-                <h4>Na base de combos ({base.carregando ? "…" : base.combos.length})</h4>
+              <section className="known-combos" aria-label={t("Na base de combos")}>
+                <h4>{t("Na base de combos ({0})", [base.carregando ? "…" : base.combos.length])}</h4>
                 {base.erro && <p className="db-warning">{base.erro}</p>}
                 {base.combos.map((c) => (
                   <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} format={format} />
@@ -543,19 +526,18 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
               </section>
             )}
 
-            <section className="known-combos ia-section" aria-label="Busca com IA">
-              <h4>Busca com IA</h4>
+            <section className="known-combos ia-section" aria-label={t("Busca com IA")}>
+              <h4>{t("Busca com IA")}</h4>
               {ia.status === "parado" &&
                 (temChave ? (
                   <button className="ghost-btn cs-ia" onClick={() => void buscarComIA()}>
-                    Buscar com {provedor(cfgIA.provedor).nome}: {[...consulta.iniciais, ...consulta.finais].map((c) => displayName(c)).join(", ")}
+                    {t("Buscar com {0}: {1}", [provedor(cfgIA.provedor).nome, [...consulta.iniciais, ...consulta.finais].map((c) => displayName(c)).join(", ")])}
                   </button>
                 ) : (
                   <p className="tags-note">
-                    Para pesquisar combos novos com IA (Claude, ChatGPT, Gemini e outras), configure em{" "}
+                    {t("Para pesquisar combos novos com IA (Claude, ChatGPT, Gemini e outras), configure em")}{" "}
                     <button className="link-btn" onClick={() => openConta()}>
-                      Minha conta → Integração com IA
-                    </button>
+                      {t("Minha conta → Integração com IA")}</button>
                     .
                   </p>
                 ))}
@@ -568,7 +550,7 @@ export default function ComboSearch({ tabs, extra, respostas, legal, all, byId, 
               {ia.status === "pronto" && (
                 <>
                   {ia.aviso && <p className="tags-note">{ia.aviso}</p>}
-                  {ia.combos.length === 0 && <p className="tags-note">{ia.resposta || "A IA não encontrou combos confiáveis para estas cartas."}</p>}
+                  {ia.combos.length === 0 && <p className="tags-note">{ia.resposta || t("A IA não encontrou combos confiáveis para estas cartas.")}</p>}
                   {ia.combos.map((c) => (
                     <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={destaque} format={format} />
                   ))}

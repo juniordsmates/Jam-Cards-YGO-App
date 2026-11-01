@@ -3,6 +3,7 @@ import { ATTRIBUTES, BAN_LABELS, MONSTER_CLASSES, MONSTER_RACES, SPELL_TYPES, TR
 import { EMPTY_FILTERS, type Filters } from "../db/search";
 import type { TagDefinition } from "../db/overlay";
 import type { Category } from "../db/types";
+import { t, LOCALE } from "../i18n";
 
 type Props = {
   filters: Filters;
@@ -17,11 +18,11 @@ type Props = {
 };
 
 const CATEGORIES: { value: Category | "all"; label: string }[] = [
-  { value: "all", label: "Todas" },
-  { value: "monster", label: "Monstro" },
-  { value: "spell", label: "Magia" },
-  { value: "trap", label: "Armadilha" },
-  { value: "other", label: "Outras" },
+  { value: "all", label: t("Todas") },
+  { value: "monster", label: t("Monstro") },
+  { value: "spell", label: t("Magia") },
+  { value: "trap", label: t("Armadilha") },
+  { value: "other", label: t("Outras") },
 ];
 
 const MONSTER_FILTERS: Partial<Filters> = {
@@ -37,9 +38,9 @@ const MONSTER_FILTERS: Partial<Filters> = {
 };
 
 const sortedEntries = (map: Record<string, string>) =>
-  Object.entries(map).sort((a, b) => a[1].localeCompare(b[1], "pt-BR"));
+  Object.entries(map).sort((a, b) => a[1].localeCompare(b[1], LOCALE));
 
-const fmt = (n: number) => n.toLocaleString("pt-BR");
+const fmt = (n: number) => n.toLocaleString(LOCALE);
 
 function Range({ label, min, max, onMin, onMax }: {
   label: string;
@@ -52,9 +53,9 @@ function Range({ label, min, max, onMin, onMax }: {
     <div className="field">
       <span className="field-label">{label}</span>
       <div className="range">
-        <input type="number" inputMode="numeric" placeholder="mín" value={min} onChange={(e) => onMin(e.target.value)} aria-label={`${label} mínimo`} />
+        <input type="number" inputMode="numeric" placeholder={t("mín")} value={min} onChange={(e) => onMin(e.target.value)} aria-label={t("{0} mínimo", [label])} />
         <span>–</span>
-        <input type="number" inputMode="numeric" placeholder="máx" value={max} onChange={(e) => onMax(e.target.value)} aria-label={`${label} máximo`} />
+        <input type="number" inputMode="numeric" placeholder={t("máx")} value={max} onChange={(e) => onMax(e.target.value)} aria-label={t("{0} máximo", [label])} />
       </div>
     </div>
   );
@@ -96,9 +97,9 @@ export default function SearchFilters({ filters: f, archetypes, tagDefs, tagCoun
   ].filter(Boolean).length;
 
   return (
-    <aside className="filters" aria-label="Filtros">
+    <aside className="filters" aria-label={t("Filtros")}>
       <div className="field">
-        <span className="field-label">Categoria</span>
+        <span className="field-label">{t("Categoria")}</span>
         <div className="chips">
           {CATEGORIES.map((c) => (
             <button key={c.value} className={`chip ${f.category === c.value ? "active" : ""}`} onClick={() => setCategory(c.value)}>
@@ -110,7 +111,7 @@ export default function SearchFilters({ filters: f, archetypes, tagDefs, tagCoun
 
       {subtypes && (
         <div className="field">
-          <span className="field-label">Subtipo</span>
+          <span className="field-label">{t("Subtipo")}</span>
           <div className="chips">
             {Object.entries(subtypes).map(([value, label]) => (
               <button
@@ -126,9 +127,9 @@ export default function SearchFilters({ filters: f, archetypes, tagDefs, tagCoun
       )}
 
       {f.category === "monster" && (
-        <Section title="Monstro" active={monsterActive} defaultOpen>
+        <Section title={t("Monstro")} active={monsterActive} defaultOpen>
           <div className="field">
-            <span className="field-label">Atributo</span>
+            <span className="field-label">{t("Atributo")}</span>
             <div className="chips">
               {Object.entries(ATTRIBUTES).map(([value, label]) => (
                 <button
@@ -143,9 +144,9 @@ export default function SearchFilters({ filters: f, archetypes, tagDefs, tagCoun
           </div>
 
           <label className="field">
-            <span className="field-label">Tipo</span>
+            <span className="field-label">{t("Tipo")}</span>
             <select value={f.race} onChange={(e) => onChange({ race: e.target.value })}>
-              <option value="">Todos</option>
+              <option value="">{t("Todos")}</option>
               {sortedEntries(MONSTER_RACES).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
@@ -153,22 +154,22 @@ export default function SearchFilters({ filters: f, archetypes, tagDefs, tagCoun
           </label>
 
           <label className="field">
-            <span className="field-label">Classe</span>
+            <span className="field-label">{t("Classe")}</span>
             <select value={f.monsterClass} onChange={(e) => onChange({ monsterClass: e.target.value })}>
-              <option value="">Todas</option>
+              <option value="">{t("Todas")}</option>
               {MONSTER_CLASSES.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
             </select>
           </label>
 
-          <Range label="Nível / Rank / Link" min={f.levelMin} max={f.levelMax} onMin={(levelMin) => onChange({ levelMin })} onMax={(levelMax) => onChange({ levelMax })} />
-          <Range label="ATK" min={f.atkMin} max={f.atkMax} onMin={(atkMin) => onChange({ atkMin })} onMax={(atkMax) => onChange({ atkMax })} />
-          <Range label="DEF" min={f.defMin} max={f.defMax} onMin={(defMin) => onChange({ defMin })} onMax={(defMax) => onChange({ defMax })} />
+          <Range label={t("Nível / Rank / Link")} min={f.levelMin} max={f.levelMax} onMin={(levelMin) => onChange({ levelMin })} onMax={(levelMax) => onChange({ levelMax })} />
+          <Range label={t("ATK")} min={f.atkMin} max={f.atkMax} onMin={(atkMin) => onChange({ atkMin })} onMax={(atkMax) => onChange({ atkMax })} />
+          <Range label={t("DEF")} min={f.defMin} max={f.defMax} onMin={(defMin) => onChange({ defMin })} onMax={(defMax) => onChange({ defMax })} />
         </Section>
       )}
 
-      <Section title="Efeitos e termos" active={f.tags.length}>
+      <Section title={t("Efeitos e termos")} active={f.tags.length}>
         {[...new Set(tagDefs.map((t) => t.group))].map((group) => (
           <div key={group} className="tag-group">
             <span className="tag-group-name">{group}</span>
@@ -192,14 +193,14 @@ export default function SearchFilters({ filters: f, archetypes, tagDefs, tagCoun
         ))}
       </Section>
 
-      <Section title="Arquétipo" active={f.archetype ? 1 : 0} defaultOpen>
+      <Section title={t("Arquétipo")} active={f.archetype ? 1 : 0} defaultOpen>
         <label className="field">
           <input
             list="archetype-list"
-            placeholder="Ex.: Mago Negro ou Dark Magician"
+            placeholder={t("Ex.: Mago Negro ou Dark Magician")}
             value={f.archetype}
             onChange={(e) => onChange({ archetype: e.target.value })}
-            aria-label="Arquétipo"
+            aria-label={t("Arquétipo")}
           />
           {/* aceita o nome oficial (inglês) ou em português */}
           <datalist id="archetype-list">
@@ -215,28 +216,27 @@ export default function SearchFilters({ filters: f, archetypes, tagDefs, tagCoun
             ))}
           </datalist>
         </label>
-        <label className="check" title="Inclui cartas de outros arquétipos que citam este no texto">
+        <label className="check" title={t("Inclui cartas de outros arquétipos que citam este no texto")}>
           <input type="checkbox" checked={f.includeSupport} onChange={(e) => onChange({ includeSupport: e.target.checked })} />
-          Incluir cartas de suporte
-        </label>
+          {t("Incluir cartas de suporte")}</label>
       </Section>
 
-      <Section title="Formato e lançamento" active={[f.format, f.yearMin || f.yearMax].filter(Boolean).length}>
+      <Section title={t("Formato e lançamento")} active={[f.format, f.yearMin || f.yearMax].filter(Boolean).length}>
         <label className="field">
-          <span className="field-label">Formato</span>
+          <span className="field-label">{t("Formato")}</span>
           <select value={f.format} onChange={(e) => onChange({ format: e.target.value })}>
-            <option value="">Qualquer</option>
+            <option value="">{t("Qualquer")}</option>
             {formats.map((fm) => (
               <option key={fm} value={fm}>{fm}</option>
             ))}
           </select>
         </label>
-        <Range label="Ano de lançamento" min={f.yearMin} max={f.yearMax} onMin={(yearMin) => onChange({ yearMin })} onMax={(yearMax) => onChange({ yearMax })} />
+        <Range label={t("Ano de lançamento")} min={f.yearMin} max={f.yearMax} onMin={(yearMin) => onChange({ yearMin })} onMax={(yearMax) => onChange({ yearMax })} />
       </Section>
 
-      <Section title="Banlist (TCG)" active={f.ban ? 1 : 0}>
-        <select value={f.ban} onChange={(e) => onChange({ ban: e.target.value as Filters["ban"] })} aria-label="Banlist (TCG)">
-          <option value="">Qualquer</option>
+      <Section title={t("Banlist (TCG)")} active={f.ban ? 1 : 0}>
+        <select value={f.ban} onChange={(e) => onChange({ ban: e.target.value as Filters["ban"] })} aria-label={t("Banlist (TCG)")}>
+          <option value="">{t("Qualquer")}</option>
           {Object.entries(BAN_LABELS).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
@@ -244,8 +244,7 @@ export default function SearchFilters({ filters: f, archetypes, tagDefs, tagCoun
       </Section>
 
       <button className="ghost-btn clear-btn" onClick={() => onChange({ ...EMPTY_FILTERS, text: f.text, inDesc: f.inDesc, sort: f.sort })}>
-        Limpar filtros
-      </button>
+        {t("Limpar filtros")}</button>
     </aside>
   );
 }

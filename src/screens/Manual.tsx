@@ -2,6 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import ScreenShell from "./ScreenShell";
 import { CAPITULOS } from "../data/manual";
 import "./manual.css";
+import { t } from "../i18n";
 
 /** **negrito** do texto do manual */
 const texto = (s: string): ReactNode[] => s.split(/(\*\*[^*]+\*\*)/g).map((p, i) => (p.startsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : p));
@@ -27,9 +28,9 @@ export default function Manual({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <ScreenShell title="Como Utilizar" accent="cyan" onBack={onBack} plain>
+    <ScreenShell title={t("Como Utilizar")} accent="cyan" onBack={onBack} plain>
       <div className="manual">
-        <nav className="manual-indice" aria-label="Capítulos">
+        <nav className="manual-indice" aria-label={t("Capítulos")}>
           {CAPITULOS.map((c) => (
             <button key={c.id} className={atual === c.id ? "active" : ""} onClick={() => ir(c.id)}>
               {c.titulo}
@@ -77,7 +78,7 @@ export default function Manual({ onBack }: { onBack: () => void }) {
               )}
               {c.ligacoes && (
                 <div className="manual-ligacoes">
-                  <h4>Ligações com outras telas</h4>
+                  <h4>{t("Ligações com outras telas")}</h4>
                   <ul>
                     {c.ligacoes.map((l) => (
                       <li key={l}>{texto(l)}</li>

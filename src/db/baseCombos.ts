@@ -4,6 +4,7 @@ import type { GameFormat } from "./legality";
 import type { CampoFinal, Passo } from "./motor";
 import type { SugestaoIA } from "./ia";
 import type { Card } from "./types";
+import { t } from "../i18n";
 
 // Base de combos no Supabase (tabela combos): um JSON por combo, encontrado pelos índices
 // arquétipo, iniciais (starters), finais e cartas. Origem: app, comunidade ou ia.
@@ -65,8 +66,8 @@ export function validadeNoFormato(copias: Map<number, number>, byId: Map<number,
     if (!c || c.frame === "token") continue;
     const max = copiasPermitidas(c, formato);
     const nome = c.namePt ?? c.name;
-    if (max === 0) problemas.push(`${nome}: proibida ou não lançada no ${formato}`);
-    else if (n > max) problemas.push(`${nome}: usa ${n} cópias (máximo ${max} no ${formato})`);
+    if (max === 0) problemas.push(t("{0}: proibida ou não lançada no {1}", [nome, formato]));
+    else if (n > max) problemas.push(t("{0}: usa {1} cópias (máximo {2} no {3})", [nome, n, max, formato]));
   }
   return { valido: !problemas.length, problemas };
 }
@@ -82,7 +83,7 @@ export async function buscarNaBase(iniciais: number[], finais: number[]): Promis
   if (iniciais.length) q = q.contains("iniciais", iniciais);
   if (finais.length) q = q.contains("cartas", finais);
   const { data, error } = await q.order("conferido_em", { ascending: false, nullsFirst: false }).order("criado_em", { ascending: false }).limit(40);
-  if (error) throw new Error(`Base de combos: ${error.message}`);
+  if (error) throw new Error(t("Base de combos: {0}", [error.message]));
   return (data ?? []) as ComboBase[];
 }
 
@@ -98,12 +99,12 @@ export async function gravarBuscaIA(
   const sb = supabase();
   if (!sb) return [];
   const { data: busca, error: e1 } = await sb.from("buscas").insert(params).select("id").single();
-  if (e1) throw new Error(`Gravar busca: ${e1.message}`);
+  if (e1) throw new Error(t("Gravar busca: {0}", [e1.message]));
   const validas = sugestoes.filter((s) => s.iniciais.length + s.finais.length > 0);
   if (!validas.length) return [];
   const rows = validas.map((s) => ({
     origem: "ia" as const,
-    titulo: s.titulo.slice(0, 120) || "Combo sugerido",
+    titulo: s.titulo.slice(0, 120) || t("Combo sugerido"),
     arquetipos: arquetiposDe(cardsDe([...s.iniciais, ...s.finais])),
     iniciais: s.iniciais.slice(0, 10),
     finais: s.finais.slice(0, 20),
@@ -111,7 +112,7 @@ export async function gravarBuscaIA(
     busca_id: busca.id,
   }));
   const { data, error } = await sb.from("combos").insert(rows).select(COLS);
-  if (error) throw new Error(`Gravar combos: ${error.message}`);
+  if (error) throw new Error(t("Gravar combos: {0}", [error.message]));
   return (data ?? []) as ComboBase[];
 }
 
@@ -121,7 +122,7 @@ export async function salvarComoComunidade(
   campos: { autorNome: string; titulo: string; observacoes: string },
 ): Promise<ComboBase> {
   const sb = supabase();
-  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
   const { data, error } = await sb
     .from("combos")
     .insert({
@@ -137,7 +138,7 @@ export async function salvarComoComunidade(
     })
     .select(COLS)
     .single();
-  if (error) throw new Error(`Salvar combo: ${error.message}`);
+  if (error) throw new Error(t("Salvar combo: {0}", [error.message]));
   return data as ComboBase;
 }
 
@@ -150,7 +151,7 @@ export async function criarComboDoTeste(
   combo: { iniciais: number[]; dados: DadosCombo; arquetipos: string[] },
 ): Promise<ComboBase> {
   const sb = supabase();
-  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
   const { data, error } = await sb
     .from("combos")
     .insert({
@@ -164,7 +165,7 @@ export async function criarComboDoTeste(
     })
     .select(COLS)
     .single();
-  if (error) throw new Error(`Criar combo: ${error.message}`);
+  if (error) throw new Error(t("Criar combo: {0}", [error.message]));
   return data as ComboBase;
 }
 
@@ -174,12 +175,12 @@ export async function criarComboDoTeste(
  */
 export async function exportarParaBase(combo: ComboBase, compartilhar: boolean): Promise<ComboBase> {
   const sb = supabase();
-  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
   const { data, error } = await sb
     .from("combos")
     .insert({
       origem: "comunidade",
-      autor_nome: (combo.autor_nome ?? "").trim().slice(0, 60) || "autor",
+      autor_nome: (combo.autor_nome ?? "").trim().slice(0, 60) || t("autor"),
       titulo: combo.titulo.trim().slice(0, 120),
       arquetipos: combo.arquetipos,
       iniciais: combo.iniciais.slice(0, 10),
@@ -189,7 +190,7 @@ export async function exportarParaBase(combo: ComboBase, compartilhar: boolean):
     })
     .select(COLS)
     .single();
-  if (error) throw new Error(`Exportar combo: ${error.message}`);
+  if (error) throw new Error(t("Exportar combo: {0}", [error.message]));
   return data as ComboBase;
 }
 
@@ -204,7 +205,7 @@ export async function combosDaComunidade(mao: number[], limite = 20): Promise<Co
   let q = sb.from("combos").select(COLS).eq("origem", "comunidade");
   if (mao.length) q = q.contains("iniciais", mao);
   const { data, error } = await q.order("criado_em", { ascending: false }).limit(limite);
-  if (error) throw new Error(`Combos da Comunidade: ${error.message}`);
+  if (error) throw new Error(t("Combos da Comunidade: {0}", [error.message]));
   return (data ?? []) as ComboBase[];
 }
 
@@ -217,7 +218,7 @@ export async function editarCombo(
   campos: { titulo: string; observacoes: string; compartilhar: boolean; passos: DadosCombo["passos"] },
 ): Promise<ComboBase> {
   const sb = supabase();
-  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
   const { data, error } = await sb
     .from("combos")
     .update({
@@ -228,17 +229,17 @@ export async function editarCombo(
     .eq("id", combo.id)
     .select(COLS)
     .single();
-  if (error) throw new Error(`Editar combo: ${error.message}`);
+  if (error) throw new Error(t("Editar combo: {0}", [error.message]));
   return data as ComboBase;
 }
 
 /** Exclui um Combo da Comunidade do próprio usuário (o banco só deixa o autor apagar) */
 export async function excluirCombo(id: string): Promise<void> {
   const sb = supabase();
-  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
   const { error, count } = await sb.from("combos").delete({ count: "exact" }).eq("id", id);
-  if (error) throw new Error(`Excluir combo: ${error.message}`);
-  if (!count) throw new Error("Excluir combo: só quem criou o combo pode excluí-lo.");
+  if (error) throw new Error(t("Excluir combo: {0}", [error.message]));
+  if (!count) throw new Error(t("Excluir combo: só quem criou o combo pode excluí-lo."));
 }
 
 /** Combos da Comunidade de um arquétipo (Guia de Deck → Combos), dos mais recentes */
@@ -252,6 +253,6 @@ export async function combosDoArquetipo(arquetipo: string, limite = 20): Promise
     .contains("arquetipos", [arquetipo])
     .order("criado_em", { ascending: false })
     .limit(limite);
-  if (error) throw new Error(`Combos do arquétipo: ${error.message}`);
+  if (error) throw new Error(t("Combos do arquétipo: {0}", [error.message]));
   return (data ?? []) as ComboBase[];
 }

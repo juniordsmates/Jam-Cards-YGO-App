@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BackIcon } from "../icons";
+import { t } from "../i18n";
 
 type Props = {
   title: string;
@@ -18,11 +19,10 @@ export default function ScreenShell({ title, accent, onBack, actions, plain, chi
     <section className={`screen accent-${accent}`}>
       <header className="screen-header">
         <button className="ghost-btn" onClick={onBack} autoFocus>
-          <BackIcon /> Menu
-        </button>
+          <BackIcon /> {" "}{t("Menu")}</button>
         <h2 className="screen-title">{title}</h2>
         {actions}
-        <kbd className="menu-btn-key">Esc</kbd>
+        <kbd className="menu-btn-key">{t("Esc")}</kbd>
       </header>
       <div className={plain ? "screen-body-plain" : "screen-body"}>{children}</div>
     </section>

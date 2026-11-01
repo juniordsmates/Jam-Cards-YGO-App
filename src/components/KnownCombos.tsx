@@ -2,6 +2,7 @@ import type { ComboStep, KnownCombo } from "../data/combos";
 import { FontesButton } from "./Fontes";
 import { legalIn, type GameFormat } from "../db/legality";
 import { displayName, type Card } from "../db/types";
+import { t } from "../i18n";
 
 type Props = {
   title?: string;
@@ -50,7 +51,7 @@ function Steps({ steps, byName, onHover, start = 1 }: { steps: ComboStep[]; byNa
 }
 
 /** Linhas de combo escritas pela comunidade (a tela só mostra as que o motor confirmou) */
-export default function KnownCombos({ title = "Combos conhecidos", combos, byName, format, onHover }: Props) {
+export default function KnownCombos({ title = t("Combos conhecidos"), combos, byName, format, onHover }: Props) {
   if (!combos.length) return null;
   return (
     <section className="known-combos" aria-label={title}>
@@ -69,21 +70,20 @@ export default function KnownCombos({ title = "Combos conhecidos", combos, byNam
             <summary>
               <span className="kc-title">{c.titulo}</span>
               <span className="kc-hand">
-                Mão: {c.mao.map((n) => displayName(byName.get(n) ?? ({ name: n } as Card))).join(" + ")}
+                {t("Mão: {0}", [c.mao.map((n) => displayName(byName.get(n) ?? ({ name: n } as Card))).join(" + ")])}
                 {c.maoExtra && ` (${c.maoExtra})`}
               </span>
             </summary>
             {blocked.length > 0 && (
               <p className="db-warning">
-                No {format}, não pode usar: {blocked.map((b) => displayName(b)).join(", ")}.
-              </p>
+                {t("No {0}, não pode usar: {1}.", [format, blocked.map((b) => displayName(b)).join(", ")])}</p>
             )}
             <Steps steps={c.passos} byName={byName} onHover={onHover} />
 
             {c.ramificacoes?.map((b) => (
               <details key={b.titulo} className="kc-branch">
                 <summary>
-                  Ramificação a partir do passo {b.aPartirDoPasso}: {b.titulo}
+                  {t("Ramificação a partir do passo {0}: {1}", [b.aPartirDoPasso, b.titulo])}
                 </summary>
                 <Steps steps={b.passos} byName={byName} onHover={onHover} start={b.aPartirDoPasso} />
               </details>
@@ -91,13 +91,13 @@ export default function KnownCombos({ title = "Combos conhecidos", combos, byNam
 
             {c.turnoOponente && (
               <details className="kc-branch">
-                <summary>Turno do oponente</summary>
+                <summary>{t("Turno do oponente")}</summary>
                 <Steps steps={c.turnoOponente} byName={byName} onHover={onHover} />
               </details>
             )}
 
             <div className="kc-board">
-              <span className="field-label">Campo final</span>
+              <span className="field-label">{t("Campo final")}</span>
               <span className="kc-board-cards">
                 {c.campoFinal.map((n) => (
                   <CardName key={n} name={n} byName={byName} onHover={onHover} />

@@ -4,6 +4,7 @@ import { legalIn, type GameFormat } from "./legality";
 import { supabase } from "./supabase";
 import { categoryOf, type Card } from "./types";
 import type { Passo } from "./motor";
+import { t, LOCALE } from "../i18n";
 
 // Decks do Editor de Deck: guardados neste dispositivo e, com conta, também na conta (tabela decks).
 // Regras: Main 40–60, Extra até 15, Side até 15, até 3 cópias por carta (somando as três partes),
@@ -34,7 +35,7 @@ const STORAGE = "cartas-decks";
 const LIMITES = { main: [40, 60], extra: [0, 15], side: [0, 15] } as const;
 
 /** Mesmo nome de deck: sem diferenciar maiúsculas, acentos de caixa ou espaços nas pontas */
-const chaveNome = (nome: string) => nome.trim().toLocaleLowerCase("pt-BR");
+const chaveNome = (nome: string) => nome.trim().toLocaleLowerCase(LOCALE);
 
 /** Deixa um deck por nome (o salvo por último); decks repetidos vinham de salvamentos em dobro */
 function semRepetidos(e: Estado): Estado {
@@ -89,11 +90,11 @@ export const deckComNome = (nome: string, exceto?: string) =>
  * cima do existente; sem conteúdo (botão Novo), só devolve o existente.
  */
 export function criarDeck(nome: string, base?: Pick<Deck, "main" | "extra" | "side">, temporario = false): Deck {
-  const existente = deckComNome(nome.trim() || "Deck sem nome");
+  const existente = deckComNome(nome.trim() || t("Deck sem nome"));
   if (existente) return base ? salvarDeck({ ...existente, ...base }) : existente;
   const deck: Deck = {
     id: novoId(),
-    nome: nome.trim() || "Deck sem nome",
+    nome: nome.trim() || t("Deck sem nome"),
     main: [],
     extra: [],
     side: [],
@@ -211,20 +212,20 @@ export const copias = (deck: Pick<Deck, Parte>, id: number) => [...deck.main, ..
  * limite de cartas" no editor (sem banlist e sem conferir se a carta saiu no formato).
  */
 export function motivoBloqueio(deck: Deck, c: Card, parte: Parte, formato: GameFormat, semLimite = false): string | null {
-  if (c.frame === "skill" || c.frame === "token") return "Cartas de Habilidade e Fichas não entram em decks.";
-  if (parte === "main" && ehExtra(c)) return "Monstros de Fusão, Sincro, Xyz e Link vão para o Extra Deck.";
-  if (parte === "extra" && !ehExtra(c)) return "Só monstros de Fusão, Sincro, Xyz e Link vão para o Extra Deck.";
-  if (deck[parte].length >= LIMITES[parte][1]) return `O ${parte === "main" ? "Main Deck" : parte === "extra" ? "Extra Deck" : "Side Deck"} já tem o máximo de ${LIMITES[parte][1]} cartas.`;
+  if (c.frame === "skill" || c.frame === "token") return t("Cartas de Habilidade e Fichas não entram em decks.");
+  if (parte === "main" && ehExtra(c)) return t("Monstros de Fusão, Sincro, Xyz e Link vão para o Extra Deck.");
+  if (parte === "extra" && !ehExtra(c)) return t("Só monstros de Fusão, Sincro, Xyz e Link vão para o Extra Deck.");
+  if (deck[parte].length >= LIMITES[parte][1]) return t("O {0} já tem o máximo de {1} cartas.", [parte === "main" ? t("Main Deck") : parte === "extra" ? t("Extra Deck") : t("Side Deck"), LIMITES[parte][1]]);
   const max = maximoDe(c, formato, semLimite);
   if (copias(deck, c.id) >= max)
-    return semLimite ? "Máximo de 3 cópias por carta." : max === 0 ? `Carta proibida ou não lançada no ${formato}.` : `Limite de ${max} ${max === 1 ? "cópia" : "cópias"} no ${formato}.`;
+    return semLimite ? t("Máximo de 3 cópias por carta.") : max === 0 ? t("Carta proibida ou não lançada no {0}.", [formato]) : t("Limite de {0} {1} no {2}.", [max, max === 1 ? t("cópia") : t("cópias"), formato]);
   return null;
 }
 
 /** Avisos do deck inteiro (tamanho e cartas acima do limite da banlist) */
 export function avisos(deck: Deck, byId: Map<number, Card>, formato: GameFormat, semLimite = false): string[] {
   const out: string[] = [];
-  if (deck.main.length < LIMITES.main[0] && !deck.temporario) out.push(`Main Deck com ${deck.main.length} cartas (mínimo 40).`);
+  if (deck.main.length < LIMITES.main[0] && !deck.temporario) out.push(t("Main Deck com {0} cartas (mínimo 40).", [deck.main.length]));
   const vistos = new Set<number>();
   for (const id of [...deck.main, ...deck.extra, ...deck.side]) {
     if (vistos.has(id)) continue;
@@ -232,7 +233,7 @@ export function avisos(deck: Deck, byId: Map<number, Card>, formato: GameFormat,
     const c = byId.get(id);
     if (!c) continue;
     const max = maximoDe(c, formato, semLimite);
-    if (copias(deck, id) > max) out.push(`${c.namePt ?? c.name}: ${copias(deck, id)} cópias (máximo ${max}${semLimite ? " por carta" : ` no ${formato}`}).`);
+    if (copias(deck, id) > max) out.push(t("{0}: {1} cópias (máximo {2}{3}).", [c.namePt ?? c.name, copias(deck, id), max, semLimite ? t(" por carta") : t(" no {0}", [formato])]));
   }
   return out;
 }
@@ -315,7 +316,7 @@ export function deckDoCombo(
   formato: GameFormat,
 ): Deck {
   const principal = byId.get(linha.mao[0]);
-  const nome = `${principal?.archetype ?? (principal ? (principal.namePt ?? principal.name) : "Combo")} Temporário`;
+  const nome = t("{0} Temporário", [principal?.archetype ?? (principal ? (principal.namePt ?? principal.name) : t("Combo"))]);
   const ids: number[] = [...linha.mao];
   for (const p of linha.passos) {
     if (p.t === "compra" || p.t === "texto") ids.push(...p.c);

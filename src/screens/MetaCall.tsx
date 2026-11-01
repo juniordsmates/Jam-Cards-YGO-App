@@ -12,6 +12,7 @@ import { decksDoFormato, perfilDoDeck, recomendar, sugerirListas, type DeckDoMet
 import { useContextoRespostas } from "../db/respostas";
 import { displayName, type Card } from "../db/types";
 import "./meta-call.css";
+import { t, LOCALE } from "../i18n";
 
 // Meta Call: escolha os decks esperados no torneio (e quanto de cada um) e veja as cartas boas
 // contra eles — hand traps, respostas, cartas para jogar em segundo e de Side —, com o motivo em
@@ -38,7 +39,7 @@ function lerEscolha(): Escolha {
 }
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
-const n1 = (x: number) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+const n1 = (x: number) => x.toLocaleString(LOCALE, { maximumFractionDigits: 1 });
 
 /** O deck do jogador como "núcleo": cada carta com as cópias que tem */
 function nucleoDoDeck(d: Deck): DeckDoMeta {
@@ -123,7 +124,7 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
   const topo = (n: number) => salvar({ ...escolha, pesos: Object.fromEntries(decks.slice(0, n).map((d) => [d.arquetipo, Math.max(1, Math.round(d.pct))])) });
 
   const copiar = (titulo: string, itens: { r: Recomendacao; n: number }[]) => {
-    const texto = `${titulo}\n${itens.map(({ r, n }) => `${n}x ${r.card.name}`).join("\n")}`;
+    const texto = `${titulo}\n${itens.map(({ r, n }) => t("{0}x {1}", [n, r.card.name])).join("\n")}`;
     void navigator.clipboard?.writeText(texto).then(() => {
       setCopiado(titulo);
       setTimeout(() => setCopiado(null), 2000);
@@ -133,17 +134,17 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
 
   const pronto = db.status === "ready";
   return (
-    <ScreenShell title="Meta Call" accent="cyan" onBack={onBack} plain>
+    <ScreenShell title={t("Meta Call")} accent="cyan" onBack={onBack} plain>
       {!pronto ? (
         <div className="db-loading">
           <span className="spinner" />
-          <p>{db.step ?? "Carregando base de cartas…"}</p>
+          <p>{db.step ?? t("Carregando base de cartas…")}</p>
         </div>
       ) : (
         <div className="meta-call">
           {/* ---------------- esquerda: decks esperados */}
           <aside className="mc-decks">
-            <div className="format-switch combos-format" role="radiogroup" aria-label="Formato">
+            <div className="format-switch combos-format" role="radiogroup" aria-label={t("Formato")}>
               {FORMATS.map((f) => (
                 <button key={f} role="radio" aria-checked={escolha.formato === f} className={escolha.formato === f ? "active" : ""} onClick={() => salvar({ ...escolha, formato: f, pesos: {} })}>
                   {f}
@@ -151,23 +152,18 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
               ))}
             </div>
             <p className="tags-note">
-              {escolha.formato === "TCG"
-                ? `${extras?.metaTcg?.decks.toLocaleString("pt-BR") ?? "—"} decklists de torneio do TCG nos últimos 6 meses.`
-                : "OCG: participação pelo Road of the King (dois últimos trimestres); o perfil de cada deck é estimado pelas cartas do arquétipo."}{" "}
-              Marque os decks que espera no torneio e ajuste o % de cada um.
-            </p>
+              {t("{0} Marque os decks que espera no torneio e ajuste o % de cada um.", [escolha.formato === "TCG"
+                ? t("{0} decklists de torneio do TCG nos últimos 6 meses.", [extras?.metaTcg?.decks.toLocaleString(LOCALE) ?? "—"])
+                : t("OCG: participação pelo Road of the King (dois últimos trimestres); o perfil de cada deck é estimado pelas cartas do arquétipo.")])}</p>
             <div className="mc-atalhos">
               <button className="ghost-btn" onClick={() => topo(5)}>
-                Top 5
-              </button>
+                {t("Top 5")}</button>
               <button className="ghost-btn" onClick={() => topo(10)}>
-                Top 10
-              </button>
+                {t("Top 10")}</button>
               <button className="ghost-btn" onClick={() => salvar({ ...escolha, pesos: {} })}>
-                Limpar
-              </button>
+                {t("Limpar")}</button>
             </div>
-            {!decks.length && <p className="db-warning">O metagame ainda não foi baixado. Ele chega com a camada de dados do app.</p>}
+            {!decks.length && <p className="db-warning">{t("O metagame ainda não foi baixado. Ele chega com a camada de dados do app.")}</p>}
             <ul className="mc-lista">
               {decks.map((d, i) => {
                 const on = (pesos[d.arquetipo] ?? 0) > 0;
@@ -178,7 +174,7 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                       <input type="checkbox" checked={on} onChange={(e) => marcar(d, e.target.checked)} />
                       <span className="mc-pos">{i + 1}</span>
                       <span className="mc-nome">{d.arquetipo}</span>
-                      <small title={`${n1(d.pct)}% no período; ${n1(d.pctRecente)}% no mais recente`}>
+                      <small title={t("{0}% no período; {1}% no mais recente", [n1(d.pct), n1(d.pctRecente)])}>
                         {n1(d.pct)}%{Math.abs(tend) >= 1 && <span className={tend > 0 ? "sobe" : "desce"}>{tend > 0 ? " ▲" : " ▼"}</span>}
                       </small>
                     </label>
@@ -190,7 +186,7 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                           max={100}
                           value={pesos[d.arquetipo]}
                           onChange={(e) => definirPeso(d.arquetipo, Number(e.target.value) || 0)}
-                          aria-label={`% esperado de ${d.arquetipo}`}
+                          aria-label={t("% esperado de {0}", [d.arquetipo])}
                         />
                         %
                       </span>
@@ -200,9 +196,9 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
               })}
             </ul>
             <label className="field mc-meu">
-              <span className="field-label">Meu deck (opcional)</span>
+              <span className="field-label">{t("Meu deck (opcional)")}</span>
               <select value={escolha.meuDeck ?? ""} onChange={(e) => salvar({ ...escolha, meuDeck: e.target.value || undefined })}>
-                <option value="">— nenhum —</option>
+                <option value="">{t("— nenhum —")}</option>
                 {meusDecks
                   .filter((d) => !d.temporario)
                   .map((d) => (
@@ -211,7 +207,7 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                     </option>
                   ))}
               </select>
-              <small className="tags-note">Com o seu deck: avisa cartas que também travam você e confere requisitos (Fadas, Sincros, Fusões).</small>
+              <small className="tags-note">{t("Com o seu deck: avisa cartas que também travam você e confere requisitos (Fadas, Sincros, Fusões).")}</small>
             </label>
           </aside>
 
@@ -219,93 +215,88 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
           <section className="mc-resultado">
             {!sel.length ? (
               <div className="mc-vazio">
-                <h3>Qual é o meta do seu torneio?</h3>
+                <h3>{t("Qual é o meta do seu torneio?")}</h3>
                 <p>
-                  Escolha os decks que você espera enfrentar (ou use <strong>Top 5</strong>). O Meta Call lê o que cada deck faz — buscas,
-                  Invocações, Cemitério, efeitos no campo, campo final —, cruza com as linhas do motor de regras e com o que os jogadores de torneio
-                  usam, e indica as melhores cartas contra eles.
-                </p>
+                  {t("Escolha os decks que você espera enfrentar (ou use")}{" "}<strong>{t("Top 5")}</strong>{t("). O Meta Call lê o que cada deck faz — buscas, Invocações, Cemitério, efeitos no campo, campo final —, cruza com as linhas do motor de regras e com o que os jogadores de torneio usam, e indica as melhores cartas contra eles.")}</p>
               </div>
             ) : (
               <>
                 <h3 className="mc-titulo">
-                  {sel.length} {sel.length === 1 ? "deck esperado" : "decks esperados"} · soma {somaPesos}%
-                  {somaPesos !== 100 && <small> (os % valem como proporção entre eles)</small>}
+                  {t("{0} {1} · soma {2}%", [sel.length, sel.length === 1 ? t("deck esperado") : t("decks esperados"), somaPesos])}{somaPesos !== 100 && <small> {" "}{t("(os % valem como proporção entre eles)")}</small>}
                 </h3>
 
                 <div className="mc-perfis">
                   {sel.map(({ deck, peso, perfil: p }) => (
                     <details key={deck.arquetipo} className="mc-perfil">
                       <summary>
-                        <strong>{deck.arquetipo}</strong> <small>{pct(peso / (somaPesos || 1))} do torneio</small>
+                        <strong>{deck.arquetipo}</strong> <small>{t("{0} do torneio", [pct(peso / (somaPesos || 1))])}</small>
                       </summary>
                       <ul className="mc-tracos">
-                        <li>Busca no Deck: {pct(p.busca)}</li>
-                        <li>Invoca do Deck: {pct(p.invocaDeck)}</li>
-                        <li>Usa o Cemitério: {pct(Math.max(p.usaGY, p.efeitoGY))}</li>
-                        <li>Efeitos de monstro no campo: {pct(p.efeitoCampo)}</li>
-                        <li>Magias/Armadilhas: {pct(p.magias + p.armadilhas)}</li>
+                        <li>{t("Busca no Deck: {0}", [pct(p.busca)])}</li>
+                        <li>{t("Invoca do Deck: {0}", [pct(p.invocaDeck)])}</li>
+                        <li>{t("Usa o Cemitério: {0}", [pct(Math.max(p.usaGY, p.efeitoGY))])}</li>
+                        <li>{t("Efeitos de monstro no campo: {0}", [pct(p.efeitoCampo)])}</li>
+                        <li>{t("Magias/Armadilhas: {0}", [pct(p.magias + p.armadilhas)])}</li>
                         {p.linhas && (
                           <li>
-                            Por combo ({p.linhas.n} linhas do motor): {n1(p.linhas.invocacoes)} Invocações, {n1(p.linhas.buscas)} buscas, campo final de{" "}
-                            {n1(p.linhas.monstrosFinais + p.linhas.magiasFinais)} cartas
-                          </li>
+                            {t("Por combo ({0} linhas do motor): {1} Invocações, {2} buscas, campo final de", [p.linhas.n, n1(p.linhas.invocacoes), n1(p.linhas.buscas)])}{" "}
+                            {t("{0} cartas", [n1(p.linhas.monstrosFinais + p.linhas.magiasFinais)])}</li>
                         )}
                       </ul>
                       {p.pontos.length > 0 && (
                         <p className="mc-linha">
-                          <span className="field-label">Onde parar</span>{" "}
+                          <span className="field-label">{t("Onde parar")}</span>{" "}
                           {p.pontos.map((pt, i) => (
                             <span key={i}>
                               {i > 0 && " · "}
-                              {passoNoIdioma(pt.passo, nome, "pt")} <small>({pt.respostas} respostas)</small>
+                              {passoNoIdioma(pt.passo, nome, "pt")} <small>{t("({0} respostas)", [pt.respostas])}</small>
                             </span>
                           ))}
                         </p>
                       )}
                       {p.handTraps.length > 0 && (
                         <p className="mc-linha">
-                          <span className="field-label">Joga</span>{" "}
+                          <span className="field-label">{t("Joga")}</span>{" "}
                           {p.handTraps.slice(0, 6).map((h, i) => (
                             <span key={`${h.id}-${h.side}`}>
                               {i > 0 && ", "}
                               {nome(h.id)} {pct(h.pct)}
-                              {h.side ? " (Side)" : ""}
+                              {h.side ? t(" (Side)") : ""}
                             </span>
                           ))}
                         </p>
                       )}
                       {p.chefes.length > 0 && (
                         <p className="mc-linha">
-                          <span className="field-label">Chefes no campo</span> {p.chefes.map((c) => nome(c.id)).join(", ")}
+                          <span className="field-label">{t("Chefes no campo")}</span> {p.chefes.map((c) => nome(c.id)).join(", ")}
                         </p>
                       )}
-                      {deck.fonte === "arquetipo" && <p className="tags-note">Perfil estimado pelas cartas do arquétipo (sem decklists deste formato).</p>}
+                      {deck.fonte === "arquetipo" && <p className="tags-note">{t("Perfil estimado pelas cartas do arquétipo (sem decklists deste formato).")}</p>}
                     </details>
                   ))}
                 </div>
 
                 <div className="mc-listas">
                   {[
-                    { titulo: "Main: interrupções", itens: listas.main, dica: "Boas contra todos os decks escolhidos" },
-                    { titulo: "Side Deck (15)", itens: listas.side, dica: "Para trocar entre as partidas, conforme o oponente" },
+                    { titulo: t("Main: interrupções"), itens: listas.main, dica: t("Boas contra todos os decks escolhidos") },
+                    { titulo: t("Side Deck (15)"), itens: listas.side, dica: t("Para trocar entre as partidas, conforme o oponente") },
                   ].map((l) => (
                     <div key={l.titulo} className="mc-sugestao">
                       <div className="mc-sugestao-cab">
                         <h4>
-                          {l.titulo} <small>{l.itens.reduce((s, x) => s + x.n, 0)} cartas</small>
+                          {l.titulo} <small>{t("{0} cartas", [l.itens.reduce((s, x) => s + x.n, 0)])}</small>
                         </h4>
                         <button className="link-btn" disabled={!l.itens.length} onClick={() => copiar(l.titulo, l.itens)}>
-                          {copiado === l.titulo ? "Copiado!" : "Copiar"}
+                          {copiado === l.titulo ? t("Copiado!") : t("Copiar")}
                         </button>
                       </div>
                       <p className="tags-note">{l.dica}</p>
                       <ul>
                         {l.itens.map(({ r, n }) => (
                           <li key={r.id} {...comPrevia(r.card)}>
-                            <strong>{n}×</strong> {displayName(r.card)}
-                            {(possuo.get(r.id) ?? 0) > 0 && <small className="mc-possuo"> possuo {possuo.get(r.id)}</small>}
-                            {meusIds.has(r.id) && <small className="mc-possuo"> no seu deck</small>}
+                            <strong>{t("{0}×", [n])}</strong> {displayName(r.card)}
+                            {(possuo.get(r.id) ?? 0) > 0 && <small className="mc-possuo"> {" "}{t("possuo")}{" "}{possuo.get(r.id)}</small>}
+                            {meusIds.has(r.id) && <small className="mc-possuo"> {" "}{t("no seu deck")}</small>}
                           </li>
                         ))}
                       </ul>
@@ -313,10 +304,9 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                   ))}
                 </div>
 
-                <div className="left-tabs mc-cats" role="tablist" aria-label="Tipo de carta">
+                <div className="left-tabs mc-cats" role="tablist" aria-label={t("Tipo de carta")}>
                   <button className={categoria === "todas" ? "active" : ""} onClick={() => setCategoria("todas")}>
-                    Todas ({recs.length})
-                  </button>
+                    {t("Todas ({0})", [recs.length])}</button>
                   {CATEGORIAS.map((c) => (
                     <button key={c.id} className={categoria === c.id ? "active" : ""} onClick={() => setCategoria(c.id)} title={c.hint}>
                       {c.label} ({recs.filter((r) => r.categoria === c.id).length})
@@ -335,40 +325,39 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                           <div className="mc-rec-topo">
                             <strong {...comPrevia(r.card)}>{displayName(r.card)}</strong>
                             <span className="mc-selo">{CATEGORIAS.find((c) => c.id === r.categoria)?.label}</span>
-                            {r.maximo < 3 && <span className="mc-selo mc-selo-ban">máx. {r.maximo}</span>}
-                            {(possuo.get(r.id) ?? 0) > 0 && <span className="mc-selo mc-selo-possuo">possuo {possuo.get(r.id)}</span>}
-                            {meusIds.has(r.id) && <span className="mc-selo mc-selo-possuo">no seu deck</span>}
+                            {r.maximo < 3 && <span className="mc-selo mc-selo-ban">{t("máx. {0}", [r.maximo])}</span>}
+                            {(possuo.get(r.id) ?? 0) > 0 && <span className="mc-selo mc-selo-possuo">{t("possuo")}{" "}{possuo.get(r.id)}</span>}
+                            {meusIds.has(r.id) && <span className="mc-selo mc-selo-possuo">{t("no seu deck")}</span>}
                           </div>
                           <small className="mc-papel">{r.item.papel}</small>
-                          <div className="mc-nota" title="Nota final: 70% o confronto com os decks escolhidos e 30% o uso real em torneios">
+                          <div className="mc-nota" title={t("Nota final: 70% o confronto com os decks escolhidos e 30% o uso real em torneios")}>
                             <span className="mc-barra">
                               <span style={{ width: pct(r.total) }} />
                             </span>
                             <strong>{Math.round(r.total * 100)}</strong>
                             <small>
-                              contra estes decks {Math.round(r.contra * 100)} · uso em torneios {pct(r.uso)}
-                              {r.noSide > 0.05 && ` · no Side de ${pct(r.noSide)} deles`}
+                              {t("contra estes decks {0} · uso em torneios {1}", [Math.round(r.contra * 100), pct(r.uso)])}
+                              {r.noSide > 0.05 && t(" · no Side de {0} deles", [pct(r.noSide)])}
                             </small>
                           </div>
                           <div className="mc-por-deck">
                             {r.porDeck.map((d) => (
                               <span key={d.arquetipo} className="mc-chip" title={d.motivo} style={{ ["--nota" as string]: d.nota }}>
                                 {d.arquetipo} <strong>{Math.round(d.nota * 100)}</strong>
-                                {d.motor && <small title="Calculado com as linhas do motor de regras"> ⚙</small>}
+                                {d.motor && <small title={t("Calculado com as linhas do motor de regras")}> ⚙</small>}
                               </span>
                             ))}
                           </div>
                           <small className="mc-motivo">
-                            Melhor contra <strong>{melhor.arquetipo}</strong>: {melhor.motivo}.
+                            {t("Melhor contra")}{" "}<strong>{melhor.arquetipo}</strong>: {melhor.motivo}.
                             {r.porDeck.length > 1 && pior.nota < 0.3 && (
                               <>
-                                {" "}
-                                Fraca contra <strong>{pior.arquetipo}</strong>.
+                                {" "}{t("Fraca contra")}{" "}<strong>{pior.arquetipo}</strong>.
                               </>
                             )}
                           </small>
-                          {r.requisito && <small className="mc-requisito">Requisito: {r.requisito}.</small>}
-                          {r.aviso && <small className="mc-aviso">Atenção: {r.aviso}.</small>}
+                          {r.requisito && <small className="mc-requisito">{t("Requisito: {0}.", [r.requisito])}</small>}
+                          {r.aviso && <small className="mc-aviso">{t("Atenção: {0}.", [r.aviso])}</small>}
                           {aberta === r.id ? (
                             <ul className="mc-detalhe">
                               {r.porDeck.map((d) => (
@@ -378,15 +367,13 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                               ))}
                               <li>
                                 <button className="link-btn" onClick={() => setAberta(null)}>
-                                  Fechar detalhes
-                                </button>
+                                  {t("Fechar detalhes")}</button>
                               </li>
                             </ul>
                           ) : (
                             r.porDeck.length > 1 && (
                               <button className="link-btn mc-ver" onClick={() => setAberta(r.id)}>
-                                Ver o motivo em cada deck
-                              </button>
+                                {t("Ver o motivo em cada deck")}</button>
                             )
                           )}
                         </div>
@@ -395,10 +382,7 @@ export default function MetaCall({ onBack }: { onBack: () => void }) {
                   })}
                 </ol>
                 <p className="tags-note">
-                  Nota de cada deck: o que o motor do deck faz (lido do texto oficial das cartas do núcleo de torneio) e, com ⚙, as linhas do motor
-                  de regras — em que passo a carta já pode responder e quanto do combo ela corta. A banlist do {escolha.formato} define as cartas e
-                  as cópias. É uma indicação para estudar o meta, não uma garantia: confira o texto das cartas.
-                </p>
+                  {t("Nota de cada deck: o que o motor do deck faz (lido do texto oficial das cartas do núcleo de torneio) e, com ⚙, as linhas do motor de regras — em que passo a carta já pode responder e quanto do combo ela corta. A banlist do {0} define as cartas e as cópias. É uma indicação para estudar o meta, não uma garantia: confira o texto das cartas.", [escolha.formato])}</p>
               </>
             )}
           </section>

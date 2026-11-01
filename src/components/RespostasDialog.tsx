@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { CLASSES, ordenarRespostas, TIPOS, useContextoRespostas, type Classe, type Resposta } from "../db/respostas";
 import { displayName, type Card } from "../db/types";
+import { t, LOCALE } from "../i18n";
 
 // Janela com todas as respostas possíveis de um passo ou de uma carta (o "+" das listas).
 // Ordem padrão: mais usadas em torneios > hand trap e staple > hand trap > staple > outras.
@@ -44,8 +45,8 @@ function Lista({ pedido }: { pedido: Pedido }) {
 
   const lista = useMemo(() => {
     const filtrada = todas.filter((r) => (classe === "todas" || r.classe === classe) && (tipo === "todos" || r.tipos.includes(tipo)));
-    if (ordem === "nome") return [...filtrada].sort((a, b) => nome(a).localeCompare(nome(b), "pt-BR"));
-    if (ordem === "tipo") return [...filtrada].sort((a, b) => (TIPOS[a.tipos[0]] ?? "").localeCompare(TIPOS[b.tipos[0]] ?? "", "pt-BR") || nome(a).localeCompare(nome(b), "pt-BR"));
+    if (ordem === "nome") return [...filtrada].sort((a, b) => nome(a).localeCompare(nome(b), LOCALE));
+    if (ordem === "tipo") return [...filtrada].sort((a, b) => (TIPOS[a.tipos[0]] ?? "").localeCompare(TIPOS[b.tipos[0]] ?? "", LOCALE) || nome(a).localeCompare(nome(b), LOCALE));
     return filtrada;
   }, [todas, classe, tipo, ordem]);
 
@@ -53,9 +54,9 @@ function Lista({ pedido }: { pedido: Pedido }) {
     <>
       <div className="respostas-filtros">
         <label className="field">
-          <span className="field-label">Classificação</span>
-          <select value={classe} onChange={(e) => setClasse(e.target.value as Classe | "todas")} aria-label="Classificação">
-            <option value="todas">Todas</option>
+          <span className="field-label">{t("Classificação")}</span>
+          <select value={classe} onChange={(e) => setClasse(e.target.value as Classe | "todas")} aria-label={t("Classificação")}>
+            <option value="todas">{t("Todas")}</option>
             {CLASSES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
@@ -64,9 +65,9 @@ function Lista({ pedido }: { pedido: Pedido }) {
           </select>
         </label>
         <label className="field">
-          <span className="field-label">Tipo de Resposta</span>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value)} aria-label="Tipo de Resposta">
-            <option value="todos">Todos</option>
+          <span className="field-label">{t("Tipo de Resposta")}</span>
+          <select value={tipo} onChange={(e) => setTipo(e.target.value)} aria-label={t("Tipo de Resposta")}>
+            <option value="todos">{t("Todos")}</option>
             {tiposPresentes.map((t) => (
               <option key={t} value={t}>
                 {TIPOS[t] ?? t}
@@ -75,17 +76,16 @@ function Lista({ pedido }: { pedido: Pedido }) {
           </select>
         </label>
         <label className="field">
-          <span className="field-label">Ordenar por</span>
-          <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} aria-label="Ordenar por">
-            <option value="prioridade">Prioridade (padrão)</option>
-            <option value="nome">Nome</option>
-            <option value="tipo">Tipo de resposta</option>
+          <span className="field-label">{t("Ordenar por")}</span>
+          <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} aria-label={t("Ordenar por")}>
+            <option value="prioridade">{t("Prioridade (padrão)")}</option>
+            <option value="nome">{t("Nome")}</option>
+            <option value="tipo">{t("Tipo de resposta")}</option>
           </select>
         </label>
       </div>
       <p className="tags-note">
-        {lista.length} de {todas.length} cartas
-        {ctx.uso && ` · uso em ${ctx.uso.decks.toLocaleString("pt-BR")} decklists de torneio recentes`}
+        {t("{0} de {1} cartas", [lista.length, todas.length])}{ctx.uso && t(" · uso em {0} decklists de torneio recentes", [ctx.uso.decks.toLocaleString(LOCALE)])}
       </p>
       <ul className="respostas-todas">
         {lista.map((r) => (
@@ -96,7 +96,7 @@ function Lista({ pedido }: { pedido: Pedido }) {
             </span>
             <span className="rt-info">
               <span className={`rt-classe rt-${r.classe}`}>{CLASSES.find((c) => c.id === r.classe)?.label}</span>
-              {r.uso > 0 && <span className="rt-uso">em {(r.uso * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% dos decks</span>}
+              {r.uso > 0 && <span className="rt-uso">{t("em {0}% dos decks", [(r.uso * 100).toLocaleString(LOCALE, { maximumFractionDigits: 1 })])}</span>}
               {r.tipos.map((t) => (
                 <span key={t} className="rt-tipo">
                   {TIPOS[t] ?? t}
@@ -133,7 +133,7 @@ export function RespostasDialog() {
       <div className="dialog fontes-dialog respostas-dialog" role="dialog" aria-modal="true" aria-labelledby="respostas-title" onClick={(e) => e.stopPropagation()}>
         <div className="fontes-head">
           <h2 id="respostas-title">{pedido.titulo}</h2>
-          <button className="ghost-btn" onClick={closeRespostas} aria-label="Fechar">
+          <button className="ghost-btn" onClick={closeRespostas} aria-label={t("Fechar")}>
             ✕
           </button>
         </div>

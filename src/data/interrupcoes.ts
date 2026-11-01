@@ -1,4 +1,5 @@
 import { nomeDoEvento, type Analise, type Evento, type Indicacao, type Regra, type Situacao } from "../db/indicacoes";
+import { t } from "../i18n";
 
 // Interrupções conhecidas e quando cada uma pode responder, escritas a partir do texto oficial
 // (cartas.json da base). Chave: nome oficial em inglês. A banlist do formato decide se aparecem
@@ -28,12 +29,12 @@ export const REGRAS: Regra[] = [
     quando: (ev, a) => {
       if (ev.tipo !== "ativa") return null;
       const o = [
-        a.acoes.has("busca") && "adiciona do Deck à mão",
-        a.acoes.has("compra") && "compra do Deck",
-        a.acoes.has("invoca-deck") && "Invoca do Deck",
-        a.acoes.has("envia-deck") && "envia do Deck ao Cemitério",
+        a.acoes.has("busca") && t("adiciona do Deck à mão"),
+        a.acoes.has("compra") && t("compra do Deck"),
+        a.acoes.has("invoca-deck") && t("Invoca do Deck"),
+        a.acoes.has("envia-deck") && t("envia do Deck ao Cemitério"),
       ].filter(Boolean);
-      return o.length ? { motivo: `nega o efeito de ${nomeDoEvento(ev)}, que ${o.join(" e ")}` } : null;
+      return o.length ? { motivo: t("nega o efeito de {0}, que {1}", [nomeDoEvento(ev), o.join(" e ")]) } : null;
     },
   },
   {
@@ -43,8 +44,8 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       monstroNoCampo(ev, a)
         ? {
-            motivo: `nega os efeitos de ${nomeDoEvento(ev)} no campo até o fim do turno${a.noCampo ? " (inclusive o efeito que acabou de ativar)" : ""}`,
-            ...sem(mainPhase(s) && s.turno === ev.lado, "só na Main Phase do turno de quem joga a carta"),
+            motivo: t("nega os efeitos de {0} no campo até o fim do turno{1}", [nomeDoEvento(ev), a.noCampo ? t(" (inclusive o efeito que acabou de ativar)") : ""]),
+            ...sem(mainPhase(s) && s.turno === ev.lado, t("só na Main Phase do turno de quem joga a carta")),
           }
         : null,
   },
@@ -55,8 +56,8 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       monstroNoCampo(ev, a)
         ? {
-            motivo: `nega os efeitos de ${nomeDoEvento(ev)} até o fim do turno${a.noCampo ? " (inclusive o efeito que acabou de ativar)" : ""}`,
-            condicao: semCartas(s) ? undefined : "da mão só sem cartas no seu campo; senão, precisa estar baixada",
+            motivo: t("nega os efeitos de {0} até o fim do turno{1}", [nomeDoEvento(ev), a.noCampo ? t(" (inclusive o efeito que acabou de ativar)") : ""]),
+            condicao: semCartas(s) ? undefined : t("da mão só sem cartas no seu campo; senão, precisa estar baixada"),
           }
         : null,
   },
@@ -66,7 +67,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a) =>
       ev.tipo === "ativa" && a.noCampo && (a.monstro || !ev.cartaAtivada)
-        ? { motivo: `destrói ${nomeDoEvento(ev)} no campo (não nega: o efeito ainda resolve)` }
+        ? { motivo: t("destrói {0} no campo (não nega: o efeito ainda resolve)", [nomeDoEvento(ev)]) }
         : null,
   },
   {
@@ -76,11 +77,11 @@ export const REGRAS: Regra[] = [
     quando: (ev, a) => {
       if (ev.tipo !== "ativa") return null;
       const o = [
-        a.acoes.has("gy-mao") && "tira cartas do Cemitério",
-        a.acoes.has("invoca-gy") && "Invoca do Cemitério",
-        a.acoes.has("gy-bane") && "bane do Cemitério",
+        a.acoes.has("gy-mao") && t("tira cartas do Cemitério"),
+        a.acoes.has("invoca-gy") && t("Invoca do Cemitério"),
+        a.acoes.has("gy-bane") && t("bane do Cemitério"),
       ].filter(Boolean);
-      return o.length ? { motivo: `nega a ativação de ${nomeDoEvento(ev)}, que ${o.join(" e ")}` } : null;
+      return o.length ? { motivo: t("nega a ativação de {0}, que {1}", [nomeDoEvento(ev), o.join(" e ")]) } : null;
     },
   },
   {
@@ -88,17 +89,17 @@ export const REGRAS: Regra[] = [
     origem: "mao",
     tipo: "hand-trap",
     quando: (ev, a) =>
-      a.especial && ev.tipo !== "baixa" ? { motivo: `nega os efeitos de ${nomeDoEvento(ev)}, que acabou de ser Invocado por Invocação-Especial, até o fim do turno` } : null,
+      a.especial && ev.tipo !== "baixa" ? { motivo: t("nega os efeitos de {0}, que acabou de ser Invocado por Invocação-Especial, até o fim do turno", [nomeDoEvento(ev)]) } : null,
   },
   {
     nome: "Droll & Lock Bird",
     origem: "mao",
     tipo: "hand-trap",
     quando: (ev, a, s) => {
-      if (ev.tipo === "move" && ev.de === "deck" && ev.para === "mao") return { motivo: "uma carta saiu do Deck para a mão: a partir de agora, ninguém adiciona cartas do Deck à mão neste turno" };
-      if (ev.tipo === "compra" && s.fase !== "DP") return { motivo: "compra fora da Draw Phase: depois dela, ninguém adiciona cartas do Deck à mão neste turno" };
+      if (ev.tipo === "move" && ev.de === "deck" && ev.para === "mao") return { motivo: t("uma carta saiu do Deck para a mão: a partir de agora, ninguém adiciona cartas do Deck à mão neste turno") };
+      if (ev.tipo === "compra" && s.fase !== "DP") return { motivo: t("compra fora da Draw Phase: depois dela, ninguém adiciona cartas do Deck à mão neste turno") };
       if (ev.tipo === "ativa" && (a.acoes.has("busca") || a.acoes.has("compra")))
-        return { motivo: `depois que ${nomeDoEvento(ev)} adicionar a carta, impede as próximas adições do Deck neste turno`, condicao: "só depois que a busca resolver (não nega esta)" };
+        return { motivo: t("depois que {0} adicionar a carta, impede as próximas adições do Deck neste turno", [nomeDoEvento(ev)]), condicao: t("só depois que a busca resolver (não nega esta)") };
       return null;
     },
   },
@@ -109,8 +110,8 @@ export const REGRAS: Regra[] = [
     quando: (_ev, a, s) =>
       a.invocacao && s.invocacoes >= 5
         ? {
-            motivo: `já são ${s.invocacoes} Invocações neste turno: oferece todos os monstros e deixa uma Ficha para quem joga`,
-            ...sem(mainPhase(s), "só na Main Phase"),
+            motivo: t("já são {0} Invocações neste turno: oferece todos os monstros e deixa uma Ficha para quem joga", [s.invocacoes]),
+            ...sem(mainPhase(s), t("só na Main Phase")),
           }
         : null,
   },
@@ -120,7 +121,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a) =>
       foiAoCemiterio(ev, a) || (ev.tipo === "ativa" && ev.de === "cemiterio")
-        ? { motivo: `bane ${nomeDoEvento(ev)} do Cemitério${ev.tipo === "ativa" && ev.de === "cemiterio" ? " (efeitos que usam a própria carta deixam de resolver)" : ""}` }
+        ? { motivo: t("bane {0} do Cemitério{1}", [nomeDoEvento(ev), ev.tipo === "ativa" && ev.de === "cemiterio" ? t(" (efeitos que usam a própria carta deixam de resolver)") : ""]) }
         : null,
   },
   {
@@ -141,7 +142,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a, s) =>
       a.especial || (ev.tipo === "ativa" && a.acoes.has("invoca"))
-        ? { motivo: `compra 1 carta a cada Invocação-Especial deste turno${s.especiais <= 1 ? " (melhor agora, no começo do combo)" : ""}` }
+        ? { motivo: t("compra 1 carta a cada Invocação-Especial deste turno{0}", [s.especiais <= 1 ? t(" (melhor agora, no começo do combo)") : ""]) }
         : null,
   },
   {
@@ -150,7 +151,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a, s) =>
       (a.invocacao && ev.de === "mao") || (ev.tipo === "ativa" && a.acoes.has("invoca-mao"))
-        ? { motivo: "compra 1 carta a cada Invocação (Normal ou Especial) da mão neste turno", ...sem(semCartas(s), "só sem cartas no seu campo") }
+        ? { motivo: t("compra 1 carta a cada Invocação (Normal ou Especial) da mão neste turno"), ...sem(semCartas(s), t("só sem cartas no seu campo")) }
         : null,
   },
   {
@@ -159,7 +160,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a, s) =>
       (a.especial && (ev.de === "deck" || ev.de === "extra")) || (ev.tipo === "ativa" && (a.acoes.has("invoca-deck") || a.acoes.has("invoca-extra")))
-        ? { motivo: "compra 1 carta a cada Invocação-Especial do Deck ou do Extra Deck neste turno", ...sem(semCartas(s), "só sem cartas no seu campo") }
+        ? { motivo: t("compra 1 carta a cada Invocação-Especial do Deck ou do Extra Deck neste turno"), ...sem(semCartas(s), t("só sem cartas no seu campo")) }
         : null,
   },
   {
@@ -168,14 +169,14 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a, s) =>
       (a.especial && (ev.de === "cemiterio" || ev.de === "banido")) || (ev.tipo === "ativa" && (a.acoes.has("invoca-gy") || a.acoes.has("invoca-banido")))
-        ? { motivo: "compra 1 carta a cada Invocação-Especial do Cemitério ou das banidas neste turno", ...sem(semCartas(s), "só sem cartas no seu campo") }
+        ? { motivo: t("compra 1 carta a cada Invocação-Especial do Cemitério ou das banidas neste turno"), ...sem(semCartas(s), t("só sem cartas no seu campo")) }
         : null,
   },
   {
     nome: "Skull Meister",
     origem: "mao",
     tipo: "hand-trap",
-    quando: (ev) => (ev.tipo === "ativa" && ev.de === "cemiterio" ? { motivo: `nega o efeito de ${nomeDoEvento(ev)} ativado no Cemitério` } : null),
+    quando: (ev) => (ev.tipo === "ativa" && ev.de === "cemiterio" ? { motivo: t("nega o efeito de {0} ativado no Cemitério", [nomeDoEvento(ev)]) } : null),
   },
   {
     nome: "PSY-Framegear Gamma",
@@ -183,7 +184,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a, s) =>
       ativaMonstro(ev, a)
-        ? { motivo: `nega a ativação de ${nomeDoEvento(ev)} e destrói o monstro`, ...sem(s.respondente.monstros === 0, "só sem monstros no seu campo") }
+        ? { motivo: t("nega a ativação de {0} e destrói o monstro", [nomeDoEvento(ev)]), ...sem(s.respondente.monstros === 0, t("só sem monstros no seu campo")) }
         : null,
   },
   {
@@ -192,7 +193,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a, s) =>
       ativaCartaMT(ev, a) && a.magia
-        ? { motivo: `nega a ativação de ${nomeDoEvento(ev)} (Magia) e a destrói`, ...sem(s.respondente.monstros === 0, "só sem monstros no seu campo") }
+        ? { motivo: t("nega a ativação de {0} (Magia) e a destrói", [nomeDoEvento(ev)]), ...sem(s.respondente.monstros === 0, t("só sem monstros no seu campo")) }
         : null,
   },
   {
@@ -202,9 +203,9 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       ativaMonstro(ev, a)
         ? {
-            motivo: `nega a ativação de ${nomeDoEvento(ev)} e destrói o monstro`,
-            condicao: "precisa de outro monstro Fada na mão",
-            ...(s.respondente.fadasNaMao === 0 ? { impedida: "sem outro monstro Fada na mão" } : {}),
+            motivo: t("nega a ativação de {0} e destrói o monstro", [nomeDoEvento(ev)]),
+            condicao: t("precisa de outro monstro Fada na mão"),
+            ...(s.respondente.fadasNaMao === 0 ? { impedida: t("sem outro monstro Fada na mão") } : {}),
           }
         : null,
   },
@@ -214,14 +215,14 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a) =>
       ativaMonstro(ev, a) && a.noCampo
-        ? { motivo: `Invoca-se ao revelar Monstros Sincro; revelando 6, destrói 1 monstro do oponente`, condicao: "precisa de Monstros Sincro no Extra Deck" }
+        ? { motivo: t("Invoca-se ao revelar Monstros Sincro; revelando 6, destrói 1 monstro do oponente"), condicao: t("precisa de Monstros Sincro no Extra Deck") }
         : null,
   },
   {
     nome: "Kuriboh - Multiply!",
     origem: "mao",
     tipo: "hand-trap",
-    quando: (ev, a) => (ativaMonstro(ev, a) ? { motivo: "Invoca-se da mão (no campo, busca ou Invoca um apoio e zera o ATK de um monstro)" } : null),
+    quando: (ev, a) => (ativaMonstro(ev, a) ? { motivo: t("Invoca-se da mão (no campo, busca ou Invoca um apoio e zera o ATK de um monstro)") } : null),
   },
   {
     nome: "Artifact Lancea",
@@ -230,8 +231,8 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       (ev.tipo === "ativa" && (a.acoes.has("bane") || a.acoes.has("gy-bane") || a.custoBane)) || (ev.tipo === "move" && ev.para === "banido")
         ? {
-            motivo: `ninguém pode banir cartas pelo resto do turno${a.custoBane ? " (o custo já pago fica; vale para as próximas)" : ""}`,
-            ...sem(s.turno === ev.lado, "só no turno do oponente"),
+            motivo: t("ninguém pode banir cartas pelo resto do turno{0}", [a.custoBane ? t(" (o custo já pago fica; vale para as próximas)") : ""]),
+            ...sem(s.turno === ev.lado, t("só no turno do oponente")),
           }
         : null,
   },
@@ -241,7 +242,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a) =>
       ativaCartaMT(ev, a) && a.magia && a.acoes.has("invoca")
-        ? { motivo: "Invoca-se: enquanto estiver no campo, cartas que iriam ao Cemitério são banidas" }
+        ? { motivo: t("Invoca-se: enquanto estiver no campo, cartas que iriam ao Cemitério são banidas") }
         : null,
   },
   {
@@ -250,7 +251,7 @@ export const REGRAS: Regra[] = [
     tipo: "hand-trap",
     quando: (ev, a, s) =>
       foiAoCemiterio(ev, a) || a.acoes.has("envia-deck") || (ev.tipo === "ativa" && ev.de === "cemiterio")
-        ? { motivo: "até o fim do próximo turno, cartas que iriam ao Cemitério são banidas", ...sem(!s.respondente.cemiterio, "só sem cartas no seu Cemitério") }
+        ? { motivo: t("até o fim do próximo turno, cartas que iriam ao Cemitério são banidas"), ...sem(!s.respondente.cemiterio, t("só sem cartas no seu Cemitério")) }
         : null,
   },
 
@@ -262,8 +263,8 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       ev.tipo === "ativa" && a.acoes.has("invoca")
         ? {
-            motivo: `nega o efeito de ${nomeDoEvento(ev)}, que Invoca por Invocação-Especial (destrói a carta se você tiver Armadilha no Cemitério)`,
-            condicao: s.agente.cartas > 0 ? "da mão: você não ativa mais efeitos de monstros LUZ, TERRA e VENTO no Duelo" : "da mão só se o oponente controlar uma carta",
+            motivo: t("nega o efeito de {0}, que Invoca por Invocação-Especial (destrói a carta se você tiver Armadilha no Cemitério)", [nomeDoEvento(ev)]),
+            condicao: s.agente.cartas > 0 ? t("da mão: você não ativa mais efeitos de monstros LUZ, TERRA e VENTO no Duelo") : t("da mão só se o oponente controlar uma carta"),
           }
         : null,
   },
@@ -274,8 +275,8 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       ev.tipo === "ativa" && a.acoes.has("busca")
         ? {
-            motivo: `nega o efeito de ${nomeDoEvento(ev)}, que adiciona do Deck à mão (destrói a carta se você tiver Armadilha no Cemitério)`,
-            condicao: s.agente.cartas > 0 ? "da mão: você não ativa mais efeitos de monstros TREVAS, ÁGUA e FOGO no Duelo" : "da mão só se o oponente controlar uma carta",
+            motivo: t("nega o efeito de {0}, que adiciona do Deck à mão (destrói a carta se você tiver Armadilha no Cemitério)", [nomeDoEvento(ev)]),
+            condicao: s.agente.cartas > 0 ? t("da mão: você não ativa mais efeitos de monstros TREVAS, ÁGUA e FOGO no Duelo") : t("da mão só se o oponente controlar uma carta"),
           }
         : null,
   },
@@ -286,8 +287,8 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       s.ativouMaoOuGY && s.agente.monstros > 0 && (ev.tipo === "ativa" || a.invocacao)
         ? {
-            motivo: "o oponente já ativou efeito de monstro na mão ou no Cemitério neste turno: bane 1 monstro dele",
-            condicao: "da mão: você não ativa mais efeitos de monstros TERRA, ÁGUA, FOGO e VENTO no Duelo",
+            motivo: t("o oponente já ativou efeito de monstro na mão ou no Cemitério neste turno: bane 1 monstro dele"),
+            condicao: t("da mão: você não ativa mais efeitos de monstros TERRA, ÁGUA, FOGO e VENTO no Duelo"),
           }
         : null,
   },
@@ -296,10 +297,10 @@ export const REGRAS: Regra[] = [
     origem: "baixada",
     tipo: "armadilha",
     quando: (ev, a) => {
-      if (a.procedimento) return { motivo: `nega a Invocação de ${nomeDoEvento(ev)} e destrói o monstro (paga metade dos PV)` };
+      if (a.procedimento) return { motivo: t("nega a Invocação de {0} e destrói o monstro (paga metade dos PV)", [nomeDoEvento(ev)]) };
       if (a.invocacao && !a.procedimento && ev.tipo === "invoca" && ev.de === "mao")
-        return { motivo: `nega a Invocação de ${nomeDoEvento(ev)} (paga metade dos PV)`, condicao: "só se for Invocação por procedimento, não por efeito" };
-      if (ativaCartaMT(ev, a)) return { motivo: `nega a ativação de ${nomeDoEvento(ev)} e destrói a carta (paga metade dos PV)` };
+        return { motivo: t("nega a Invocação de {0} (paga metade dos PV)", [nomeDoEvento(ev)]), condicao: t("só se for Invocação por procedimento, não por efeito") };
+      if (ativaCartaMT(ev, a)) return { motivo: t("nega a ativação de {0} e destrói a carta (paga metade dos PV)", [nomeDoEvento(ev)]) };
       return null;
     },
   },
@@ -308,8 +309,8 @@ export const REGRAS: Regra[] = [
     origem: "baixada",
     tipo: "armadilha",
     quando: (ev, a) => {
-      if (a.especial && a.procedimento) return { motivo: `nega a Invocação-Especial de ${nomeDoEvento(ev)} e destrói o monstro (paga 1500 PV)` };
-      if (ativaMonstro(ev, a)) return { motivo: `nega a ativação de ${nomeDoEvento(ev)} e destrói o monstro (paga 1500 PV)` };
+      if (a.especial && a.procedimento) return { motivo: t("nega a Invocação-Especial de {0} e destrói o monstro (paga 1500 PV)", [nomeDoEvento(ev)]) };
+      if (ativaMonstro(ev, a)) return { motivo: t("nega a ativação de {0} e destrói o monstro (paga 1500 PV)", [nomeDoEvento(ev)]) };
       return null;
     },
   },
@@ -318,9 +319,9 @@ export const REGRAS: Regra[] = [
     origem: "baixada",
     tipo: "armadilha",
     quando: (ev, a) => {
-      if (a.procedimento) return { motivo: `nega a Invocação de ${nomeDoEvento(ev)} e destrói o monstro (paga 2000 PV)` };
+      if (a.procedimento) return { motivo: t("nega a Invocação de {0} e destrói o monstro (paga 2000 PV)", [nomeDoEvento(ev)]) };
       if (ev.tipo === "ativa" && a.acoes.has("invoca") && (a.monstro || ev.cartaAtivada))
-        return { motivo: `nega a ativação de ${nomeDoEvento(ev)}, que Invoca por Invocação-Especial (paga 2000 PV)` };
+        return { motivo: t("nega a ativação de {0}, que Invoca por Invocação-Especial (paga 2000 PV)", [nomeDoEvento(ev)]) };
       return null;
     },
   },
@@ -330,7 +331,7 @@ export const REGRAS: Regra[] = [
     tipo: "armadilha",
     quando: (ev, a) =>
       ativaCartaMT(ev, a)
-        ? { motivo: `nega a ativação de ${nomeDoEvento(ev)}: destrói (1500 PV, trava o nome no turno) ou bane (3000 PV, e as cópias da mão e do Deck)` }
+        ? { motivo: t("nega a ativação de {0}: destrói (1500 PV, trava o nome no turno) ou bane (3000 PV, e as cópias da mão e do Deck)", [nomeDoEvento(ev)]) }
         : null,
   },
   {
@@ -339,7 +340,7 @@ export const REGRAS: Regra[] = [
     tipo: "armadilha",
     quando: (ev, a) =>
       ativaCartaMT(ev, a) && a.armadilha
-        ? { motivo: `nega a ativação de ${nomeDoEvento(ev)} e a baixa de novo; o oponente não ativa mais Armadilhas no turno`, condicao: "da mão: paga metade dos PV" }
+        ? { motivo: t("nega a ativação de {0} e a baixa de novo; o oponente não ativa mais Armadilhas no turno", [nomeDoEvento(ev)]), condicao: t("da mão: paga metade dos PV") }
         : null,
   },
   {
@@ -349,8 +350,8 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       ev.tipo === "ativa" && !a.monstro && a.noCampo && (a.permanente || !ev.cartaAtivada)
         ? {
-            motivo: `destrói ${nomeDoEvento(ev)} antes de resolver${a.permanente && ev.cartaAtivada ? " (a ativação fica sem efeito)" : ""}`,
-            condicao: s.agente.magias >= 2 && s.respondente.magias === 0 ? undefined : "da mão só se o oponente tiver 2+ Magias/Armadilhas e você nenhuma",
+            motivo: t("destrói {0} antes de resolver{1}", [nomeDoEvento(ev), a.permanente && ev.cartaAtivada ? t(" (a ativação fica sem efeito)") : ""]),
+            condicao: s.agente.magias >= 2 && s.respondente.magias === 0 ? undefined : t("da mão só se o oponente tiver 2+ Magias/Armadilhas e você nenhuma"),
           }
         : null,
   },
@@ -359,13 +360,13 @@ export const REGRAS: Regra[] = [
     origem: "baixada",
     tipo: "armadilha",
     quando: (ev, a) =>
-      ativaMonstro(ev, a) && a.noCampo ? { motivo: `em corrente, nega o efeito de ${nomeDoEvento(ev)} (e de todos os monstros virados para cima no campo)`, condicao: "paga 1000 PV; afeta os seus monstros também" } : null,
+      ativaMonstro(ev, a) && a.noCampo ? { motivo: t("em corrente, nega o efeito de {0} (e de todos os monstros virados para cima no campo)", [nomeDoEvento(ev)]), condicao: t("paga 1000 PV; afeta os seus monstros também") } : null,
   },
   {
     nome: "Imperial Order",
     origem: "baixada",
     tipo: "armadilha",
-    quando: (ev, a) => (ev.tipo === "ativa" && a.magia ? { motivo: `nega os efeitos de Magias no campo, inclusive ${nomeDoEvento(ev)}` } : null),
+    quando: (ev, a) => (ev.tipo === "ativa" && a.magia ? { motivo: t("nega os efeitos de Magias no campo, inclusive {0}", [nomeDoEvento(ev)]) } : null),
   },
   {
     nome: "Evenly Matched",
@@ -374,9 +375,9 @@ export const REGRAS: Regra[] = [
     quando: (ev, _a, s) =>
       s.fase === "BP" && s.agente.cartas > s.respondente.cartas
         ? {
-            motivo: "no fim da Battle Phase, quem joga bane cartas virado para baixo até ficar com o mesmo número que você",
-            condicao: s.respondente.cartas === 0 ? undefined : "da mão só sem cartas no seu campo",
-            ...(s.turno === ev.lado ? {} : { impedida: "só no fim da Battle Phase do oponente" }),
+            motivo: t("no fim da Battle Phase, quem joga bane cartas virado para baixo até ficar com o mesmo número que você"),
+            condicao: s.respondente.cartas === 0 ? undefined : t("da mão só sem cartas no seu campo"),
+            ...(s.turno === ev.lado ? {} : { impedida: t("só no fim da Battle Phase do oponente") }),
           }
         : null,
   },
@@ -384,7 +385,7 @@ export const REGRAS: Regra[] = [
     nome: "Torrential Tribute",
     origem: "baixada",
     tipo: "armadilha",
-    quando: (_ev, a) => (a.invocacao ? { motivo: "um monstro foi Invocado: destrói todos os monstros do campo" } : null),
+    quando: (_ev, a) => (a.invocacao ? { motivo: t("um monstro foi Invocado: destrói todos os monstros do campo") } : null),
   },
   {
     nome: "Dimensional Barrier",
@@ -392,7 +393,7 @@ export const REGRAS: Regra[] = [
     tipo: "armadilha",
     quando: (ev, a) =>
       (a.especial && ev.de === "extra" && ev.metodo) || (ev.tipo === "ativa" && a.acoes.has("invoca-extra"))
-        ? { motivo: "declara o tipo (Fusão, Sincro, Xyz, Ritual ou Pêndulo): ninguém Invoca desse tipo no turno e os do campo têm os efeitos negados" }
+        ? { motivo: t("declara o tipo (Fusão, Sincro, Xyz, Ritual ou Pêndulo): ninguém Invoca desse tipo no turno e os do campo têm os efeitos negados") }
         : null,
   },
   {
@@ -400,14 +401,14 @@ export const REGRAS: Regra[] = [
     origem: "baixada",
     tipo: "armadilha",
     quando: (ev, a) =>
-      foiAoCemiterio(ev, a) || a.acoes.has("envia-deck") ? { motivo: "enquanto estiver no campo, cartas que iriam ao Cemitério são banidas" } : null,
+      foiAoCemiterio(ev, a) || a.acoes.has("envia-deck") ? { motivo: t("enquanto estiver no campo, cartas que iriam ao Cemitério são banidas") } : null,
   },
   {
     nome: "Anti-Spell Fragrance",
     origem: "baixada",
     tipo: "armadilha",
     quando: (ev, a) =>
-      ev.tipo === "ativa" && a.magia && ev.cartaAtivada ? { motivo: "não para esta Magia, mas as próximas precisam ser baixadas e só podem ser ativadas no turno seguinte" } : null,
+      ev.tipo === "ativa" && a.magia && ev.cartaAtivada ? { motivo: t("não para esta Magia, mas as próximas precisam ser baixadas e só podem ser ativadas no turno seguinte") } : null,
   },
 
   // ------------------------------------------------------------------ Magias Rápidas (no turno do oponente, baixadas)
@@ -417,7 +418,7 @@ export const REGRAS: Regra[] = [
     tipo: "magia-rapida",
     quando: (ev, a) =>
       a.monstro && a.vaiAoCemiterio
-        ? { motivo: `bane ${nomeDoEvento(ev)} do Cemitério e nega os efeitos de cartas com o mesmo nome (inclusive este, se ainda não resolveu)` }
+        ? { motivo: t("bane {0} do Cemitério e nega os efeitos de cartas com o mesmo nome (inclusive este, se ainda não resolveu)", [nomeDoEvento(ev)]) }
         : null,
   },
   {
@@ -429,8 +430,8 @@ export const REGRAS: Regra[] = [
       const temNoDeck = s.respondente.deck?.includes(ev.id);
       if (s.respondente.deck && !temNoDeck) return null;
       return {
-        motivo: `declara ${nomeDoEvento(ev)} e nega os efeitos de todas as cópias até o fim do turno`,
-        condicao: temNoDeck ? "bane uma cópia do seu Deck" : `precisa de uma cópia de ${nomeDoEvento(ev)} no seu Main Deck`,
+        motivo: t("declara {0} e nega os efeitos de todas as cópias até o fim do turno", [nomeDoEvento(ev)]),
+        condicao: temNoDeck ? t("bane uma cópia do seu Deck") : t("precisa de uma cópia de {0} no seu Main Deck", [nomeDoEvento(ev)]),
       };
     },
   },
@@ -441,8 +442,8 @@ export const REGRAS: Regra[] = [
     quando: (ev, a, s) =>
       monstroNoCampo(ev, a) && s.agente.monstrosEfeito > 0
         ? {
-            motivo: "envia cartas suas ao Cemitério e nega os efeitos (e corta o ATK pela metade) de outros tantos monstros do oponente",
-            condicao: "o oponente não responde com cartas do mesmo tipo (Monstro/Magia/Armadilha) das enviadas",
+            motivo: t("envia cartas suas ao Cemitério e nega os efeitos (e corta o ATK pela metade) de outros tantos monstros do oponente"),
+            condicao: t("o oponente não responde com cartas do mesmo tipo (Monstro/Magia/Armadilha) das enviadas"),
           }
         : null,
   },
@@ -450,7 +451,7 @@ export const REGRAS: Regra[] = [
     nome: "Book of Moon",
     origem: "mao-ou-baixada",
     tipo: "magia-rapida",
-    quando: (ev, a) => (monstroNoCampo(ev, a) ? { motivo: `vira ${nomeDoEvento(ev)} para baixo em defesa (os efeitos no campo param)` } : null),
+    quando: (ev, a) => (monstroNoCampo(ev, a) ? { motivo: t("vira {0} para baixo em defesa (os efeitos no campo param)", [nomeDoEvento(ev)]) } : null),
   },
   {
     nome: "Super Polymerization",
@@ -458,7 +459,7 @@ export const REGRAS: Regra[] = [
     tipo: "magia-rapida",
     quando: (ev, a, s) =>
       s.agente.monstros > 0 && monstroNoCampo(ev, a)
-        ? { motivo: "descarta 1 e Invoca por Fusão usando monstros do campo do oponente como matéria, sem resposta", condicao: "precisa do Monstro de Fusão certo no Extra Deck" }
+        ? { motivo: t("descarta 1 e Invoca por Fusão usando monstros do campo do oponente como matéria, sem resposta"), condicao: t("precisa do Monstro de Fusão certo no Extra Deck") }
         : null,
   },
   {
@@ -471,13 +472,13 @@ export const REGRAS: Regra[] = [
     nome: "Twin Twisters",
     origem: "mao-ou-baixada",
     tipo: "magia-rapida",
-    quando: (ev, a) => removeMT(ev, a, "destrói"),
+    quando: (ev, a) => removeMT(ev, a, t("destrói")),
   },
   {
     nome: "Mystical Space Typhoon",
     origem: "mao-ou-baixada",
     tipo: "magia-rapida",
-    quando: (ev, a) => removeMT(ev, a, "destrói"),
+    quando: (ev, a) => removeMT(ev, a, t("destrói")),
   },
 
   // ------------------------------------------------------------------ monstros no campo
@@ -486,8 +487,8 @@ export const REGRAS: Regra[] = [
     origem: "campo",
     tipo: "campo",
     quando: (ev, a) => {
-      if (a.especial && a.procedimento) return { motivo: `enviando-se ao Cemitério, nega a Invocação-Especial de ${nomeDoEvento(ev)} e o destrói` };
-      if (ev.tipo === "ativa" && a.acoes.has("busca")) return { motivo: "enquanto estiver no campo, ninguém adiciona cartas do Deck à mão (exceto comprando): a busca não acontece" };
+      if (a.especial && a.procedimento) return { motivo: t("enviando-se ao Cemitério, nega a Invocação-Especial de {0} e o destrói", [nomeDoEvento(ev)]) };
+      if (ev.tipo === "ativa" && a.acoes.has("busca")) return { motivo: t("enquanto estiver no campo, ninguém adiciona cartas do Deck à mão (exceto comprando): a busca não acontece") };
       return null;
     },
   },
@@ -495,7 +496,7 @@ export const REGRAS: Regra[] = [
     nome: "Gameciel, the Sea Turtle Kaiju",
     origem: "campo",
     tipo: "campo",
-    quando: (ev) => (ev.tipo === "ativa" ? { motivo: `nega a ativação de ${nomeDoEvento(ev)} e a bane`, condicao: "precisa remover 2 Marcadores Kaiju" } : null),
+    quando: (ev) => (ev.tipo === "ativa" ? { motivo: t("nega a ativação de {0} e a bane", [nomeDoEvento(ev)]), condicao: t("precisa remover 2 Marcadores Kaiju") } : null),
   },
 ];
 
@@ -504,8 +505,8 @@ function bystial(ev: Evento, a: Analise, s: Situacao): Indicacao | null {
   const noGY = (foiAoCemiterio(ev, a) && a.monstro) || (ev.tipo === "ativa" && ev.de === "cemiterio" && a.monstro);
   if (!luzTrevas || !noGY) return null;
   return {
-    motivo: `bane ${nomeDoEvento(ev)} (LUZ/TREVAS) do Cemitério e se Invoca${ev.tipo === "ativa" && ev.de === "cemiterio" ? "; efeitos que usam a própria carta deixam de resolver" : ""}`,
-    ...sem(s.agente.monstros > 0 || s.turno !== ev.lado, "efeito rápido só se o oponente controlar um monstro"),
+    motivo: t("bane {0} (LUZ/TREVAS) do Cemitério e se Invoca{1}", [nomeDoEvento(ev), ev.tipo === "ativa" && ev.de === "cemiterio" ? t("; efeitos que usam a própria carta deixam de resolver") : ""]),
+    ...sem(s.agente.monstros > 0 || s.turno !== ev.lado, t("efeito rápido só se o oponente controlar um monstro")),
   };
 }
 
@@ -514,7 +515,7 @@ function removeMT(ev: Evento, a: Analise, verbo: string): Indicacao | null {
   if (ev.tipo !== "ativa" || a.monstro || !a.noCampo) return null;
   if (ev.cartaAtivada && !a.permanente) return null;
   return {
-    motivo: `${verbo} ${nomeDoEvento(ev)} antes de resolver${ev.cartaAtivada ? " (Contínua/de Campo ativada fica sem efeito)" : ""}`,
+    motivo: t("{0} {1} antes de resolver{2}", [verbo, nomeDoEvento(ev), ev.cartaAtivada ? t(" (Contínua/de Campo ativada fica sem efeito)") : ""]),
   };
 }
 

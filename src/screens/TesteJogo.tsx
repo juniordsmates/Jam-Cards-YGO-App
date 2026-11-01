@@ -51,6 +51,7 @@ import { indicar, type CartaDoLado } from "../db/indicar";
 import IndicacoesResposta, { type EntradaIndicacao } from "../components/IndicacoesResposta";
 import AdicionarCarta, { type Destino } from "../components/AdicionarCarta";
 import "./teste-jogo.css";
+import { t as tr, LOCALE } from "../i18n";
 
 // Teste de Jogo (Solo Mode): sem regras de jogo; o jogador move as cartas à vontade.
 // Teste Avançado (Usuário Avançado ou Mentor): o mesmo teste embaixo e o campo do oponente espelhado
@@ -111,7 +112,7 @@ export default function TesteJogo({
   const [passo, setPasso] = useState<number | null>(null);
   const grupos = combo ? groupSteps(semCartaDoCalculo({ qualquer: combo.qualquer, passos: combo.passos }).passos) : [];
   const textoPasso = (p: Passo) => {
-    const t = passoEmTexto(p, (id) => (id === TOKEN_GENERICO ? "Token" : id === CARTA_QUALQUER ? "carta qualquer" : byId.get(id) ? displayName(byId.get(id)!) : `#${id}`));
+    const t = passoEmTexto(p, (id) => (id === TOKEN_GENERICO ? tr("Token") : id === CARTA_QUALQUER ? tr("carta qualquer") : byId.get(id) ? displayName(byId.get(id)!) : `#${id}`));
     return t.charAt(0).toUpperCase() + t.slice(1);
   };
   const [t, setT] = useState<Tabuleiro>(() => testeDeMao(main, extra));
@@ -134,7 +135,7 @@ export default function TesteJogo({
   const embaralhar = () => {
     setT((a) => embaralharDeck(a));
     animarEmbaralhar();
-    registrar("Embaralhou o Deck.");
+    registrar(tr("Embaralhou o Deck."));
   };
   /**
    * Fecha a visualização; ao fechar a do Deck, só as cartas que ficaram no Deck são embaralhadas
@@ -150,7 +151,7 @@ export default function TesteJogo({
     setListaLado(lado);
     setLista(z);
   };
-  const [log, setLog] = useState<string[]>(["Teste de Mão: Deck embaralhado, 5 cartas compradas."]);
+  const [log, setLog] = useState<string[]>([tr("Teste de Mão: Deck embaralhado, 5 cartas compradas.")]);
   const arrastando = useRef<string | null>(null);
 
   // Criar combo: cada ação vira um passo (como nas linhas da tela de Combos), a partir da mão inicial
@@ -208,7 +209,7 @@ export default function TesteJogo({
   const gravarCombo = async () => {
     if (!criando || !conta) return;
     const copias = copiasUsadas();
-    setGravacao({ tipo: "gravando", texto: "Criando o combo…" });
+    setGravacao({ tipo: "gravando", texto: tr("Criando o combo…") });
     const autorNome = conta.usuario || conta.email.split("@")[0];
     const dadosCombo = {
       iniciais: maoInicial.map((c) => c.id),
@@ -218,7 +219,7 @@ export default function TesteJogo({
     // Usuário Padrão: o combo fica só neste aparelho (aba Combos → Meus combos neste aparelho)
     if (!temRecursosAvancados(conta)) {
       salvarComboLocal({ autorId: conta.id, autorNome, titulo: criando.titulo, observacoes: criando.obs }, dadosCombo);
-      setGravacao({ tipo: "ok", texto: "Combo criado neste aparelho (Usuário Padrão): está na aba Combos, em Meus combos neste aparelho, de onde pode ser exportado depois." });
+      setGravacao({ tipo: "ok", texto: tr("Combo criado neste aparelho (Usuário Padrão): está na aba Combos, em Meus combos neste aparelho, de onde pode ser exportado depois.") });
       setCriando(null);
       return;
     }
@@ -226,7 +227,7 @@ export default function TesteJogo({
       await criarComboDoTeste({ autorNome, titulo: criando.titulo, observacoes: criando.obs, compartilhar: criando.compartilhar }, dadosCombo);
       setGravacao({
         tipo: "ok",
-        texto: criando.compartilhar ? "Combo criado e compartilhado: aparece para todos na aba Combos, com o seu nome e a data." : "Combo criado. Só você vê (aba Combos).",
+        texto: criando.compartilhar ? tr("Combo criado e compartilhado: aparece para todos na aba Combos, com o seu nome e a data.") : tr("Combo criado. Só você vê (aba Combos)."),
       });
       setCriando(null);
     } catch (e) {
@@ -238,7 +239,7 @@ export default function TesteJogo({
   const bloqueadoNoExtra = (c: CartaJogo, para: ZonaId) => {
     const card = byId.get(c.id);
     if (!card || !ehExtra(card) || (para !== "mao" && para !== "deck")) return false;
-    registrar(`${displayName(card)} é do Extra Deck: só pode ser invocado, ir para o Cemitério ou ser banido.`);
+    registrar(tr("{0} é do Extra Deck: só pode ser invocado, ir para o Cemitério ou ser banido.", [displayName(card)]));
     return true;
   };
 
@@ -391,7 +392,7 @@ export default function TesteJogo({
     setPasso(0);
     setIndicacoes([]);
     zerarTurno();
-    setLog([`Executar combo: mão inicial (${combo.mao.map((id) => (byId.get(id) ? displayName(byId.get(id)!) : id)).join(" + ")}).`]);
+    setLog([tr("Executar combo: mão inicial ({0}).", [combo.mao.map((id) => (byId.get(id) ? displayName(byId.get(id)!) : id)).join(" + ")])]);
   };
   // "Editar e Importar": começa direto no combo, para o usuário refazer os passos
   useEffect(() => {
@@ -436,11 +437,11 @@ export default function TesteJogo({
     const p: Passo | null = achada.dono ? { t: "move", c: achada.carta.id, de: "material", para: zonaDoPasso(para) } : passoDoMovimento(achada.carta, achada.zona, para, opts);
     setOp((a) => mover(a, uid, para, opts));
     if (p) avaliar(p, "op");
-    if (texto) registrar(`Oponente: ${texto}`);
+    if (texto) registrar(tr("Oponente: {0}", [texto]));
   };
 
   const ativarOp = (c: CartaJogo, z: ZonaId) => {
-    registrar(`Oponente ativou o efeito de ${nomeDe(c)}.`);
+    registrar(tr("Oponente ativou o efeito de {0}.", [nomeDe(c)]));
     avaliar({ t: "ativa", c: c.id, de: zonaDoPasso(z) }, "op");
     setAtivada(c.uid);
     setTimeout(() => setAtivada((a) => (a === c.uid ? null : a)), 1200);
@@ -456,41 +457,41 @@ export default function TesteJogo({
     const monstro = !!card && categoryOf(card) === "monster";
     const doExtra = !!card && ehExtra(card);
     const noCampo = ZONAS_UNICAS.has(z);
-    const out: { label: string; fazer: () => void }[] = [{ label: "Ativar efeito", fazer: () => ativarOp(c, z) }];
+    const out: { label: string; fazer: () => void }[] = [{ label: tr("Ativar efeito"), fazer: () => ativarOp(c, z) }];
     if (!noCampo && monstro) {
       const zonaM = livreNo("op", doExtra ? [...MONSTROS_EXTRA, ...MONSTROS] : MONSTROS);
       if (zonaM) {
-        if (z === "mao" && !doExtra) out.push({ label: "Invocação-Normal", fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: false, normal: true }, `Invocou-Normal ${n}.`) });
-        out.push({ label: "Invocar em ataque", fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: false }, `Invocou ${n}.`) });
-        out.push({ label: "Invocar em defesa", fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: true }, `Invocou ${n} em defesa.`) });
-        if (!doExtra) out.push({ label: "Baixar (virado para baixo)", fazer: () => moverOp(uid, zonaM, { baixada: true, defesa: true }, "Baixou um monstro.") });
+        if (z === "mao" && !doExtra) out.push({ label: tr("Invocação-Normal"), fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: false, normal: true }, tr("Invocou-Normal {0}.", [n])) });
+        out.push({ label: tr("Invocar em ataque"), fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: false }, tr("Invocou {0}.", [n])) });
+        out.push({ label: tr("Invocar em defesa"), fazer: () => moverOp(uid, zonaM, { baixada: false, defesa: true }, tr("Invocou {0} em defesa.", [n])) });
+        if (!doExtra) out.push({ label: tr("Baixar (virado para baixo)"), fazer: () => moverOp(uid, zonaM, { baixada: true, defesa: true }, tr("Baixou um monstro.")) });
       }
     }
     if (!noCampo && card && !monstro) {
       const zonaS = card.race === "Field" ? (op["campo-magia"].length ? undefined : "campo-magia") : livreNo("op", MAGIAS);
       if (zonaS) {
-        out.push({ label: "Ativar", fazer: () => moverOp(uid, zonaS, { baixada: false }, `Ativou ${n}.`) });
-        out.push({ label: "Baixar", fazer: () => moverOp(uid, zonaS, { baixada: true }, "Baixou uma carta.") });
+        out.push({ label: tr("Ativar"), fazer: () => moverOp(uid, zonaS, { baixada: false }, tr("Ativou {0}.", [n])) });
+        out.push({ label: tr("Baixar"), fazer: () => moverOp(uid, zonaS, { baixada: true }, tr("Baixou uma carta.")) });
       }
     }
     if (noCampo) {
       out.push({
-        label: c.baixada ? "Virar para cima" : "Virar para baixo",
+        label: c.baixada ? tr("Virar para cima") : tr("Virar para baixo"),
         fazer: () => {
           setOp((a) => alternar(a, uid, "baixada"));
-          registrar(`Oponente ${c.baixada ? "virou para cima" : "virou para baixo"} ${n}.`);
+          registrar(tr("Oponente {0} {1}.", [c.baixada ? tr("virou para cima") : tr("virou para baixo"), n]));
           if (c.baixada && !monstro) avaliar({ t: "ativa", c: c.id, de: "magia" }, "op", { virada: true });
           setMenu(null);
         },
       });
-      if (monstro) out.push({ label: c.defesa ? "Posição de ataque" : "Posição de defesa", fazer: () => { setOp((a) => alternar(a, uid, "defesa")); registrar(`Oponente mudou a posição de ${n}.`); setMenu(null); } });
-      if (c.materiais.length) out.push({ label: `Desanexar matéria (${c.materiais.length})`, fazer: () => moverOp(c.materiais[0].uid, "cemiterio", {}, `Desanexou ${nomeDe(c.materiais[0])}.`) });
+      if (monstro) out.push({ label: c.defesa ? tr("Posição de ataque") : tr("Posição de defesa"), fazer: () => { setOp((a) => alternar(a, uid, "defesa")); registrar(tr("Oponente mudou a posição de {0}.", [n])); setMenu(null); } });
+      if (c.materiais.length) out.push({ label: tr("Desanexar matéria ({0})", [c.materiais.length]), fazer: () => moverOp(c.materiais[0].uid, "cemiterio", {}, tr("Desanexou {0}.", [nomeDe(c.materiais[0])])) });
     }
-    out.push({ label: "Mover (clique na zona)", fazer: () => { setSelecionada(uid); setMenu(null); } });
-    if (z !== "mao" && !doExtra) out.push({ label: "Para a mão", fazer: () => moverOp(uid, "mao", {}, `${n} voltou para a mão.`) });
-    if (z !== "cemiterio") out.push({ label: "Para o Cemitério", fazer: () => moverOp(uid, "cemiterio", {}, `${n} foi para o Cemitério.`) });
-    if (z !== "banido") out.push({ label: "Banir", fazer: () => moverOp(uid, "banido", {}, `Baniu ${n}.`) });
-    out.push({ label: "Tirar do teste", fazer: () => { setOp((a) => removerCarta(a, uid)); registrar(`Oponente: ${n} saiu do teste.`); setMenu(null); } });
+    out.push({ label: tr("Mover (clique na zona)"), fazer: () => { setSelecionada(uid); setMenu(null); } });
+    if (z !== "mao" && !doExtra) out.push({ label: tr("Para a mão"), fazer: () => moverOp(uid, "mao", {}, tr("{0} voltou para a mão.", [n])) });
+    if (z !== "cemiterio") out.push({ label: tr("Para o Cemitério"), fazer: () => moverOp(uid, "cemiterio", {}, tr("{0} foi para o Cemitério.", [n])) });
+    if (z !== "banido") out.push({ label: tr("Banir"), fazer: () => moverOp(uid, "banido", {}, tr("Baniu {0}.", [n])) });
+    out.push({ label: tr("Tirar do teste"), fazer: () => { setOp((a) => removerCarta(a, uid)); registrar(tr("Oponente: {0} saiu do teste.", [n])); setMenu(null); } });
     return out;
   };
 
@@ -508,10 +509,10 @@ export default function TesteJogo({
               ? undefined
               : "campo-magia"
             : livreNo("op", MAGIAS);
-    if (!zona) return registrar(`Oponente: sem zona livre para ${displayName(card)}.`);
+    if (!zona) return registrar(tr("Oponente: sem zona livre para {0}.", [displayName(card)]));
     const opts = { baixada: destino === "monstro-baixado" || destino === "magia-baixada", defesa: destino === "monstro-defesa" || destino === "monstro-baixado" };
     setOp((a) => adicionarCarta(a, card.id, zona, opts).t);
-    registrar(`Oponente: ${displayName(card)} → ${NOMES_ZONA[zona]}${comoAcao ? "" : " (cenário)"}.`);
+    registrar(tr("Oponente: {0} → {1}{2}.", [displayName(card), NOMES_ZONA[zona], comoAcao ? "" : tr(" (cenário)")]));
     if (comoAcao)
       avaliar(monstro ? { t: "invoca", c: card.id, de: doExtra ? "extra" : "mao", m: doExtra ? metodoDoExtra(card.frame) : undefined } : { t: "ativa", c: card.id, de: "mao" }, "op");
     setAdicionando(false);
@@ -527,7 +528,7 @@ export default function TesteJogo({
       const p = passoDoMovimento(achada.carta, achada.zona, "material");
       setOp((a) => mover(a, uid, para));
       if (p) avaliar(p, "op");
-      return registrar(`Oponente: ${n} foi anexada como matéria.`);
+      return registrar(tr("Oponente: {0} foi anexada como matéria.", [n]));
     }
     moverOp(uid, para, {}, `${n} → ${NOMES_ZONA[para]}.`);
   };
@@ -535,23 +536,23 @@ export default function TesteJogo({
   const acoes = (uid: string): { label: string; fazer: () => void }[] => {
     if (uid === MENU_DECK)
       return [
-        { label: "Abrir deck", fazer: () => { abrirLista("deck"); setMenu(null); } },
-        { label: "Comprar uma carta", fazer: () => { comprarUma(); setMenu(null); } },
+        { label: tr("Abrir deck"), fazer: () => { abrirLista("deck"); setMenu(null); } },
+        { label: tr("Comprar uma carta"), fazer: () => { comprarUma(); setMenu(null); } },
       ];
-    if (uid === MENU_EXTRA) return [{ label: "Abrir Extra Deck", fazer: () => { abrirLista("extra"); setMenu(null); } }];
+    if (uid === MENU_EXTRA) return [{ label: tr("Abrir Extra Deck"), fazer: () => { abrirLista("extra"); setMenu(null); } }];
     if (uid === MENU_TOKEN) {
       const zona = menu?.zona ?? livre(MONSTROS);
-      if (!zona) return [{ label: "Sem Zona de Monstros livre", fazer: () => setMenu(null) }];
+      if (!zona) return [{ label: tr("Sem Zona de Monstros livre"), fazer: () => setMenu(null) }];
       // carta Token: nome "Token", Nível ?, ATK ?, DEF ?, tipo ? e sem atributo
       const criar = (defesa: boolean) => {
         setT((a) => criarToken(a, TOKEN_GENERICO, zona, defesa));
-        registrar(`Criou um Token${defesa ? " em defesa" : ""} (${NOMES_ZONA[zona]}).`);
+        registrar(tr("Criou um Token{0} ({1}).", [defesa ? tr(" em defesa") : "", NOMES_ZONA[zona]]));
         anotar({ t: "invoca", c: TOKEN_GENERICO, de: "fora" });
         setMenu(null);
       };
       return [
-        { label: "Criar token em ataque", fazer: () => criar(false) },
-        { label: "Criar token em defesa", fazer: () => criar(true) },
+        { label: tr("Criar token em ataque"), fazer: () => criar(false) },
+        { label: tr("Criar token em defesa"), fazer: () => criar(true) },
       ];
     }
     if (ladoDe(uid) === "op") return acoesOp(uid);
@@ -564,17 +565,17 @@ export default function TesteJogo({
     // token: só fica nas Zonas de Monstros; ao sair do campo, deixa de existir
     if (c.ficha)
       return [
-        { label: c.defesa ? "Posição de ataque" : "Posição de defesa", fazer: () => { setT((a) => alternar(a, uid, "defesa")); registrar(`Mudou a posição de ${n}.`); setMenu(null); } },
-        { label: "Mover (clique na zona)", fazer: () => { setSelecionada(uid); setMenu(null); } },
-        { label: "Tirar do campo", fazer: () => moverPara(uid, "cemiterio", {}, `${n} saiu do campo e deixou de existir.`) },
+        { label: c.defesa ? tr("Posição de ataque") : tr("Posição de defesa"), fazer: () => { setT((a) => alternar(a, uid, "defesa")); registrar(tr("Mudou a posição de {0}.", [n])); setMenu(null); } },
+        { label: tr("Mover (clique na zona)"), fazer: () => { setSelecionada(uid); setMenu(null); } },
+        { label: tr("Tirar do campo"), fazer: () => moverPara(uid, "cemiterio", {}, tr("{0} saiu do campo e deixou de existir.", [n])) },
       ];
     const noCampo = ZONAS_UNICAS.has(z);
     // ativar um efeito: em qualquer zona e posição, só registra (sem regras)
     out.push({
-      label: "Ativar efeito",
+      label: tr("Ativar efeito"),
       fazer: () => {
-        const onde = z === "mao" ? "da mão" : z === "cemiterio" ? "no Cemitério" : z === "banido" ? "banida" : z === "deck" ? "no Deck" : z === "extra" ? "no Extra Deck" : `em ${NOMES_ZONA[z]}`;
-        registrar(`Ativou o efeito de ${n} (${onde}${c.baixada ? ", virada para baixo" : c.defesa ? ", em defesa" : ""}).`);
+        const onde = z === "mao" ? tr("da mão") : z === "cemiterio" ? tr("no Cemitério") : z === "banido" ? "banida" : z === "deck" ? tr("no Deck") : z === "extra" ? tr("no Extra Deck") : `em ${NOMES_ZONA[z]}`;
+        registrar(tr("Ativou o efeito de {0} ({1}{2}).", [n, onde, c.baixada ? tr(", virada para baixo") : c.defesa ? tr(", em defesa") : ""]));
         anotar({ t: "ativa", c: c.id, de: zonaDoPasso(z) }, c);
         setAtivada(uid);
         setTimeout(() => setAtivada((a) => (a === uid ? null : a)), 1200);
@@ -585,51 +586,51 @@ export default function TesteJogo({
     if (!noCampo && monstro) {
       const zonaM = card && ehExtra(card) ? livre([...MONSTROS_EXTRA, ...MONSTROS]) : livre(MONSTROS);
       if (zonaM) {
-        if (z === "mao" && card && !ehExtra(card)) out.push({ label: "Invocação-Normal", fazer: () => moverPara(uid, zonaM, { baixada: false, defesa: false, normal: true }, `Invocou-Normal ${n}.`) });
-        out.push({ label: "Invocar em ataque", fazer: () => moverPara(uid, zonaM, { baixada: false, defesa: false }, `Invocou ${n}.`) });
-        out.push({ label: "Invocar em defesa", fazer: () => moverPara(uid, zonaM, { baixada: false, defesa: true }, `Invocou ${n} em defesa.`) });
-        if (!card || !ehExtra(card)) out.push({ label: "Baixar (virado para baixo)", fazer: () => moverPara(uid, zonaM, { baixada: true, defesa: true }, `Baixou um monstro.`) });
+        if (z === "mao" && card && !ehExtra(card)) out.push({ label: tr("Invocação-Normal"), fazer: () => moverPara(uid, zonaM, { baixada: false, defesa: false, normal: true }, tr("Invocou-Normal {0}.", [n])) });
+        out.push({ label: tr("Invocar em ataque"), fazer: () => moverPara(uid, zonaM, { baixada: false, defesa: false }, tr("Invocou {0}.", [n])) });
+        out.push({ label: tr("Invocar em defesa"), fazer: () => moverPara(uid, zonaM, { baixada: false, defesa: true }, tr("Invocou {0} em defesa.", [n])) });
+        if (!card || !ehExtra(card)) out.push({ label: tr("Baixar (virado para baixo)"), fazer: () => moverPara(uid, zonaM, { baixada: true, defesa: true }, tr("Baixou um monstro.")) });
       }
     }
     if (!noCampo && card && !monstro) {
       const campo = card.race === "Field";
       const zonaS = campo ? (t["campo-magia"].length ? undefined : "campo-magia") : livre(MAGIAS);
       if (zonaS) {
-        out.push({ label: "Ativar", fazer: () => moverPara(uid, zonaS, { baixada: false }, `Ativou ${n}.`) });
-        out.push({ label: "Baixar", fazer: () => moverPara(uid, zonaS, { baixada: true }, `Baixou uma carta.`) });
+        out.push({ label: tr("Ativar"), fazer: () => moverPara(uid, zonaS, { baixada: false }, tr("Ativou {0}.", [n])) });
+        out.push({ label: tr("Baixar"), fazer: () => moverPara(uid, zonaS, { baixada: true }, tr("Baixou uma carta.")) });
       }
     }
     if (noCampo) {
       out.push({
-        label: c.baixada ? "Virar para cima" : "Virar para baixo",
+        label: c.baixada ? tr("Virar para cima") : tr("Virar para baixo"),
         fazer: () => {
           setT((a) => alternar(a, uid, "baixada"));
-          registrar(`${c.baixada ? "Virou para cima" : "Virou para baixo"} ${n}.`);
+          registrar(`${c.baixada ? tr("Virou para cima") : tr("Virou para baixo")} ${n}.`);
           // Magia/Armadilha baixada que vira para cima: ativação
           if (c.baixada && !monstro) anotar({ t: "ativa", c: c.id, de: "magia" }, c, { virada: true });
           setMenu(null);
         },
       });
-      if (monstro) out.push({ label: c.defesa ? "Posição de ataque" : "Posição de defesa", fazer: () => { setT((a) => alternar(a, uid, "defesa")); registrar(`Mudou a posição de ${n}.`); setMenu(null); } });
-      if (c.materiais.length) out.push({ label: `Desanexar matéria (${c.materiais.length})`, fazer: () => moverPara(c.materiais[0].uid, "cemiterio", {}, `Desanexou ${nomeDe(c.materiais[0])}.`) });
+      if (monstro) out.push({ label: c.defesa ? tr("Posição de ataque") : tr("Posição de defesa"), fazer: () => { setT((a) => alternar(a, uid, "defesa")); registrar(tr("Mudou a posição de {0}.", [n])); setMenu(null); } });
+      if (c.materiais.length) out.push({ label: tr("Desanexar matéria ({0})", [c.materiais.length]), fazer: () => moverPara(c.materiais[0].uid, "cemiterio", {}, tr("Desanexou {0}.", [nomeDe(c.materiais[0])])) });
     }
-    out.push({ label: "Mover (clique na zona)", fazer: () => { setSelecionada(uid); setMenu(null); } });
+    out.push({ label: tr("Mover (clique na zona)"), fazer: () => { setSelecionada(uid); setMenu(null); } });
     const doExtra = !!card && ehExtra(card);
-    if (z !== "mao" && !doExtra) out.push({ label: z === "deck" ? "Adicionar à mão" : "Para a mão", fazer: () => moverPara(uid, "mao", {}, `${n} foi para a mão${z === "deck" ? " (do Deck)" : ""}.`) });
-    if (z !== "cemiterio") out.push({ label: "Para o Cemitério", fazer: () => moverPara(uid, "cemiterio", {}, `${n} foi para o Cemitério.`) });
-    if (z !== "banido") out.push({ label: "Banir", fazer: () => moverPara(uid, "banido", {}, `Baniu ${n}.`) });
+    if (z !== "mao" && !doExtra) out.push({ label: z === "deck" ? tr("Adicionar à mão") : tr("Para a mão"), fazer: () => moverPara(uid, "mao", {}, tr("{0} foi para a mão{1}.", [n, z === "deck" ? tr(" (do Deck)") : ""])) });
+    if (z !== "cemiterio") out.push({ label: tr("Para o Cemitério"), fazer: () => moverPara(uid, "cemiterio", {}, tr("{0} foi para o Cemitério.", [n])) });
+    if (z !== "banido") out.push({ label: tr("Banir"), fazer: () => moverPara(uid, "banido", {}, tr("Baniu {0}.", [n])) });
     if (card && ehExtra(card)) {
-      if (z !== "extra") out.push({ label: "Para o Extra Deck", fazer: () => moverPara(uid, "extra", {}, `${n} voltou para o Extra Deck.`) });
+      if (z !== "extra") out.push({ label: tr("Para o Extra Deck"), fazer: () => moverPara(uid, "extra", {}, tr("{0} voltou para o Extra Deck.", [n])) });
     } else {
-      out.push({ label: "Para o topo do Deck", fazer: () => moverPara(uid, "deck", { posicao: "topo" }, `${n} foi para o topo do Deck.`) });
-      out.push({ label: "Para o fundo do Deck", fazer: () => moverPara(uid, "deck", { posicao: "fundo" }, `${n} foi para o fundo do Deck.`) });
+      out.push({ label: tr("Para o topo do Deck"), fazer: () => moverPara(uid, "deck", { posicao: "topo" }, tr("{0} foi para o topo do Deck.", [n])) });
+      out.push({ label: tr("Para o fundo do Deck"), fazer: () => moverPara(uid, "deck", { posicao: "fundo" }, tr("{0} foi para o fundo do Deck.", [n])) });
     }
     return out;
   };
 
   const comprarUma = () => {
-    if (!t.deck.length) return registrar("O Deck acabou.");
-    registrar(`Comprou ${nomeDe(t.deck[0])}.`);
+    if (!t.deck.length) return registrar(tr("O Deck acabou."));
+    registrar(tr("Comprou {0}.", [nomeDe(t.deck[0])]));
     anotar({ t: "compra", c: [t.deck[0].id] }, t.deck[0]);
     setT((a) => comprar(a));
   };
@@ -653,8 +654,8 @@ export default function TesteJogo({
   const colocar = (uid: string, para: ZonaId, ladoAlvo: Lado = "eu") => {
     setSelecionada(null);
     const ladoCarta = ladoDe(uid);
-    if (ladoCarta && ladoCarta !== ladoAlvo) return registrar("Cada carta fica do lado do dono: as do oponente no campo dele, as suas no seu.");
-    if (emzOcupada(para, ladoAlvo)) return registrar("Essa Zona de Monstros Extra está ocupada pelo outro jogador.");
+    if (ladoCarta && ladoCarta !== ladoAlvo) return registrar(tr("Cada carta fica do lado do dono: as do oponente no campo dele, as suas no seu."));
+    if (emzOcupada(para, ladoAlvo)) return registrar(tr("Essa Zona de Monstros Extra está ocupada pelo outro jogador."));
     if (ladoCarta === "op") return colocarOp(uid, para);
     const atual = (Object.keys(t) as ZonaId[]).find((z) => t[z].some((c) => c.uid === uid));
     if (atual === para) return;
@@ -666,7 +667,7 @@ export default function TesteJogo({
       if (bloqueadoNoExtra(c, para)) return;
       anotar(passoDoMovimento(c, atual, "material"), c);
       setT((a) => mover(a, uid, para));
-      return registrar(`${n} foi anexada como matéria.`);
+      return registrar(tr("{0} foi anexada como matéria.", [n]));
     }
     // arrastar um monstro da mão para o campo: a primeira vez no teste é a Invocação-Normal
     const card = c && byId.get(c.id);
@@ -704,22 +705,22 @@ export default function TesteJogo({
           e.preventDefault();
           setMenu({ uid: c.uid, x: e.clientX, y: e.clientY });
         }}
-        title={card ? `${bilingualName(card)} — clique para selecionar e depois clique numa zona; botão direito para ações` : undefined}
+        title={card ? tr("{0} — clique para selecionar e depois clique numa zona; botão direito para ações", [bilingualName(card)]) : undefined}
         data-card-id={c.id}
       >
         {verso ? (
           <div className="tj-verso" />
         ) : c.id === TOKEN_GENERICO ? (
           <div className="tj-token">
-            <strong>Token</strong>
-            <span>Nível ?</span>
+            <strong>{tr("Token")}</strong>
+            <span>{tr("Nível ?")}</span>
             <span>? / ?</span>
           </div>
         ) : (
           <img src={cardImage(c.id, "small")} alt={card ? displayName(card) : ""} draggable={false} />
         )}
         {!verso && card && <CardSelos card={card} formato={formato} />}
-        {c.materiais.length > 0 && <span className="tj-materiais" title="Matérias Xyz">{c.materiais.length}</span>}
+        {c.materiais.length > 0 && <span className="tj-materiais" title={tr("Matérias Xyz")}>{c.materiais.length}</span>}
       </div>
     );
   };
@@ -758,17 +759,17 @@ export default function TesteJogo({
           if (id === "deck" || id === "extra") return;
           if (pilha && cartas.length) abrirLista(id, lado);
         }}
-        title={`${lado === "op" ? "Oponente — " : ""}${id === "deck" ? "Botão direito: Abrir deck ou Comprar uma carta" : id === "extra" ? "Botão direito: Abrir Extra Deck" : pilha ? `${NOMES_ZONA[id]} — clique para ver` : NOMES_ZONA[id]}`}
+        title={`${lado === "op" ? tr("Oponente — ") : ""}${id === "deck" ? tr("Botão direito: Abrir deck ou Comprar uma carta") : id === "extra" ? tr("Botão direito: Abrir Extra Deck") : pilha ? tr("{0} — clique para ver", [NOMES_ZONA[id]]) : NOMES_ZONA[id]}`}
         data-zona={lado === "op" ? `op-${id}` : id}
       >
         {mostrada && (id === "deck" ? <div className="tj-verso" /> : carta(mostrada))}
         {id === "deck" && embaralhando && (
-          <span className="tj-embaralhando" aria-label="Embaralhando">
+          <span className="tj-embaralhando" aria-label={tr("Embaralhando")}>
             ⟳
           </span>
         )}
         {pilha && <span className="tj-contagem">{cartas.length}</span>}
-        {!mostrada && <span className="tj-rotulo">{id === "campo-magia" ? "Campo" : id === "cemiterio" ? "Cemitério" : id === "banido" ? "Banidas" : id === "extra" ? "Extra" : ""}</span>}
+        {!mostrada && <span className="tj-rotulo">{id === "campo-magia" ? tr("Campo") : id === "cemiterio" ? tr("Cemitério") : id === "banido" ? tr("Banidas") : id === "extra" ? tr("Extra") : ""}</span>}
       </div>
     );
   };
@@ -779,14 +780,14 @@ export default function TesteJogo({
         {preview === "token" ? (
           <>
             <div className="tj-token tj-token-grande">
-              <strong>Token</strong>
-              <span>Nível ?</span>
-              <span>ATK ? / DEF ?</span>
+              <strong>{tr("Token")}</strong>
+              <span>{tr("Nível ?")}</span>
+              <span>{tr("ATK ? / DEF ?")}</span>
             </div>
-            <strong>Token</strong>
-            <small>Monstro Token · Nível ? · Tipo ? · Sem atributo</small>
-            <small>ATK ? / DEF ?</small>
-            <p className="tags-note">Criado no teste: fica só nas Zonas de Monstros e, ao sair do campo, deixa de existir.</p>
+            <strong>{tr("Token")}</strong>
+            <small>{tr("Monstro Token · Nível ? · Tipo ? · Sem atributo")}</small>
+            <small>{tr("ATK ? / DEF ?")}</small>
+            <p className="tags-note">{tr("Criado no teste: fica só nas Zonas de Monstros e, ao sair do campo, deixa de existir.")}</p>
           </>
         ) : preview ? (
           <>
@@ -800,7 +801,7 @@ export default function TesteJogo({
             <p>{preview.descPt ?? preview.desc}</p>
           </>
         ) : (
-          <p className="tags-note">Passe o mouse sobre uma carta para ver os detalhes.</p>
+          <p className="tags-note">{tr("Passe o mouse sobre uma carta para ver os detalhes.")}</p>
         )}
       </aside>
 
@@ -812,14 +813,14 @@ export default function TesteJogo({
             onDrop={soltar("mao", "op")}
             onClick={() => selecionada && colocar(selecionada, "mao", "op")}
             data-zona="op-mao"
-            aria-label="Mão do oponente"
+            aria-label={tr("Mão do oponente")}
           >
             {op.mao.map((c) => (
               <div key={c.uid} className="tj-mao-carta">
                 {carta(c)}
               </div>
             ))}
-            {!op.mao.length && <span className="tags-note">Mão do oponente vazia: use “+ Carta do oponente” para adicionar o que ele pode ter.</span>}
+            {!op.mao.length && <span className="tags-note">{tr("Mão do oponente vazia: use “+ Carta do oponente” para adicionar o que ele pode ter.")}</span>}
           </div>
         )}
         <div className="tj-campo">
@@ -827,12 +828,11 @@ export default function TesteJogo({
             <>
               {/* campo do oponente espelhado: Magias/Armadilhas em cima, monstros embaixo */}
               <div className="tj-l3 tj-linha-op">
-                <button className="tj-op-add" onClick={() => setAdicionando(true)} title="Adiciona uma carta à mão, ao campo, ao Cemitério ou às banidas do oponente">
-                  + Carta do oponente
-                </button>
+                <button className="tj-op-add" onClick={() => setAdicionando(true)} title={tr("Adiciona uma carta à mão, ao campo, ao Cemitério ou às banidas do oponente")}>
+                  {tr("+ Carta do oponente")}</button>
                 {[...MAGIAS].reverse().map((z) => zona(z, "op"))}
-                <span className="tj-op-lp" title="Pontos de Vida do oponente">
-                  <small>Oponente</small>
+                <span className="tj-op-lp" title={tr("Pontos de Vida do oponente")}>
+                  <small>{tr("Oponente")}</small>
                   <strong>{lpOp}</strong>
                 </span>
               </div>
@@ -876,42 +876,42 @@ export default function TesteJogo({
                   <span
                     className="tj-chance"
                     style={{ background: `hsl(${Math.round(chance * 220)} 75% 38%)` }}
-                    title={`Chance de abrir ao menos 1 cópia numa mão de 5: ${copias} ${copias === 1 ? "cópia" : "cópias"} num Deck de ${main.length} (distribuição hipergeométrica, como nos calculadores de probabilidade).`}
+                    title={tr("Chance de abrir ao menos 1 cópia numa mão de 5: {0} {1} num Deck de {2} (distribuição hipergeométrica, como nos calculadores de probabilidade).", [copias, copias === 1 ? tr("cópia") : tr("cópias"), main.length])}
                   >
-                    {(chance * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                    {(chance * 100).toLocaleString(LOCALE, { maximumFractionDigits: 1 })}%
                   </span>
                 )}
               </div>
             );
           })}
-          {!t.mao.length && <span className="tags-note">Mão vazia</span>}
+          {!t.mao.length && <span className="tags-note">{tr("Mão vazia")}</span>}
         </div>
         {t.mao.length > 0 && (() => {
           const ids = t.mao.map((c) => c.id);
           // mão exata: estas cartas, em qualquer ordem; geral: qualquer mão com o mesmo perfil
           const p = probabilidadeDaMao(main, ids);
           const geral = probabilidadeGeral(main, ids);
-          const pct = (x: number) => `${(x * 100).toLocaleString("pt-BR", { maximumSignificantDigits: 3 })}%`;
+          const pct = (x: number) => `${(x * 100).toLocaleString(LOCALE, { maximumSignificantDigits: 3 })}%`;
           // classificação das cartas da mão (hand trap, starter, floodgate, staple…)
           const papeis = contarPapeis(t.mao.map((c) => byId.get(c.id)).filter((c): c is Card => !!c));
           return (
             <>
             <div className="tj-prob-mao">
-              <span title={`Chance de abrir exatamente estas ${ids.length} cartas, em qualquer ordem, com este Deck de ${main.length} (hipergeométrica multivariada).`}>
-                <span className="field-label">Esta mão</span> <strong>{p > 0 ? pct(p) : "—"}</strong>
+              <span title={tr("Chance de abrir exatamente estas {0} cartas, em qualquer ordem, com este Deck de {1} (hipergeométrica multivariada).", [ids.length, main.length])}>
+                <span className="field-label">{tr("Esta mão")}</span> <strong>{p > 0 ? pct(p) : "—"}</strong>
                 {/* exemplo em 100 mãos: em quantas delas esta mão viria */}
-                {p > 0 && <small> {(p * 100).toLocaleString("pt-BR", { maximumSignificantDigits: 2 })} em 100 mãos</small>}
+                {p > 0 && <small> {" "}{tr("{0} em 100 mãos", [(p * 100).toLocaleString(LOCALE, { maximumSignificantDigits: 2 })])}</small>}
               </span>
               {geral.p > 0 && (
-                <span className="tj-prob-geral" title={`Chance de abrir qualquer mão com o mesmo perfil: ${geral.perfil}.`}>
-                  <span className="field-label">Geral</span> <strong>{pct(geral.p)}</strong> <small>{geral.perfil}</small>
+                <span className="tj-prob-geral" title={tr("Chance de abrir qualquer mão com o mesmo perfil: {0}.", [geral.perfil])}>
+                  <span className="field-label">{tr("Geral")}</span> <strong>{pct(geral.p)}</strong> <small>{geral.perfil}</small>
                 </span>
               )}
             </div>
-            <div className="tj-papeis-mao" aria-label="Classificação das cartas da mão">
-              <span className="field-label">Nesta mão</span>
+            <div className="tj-papeis-mao" aria-label={tr("Classificação das cartas da mão")}>
+              <span className="field-label">{tr("Nesta mão")}</span>
               {papeis.porPapel.map(({ papel, n }) => (
-                <span key={papel.id} className="tj-papel" title={`${n} ${n === 1 ? "carta" : "cartas"} ${papel.label} na mão`}>
+                <span key={papel.id} className="tj-papel" title={tr("{0} {1} {2} na mão", [n, n === 1 ? tr("carta") : tr("cartas"), papel.label])}>
                   <span className="selo-papel" style={{ background: papel.cor }}>
                     {papel.sigla}
                   </span>{" "}
@@ -920,7 +920,7 @@ export default function TesteJogo({
               ))}
               {papeis.semPapel > 0 && (
                 <span className="tj-papel">
-                  Sem classificação <strong>{papeis.semPapel}</strong>
+                  {tr("Sem classificação")}{" "}<strong>{papeis.semPapel}</strong>
                 </span>
               )}
             </div>
@@ -933,18 +933,16 @@ export default function TesteJogo({
       <aside className="tj-dir">
         <h3>{nome}</h3>
         {onModo && (
-          <div className="left-tabs tj-modo" role="tablist" aria-label="Modo do teste">
+          <div className="left-tabs tj-modo" role="tablist" aria-label={tr("Modo do teste")}>
             <button className={!avancado ? "active" : ""} onClick={() => onModo(false)}>
-              Teste de Jogo
-            </button>
+              {tr("Teste de Jogo")}</button>
             <button
               className={avancado ? "active" : ""}
               disabled={!temRecursosAvancados(conta)}
               onClick={() => onModo(true)}
-              title={temRecursosAvancados(conta) ? "Campo do oponente e Indicações de resposta" : "Teste Avançado: disponível para Usuário Avançado ou Mentor"}
+              title={temRecursosAvancados(conta) ? tr("Campo do oponente e Indicações de resposta") : tr("Teste Avançado: disponível para Usuário Avançado ou Mentor")}
             >
-              Teste Avançado
-            </button>
+              {tr("Teste Avançado")}</button>
           </div>
         )}
         <div className="tj-lp">
@@ -963,15 +961,15 @@ export default function TesteJogo({
               }
               setLpAjuste("");
             }}
-            aria-label="Ajuste de LP (ex.: -1000)"
+            aria-label={tr("Ajuste de LP (ex.: -1000)")}
           />
         </div>
         {avancado && (
           <div className="tj-lp tj-lp-op">
-            <strong title="Pontos de Vida do oponente">{lpOp}</strong>
+            <strong title={tr("Pontos de Vida do oponente")}>{lpOp}</strong>
             <input
               inputMode="numeric"
-              placeholder="± op"
+              placeholder={tr("± op")}
               value={lpOpAjuste}
               onChange={(e) => setLpOpAjuste(e.target.value)}
               onKeyDown={(e) => {
@@ -983,7 +981,7 @@ export default function TesteJogo({
                 }
                 setLpOpAjuste("");
               }}
-              aria-label="Ajuste de LP do oponente (ex.: -1000)"
+              aria-label={tr("Ajuste de LP do oponente (ex.: -1000)")}
             />
           </div>
         )}
@@ -1003,8 +1001,8 @@ export default function TesteJogo({
           ))}
         </div>
         {avancado && (
-          <div className="left-tabs tj-turno" role="tablist" aria-label="De quem é o turno">
-            <span className="field-label">Turno</span>
+          <div className="left-tabs tj-turno" role="tablist" aria-label={tr("De quem é o turno")}>
+            <span className="field-label">{tr("Turno")}</span>
             {(["eu", "op"] as Lado[]).map((l) => (
               <button
                 key={l}
@@ -1016,7 +1014,7 @@ export default function TesteJogo({
                   registrar(`Turno ${l === "eu" ? "seu" : "do oponente"}.`);
                 }}
               >
-                {l === "eu" ? "Você" : "Oponente"}
+                {l === "eu" ? tr("Você") : tr("Oponente")}
               </button>
             ))}
           </div>
@@ -1032,12 +1030,11 @@ export default function TesteJogo({
         <div className="tj-botoes">
           {combo && (
             <button className="ghost-btn tj-executar" onClick={executarCombo}>
-              Executar combo
-            </button>
+              {tr("Executar combo")}</button>
           )}
           <button
             className="ghost-btn tj-teste-mao"
-            title="Recolhe todas as cartas para o Deck e o Extra Deck, embaralha e compra 5 (Teste de Mão)"
+            title={tr("Recolhe todas as cartas para o Deck e o Extra Deck, embaralha e compra 5 (Teste de Mão)")}
             onClick={() => {
               const novo = testeDeMao(main, extra);
               setT(novo);
@@ -1052,13 +1049,11 @@ export default function TesteJogo({
               setLog(["Reiniciado: cartas recolhidas, Deck embaralhado, 5 cartas compradas."]);
             }}
           >
-            Reiniciar (Teste de Mão)
-          </button>
+            {tr("Reiniciar (Teste de Mão)")}</button>
           {avancado && (
             <>
               <button className="ghost-btn tj-op-add-btn" onClick={() => setAdicionando(true)}>
-                + Carta do oponente
-              </button>
+                {tr("+ Carta do oponente")}</button>
               <button
                 className="ghost-btn"
                 onClick={() => {
@@ -1067,55 +1062,50 @@ export default function TesteJogo({
                   registrar("Campo e mão do oponente limpos.");
                 }}
               >
-                Limpar oponente
-              </button>
+                {tr("Limpar oponente")}</button>
               <button className="ghost-btn" onClick={() => setPainelInd(!painelInd)} aria-pressed={painelInd}>
-                Indicações: {painelInd ? "ligadas" : "desligadas"}
+                {tr("Indicações: {0}", [painelInd ? tr("ligadas") : tr("desligadas")])}
               </button>
             </>
           )}
-          <button className="ghost-btn" onClick={comprarUma}>Comprar</button>
-          <button className="ghost-btn" onClick={embaralhar}>Embaralhar</button>
-          <button className="ghost-btn tj-visualizar" onClick={() => abrirLista("deck")}>Visualizar Deck</button>
-          <button className="ghost-btn tj-criar-token" onClick={(e) => setMenu({ uid: MENU_TOKEN, x: e.clientX, y: e.clientY })} title="Cria um token numa Zona de Monstros livre (ou clique com o botão direito numa zona vazia)">
-            Criar token
-          </button>
-          <button className="ghost-btn" onClick={() => registrar(`Dado: ${aleatorio(6) + 1}.`)}>Dado</button>
-          <button className="ghost-btn" onClick={() => registrar(`Moeda: ${aleatorio(2) ? "cara" : "coroa"}.`)}>Moeda</button>
-          <button className="ghost-btn" onClick={onFechar}>Voltar ao editor</button>
+          <button className="ghost-btn" onClick={comprarUma}>{tr("Comprar")}</button>
+          <button className="ghost-btn" onClick={embaralhar}>{tr("Embaralhar")}</button>
+          <button className="ghost-btn tj-visualizar" onClick={() => abrirLista("deck")}>{tr("Visualizar Deck")}</button>
+          <button className="ghost-btn tj-criar-token" onClick={(e) => setMenu({ uid: MENU_TOKEN, x: e.clientX, y: e.clientY })} title={tr("Cria um token numa Zona de Monstros livre (ou clique com o botão direito numa zona vazia)")}>
+            {tr("Criar token")}</button>
+          <button className="ghost-btn" onClick={() => registrar(`Dado: ${aleatorio(6) + 1}.`)}>{tr("Dado")}</button>
+          <button className="ghost-btn" onClick={() => registrar(`Moeda: ${aleatorio(2) ? "cara" : "coroa"}.`)}>{tr("Moeda")}</button>
+          <button className="ghost-btn" onClick={onFechar}>{tr("Voltar ao editor")}</button>
           <button
             className="ghost-btn tj-criar-combo"
             onClick={() => {
               setGravacao(null);
               setCriando({ titulo: combo?.titulo?.slice(0, 120) || tituloSugerido(), obs: "", compartilhar: false });
             }}
-            title="Cria um combo com os passos feitos neste teste (desde a mão inicial)"
+            title={tr("Cria um combo com os passos feitos neste teste (desde a mão inicial)")}
           >
-            Criar combo
-          </button>
+            {tr("Criar combo")}</button>
         </div>
-        <ol className="tj-log" aria-label="Histórico">
+        <ol className="tj-log" aria-label={tr("Histórico")}>
           {log.map((l, i) => (
             <li key={i}>{l}</li>
           ))}
         </ol>
         <p className="tags-note">
-          Abaixo de cada carta da mão: a chance de abrir ao menos 1 cópia dela numa mão de 5 com este Deck.{" "}
+          {tr("Abaixo de cada carta da mão: a chance de abrir ao menos 1 cópia dela numa mão de 5 com este Deck.")}{" "}
           <FontesButton sites={["otterlord", "deck-probability", "deckcal"]} />
         </p>
         <p className="tags-note">
-          Sem regras: arraste uma carta até a zona, ou clique nela e depois na zona; botão direito para ações. O embaralhamento usa o
-          gerador aleatório criptográfico do sistema.
-        </p>
+          {tr("Sem regras: arraste uma carta até a zona, ou clique nela e depois na zona; botão direito para ações. O embaralhamento usa o gerador aleatório criptográfico do sistema.")}</p>
       </aside>
 
       {combo && passo !== null && grupos[passo] && (
         <div className="tj-passo" role="status" aria-live="polite">
           <div className="tj-passo-cab">
             <strong>
-              Passo {passo + 1} de {grupos.length}
+              {tr("Passo {0} de {1}", [passo + 1, grupos.length])}
             </strong>
-            <button className="link-btn" onClick={() => setPasso(null)} aria-label="Fechar passos">
+            <button className="link-btn" onClick={() => setPasso(null)} aria-label={tr("Fechar passos")}>
               ✕
             </button>
           </div>
@@ -1129,11 +1119,9 @@ export default function TesteJogo({
           )}
           <div className="tj-passo-nav">
             <button className="ghost-btn" disabled={passo === 0} onClick={() => setPasso(passo - 1)}>
-              ‹ Anterior
-            </button>
+              {tr("‹ Anterior")}</button>
             <button className="ghost-btn" disabled={passo >= grupos.length - 1} onClick={() => setPasso(passo + 1)}>
-              Próximo ›
-            </button>
+              {tr("Próximo ›")}</button>
           </div>
         </div>
       )}
@@ -1144,75 +1132,69 @@ export default function TesteJogo({
         const copias = copiasUsadas();
         return (
           <div className="tj-criar-fundo" onClick={() => setCriando(null)}>
-            <div className="tj-criar" role="dialog" aria-label="Criar combo" onClick={(e) => e.stopPropagation()}>
+            <div className="tj-criar" role="dialog" aria-label={tr("Criar combo")} onClick={(e) => e.stopPropagation()}>
               <div className="fontes-head">
-                <h4>Criar combo</h4>
-                <button className="ghost-btn" onClick={() => setCriando(null)} aria-label="Fechar">✕</button>
+                <h4>{tr("Criar combo")}</h4>
+                <button className="ghost-btn" onClick={() => setCriando(null)} aria-label={tr("Fechar")}>✕</button>
               </div>
               <p className="tj-criar-mao">
-                <span className="field-label">Mão inicial</span> {maoInicial.map((c) => nomeId(c.id)).join(" + ") || "—"}
+                <span className="field-label">{tr("Mão inicial")}</span> {maoInicial.map((c) => nomeId(c.id)).join(" + ") || "—"}
               </p>
               {anotados.length ? (
                 <ol className="tj-criar-passos">
                   {anotados.map((p, i) => (
                     <li key={i}>
                       {textoPasso(p)}
-                      <button className="link-btn" onClick={() => setAnotados((ps) => ps.filter((_, j) => j !== i))} aria-label={`Tirar o passo ${i + 1}`} title="Tirar este passo">
+                      <button className="link-btn" onClick={() => setAnotados((ps) => ps.filter((_, j) => j !== i))} aria-label={tr("Tirar o passo {0}", [i + 1])} title={tr("Tirar este passo")}>
                         ✕
                       </button>
                     </li>
                   ))}
                 </ol>
               ) : (
-                <p className="db-warning">Nenhum passo ainda: jogue a partir da mão inicial (invocar, ativar, mover…) e volte aqui.</p>
+                <p className="db-warning">{tr("Nenhum passo ainda: jogue a partir da mão inicial (invocar, ativar, mover…) e volte aqui.")}</p>
               )}
               {grupos.length > 0 && (campo.monstros.length > 0 || campo.magias.length > 0) && (
                 <p className="tj-criar-campo">
-                  <span className="field-label">Campo final</span> {[...campo.monstros, ...campo.magias.map(([id]) => id)].map(nomeId).join(", ")}
+                  <span className="field-label">{tr("Campo final")}</span> {[...campo.monstros, ...campo.magias.map(([id]) => id)].map(nomeId).join(", ")}
                 </p>
               )}
               <div className="tj-criar-validade">
                 {FORMATS.map((f) => {
                   const v = validadeNoFormato(copias, byId, f);
                   return (
-                    <span key={f} className={`vc-badge combo-validade ${v.valido ? "valido" : "invalido"}`} title={v.valido ? `Cartas e cópias permitidas na banlist atual do ${f}.` : v.problemas.join("\n")}>
-                      {v.valido ? `Válido no ${f}` : `Fora da banlist do ${f}: ${v.problemas.join("; ")}`}
+                    <span key={f} className={`vc-badge combo-validade ${v.valido ? "valido" : "invalido"}`} title={v.valido ? tr("Cartas e cópias permitidas na banlist atual do {0}.", [f]) : v.problemas.join("\n")}>
+                      {v.valido ? tr("Válido no {0}", [f]) : tr("Fora da banlist do {0}: {1}", [f, v.problemas.join("; ")])}
                     </span>
                   );
                 })}
               </div>
               <label className="field">
-                <span className="field-label">Título</span>
-                <input value={criando.titulo} maxLength={120} onChange={(e) => setCriando({ ...criando, titulo: e.target.value })} aria-label="Título do combo" />
+                <span className="field-label">{tr("Título")}</span>
+                <input value={criando.titulo} maxLength={120} onChange={(e) => setCriando({ ...criando, titulo: e.target.value })} aria-label={tr("Título do combo")} />
               </label>
               <label className="field">
-                <span className="field-label">Observações</span>
+                <span className="field-label">{tr("Observações")}</span>
                 <textarea rows={2} maxLength={2000} value={criando.obs} onChange={(e) => setCriando({ ...criando, obs: e.target.value })} />
               </label>
               {conta && !temRecursosAvancados(conta) ? (
                 <p className="tags-note tj-criar-local">
-                  Usuário Padrão: o combo fica só neste aparelho (aba Combos → Meus combos neste aparelho). Para enviá-lo à base, use Exportar
-                  quando a conta for Avançado ou Mentor.
-                </p>
+                  {tr("Usuário Padrão: o combo fica só neste aparelho (aba Combos → Meus combos neste aparelho). Para enviá-lo à base, use Exportar quando a conta for Avançado ou Mentor.")}</p>
               ) : (
                 <label className="tj-criar-compartilhar">
                   <input type="checkbox" checked={criando.compartilhar} onChange={(e) => setCriando({ ...criando, compartilhar: e.target.checked })} />
-                  Compartilhar: divulgar para todos na aba Combos, com o seu nome de usuário e a data de criação
-                </label>
+                  {tr("Compartilhar: divulgar para todos na aba Combos, com o seu nome de usuário e a data de criação")}</label>
               )}
               {gravacao && <p className={gravacao.tipo === "erro" ? "db-warning" : "conta-ok"}>{gravacao.texto}</p>}
               <div className="dialog-actions">
                 <button className="ghost-btn" onClick={() => setCriando(null)}>
-                  Cancelar
-                </button>
+                  {tr("Cancelar")}</button>
                 {conta ? (
                   <button className="ghost-btn tj-criar-ok" disabled={!anotados.length || !criando.titulo.trim() || gravacao?.tipo === "gravando"} onClick={() => void gravarCombo()}>
-                    Criar combo
-                  </button>
+                    {tr("Criar combo")}</button>
                 ) : (
                   <button className="ghost-btn tj-criar-entrar" onClick={() => openConta()}>
-                    Entrar para criar
-                  </button>
+                    {tr("Entrar para criar")}</button>
                 )}
               </div>
             </div>
@@ -1231,23 +1213,21 @@ export default function TesteJogo({
         <div className="tj-lista" role="dialog" aria-label={NOMES_ZONA[lista]}>
           <div className="fontes-head">
             <h4>
-              {listaLado === "op" ? "Oponente: " : ""}
+              {listaLado === "op" ? tr("Oponente: ") : ""}
               {NOMES_ZONA[lista]} ({tabuleiro(listaLado)[lista].length})
             </h4>
             {/* com o Deck aberto, as opções do Deck continuam à mão */}
             {lista === "deck" && listaLado === "eu" && (
               <button className="ghost-btn tj-lista-comprar" onClick={comprarUma} disabled={!t.deck.length}>
-                Comprar uma carta
-              </button>
+                {tr("Comprar uma carta")}</button>
             )}
-            <button className="ghost-btn" onClick={fecharLista} aria-label="Fechar">✕</button>
+            <button className="ghost-btn" onClick={fecharLista} aria-label={tr("Fechar")}>✕</button>
           </div>
           <div className="tj-lista-cartas">
             {tabuleiro(listaLado)[lista].map((c) => carta({ ...c, baixada: false }, true))}
           </div>
           <p className="tags-note">
-            Clique numa carta para ver as opções (mão, Cemitério, banir, Invocar, Ativar…) ou arraste-a para o campo.
-            {lista === "deck" && " Ao fechar, o Deck é embaralhado."}
+            {tr("Clique numa carta para ver as opções (mão, Cemitério, banir, Invocar, Ativar…) ou arraste-a para o campo.")}{lista === "deck" && tr(" Ao fechar, o Deck é embaralhado.")}
           </p>
         </div>
       )}

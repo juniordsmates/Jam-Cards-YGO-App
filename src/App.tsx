@@ -15,6 +15,7 @@ import { iniciarConta } from "./db/conta";
 import { exitApp } from "./platform";
 import { initCardDb } from "./db/cardStore";
 import type { Card } from "./db/types";
+import { t } from "./i18n";
 
 export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall";
 
@@ -62,11 +63,10 @@ export default function App() {
     return (
       <main className="stage">
         <div className="goodbye">
-          <h1 className="logo">Até logo!</h1>
-          <p>Você já pode fechar esta aba.</p>
+          <h1 className="logo">{t("Até logo!")}</h1>
+          <p>{t("Você já pode fechar esta aba.")}</p>
           <button className="ghost-btn" onClick={() => setExited(false)}>
-            Voltar ao menu
-          </button>
+            {t("Voltar ao menu")}</button>
         </div>
       </main>
     );

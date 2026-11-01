@@ -3,6 +3,7 @@ import { contaAtual } from "./conta";
 import { supabase } from "./supabase";
 import { normalize } from "./search";
 import type { Card } from "./types";
+import { t } from "../i18n";
 
 // Minha Coleção: as cartas que o usuário possui, guardadas neste dispositivo e, com conta, também
 // na conta (tabela colecao). Uma linha por carta + impressão + detalhes; a quantidade vai de 1 a 99.
@@ -10,16 +11,16 @@ import type { Card } from "./types";
 
 export const IDIOMAS = ["Português", "Inglês", "Japonês", "Espanhol", "Francês", "Alemão", "Italiano", "Coreano", "Chinês"];
 export const EDICOES: { id: string; label: string }[] = [
-  { id: "primeira", label: "1ª edição" },
-  { id: "ilimitada", label: "Ilimitada" },
-  { id: "limitada", label: "Limitada" },
+  { id: "primeira", label: t("1ª edição") },
+  { id: "ilimitada", label: t("Ilimitada") },
+  { id: "limitada", label: t("Limitada") },
 ];
 export const ESTADOS: { id: string; label: string }[] = [
-  { id: "NM", label: "Nova (NM)" },
-  { id: "LP", label: "Pouco usada (LP)" },
-  { id: "MP", label: "Usada (MP)" },
-  { id: "HP", label: "Muito usada (HP)" },
-  { id: "DMG", label: "Danificada (DMG)" },
+  { id: "NM", label: t("Nova (NM)") },
+  { id: "LP", label: t("Pouco usada (LP)") },
+  { id: "MP", label: t("Usada (MP)") },
+  { id: "HP", label: t("Muito usada (HP)") },
+  { id: "DMG", label: t("Danificada (DMG)") },
 ];
 export const QUANTIDADE_MAX = 99;
 
@@ -85,11 +86,11 @@ export function quantidadeValida(texto: string, max = QUANTIDADE_MAX): number | 
 
 /** Acrescenta cópias; se o item já existe, soma (sem passar de 99). Devolve o erro, se houver. */
 export function adicionarNaColecao(detalhes: DetalhesItem, quantidade: number): string | null {
-  if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > QUANTIDADE_MAX) return "A quantidade vai de 1 a 99.";
+  if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > QUANTIDADE_MAX) return t("A quantidade vai de 1 a 99.");
   const chave = chaveItem(detalhes);
   const atual = estado.itens.find((i) => chaveItem(i) === chave);
   const total = (atual?.quantidade ?? 0) + quantidade;
-  if (total > QUANTIDADE_MAX) return `Com essas cópias, este item passaria de ${QUANTIDADE_MAX} (já há ${atual?.quantidade ?? 0}).`;
+  if (total > QUANTIDADE_MAX) return t("Com essas cópias, este item passaria de {0} (já há {1}).", [QUANTIDADE_MAX, atual?.quantidade ?? 0]);
   const item: ItemColecao = { ...detalhes, quantidade: total, atualizadoEm: new Date().toISOString() };
   gravar({ itens: atual ? estado.itens.map((i) => (chaveItem(i) === chave ? item : i)) : [...estado.itens, item] });
   void sincronizar(item);
@@ -99,8 +100,8 @@ export function adicionarNaColecao(detalhes: DetalhesItem, quantidade: number): 
 /** Retira cópias de um item (todas: o item sai da coleção) */
 export function retirarDaColecao(chave: string, quantidade: number): string | null {
   const atual = estado.itens.find((i) => chaveItem(i) === chave);
-  if (!atual) return "Item não encontrado na coleção.";
-  if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > atual.quantidade) return `Retire de 1 a ${atual.quantidade}.`;
+  if (!atual) return t("Item não encontrado na coleção.");
+  if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > atual.quantidade) return t("Retire de 1 a {0}.", [atual.quantidade]);
   const resto = atual.quantidade - quantidade;
   if (resto === 0) {
     gravar({ itens: estado.itens.filter((i) => chaveItem(i) !== chave) });
@@ -136,7 +137,7 @@ export function precoUSD(item: Pick<ItemColecao, "setCode" | "raridade">, card: 
 
 /** Idioma pela região do código da impressão (GFP2-EN175 → Inglês) */
 const IDIOMA_DA_REGIAO: Record<string, string> = {
-  EN: "Inglês", PT: "Português", SP: "Espanhol", FR: "Francês", DE: "Alemão", IT: "Italiano", JP: "Japonês", KR: "Coreano", AE: "Inglês",
+  EN: t("Inglês"), PT: t("Português"), SP: t("Espanhol"), FR: t("Francês"), DE: t("Alemão"), IT: t("Italiano"), JP: t("Japonês"), KR: t("Coreano"), AE: t("Inglês"),
 };
 
 export interface LinhaImportada {

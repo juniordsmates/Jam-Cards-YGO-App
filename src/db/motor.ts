@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Combos calculados no motor de regras do EDOPro (Project Ignis) pelo pipeline da base
 // (Database-Cards-Ygo, scripts/combos.ts). Chegam na camada pública, campo "combos": só ids e zonas.
 
@@ -90,22 +91,22 @@ export function linesForHand(combos: CombosCalculados | undefined, hand: number[
 }
 
 export const METODO_LABEL: Record<Metodo, string> = {
-  xyz: "Invocação-Xyz",
-  link: "Invocação-Link",
-  sincro: "Invocação-Sincro",
-  fusao: "Invocação-Fusão",
-  ritual: "Invocação-Ritual",
+  xyz: t("Invocação-Xyz"),
+  link: t("Invocação-Link"),
+  sincro: t("Invocação-Sincro"),
+  fusao: t("Invocação-Fusão"),
+  ritual: t("Invocação-Ritual"),
 };
 
 const ORIGEM: Partial<Record<Zona, string>> = {
-  deck: "do Deck",
-  mao: "da mão",
-  cemiterio: "do Cemitério",
-  banido: "dos banidos",
-  extra: "do Extra Deck",
-  magia: "da Zona de Magias e Armadilhas",
-  "campo-magia": "da Zona de Campo",
-  pendulo: "da Zona de Pêndulo",
+  deck: t("do Deck"),
+  mao: t("da mão"),
+  cemiterio: t("do Cemitério"),
+  banido: t("dos banidos"),
+  extra: t("do Extra Deck"),
+  magia: t("da Zona de Magias e Armadilhas"),
+  "campo-magia": t("da Zona de Campo"),
+  pendulo: t("da Zona de Pêndulo"),
 };
 
 /**
@@ -113,21 +114,21 @@ const ORIGEM: Partial<Record<Zona, string>> = {
  * Ex.: deck → mão = ["adiciona", "do Deck à mão"].
  */
 export function moveText(de: Zona, para: Zona): [string, string] {
-  if (de === "material" && para === "cemiterio") return ["desanexa", "(material Xyz)"];
-  if (para === "mao") return de === "deck" ? ["adiciona", "do Deck à mão"] : ["volta", `${ORIGEM[de] ?? "do campo"} para a mão`];
+  if (de === "material" && para === "cemiterio") return [t("desanexa"), t("(material Xyz)")];
+  if (para === "mao") return de === "deck" ? [t("adiciona"), t("do Deck à mão")] : [t("volta"), t("{0} para a mão", [ORIGEM[de] ?? t("do campo")])];
   if (para === "cemiterio") {
-    if (de === "mao") return ["descarta", ""];
-    if (de === "deck") return ["envia", "do Deck ao Cemitério"];
-    return ["envia", "ao Cemitério"];
+    if (de === "mao") return [t("descarta"), ""];
+    if (de === "deck") return [t("envia"), t("do Deck ao Cemitério")];
+    return [t("envia"), t("ao Cemitério")];
   }
-  if (para === "banido") return ["bane", ORIGEM[de] ?? ""];
-  if (para === "magia") return de === "deck" ? ["coloca", "do Deck na Zona de Magias e Armadilhas"] : ["coloca", "na Zona de Magias e Armadilhas"];
-  if (para === "campo-magia") return ["coloca", `${ORIGEM[de] ?? ""} na Zona de Campo`];
-  if (para === "deck") return ["devolve", "ao Deck"];
-  if (para === "extra") return ["devolve", "ao Extra Deck"];
-  if (para === "material") return ["anexa", "como material Xyz"];
-  if (para === "campo") return ["coloca", `${ORIGEM[de] ?? ""} no campo`];
-  return ["move", ""];
+  if (para === "banido") return [t("bane"), ORIGEM[de] ?? ""];
+  if (para === "magia") return de === "deck" ? [t("coloca"), t("do Deck na Zona de Magias e Armadilhas")] : [t("coloca"), t("na Zona de Magias e Armadilhas")];
+  if (para === "campo-magia") return [t("coloca"), t("{0} na Zona de Campo", [ORIGEM[de] ?? ""])];
+  if (para === "deck") return [t("devolve"), t("ao Deck")];
+  if (para === "extra") return [t("devolve"), t("ao Extra Deck")];
+  if (para === "material") return [t("anexa"), t("como material Xyz")];
+  if (para === "campo") return [t("coloca"), t("{0} no campo", [ORIGEM[de] ?? ""])];
+  return [t("move"), ""];
 }
 
 export const origemText = (z: Zona) => ORIGEM[z] ?? "";
@@ -137,21 +138,21 @@ export function passoEmTexto(p: Passo, nome: (id: number) => string): string {
   const lista = (ids: number[]) => ids.map(nome).join(" + ");
   switch (p.t) {
     case "normal":
-      return `Invocação-Normal de ${nome(p.c)}`;
+      return t("Invocação-Normal de {0}", [nome(p.c)]);
     case "baixa":
-      return `Baixa ${nome(p.c)}`;
+      return t("Baixa {0}", [nome(p.c)]);
     case "ativa":
-      return `Ativa ${nome(p.c)}${p.de === "mao" || p.de === "cemiterio" || p.de === "banido" ? ` ${origemText(p.de)}` : ""}`;
+      return t("Ativa {0}{1}", [nome(p.c), p.de === "mao" || p.de === "cemiterio" || p.de === "banido" ? ` ${origemText(p.de)}` : ""]);
     case "invoca":
       return p.m
-        ? `${METODO_LABEL[p.m]} de ${nome(p.c)}${p.mat?.length ? ` usando ${lista(p.mat)}` : ""}`
-        : `Invocação-Especial de ${nome(p.c)} ${origemText(p.de)}`.trim();
+        ? t("{0} de {1}{2}", [METODO_LABEL[p.m], nome(p.c), p.mat?.length ? t(" usando {0}", [lista(p.mat)]) : ""])
+        : t("Invocação-Especial de {0} {1}", [nome(p.c), origemText(p.de)]).trim();
     case "move": {
       const [verb, rest] = moveText(p.de, p.para);
       return `${verb} ${nome(p.c)} ${rest}`.trim();
     }
     case "compra":
-      return `Compra ${p.c.map(nome).join(", ")}`;
+      return t("Compra {0}", [p.c.map(nome).join(", ")]);
     case "texto":
       return p.texto;
   }

@@ -4,6 +4,7 @@ import type { CampoFinal, Passo } from "./motor";
 import { categoryOf, type Card } from "./types";
 import { SITES } from "../data/referencias";
 import { isDesktop } from "../platform";
+import { t } from "../i18n";
 
 // Combo Search com IA: o app chama a IA escolhida pelo usuário, com a chave de API dele (guardada
 // só neste dispositivo). A IA consulta o app pelas ferramentas abaixo (texto das cartas e combos já
@@ -34,16 +35,16 @@ export interface Provedor {
 
 export const PROVEDORES: Provedor[] = [
   { id: "anthropic", nome: "Claude (Anthropic)", url: "", exemplo: "", chaves: "https://console.anthropic.com/settings/keys", web: "sim" },
-  { id: "openai", nome: "ChatGPT (OpenAI)", url: "https://api.openai.com/v1", exemplo: "ex.: gpt-5", chaves: "https://platform.openai.com/api-keys", web: "não" },
-  { id: "gemini", nome: "Gemini (Google)", url: "https://generativelanguage.googleapis.com/v1beta/openai", exemplo: "ex.: gemini-2.5-pro", chaves: "https://aistudio.google.com/apikey", web: "não" },
-  { id: "openrouter", nome: "OpenRouter (vários modelos)", url: "https://openrouter.ai/api/v1", exemplo: "ex.: openai/gpt-5:online", chaves: "https://openrouter.ai/keys", web: "com :online no fim do modelo" },
-  { id: "deepseek", nome: "DeepSeek", url: "https://api.deepseek.com/v1", exemplo: "ex.: deepseek-chat", chaves: "https://platform.deepseek.com/api_keys", web: "não" },
-  { id: "groq", nome: "Groq", url: "https://api.groq.com/openai/v1", exemplo: "ex.: llama-3.3-70b-versatile", chaves: "https://console.groq.com/keys", web: "não" },
-  { id: "mistral", nome: "Mistral", url: "https://api.mistral.ai/v1", exemplo: "ex.: mistral-large-latest", chaves: "https://console.mistral.ai/api-keys", web: "não" },
-  { id: "xai", nome: "Grok (xAI)", url: "https://api.x.ai/v1", exemplo: "ex.: grok-4", chaves: "https://console.x.ai", web: "não" },
-  { id: "ollama", nome: "Ollama (no computador)", url: "http://localhost:11434/v1", exemplo: "ex.: llama3.1", local: true, web: "não" },
-  { id: "lmstudio", nome: "LM Studio (no computador)", url: "http://localhost:1234/v1", exemplo: "o modelo carregado no LM Studio", local: true, web: "não" },
-  { id: "outro", nome: "Outro (compatível com OpenAI)", url: "", exemplo: "nome do modelo", web: "não" },
+  { id: "openai", nome: "ChatGPT (OpenAI)", url: "https://api.openai.com/v1", exemplo: t("ex.: gpt-5"), chaves: "https://platform.openai.com/api-keys", web: t("não") },
+  { id: "gemini", nome: "Gemini (Google)", url: "https://generativelanguage.googleapis.com/v1beta/openai", exemplo: t("ex.: gemini-2.5-pro"), chaves: "https://aistudio.google.com/apikey", web: t("não") },
+  { id: "openrouter", nome: "OpenRouter (vários modelos)", url: "https://openrouter.ai/api/v1", exemplo: t("ex.: openai/gpt-5:online"), chaves: "https://openrouter.ai/keys", web: t("com :online no fim do modelo") },
+  { id: "deepseek", nome: "DeepSeek", url: "https://api.deepseek.com/v1", exemplo: t("ex.: deepseek-chat"), chaves: "https://platform.deepseek.com/api_keys", web: t("não") },
+  { id: "groq", nome: "Groq", url: "https://api.groq.com/openai/v1", exemplo: t("ex.: llama-3.3-70b-versatile"), chaves: "https://console.groq.com/keys", web: t("não") },
+  { id: "mistral", nome: "Mistral", url: "https://api.mistral.ai/v1", exemplo: t("ex.: mistral-large-latest"), chaves: "https://console.mistral.ai/api-keys", web: t("não") },
+  { id: "xai", nome: "Grok (xAI)", url: "https://api.x.ai/v1", exemplo: t("ex.: grok-4"), chaves: "https://console.x.ai", web: t("não") },
+  { id: "ollama", nome: "Ollama (no computador)", url: "http://localhost:11434/v1", exemplo: t("ex.: llama3.1"), local: true, web: t("não") },
+  { id: "lmstudio", nome: "LM Studio (no computador)", url: "http://localhost:1234/v1", exemplo: t("o modelo carregado no LM Studio"), local: true, web: t("não") },
+  { id: "outro", nome: "Outro (compatível com OpenAI)", url: "", exemplo: t("nome do modelo"), web: t("não") },
 ];
 
 export const provedor = (id: ProvedorId) => PROVEDORES.find((p) => p.id === id) ?? PROVEDORES[0];
@@ -82,10 +83,10 @@ export const configPadrao = (id: ProvedorId): ConfigIA => ({
 
 function lerConfigs(): ConfigsIA {
   try {
-    const salvo = JSON.parse(localStorage.getItem(STORAGE) ?? "null") as ConfigsIA | null;
+    const salvo = JSON.parse(localStorage.getItem(STORAGE) ?? t("null")) as ConfigsIA | null;
     if (salvo?.configs) return salvo;
     // migração do formato antigo (uma IA só)
-    const antigo = JSON.parse(localStorage.getItem(STORAGE_ANTIGO) ?? "null") as Partial<ConfigIA> | null;
+    const antigo = JSON.parse(localStorage.getItem(STORAGE_ANTIGO) ?? t("null")) as Partial<ConfigIA> | null;
     if (antigo?.chave || antigo?.modelo) {
       const cfg = { ...configPadrao(antigo.provedor ?? "anthropic"), ...antigo } as ConfigIA;
       return { configs: { [cfg.provedor]: cfg }, ativa: cfg.provedor };
@@ -358,7 +359,7 @@ async function buscarComClaude(cfg: ConfigIA, ctx: ContextoBusca): Promise<Resul
   let pesquisas = 0;
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    ctx.onProgresso?.(round === 0 ? "Consultando a IA…" : `Analisando (etapa ${round + 1})…`);
+    ctx.onProgresso?.(round === 0 ? t("Consultando a IA…") : t("Analisando (etapa {0})…", [round + 1]));
     const response = await client.beta.messages
       .stream({
         model: cfg.modelo,
@@ -373,17 +374,17 @@ async function buscarComClaude(cfg: ConfigIA, ctx: ContextoBusca): Promise<Resul
       })
       .finalMessage();
 
-    if (response.stop_reason === "refusal") throw new Error("A IA recusou esta busca. Tente outras cartas.");
+    if (response.stop_reason === "refusal") throw new Error(t("A IA recusou esta busca. Tente outras cartas."));
     messages.push({ role: "assistant", content: response.content });
 
     for (const block of response.content) {
-      if (block.type === "server_tool_use") ctx.onProgresso?.(`Pesquisando na web (${++pesquisas})…`);
+      if (block.type === "server_tool_use") ctx.onProgresso?.(t("Pesquisando na web ({0})…", [++pesquisas]));
       if (block.type === "text") resposta = block.text;
     }
 
     // a pesquisa na web atingiu o limite de etapas do servidor: reenviar continua de onde parou
     if (response.stop_reason === "pause_turn") continue;
-    if (response.stop_reason === "max_tokens") throw new Error("A resposta da IA ficou longa demais. Tente com menos cartas.");
+    if (response.stop_reason === "max_tokens") throw new Error(t("A resposta da IA ficou longa demais. Tente com menos cartas."));
 
     const calls = response.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
     if (!calls.length) return { sugestoes: [], resposta };
@@ -397,7 +398,7 @@ async function buscarComClaude(cfg: ConfigIA, ctx: ContextoBusca): Promise<Resul
     messages.push({ role: "user", content: results });
     if (registrado) return { sugestoes: registrado, resposta };
   }
-  throw new Error("A IA não concluiu a busca. Tente de novo.");
+  throw new Error(t("A IA não concluiu a busca. Tente de novo."));
 }
 
 // ---------------------------------------------------------------- formato OpenAI (/chat/completions)
@@ -433,20 +434,20 @@ async function buscarCompativel(cfg: ConfigIA, ctx: ContextoBusca): Promise<Resu
   let resposta = "";
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    ctx.onProgresso?.(round === 0 ? "Consultando a IA…" : `Analisando (etapa ${round + 1})…`);
+    ctx.onProgresso?.(round === 0 ? t("Consultando a IA…") : t("Analisando (etapa {0})…", [round + 1]));
     const res = await postChat(url, cfg.chave, { model: cfg.modelo, messages, tools, tool_choice: "auto" });
     let json: { choices?: { message?: ChatMessage; finish_reason?: string }[]; error?: { message?: string } | string };
     try {
       json = JSON.parse(res.body);
     } catch {
-      throw new Error(`A IA respondeu em formato inesperado (HTTP ${res.status}).`);
+      throw new Error(t("A IA respondeu em formato inesperado (HTTP {0}).", [res.status]));
     }
     if (res.status >= 400 || json.error) {
       const msg = typeof json.error === "string" ? json.error : json.error?.message;
-      throw new Error(`Erro da IA (HTTP ${res.status}): ${msg ?? "sem detalhes"}`);
+      throw new Error(t("Erro da IA (HTTP {0}): {1}", [res.status, msg ?? t("sem detalhes")]));
     }
     const msg = json.choices?.[0]?.message;
-    if (!msg) throw new Error("A IA não devolveu resposta.");
+    if (!msg) throw new Error(t("A IA não devolveu resposta."));
     if (msg.content) resposta = msg.content;
     const calls = msg.tool_calls ?? [];
     messages.push({ role: "assistant", content: msg.content ?? "", ...(calls.length ? { tool_calls: calls } : {}) });
@@ -466,7 +467,7 @@ async function buscarCompativel(cfg: ConfigIA, ctx: ContextoBusca): Promise<Resu
     }
     if (registrado) return { sugestoes: registrado, resposta };
   }
-  throw new Error("A IA não concluiu a busca. Tente de novo.");
+  throw new Error(t("A IA não concluiu a busca. Tente de novo."));
 }
 
 /** Busca combos com a IA configurada; devolve as sugestões e o texto final da IA */
@@ -523,9 +524,9 @@ async function postGemini(url: string, chave: string, body: unknown): Promise<{ 
  * convertidas para os ids do app e as que não existem na base são listadas, como no Combo Search.
  */
 export async function importarComboDeVideo(cfg: ConfigIA, video: string, ctx: Pick<ContextoBusca, "acharCarta" | "onProgresso">): Promise<ResultadoIA> {
-  if (!cfg.chave) throw new Error("Cadastre a chave do Gemini em Minha conta → IAs → Gemini.");
-  if (!ehLinkYouTube(video)) throw new Error("Cole o link de um vídeo do YouTube (youtube.com/watch?v=… ou youtu.be/…).");
-  ctx.onProgresso?.("O Gemini está assistindo ao vídeo (pode levar alguns minutos)…");
+  if (!cfg.chave) throw new Error(t("Cadastre a chave do Gemini em Minha conta → IAs → Gemini."));
+  if (!ehLinkYouTube(video)) throw new Error(t("Cole o link de um vídeo do YouTube (youtube.com/watch?v=… ou youtu.be/…)."));
+  ctx.onProgresso?.(t("O Gemini está assistindo ao vídeo (pode levar alguns minutos)…"));
   const modelo = encodeURIComponent(cfg.modelo || "gemini-2.5-flash");
   const res = await postGemini(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, cfg.chave, {
     contents: [{ parts: [{ file_data: { file_uri: video.trim() } }, { text: PEDIDO_VIDEO }] }],
@@ -535,19 +536,19 @@ export async function importarComboDeVideo(cfg: ConfigIA, video: string, ctx: Pi
   try {
     json = JSON.parse(res.body);
   } catch {
-    throw new Error(`O Gemini respondeu em formato inesperado (HTTP ${res.status}).`);
+    throw new Error(t("O Gemini respondeu em formato inesperado (HTTP {0}).", [res.status]));
   }
-  if (res.status >= 400 || json.error) throw new Error(`Erro do Gemini (HTTP ${res.status}): ${json.error?.message ?? "sem detalhes"}`);
-  if (json.promptFeedback?.blockReason) throw new Error(`O Gemini recusou o vídeo (${json.promptFeedback.blockReason}).`);
+  if (res.status >= 400 || json.error) throw new Error(t("Erro do Gemini (HTTP {0}): {1}", [res.status, json.error?.message ?? t("sem detalhes")]));
+  if (json.promptFeedback?.blockReason) throw new Error(t("O Gemini recusou o vídeo ({0}).", [json.promptFeedback.blockReason]));
   const texto = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   let bruto: unknown;
   try {
     bruto = JSON.parse(texto);
   } catch {
-    throw new Error("O Gemini não devolveu os combos no formato esperado. Tente de novo.");
+    throw new Error(t("O Gemini não devolveu os combos no formato esperado. Tente de novo."));
   }
   const comFontes = { combos: ((bruto as CombosBrutos | null)?.combos ?? []).map((c) => ({ ...c, fontes: [{ nome: "Vídeo do YouTube", url: video.trim() }] })) };
-  if (!validarRegistro(comFontes)) throw new Error("O Gemini não devolveu os combos no formato esperado. Tente de novo.");
+  if (!validarRegistro(comFontes)) throw new Error(t("O Gemini não devolveu os combos no formato esperado. Tente de novo."));
   const sugestoes = converter(comFontes, ctx);
-  return { sugestoes, resposta: sugestoes.length ? "" : "O Gemini não encontrou um combo de Yu-Gi-Oh! neste vídeo." };
+  return { sugestoes, resposta: sugestoes.length ? "" : t("O Gemini não encontrou um combo de Yu-Gi-Oh! neste vídeo.") };
 }

@@ -1,5 +1,6 @@
 import { categoryOf, displayName, type BanStatus, type Card, type Category } from "./types";
 import { MONSTER_CLASSES } from "./labels";
+import { LOCALE } from "../i18n";
 
 /** Minúsculas, sem acentos e sem pontuação: "Mago Negro!" → "mago negro" */
 export function normalize(text: string) {
@@ -113,7 +114,7 @@ function inRange(value: number | undefined, min?: number, max?: number) {
   return (min === undefined || value >= min) && (max === undefined || value <= max);
 }
 
-const collator = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
+const collator = new Intl.Collator(LOCALE, { sensitivity: "base", numeric: true });
 
 /** Primeiro lançamento (TCG ou OCG, o que vier antes), "AAAA-MM-DD" */
 export const releaseDate = (c: Card) => [c.tcgDate, c.ocgDate].filter(Boolean).sort()[0];

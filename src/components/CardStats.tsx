@@ -1,5 +1,6 @@
 import { ATTRIBUTES, levelLabel } from "../db/labels";
 import { categoryOf, type Card } from "../db/types";
+import { t } from "../i18n";
 
 const LINK_ARROWS: Record<string, string> = {
   "Top-Left": "↖",
@@ -20,7 +21,7 @@ export default function CardStats({ card, compact }: { card: Card; compact?: boo
     <dl className={`stats ${compact ? "compact" : ""}`}>
       {card.attribute && (
         <div>
-          <dt>Atributo</dt>
+          <dt>{t("Atributo")}</dt>
           <dd className={`attr attr-${card.attribute}`}>{ATTRIBUTES[card.attribute] ?? card.attribute}</dd>
         </div>
       )}
@@ -32,23 +33,23 @@ export default function CardStats({ card, compact }: { card: Card; compact?: boo
       )}
       {card.scale !== undefined && (
         <div>
-          <dt>Escala</dt>
+          <dt>{t("Escala")}</dt>
           <dd>{card.scale}</dd>
         </div>
       )}
       <div>
-        <dt>ATK</dt>
+        <dt>{t("ATK")}</dt>
         <dd>{card.atk ?? "?"}</dd>
       </div>
       {card.frame !== "link" && (
         <div>
-          <dt>DEF</dt>
+          <dt>{t("DEF")}</dt>
           <dd>{card.def ?? "?"}</dd>
         </div>
       )}
       {card.linkmarkers && (
         <div>
-          <dt>Setas</dt>
+          <dt>{t("Setas")}</dt>
           <dd className="arrows">{card.linkmarkers.map((m) => LINK_ARROWS[m] ?? m).join(" ")}</dd>
         </div>
       )}

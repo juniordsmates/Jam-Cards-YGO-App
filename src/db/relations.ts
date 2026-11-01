@@ -1,5 +1,6 @@
 import { readCard } from "./effects";
 import { categoryOf, type Card } from "./types";
+import { t as tr } from "../i18n";
 
 // Relacionamentos entre cartas, lidos do texto em inglês. Cada relação tem um sentido
 // (de quem tem o texto → para quem é alvo) e é consultável nos dois sentidos:
@@ -60,13 +61,13 @@ export interface Relation {
 
 /** Rótulos nos dois sentidos: de quem tem o texto (saída) e de quem é alvo (entrada) */
 export const RELATION_LABELS: Record<RelationType, { out: string; in: string }> = {
-  invoca: { out: "Invoca", in: "Invocada por" },
-  busca: { out: "Busca", in: "Buscada por" },
-  baixa: { out: "Baixa no campo", in: "Baixada no campo por" },
-  material: { out: "Materiais", in: "Material de" },
-  exclusiva: { out: "Só pode ser invocada com", in: "Necessária para invocar" },
-  ritual: { out: "Invocada por Ritual com", in: "Invoca por Ritual" },
-  cita: { out: "Cita", in: "Citada por" },
+  invoca: { out: tr("Invoca"), in: tr("Invocada por") },
+  busca: { out: tr("Busca"), in: tr("Buscada por") },
+  baixa: { out: tr("Baixa no campo"), in: tr("Baixada no campo por") },
+  material: { out: tr("Materiais"), in: tr("Material de") },
+  exclusiva: { out: tr("Só pode ser invocada com"), in: tr("Necessária para invocar") },
+  ritual: { out: tr("Invocada por Ritual com"), in: tr("Invoca por Ritual") },
+  cita: { out: tr("Cita"), in: tr("Citada por") },
 };
 
 const ATTRIBUTES = ["LIGHT", "DARK", "EARTH", "WATER", "FIRE", "WIND", "DIVINE"];
@@ -471,26 +472,26 @@ function computeTargetIds(r: Relation, cards: Card[]): number[] {
     .map((c) => c.id);
 }
 
-const ATTRIBUTE_PT: Record<string, string> = { LIGHT: "LUZ", DARK: "TREVAS", EARTH: "TERRA", WATER: "ÁGUA", FIRE: "FOGO", WIND: "VENTO", DIVINE: "DIVINO" };
+const ATTRIBUTE_PT: Record<string, string> = { LIGHT: tr("LUZ"), DARK: tr("TREVAS"), EARTH: tr("TERRA"), WATER: tr("ÁGUA"), FIRE: tr("FOGO"), WIND: tr("VENTO"), DIVINE: tr("DIVINO") };
 
 /** Descrição em português: "monstro Mago de TREVAS de Nível 4 ou menos" (raças traduzidas por quem chama) */
 export function describeQuery(q: CardQuery, raceLabel: (race: string) => string = (r) => r): string {
   const noun = { monster: "monstro", spell: "Magia", trap: "Armadilha", spelltrap: "Magia/Armadilha" }[q.category ?? "monster"];
-  const SUBTYPE_PT: Record<string, string> = { Continuous: "Contínua", "Quick-Play": "Rápida", Field: "de Campo", Equip: "de Equipamento", Counter: "de Resposta", Ritual: "de Ritual" };
+  const SUBTYPE_PT: Record<string, string> = { Continuous: tr("Contínua"), "Quick-Play": tr("Rápida"), Field: tr("de Campo"), Equip: tr("de Equipamento"), Counter: tr("de Resposta"), Ritual: tr("de Ritual") };
   const parts = [noun];
   if (q.subtype) parts.push(SUBTYPE_PT[q.subtype] ?? q.subtype);
   if (q.monsterType) parts.push(q.monsterType);
   if (q.race) parts.push(raceLabel(q.race));
   if (q.attribute) parts.push(`de ${ATTRIBUTE_PT[q.attribute] ?? q.attribute}`);
-  if (q.levelMin !== undefined && q.levelMin === q.levelMax) parts.push(`de Nível ${q.levelMin}`);
-  else if (q.levelMax !== undefined) parts.push(`de Nível ${q.levelMax} ou menos`);
-  else if (q.levelMin !== undefined) parts.push(`de Nível ${q.levelMin} ou mais`);
-  if (q.atkMin !== undefined && q.atkMin === q.atkMax) parts.push(`com ${q.atkMin} de ATK`);
+  if (q.levelMin !== undefined && q.levelMin === q.levelMax) parts.push(tr("de Nível {0}", [q.levelMin]));
+  else if (q.levelMax !== undefined) parts.push(tr("de Nível {0} ou menos", [q.levelMax]));
+  else if (q.levelMin !== undefined) parts.push(tr("de Nível {0} ou mais", [q.levelMin]));
+  if (q.atkMin !== undefined && q.atkMin === q.atkMax) parts.push(tr("com {0} de ATK", [q.atkMin]));
   else {
-    if (q.atkMax !== undefined) parts.push(`com ${q.atkMax} ou menos de ATK`);
-    if (q.atkMin !== undefined) parts.push(`com ${q.atkMin} ou mais de ATK`);
+    if (q.atkMax !== undefined) parts.push(tr("com {0} ou menos de ATK", [q.atkMax]));
+    if (q.atkMin !== undefined) parts.push(tr("com {0} ou mais de ATK", [q.atkMin]));
   }
-  if (q.defMax !== undefined) parts.push(`com ${q.defMax} ou menos de DEF`);
+  if (q.defMax !== undefined) parts.push(tr("com {0} ou menos de DEF", [q.defMax]));
   return parts.join(" ");
 }
 

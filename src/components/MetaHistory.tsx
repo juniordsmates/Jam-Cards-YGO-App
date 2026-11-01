@@ -1,12 +1,13 @@
 import type { Overlay } from "../db/overlay";
 import { FontesButton } from "./Fontes";
+import { t, LOCALE } from "../i18n";
 
 type Props = {
   archetype: string;
   meta: Overlay["meta"];
 };
 
-const pct = (share: number) => `${(share * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+const pct = (share: number) => `${(share * 100).toLocaleString(LOCALE, { maximumFractionDigits: 1 })}%`;
 
 /**
  * Participação do arquétipo nos decks colocados em torneios do OCG, por trimestre.
@@ -29,17 +30,16 @@ export default function MetaHistory({ archetype, meta }: Props) {
 
   return (
     <section className="drawer-section">
-      <h4>Metagame OCG · {archetype}</h4>
+      <h4>{t("Metagame OCG · {0}", [archetype])}</h4>
       <p className="meta-summary">
-        Último trimestre: <strong>{pct(latest.share)}</strong> dos decks colocados
-        {peak.periodo !== latest.periodo && (
+        {t("Último trimestre:")}{" "}<strong>{pct(latest.share)}</strong> {" "}{t("dos decks colocados")}{peak.periodo !== latest.periodo && (
           <>
-            {" "}· pico de <strong>{pct(peak.share)}</strong> em {peak.periodo}
+            {" "}{t("· pico de")}{" "}<strong>{pct(peak.share)}</strong> {" "}{t("em {0}", [peak.periodo])}
           </>
         )}
       </p>
 
-      <div className="meta-chart" role="img" aria-label={`Participação de ${archetype} por trimestre no OCG`}>
+      <div className="meta-chart" role="img" aria-label={t("Participação de {0} por trimestre no OCG", [archetype])}>
         {points.map((p) => {
           const label = p === peak || p === latest;
           return (
@@ -50,8 +50,8 @@ export default function MetaHistory({ archetype, meta }: Props) {
               </span>
               <span className="meta-period">{p.periodo.slice(2)}</span>
               <span className="meta-tip" role="tooltip">
-                <strong>OCG {p.periodo}</strong>
-                {p.tops} de {p.total.toLocaleString("pt-BR")} decks · {pct(p.share)}
+                <strong>{t("OCG {0}", [p.periodo])}</strong>
+                {t("{0} de {1} decks · {2}", [p.tops, p.total.toLocaleString(LOCALE), pct(p.share)])}
               </span>
             </div>
           );
@@ -59,12 +59,12 @@ export default function MetaHistory({ archetype, meta }: Props) {
       </div>
 
       <table className="sr-only">
-        <caption>Participação de {archetype} no OCG por trimestre</caption>
+        <caption>{t("Participação de {0} no OCG por trimestre", [archetype])}</caption>
         <thead>
           <tr>
-            <th>Trimestre</th>
-            <th>Decks colocados</th>
-            <th>Participação</th>
+            <th>{t("Trimestre")}</th>
+            <th>{t("Decks colocados")}</th>
+            <th>{t("Participação")}</th>
           </tr>
         </thead>
         <tbody>
@@ -72,7 +72,7 @@ export default function MetaHistory({ archetype, meta }: Props) {
             <tr key={p.periodo}>
               <td>{p.periodo}</td>
               <td>
-                {p.tops} de {p.total}
+                {t("{0} de {1}", [p.tops, p.total])}
               </td>
               <td>{pct(p.share)}</td>
             </tr>

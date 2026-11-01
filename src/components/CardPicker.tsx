@@ -3,6 +3,7 @@ import { SearchIcon } from "../icons";
 import { legalIn, type GameFormat } from "../db/legality";
 import { archetypeKey, normalize } from "../db/search";
 import { bilingualName, displayName, type Card } from "../db/types";
+import { t } from "../i18n";
 
 const MAX_SUGGESTIONS = 8;
 
@@ -46,10 +47,10 @@ export default function CardPicker({ label, cards, onChange, all, format, placeh
         {cards.map((c) => {
           const ok = legalIn(c, format);
           return (
-            <span key={c.id} className={`hand-card ${ok ? "" : "illegal"}`} title={ok ? bilingualName(c) : `${bilingualName(c)} — não pode ser usada no ${format}`}>
+            <span key={c.id} className={`hand-card ${ok ? "" : "illegal"}`} title={ok ? bilingualName(c) : t("{0} — não pode ser usada no {1}", [bilingualName(c), format])}>
               {displayName(c)}
-              {!ok && <em> · fora do {format}</em>}
-              <button onClick={() => onChange(cards.filter((x) => x.id !== c.id))} aria-label={`Tirar ${displayName(c)}`}>
+              {!ok && <em> {" "}{t("· fora do {0}", [format])}</em>}
+              <button onClick={() => onChange(cards.filter((x) => x.id !== c.id))} aria-label={t("Tirar {0}", [displayName(c)])}>
                 ✕
               </button>
             </span>
@@ -77,7 +78,7 @@ export default function CardPicker({ label, cards, onChange, all, format, placeh
                   <button disabled={!ok} onClick={() => add(c)} role="option" aria-selected={false}>
                     <span>{displayName(c)}</span>
                     {c.namePt && <small>{c.name}</small>}
-                    {!ok && <em>{c.ban?.[format === "TCG" ? "tcg" : "ocg"] === "Forbidden" ? "proibida" : `fora do ${format}`}</em>}
+                    {!ok && <em>{c.ban?.[format === "TCG" ? "tcg" : "ocg"] === "Forbidden" ? t("proibida") : t("fora do {0}", [format])}</em>}
                   </button>
                 </li>
               );

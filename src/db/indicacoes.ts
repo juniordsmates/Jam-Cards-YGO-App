@@ -1,6 +1,7 @@
 import { isActivated, readCard, type ParsedEffect } from "./effects";
 import type { Metodo, Zona } from "./motor";
 import { categoryOf, type Card } from "./types";
+import { t as tr } from "../i18n";
 
 // Indicações de resposta (Teste Avançado) e perfil de deck (Meta Call): o que uma ação faz, lido do
 // texto oficial da carta (em inglês, pela pontuação PSCT), e quais interrupções podem responder a
@@ -27,20 +28,20 @@ export type Acao =
 
 export const ACOES_LABEL: Record<Acao, string> = {
   busca: "busca do Deck",
-  compra: "compra cartas",
-  invoca: "Invoca por Invocação-Especial",
-  "invoca-deck": "Invoca do Deck",
-  "invoca-extra": "Invoca do Extra Deck",
-  "invoca-mao": "Invoca da mão",
-  "invoca-gy": "Invoca do Cemitério",
-  "invoca-banido": "Invoca das banidas",
-  "envia-deck": "envia do Deck ao Cemitério",
-  "gy-mao": "recupera do Cemitério",
-  "gy-bane": "bane do Cemitério",
-  bane: "bane cartas",
-  destroi: "destrói cartas",
-  nega: "nega",
-  devolve: "devolve cartas do campo",
+  compra: tr("compra cartas"),
+  invoca: tr("Invoca por Invocação-Especial"),
+  "invoca-deck": tr("Invoca do Deck"),
+  "invoca-extra": tr("Invoca do Extra Deck"),
+  "invoca-mao": tr("Invoca da mão"),
+  "invoca-gy": tr("Invoca do Cemitério"),
+  "invoca-banido": tr("Invoca das banidas"),
+  "envia-deck": tr("envia do Deck ao Cemitério"),
+  "gy-mao": tr("recupera do Cemitério"),
+  "gy-bane": tr("bane do Cemitério"),
+  bane: tr("bane cartas"),
+  destroi: tr("destrói cartas"),
+  nega: tr("nega"),
+  devolve: tr("devolve cartas do campo"),
 };
 
 /** Lugares citados num trecho do texto (o "Extra Deck" não conta como Deck) */
@@ -266,4 +267,4 @@ export interface Regra {
 }
 
 /** Nome da carta da ação, para os textos */
-export const nomeDoEvento = (ev: Evento) => (ev.card ? (ev.card.namePt ?? ev.card.name) : "a carta");
+export const nomeDoEvento = (ev: Evento) => (ev.card ? (ev.card.namePt ?? ev.card.name) : tr("a carta"));

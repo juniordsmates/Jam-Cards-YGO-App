@@ -4,6 +4,7 @@ import { ACOES_LABEL, type Lado } from "../db/indicacoes";
 import type { ItemIndicacao, ResultadoIndicacoes } from "../db/indicar";
 import { passoEmTexto, type Passo } from "../db/motor";
 import { displayName, type Card } from "../db/types";
+import { LOCALE, t as tr } from "../i18n";
 
 // Teste Avançado → "Indicações de resposta": a cada ação (de qualquer lado), o que o outro lado pode
 // responder. Fica na coluna da direita, ao lado da mesa (não cobre cartas) e perto do histórico;
@@ -18,8 +19,8 @@ export interface EntradaIndicacao {
 /** Itens visíveis antes do "ver todas" */
 const VISIVEIS = 6;
 
-const pct = (x: number) => `${(x * 100).toLocaleString("pt-BR", { maximumFractionDigits: x < 0.1 ? 1 : 0 })}%`;
-const ONDE: Record<NonNullable<ItemIndicacao["onde"]>, string> = { mao: "na mão", campo: "no campo", baixada: "baixada" };
+const pct = (x: number) => `${(x * 100).toLocaleString(LOCALE, { maximumFractionDigits: x < 0.1 ? 1 : 0 })}%`;
+const ONDE: Record<NonNullable<ItemIndicacao["onde"]>, string> = { mao: tr("na mão"), campo: tr("no campo"), baixada: tr("baixada") };
 
 function Item({ i, onHover }: { i: ItemIndicacao; onHover: (c: Card) => void }) {
   return (
@@ -29,12 +30,12 @@ function Item({ i, onHover }: { i: ItemIndicacao; onHover: (c: Card) => void }) 
         <strong>{i.card ? displayName(i.card) : `#${i.id}`}</strong>
         {i.onde && <span className="tj-ind-onde"> · {ONDE[i.onde]}</span>}
         <small className="tj-ind-motivo">{i.motivo}</small>
-        {i.impedida && <small className="tj-ind-aviso">Agora não: {i.impedida}</small>}
+        {i.impedida && <small className="tj-ind-aviso">{tr("Agora não: {0}", [i.impedida])}</small>}
         {!i.impedida && i.condicao && <small className="tj-ind-cond">{i.condicao}</small>}
         <span className="tj-ind-selos">
-          {i.uso > 0 && <span title="Fração dos decklists de torneio que usam a carta">{pct(i.uso)} dos decks</span>}
-          {!!i.motor && <span title="Confirmada pelo motor de regras nas linhas de combo calculadas">motor · {i.motor}</span>}
-          {(i.fonte === "texto" || i.fonte === "scripts") && <span title="Indicação pelo texto ou pelos scripts da carta: confira">confira</span>}
+          {i.uso > 0 && <span title={tr("Fração dos decklists de torneio que usam a carta")}>{tr("{0} dos decks", [pct(i.uso)])}</span>}
+          {!!i.motor && <span title={tr("Confirmada pelo motor de regras nas linhas de combo calculadas")}>{tr("motor · {0}", [i.motor])}</span>}
+          {(i.fonte === "texto" || i.fonte === "scripts") && <span title={tr("Indicação pelo texto ou pelos scripts da carta: confira")}>{tr("confira")}</span>}
         </span>
       </span>
     </li>
@@ -57,7 +58,7 @@ function Lista({ titulo, itens, onHover, classe }: { titulo: string; itens: Item
       </ul>
       {itens.length > VISIVEIS && (
         <button className="link-btn" onClick={() => setTodas(!todas)}>
-          {todas ? "Mostrar menos" : `Ver todas (${itens.length})`}
+          {todas ? tr("Mostrar menos") : tr("Ver todas ({0})", [itens.length])}
         </button>
       )}
     </div>
@@ -87,48 +88,47 @@ export default function IndicacoesResposta({
   const nome = (id: number) => (id === 0 ? "Token" : byId.get(id) ? displayName(byId.get(id)!) : `#${id}`);
 
   return (
-    <section className="tj-ind" aria-label="Indicações de resposta" aria-live="polite">
+    <section className="tj-ind" aria-label={tr("Indicações de resposta")} aria-live="polite">
       <div className="tj-ind-cab">
-        <h4>Indicações de resposta</h4>
+        <h4>{tr("Indicações de resposta")}</h4>
         {entradas.length > 1 && (
           <span className="tj-ind-nav">
-            <button className="link-btn" disabled={pos >= entradas.length - 1} onClick={() => setPos(pos + 1)} aria-label="Ação anterior">
+            <button className="link-btn" disabled={pos >= entradas.length - 1} onClick={() => setPos(pos + 1)} aria-label={tr("Ação anterior")}>
               ‹
             </button>
             <small>
               {pos + 1}/{entradas.length}
             </small>
-            <button className="link-btn" disabled={pos === 0} onClick={() => setPos(pos - 1)} aria-label="Ação seguinte">
+            <button className="link-btn" disabled={pos === 0} onClick={() => setPos(pos - 1)} aria-label={tr("Ação seguinte")}>
               ›
             </button>
           </span>
         )}
       </div>
       <p className="tj-ind-contador">
-        Invocações neste turno: você {invocacoes.eu} · oponente {invocacoes.op} <small>(Nibiru a partir de 5)</small>
+        {tr("Invocações neste turno: você {0} · oponente {1}", [invocacoes.eu, invocacoes.op])}{" "}<small>{tr("(Nibiru a partir de 5)")}</small>
       </p>
       {!e ? (
         <p className="tags-note">
-          Jogue normalmente (ativar, invocar, mover). A cada ação, aparecem aqui as cartas que podem responder — as que o outro lado tem e as do meta.
-        </p>
+          {tr("Jogue normalmente (ativar, invocar, mover). A cada ação, aparecem aqui as cartas que podem responder — as que o outro lado tem e as do meta.")}</p>
       ) : (
         <>
           <p className="tj-ind-acao">
-            <span className={`tj-ind-quem tj-ind-${e.lado}`}>{e.lado === "eu" ? "Você" : "Oponente"}</span>{" "}
+            <span className={`tj-ind-quem tj-ind-${e.lado}`}>{e.lado === "eu" ? tr("Você") : tr("Oponente")}</span>{" "}
             {(() => {
               const t = passoEmTexto(e.passo, nome);
               return t.charAt(0).toUpperCase() + t.slice(1);
             })()}
             {e.r.analise.acoes.size > 0 && (
               <small className="tj-ind-faz" title={e.r.analise.efeitos.join("\n\n")}>
-                O efeito {[...e.r.analise.acoes].filter((a) => a !== "invoca" || e.r.analise.acoes.size === 1).map((a) => ACOES_LABEL[a]).join(", ")}
+                {tr("O efeito {0}", [[...e.r.analise.acoes].filter((a) => a !== "invoca" || e.r.analise.acoes.size === 1).map((a) => ACOES_LABEL[a]).join(", ")])}
               </small>
             )}
           </p>
-          <Lista titulo={e.lado === "eu" ? "O oponente tem" : "Você tem"} itens={e.r.noJogo} onHover={onHover} classe="tj-ind-tem" />
-          <Lista titulo="Podem responder (meta)" itens={e.r.gerais} onHover={onHover} />
-          <Lista titulo="Outras usadas em torneios (confira)" itens={e.r.outras} onHover={onHover} classe="tj-ind-outras" />
-          {!e.r.noJogo.length && !e.r.gerais.length && !e.r.outras.length && <p className="tags-note">Nenhuma interrupção conhecida responde a esta ação.</p>}
+          <Lista titulo={e.lado === "eu" ? tr("O oponente tem") : tr("Você tem")} itens={e.r.noJogo} onHover={onHover} classe="tj-ind-tem" />
+          <Lista titulo={tr("Podem responder (meta)")} itens={e.r.gerais} onHover={onHover} />
+          <Lista titulo={tr("Outras usadas em torneios (confira)")} itens={e.r.outras} onHover={onHover} classe="tj-ind-outras" />
+          {!e.r.noJogo.length && !e.r.gerais.length && !e.r.outras.length && <p className="tags-note">{tr("Nenhuma interrupção conhecida responde a esta ação.")}</p>}
         </>
       )}
     </section>

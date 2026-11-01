@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import { isDesktop } from "../platform";
 import { getConfigDe, iaConfigurada, setConfigIA, type ConfigIA, type ProvedorId } from "./ia";
+import { t } from "../i18n";
 
 // Conta do usuário (Supabase Auth): sessão e nome de usuário público.
 
@@ -19,9 +20,9 @@ export interface Conta {
 export type Nivel = "padrao" | "avancado" | "mentor";
 
 export const NIVEIS: { id: Nivel; label: string; hint: string }[] = [
-  { id: "padrao", label: "Usuário Padrão", hint: "Sem Teste Avançado; os combos que cria ficam só no aparelho" },
-  { id: "avancado", label: "Usuário Avançado", hint: "Todos os recursos" },
-  { id: "mentor", label: "Usuário Mentor", hint: "Todos os recursos" },
+  { id: "padrao", label: t("Usuário Padrão"), hint: t("Sem Teste Avançado; os combos que cria ficam só no aparelho") },
+  { id: "avancado", label: t("Usuário Avançado"), hint: t("Todos os recursos") },
+  { id: "mentor", label: t("Usuário Mentor"), hint: t("Todos os recursos") },
 ];
 
 /** Avançado e Mentor (e o administrador) têm todos os recursos: Teste Avançado e combos na base */
@@ -80,17 +81,17 @@ const USUARIO = /^[a-z0-9_]{3,20}$/;
 
 /** Mensagens do Supabase Auth em português (as mais comuns) */
 function traduzir(msg: string): string {
-  if (/invalid login credentials/i.test(msg)) return "E-mail ou senha incorretos.";
-  if (/email not confirmed/i.test(msg)) return "Confirme o cadastro pelo link enviado ao seu e-mail.";
-  if (/already registered|already exists/i.test(msg)) return "Já existe uma conta com este e-mail.";
-  if (/password should be at least/i.test(msg)) return "A senha precisa ter pelo menos 8 caracteres.";
-  if (/rate limit/i.test(msg)) return "Muitas tentativas. Aguarde alguns minutos.";
+  if (/invalid login credentials/i.test(msg)) return t("E-mail ou senha incorretos.");
+  if (/email not confirmed/i.test(msg)) return t("Confirme o cadastro pelo link enviado ao seu e-mail.");
+  if (/already registered|already exists/i.test(msg)) return t("Já existe uma conta com este e-mail.");
+  if (/password should be at least/i.test(msg)) return t("A senha precisa ter pelo menos 8 caracteres.");
+  if (/rate limit/i.test(msg)) return t("Muitas tentativas. Aguarde alguns minutos.");
   return msg;
 }
 
 function exigirCliente() {
   const sb = supabase();
-  if (!sb) throw new Error("Contas ainda não configuradas neste app.");
+  if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
   return sb;
 }
 
@@ -105,8 +106,8 @@ export async function entrar(email: string, senha: string) {
  */
 export async function criarUsuarioComoAdmin(usuario: string, email: string, senha: string) {
   const nome = usuario.trim().toLowerCase();
-  if (!USUARIO.test(nome)) throw new Error("Usuário: 3 a 20 letras minúsculas, números ou _.");
-  if (senha.length < 8) throw new Error("A senha precisa ter pelo menos 8 caracteres.");
+  if (!USUARIO.test(nome)) throw new Error(t("Usuário: 3 a 20 letras minúsculas, números ou _."));
+  if (senha.length < 8) throw new Error(t("A senha precisa ter pelo menos 8 caracteres."));
   const { error } = await exigirCliente().rpc("admin_criar_usuario", { p_usuario: nome, p_email: email.trim(), p_senha: senha });
   if (error) throw new Error(error.message);
 }
@@ -159,7 +160,7 @@ export function aoRecuperarSenha(l: () => void) {
 }
 
 export async function definirNovaSenha(senha: string) {
-  if (senha.length < 8) throw new Error("A senha precisa ter pelo menos 8 caracteres.");
+  if (senha.length < 8) throw new Error(t("A senha precisa ter pelo menos 8 caracteres."));
   const { error } = await exigirCliente().auth.updateUser({ password: senha });
   if (error) throw new Error(traduzir(error.message));
   recuperando = false;
@@ -181,7 +182,7 @@ export async function lerConfigsIANaConta(): Promise<ConfigIA[]> {
 
 export async function salvarConfigIANaConta(cfg: ConfigIA) {
   const sb = exigirCliente();
-  if (!conta) throw new Error("Entre na sua conta.");
+  if (!conta) throw new Error(t("Entre na sua conta."));
   const { error } = await sb
     .from("config_ia")
     .upsert({ usuario_id: conta.id, ...cfg, atualizado_em: new Date().toISOString() }, { onConflict: "usuario_id,provedor" });
@@ -211,10 +212,10 @@ export interface Recalculo {
 
 /** Situação do pedido em texto, a partir da resposta do GitHub */
 export function situacao(r: Recalculo): { ok: boolean; texto: string } {
-  if (r.http === 204) return { ok: true, texto: "Action iniciada no GitHub" };
+  if (r.http === 204) return { ok: true, texto: t("Action iniciada no GitHub") };
   if (r.http === 403 || r.http === 404)
-    return { ok: false, texto: "o GitHub recusou: o token precisa de acesso ao repositório Database-Cards-Ygo com a permissão Actions (leitura e escrita)" };
-  if (r.http) return { ok: false, texto: `o GitHub respondeu ${r.http}: ${r.resposta ?? ""}` };
+    return { ok: false, texto: t("o GitHub recusou: o token precisa de acesso ao repositório Database-Cards-Ygo com a permissão Actions (leitura e escrita)") };
+  if (r.http) return { ok: false, texto: t("o GitHub respondeu {0}: {1}", [r.http, r.resposta ?? ""]) };
   return { ok: !r.status.startsWith("sem token"), texto: r.status };
 }
 

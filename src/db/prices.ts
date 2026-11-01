@@ -1,6 +1,7 @@
 import { idbGet, idbSetMany } from "./idb";
 import { isDesktop } from "../platform";
 import type { Card } from "./types";
+import { t, LOCALE } from "../i18n";
 
 // Preços: YGOPRODeck (Cardmarket em euro, TCGplayer em dólar) e TCG API (tcgapi.dev, TCGplayer
 // por impressão, em dólar). Nenhuma fonte traz reais hoje: quando o valor vier em BRL ele é usado
@@ -25,7 +26,7 @@ export async function getExchangeRates(): Promise<ExchangeRates | undefined> {
   if (cached && Date.now() - cached.fetchedAt < RATES_TTL) return cached;
   try {
     const res = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL");
-    if (!res.ok) throw new Error(`câmbio: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(t("câmbio: HTTP {0}", [res.status]));
     const data = (await res.json()) as Record<string, { bid: string; create_date: string }>;
     const rates = {
       USD: Number(data.USDBRL.bid),
@@ -47,7 +48,7 @@ export function toBRL(value: number, currency: Currency, rates?: ExchangeRates):
 }
 
 export const formatMoney = (value: number, currency: Currency) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency });
+  value.toLocaleString(LOCALE, { style: "currency", currency });
 
 // ---------- TCG API (tcgapi.dev) ----------
 
@@ -152,15 +153,15 @@ export async function cachedTcgApi(card: Card): Promise<TcgApiResult | undefined
  * então a requisição sai pelo Rust. Cada consulta gasta 1 das consultas diárias do plano.
  */
 export async function fetchTcgApi(card: Card, apiKey: string): Promise<TcgApiResult> {
-  if (!isDesktop) throw new Error("A consulta à TCG API só funciona no app desktop.");
+  if (!isDesktop) throw new Error(t("A consulta à TCG API só funciona no app desktop."));
   const { invoke } = await import("@tauri-apps/api/core");
   const res = await invoke<{ status: number; body: string; remaining?: string }>("tcgapi_search", {
     apiKey,
     query: card.name,
   });
-  if (res.status === 401 || res.status === 403) throw new Error("Chave da TCG API recusada. Confira a chave.");
-  if (res.status === 429) throw new Error("Limite diário de consultas da TCG API atingido. Tente amanhã.");
-  if (res.status >= 400) throw new Error(`TCG API respondeu ${res.status}.`);
+  if (res.status === 401 || res.status === 403) throw new Error(t("Chave da TCG API recusada. Confira a chave."));
+  if (res.status === 429) throw new Error(t("Limite diário de consultas da TCG API atingido. Tente amanhã."));
+  if (res.status >= 400) throw new Error(t("TCG API respondeu {0}.", [res.status]));
   const remainingInBody = (() => {
     try {
       return (JSON.parse(res.body) as { rate_limit?: { daily_remaining?: number } }).rate_limit?.daily_remaining;
