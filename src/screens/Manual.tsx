@@ -3,6 +3,7 @@ import ScreenShell from "./ScreenShell";
 import { CAPITULOS } from "../data/manual";
 import "./manual.css";
 import { t } from "../i18n";
+import Lateral from "../components/Lateral";
 
 /** **negrito** do texto do manual */
 const texto = (s: string): ReactNode[] => s.split(/(\*\*[^*]+\*\*)/g).map((p, i) => (p.startsWith("**") ? <strong key={i}>{p.slice(2, -2)}</strong> : p));
@@ -30,13 +31,13 @@ export default function Manual({ onBack }: { onBack: () => void }) {
   return (
     <ScreenShell title={t("Como Utilizar")} accent="cyan" onBack={onBack} plain>
       <div className="manual">
-        <nav className="manual-indice" aria-label={t("Capítulos")}>
+        <Lateral como="nav" className="manual-indice" aria-label={t("Capítulos")} titulo={t("Capítulos")} fecharCom={atual}>
           {CAPITULOS.map((c) => (
             <button key={c.id} className={atual === c.id ? "active" : ""} onClick={() => ir(c.id)}>
               {c.titulo}
             </button>
           ))}
-        </nav>
+        </Lateral>
 
         <div className="manual-conteudo" ref={conteudo} onScroll={aoRolar}>
           {CAPITULOS.map((c) => (

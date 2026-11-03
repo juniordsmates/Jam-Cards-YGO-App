@@ -22,6 +22,7 @@ import "./guia-deck.css";
 import BotaoLink from "../components/BotaoLink";
 import type { Rota } from "../rotas";
 import { IDIOMA, t as tr, LOCALE } from "../i18n";
+import Lateral from "../components/Lateral";
 
 // Guia de Deck: os arquétipos do topo do meta do TCG (6 meses de decklists de torneio), cada um com
 // Ideias Iniciais, Ideias Avançadas, Combos, Interações e Artigos de Jogadores, em 3 idiomas.
@@ -532,7 +533,7 @@ export default function GuiaDeck({
         </div>
       ) : (
         <div className="guia-deck">
-          <nav className="gd-lista" aria-label={t.titulo}>
+          <Lateral como="nav" className="gd-lista" aria-label={t.titulo} titulo={tr("Decks do meta")} fecharCom={deck.arquetipo}>
             <p className="tags-note">{t.base(meta.decks, atualizado)}</p>
             {meta.arquetipos.map((a, i) => (
               <button key={a.arquetipo} className={a.arquetipo === deck.arquetipo ? "active" : ""} onClick={() => setEscolhido(a.arquetipo)}>
@@ -546,7 +547,7 @@ export default function GuiaDeck({
                 </span>
               </button>
             ))}
-          </nav>
+          </Lateral>
 
           <div className="gd-conteudo" ref={conteudo}>
             <header className="gd-topo">

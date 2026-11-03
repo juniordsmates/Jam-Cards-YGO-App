@@ -28,6 +28,7 @@ import "./meta-call.css";
 import BotaoLink from "../components/BotaoLink";
 import type { Rota } from "../rotas";
 import { IDIOMA, t, LOCALE } from "../i18n";
+import Lateral from "../components/Lateral";
 
 // Meta Call: escolha os decks esperados no torneio (e quanto de cada um) e veja as cartas boas
 // contra eles — hand traps, respostas, cartas para jogar em segundo e de Side —, com o motivo em
@@ -218,7 +219,7 @@ export default function MetaCall({
       ) : (
         <div className="meta-call">
           {/* ---------------- esquerda: decks esperados */}
-          <aside className="mc-decks">
+          <Lateral className="mc-decks" titulo={t("Decks esperados")}>
             <div className="format-switch combos-format" role="radiogroup" aria-label={t("Formato")}>
               {FORMATS.map((f) => (
                 <button key={f} role="radio" aria-checked={escolha.formato === f} className={escolha.formato === f ? "active" : ""} onClick={() => salvar({ ...escolha, formato: f, pesos: {} })}>
@@ -332,7 +333,7 @@ export default function MetaCall({
               </select>
               <small className="tags-note">{t("Com o seu deck: avisa cartas que também travam você e confere requisitos (Fadas, Sincros, Fusões).")}</small>
             </label>
-          </aside>
+          </Lateral>
 
           {/* ---------------- direita: leitura dos decks e recomendação */}
           <section className="mc-resultado">

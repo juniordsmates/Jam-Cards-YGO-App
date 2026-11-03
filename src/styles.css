@@ -723,3 +723,200 @@ kbd {
 .mc-link {
   float: right;
 }
+
+/* ---------- Painéis laterais no celular (components/Lateral.tsx) ---------- */
+
+.lateral-botao,
+.lateral-topo,
+.lateral-fundo {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  /* o conteúdo principal fica com a tela inteira; os painéis laterais viram gavetas */
+  .search,
+  .search.has-detail,
+  .combos,
+  .guia-deck,
+  .meta-call,
+  .manual,
+  .deck-editor,
+  .teste-jogo {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .lateral:not(.lateral-aberta) {
+    display: none !important;
+  }
+
+  .lateral.lateral-aberta {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 60;
+    width: min(88vw, 420px);
+    max-height: none;
+    margin: 0;
+    padding: 0 12px 16px;
+    overflow-y: auto;
+    background: var(--bg-elev);
+    box-shadow: 0 0 32px rgb(20 10 60 / 0.25);
+    animation: lateral-entra 0.18s ease-out;
+  }
+
+  .lateral-esq.lateral-aberta {
+    left: 0;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .lateral-dir.lateral-aberta {
+    right: 0;
+    border-radius: var(--radius) 0 0 var(--radius);
+    --lateral-de: 100%;
+  }
+
+  .lateral-topo {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 -12px 10px;
+    padding: 12px;
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-display);
+    font-size: 0.86rem;
+  }
+
+  .lateral > .lateral-topo > .lateral-fechar,
+  .lateral-botao {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    color: var(--on-accent);
+    background: var(--cyan);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  /* o seletor longo vence os estilos de botão das listas (ex.: .gd-lista button) */
+  .lateral > .lateral-topo > .lateral-fechar {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  /* índice do manual: na gaveta volta a ser uma coluna */
+  .manual-indice.lateral-aberta {
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  .lateral-botao {
+    position: fixed;
+    top: 50%;
+    z-index: 55;
+    width: 30px;
+    height: 68px;
+    transform: translateY(-50%);
+    box-shadow: var(--shadow);
+    opacity: 0.92;
+  }
+
+  .lateral-botao-esq {
+    left: 0;
+    border-radius: 0 12px 12px 0;
+  }
+
+  .lateral-botao-dir {
+    right: 0;
+    border-radius: 12px 0 0 12px;
+  }
+
+  .lateral-fundo {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    background: rgb(20 10 60 / 0.35);
+  }
+}
+
+@keyframes lateral-entra {
+  from {
+    transform: translateX(calc(var(--lateral-de, -100%) * 0.3));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lateral.lateral-aberta {
+    animation: none;
+  }
+}
+
+/* ---------- Smartphone: cabeçalho, menu e espaçamentos ---------- */
+
+@media (max-width: 760px) {
+  .stage {
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+  }
+
+  /* menu principal: rola por inteiro, com idioma e conta no topo (antes ficavam por cima do 1º botão) */
+  .stage:has(.menu) {
+    grid-template-rows: auto auto;
+    align-content: start;
+    overflow-y: auto;
+  }
+
+  .menu-topo {
+    position: static;
+    justify-self: end;
+    margin-bottom: 14px;
+  }
+
+  .menu {
+    gap: 20px;
+    padding-bottom: 16px;
+  }
+
+  .menu-list {
+    gap: 10px;
+  }
+
+  .screen {
+    gap: 12px;
+  }
+
+  /* cabeçalho das telas: título numa linha e as ações (formato, idioma, atalhos) na de baixo */
+  .screen-header {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .screen-title {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 1.15rem;
+    line-height: 1.2;
+  }
+
+  .screen-header .menu-btn-key {
+    display: none;
+  }
+
+  .screen-header > :not(.ghost-btn):not(.screen-title):not(.menu-btn-key) {
+    order: 3;
+    flex: 1 0 100%;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}

@@ -29,6 +29,7 @@ import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
 import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
 import { t, LOCALE } from "../i18n";
+import Lateral from "../components/Lateral";
 
 const POR_PAGINA = 24;
 // grade do deck: 10 cartas por linha no Main (4 a 6 linhas, até 60) e as 15 do Extra numa linha só
@@ -438,7 +439,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
       ) : (
         <div className="deck-editor">
           {/* ---------------- esquerda: carta e controles */}
-          <aside className="de-left">
+          <Lateral className="de-left" titulo={t("Deck")}>
             {/* opções do deck (escolher, criar, salvar…), num bloco separado da carta */}
             <section className="de-bloco de-opcoes" aria-label={t("Opções do deck")}>
               <h3 className="de-bloco-titulo">{t("Deck")}</h3>
@@ -554,7 +555,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                 )}
               </div>
             </section>
-          </aside>
+          </Lateral>
 
           {/* ---------------- centro: Main, Side e Extra */}
           <section
@@ -598,7 +599,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           </section>
 
           {/* ---------------- direita: busca */}
-          <aside className="de-busca" onDragOver={(e) => e.preventDefault()} onDrop={soltarFora}>
+          <Lateral lado="dir" className="de-busca" titulo={t("Buscar cartas")} onDragOver={(e) => e.preventDefault()} onDrop={soltarFora}>
             <h3>{t("Busca")}</h3>
             <input placeholder={t("Nome")} value={filtros.inDesc ? "" : filtros.text} onChange={(e) => atualizar({ text: e.target.value, inDesc: false })} aria-label={t("Nome")} />
             <input placeholder={t("Texto da carta")} value={filtros.inDesc ? filtros.text : ""} onChange={(e) => atualizar({ text: e.target.value, inDesc: true })} aria-label={t("Texto da carta")} />
@@ -688,7 +689,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
               {resultados.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA).map((c) => thumb(c.id, undefined, undefined, String(c.id)))}
             </div>
             <p className="tags-note">{t("Clique adiciona ao Deck (ou ao Extra). Arraste para mover; solte aqui para retirar.")}</p>
-          </aside>
+          </Lateral>
         </div>
       )}
     </ScreenShell>

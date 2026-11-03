@@ -27,6 +27,7 @@ import { bilingualName, displayName, type Card } from "../db/types";
 import "./deck-editor.css";
 import "./colecao.css";
 import { t, LOCALE } from "../i18n";
+import Lateral from "../components/Lateral";
 
 const POR_PAGINA = 24;
 const nomeEdicao = (id: string) => EDICOES.find((e) => e.id === id)?.label ?? "";
@@ -189,7 +190,7 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
       ) : (
         <div className="deck-editor colecao">
           {/* ---------------- esquerda: resumo e carta */}
-          <aside className="de-left">
+          <Lateral className="de-left" titulo={t("Resumo")}>
             <section className="de-bloco col-resumo" aria-label={t("Resumo da coleção")}>
               <h3 className="de-bloco-titulo">{t("Resumo")}</h3>
               <dl>
@@ -232,7 +233,7 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                 <p className="tags-note">{t("Escolha uma carta na busca para ver as impressões e adicionar à coleção.")}</p>
               )}
             </section>
-          </aside>
+          </Lateral>
 
           {/* ---------------- centro: a coleção */}
           <section className="de-centro col-lista">
@@ -371,7 +372,7 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
           </section>
 
           {/* ---------------- direita: busca e "Adicionar à coleção" */}
-          <aside className="de-busca">
+          <Lateral lado="dir" className="de-busca" titulo={t("Adicionar à coleção")}>
             <h3>{t("Busca")}</h3>
             <input placeholder={t("Nome")} value={filtros.text} onChange={(e) => setFiltros({ ...filtros, text: e.target.value, inDesc: false })} aria-label={t("Nome")} />
             <select value={filtros.category} onChange={(e) => setFiltros({ ...filtros, category: e.target.value as Filters["category"] })} aria-label={t("Carta")}>
@@ -454,7 +455,7 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
               </button>
             </div>
             <div className="de-grade de-resultados">{resultados.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA).map(thumb)}</div>
-          </aside>
+          </Lateral>
         </div>
       )}
     </ScreenShell>

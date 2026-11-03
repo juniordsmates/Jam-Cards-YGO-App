@@ -12,6 +12,7 @@ import type { Card } from "../db/types";
 import "./card-search.css";
 import type { Rota } from "../rotas";
 import { t, LOCALE } from "../i18n";
+import Lateral from "../components/Lateral";
 
 const PAGE = 60;
 
@@ -275,7 +276,7 @@ export default function CardSearch({
         </div>
       ) : (
         <div className={`search ${selected ? "has-detail" : ""}`}>
-          <div className="left-col">
+          <Lateral como="div" className="left-col" titulo={selected && leftTab === "carta" ? t("Carta") : t("Filtros")} abrirCom={selected?.id}>
             {selected && (
               <div className="left-tabs" role="tablist" aria-label={t("Coluna da esquerda")}>
                 <button role="tab" aria-selected={leftTab === "carta"} className={leftTab === "carta" ? "active" : ""} onClick={() => setLeftTab("carta")}>
@@ -327,7 +328,7 @@ export default function CardSearch({
                 onChange={patch}
               />
             )}
-          </div>
+          </Lateral>
 
           <div className="results">
             <div className="results-bar">

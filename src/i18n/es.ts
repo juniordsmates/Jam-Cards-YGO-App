@@ -2003,4 +2003,10 @@ export const ES: Record<string, string> = {
   "✓ Link copiado": "✓ Enlace copiado",
   "🔗 Copiar link": "🔗 Copiar enlace",
   "🔗 Sem link": "🔗 Sin enlace",
+  "Abrir {0}": "Abrir {0}",
+  "Buscar cartas": "Buscar cartas",
+  "Decks do meta": "Decks del meta",
+  "Decks esperados": "Decks esperados",
+  "Recolher {0}": "Contraer {0}",
+  "**No celular** (navegador do smartphone), cada tela mostra só o conteúdo principal. Os painéis laterais (filtros, lista de decks, índice, opções do deck) ficam recolhidos: toque na seta **›** na borda esquerda (ou **‹** na direita) para abrir e na seta do topo do painel, ou fora dele, para recolher. Ao escolher algo na lista, o painel se recolhe sozinho.": "**En el celular** (navegador del smartphone), cada pantalla muestra solo el contenido principal. Los paneles laterales (filtros, lista de decks, índice, opciones del deck) empiezan contraídos: toca la flecha **›** en el borde izquierdo (o **‹** en el derecho) para abrirlos y la flecha de arriba del panel, o fuera de él, para contraerlos. Al elegir algo en una lista, el panel se contrae solo.",
 };

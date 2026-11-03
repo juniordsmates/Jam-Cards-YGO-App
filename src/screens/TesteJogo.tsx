@@ -52,6 +52,7 @@ import IndicacoesResposta, { type EntradaIndicacao } from "../components/Indicac
 import AdicionarCarta, { type Destino } from "../components/AdicionarCarta";
 import "./teste-jogo.css";
 import { t as tr, LOCALE } from "../i18n";
+import Lateral from "../components/Lateral";
 
 // Teste de Jogo (Solo Mode): sem regras de jogo; o jogador move as cartas à vontade.
 // Teste Avançado (Usuário Avançado ou Mentor): o mesmo teste embaixo e o campo do oponente espelhado
@@ -776,7 +777,7 @@ export default function TesteJogo({
 
   return (
     <div className="teste-jogo" onContextMenu={(e) => e.preventDefault()}>
-      <aside className="tj-esq">
+      <Lateral className="tj-esq" titulo={tr("Carta")}>
         {preview === "token" ? (
           <>
             <div className="tj-token tj-token-grande">
@@ -803,7 +804,7 @@ export default function TesteJogo({
         ) : (
           <p className="tags-note">{tr("Passe o mouse sobre uma carta para ver os detalhes.")}</p>
         )}
-      </aside>
+      </Lateral>
 
       <section className={`tj-mesa ${avancado ? "tj-mesa-avancada" : ""}`}>
         {avancado && (
@@ -930,7 +931,7 @@ export default function TesteJogo({
         </div>
       </section>
 
-      <aside className="tj-dir">
+      <Lateral lado="dir" className="tj-dir" titulo={nome}>
         <h3>{nome}</h3>
         {onModo && (
           <div className="left-tabs tj-modo" role="tablist" aria-label={tr("Modo do teste")}>
@@ -1097,7 +1098,7 @@ export default function TesteJogo({
         </p>
         <p className="tags-note">
           {tr("Sem regras: arraste uma carta até a zona, ou clique nela e depois na zona; botão direito para ações. O embaralhamento usa o gerador aleatório criptográfico do sistema.")}</p>
-      </aside>
+      </Lateral>
 
       {combo && passo !== null && grupos[passo] && (
         <div className="tj-passo" role="status" aria-live="polite">

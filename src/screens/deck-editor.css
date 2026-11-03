@@ -406,3 +406,19 @@
   opacity: 0;
   cursor: pointer;
 }
+
+/* smartphone: botões de teste e formato quebram linha no cabeçalho */
+@media (max-width: 760px) {
+  .de-topo {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .de-teste {
+    white-space: nowrap;
+  }
+
+  .de-formato {
+    align-items: flex-start;
+  }
+}

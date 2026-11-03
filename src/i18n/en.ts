@@ -2003,4 +2003,10 @@ export const EN: Record<string, string> = {
   "✓ Link copiado": "✓ Link copied",
   "🔗 Copiar link": "🔗 Copy link",
   "🔗 Sem link": "🔗 No link",
+  "Abrir {0}": "Open {0}",
+  "Buscar cartas": "Search cards",
+  "Decks do meta": "Meta decks",
+  "Decks esperados": "Expected decks",
+  "Recolher {0}": "Collapse {0}",
+  "**No celular** (navegador do smartphone), cada tela mostra só o conteúdo principal. Os painéis laterais (filtros, lista de decks, índice, opções do deck) ficam recolhidos: toque na seta **›** na borda esquerda (ou **‹** na direita) para abrir e na seta do topo do painel, ou fora dele, para recolher. Ao escolher algo na lista, o painel se recolhe sozinho.": "**On a phone** (smartphone browser), each screen shows only its main content. Side panels (filters, deck list, index, deck options) start collapsed: tap the **›** arrow on the left edge (or **‹** on the right) to open them, and the arrow at the top of the panel, or anywhere outside it, to collapse. Picking something in a list collapses the panel on its own.",
 };

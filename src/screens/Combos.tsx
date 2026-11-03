@@ -22,6 +22,7 @@ import { temRecursosAvancados, useConta } from "../db/conta";
 import { bilingualName, displayName, type Card } from "../db/types";
 import "./combos.css";
 import { t, LOCALE } from "../i18n";
+import Lateral from "../components/Lateral";
 
 /** Nome do arquétipo (oficial, em inglês) com o nome em português ao lado, quando é outro */
 function arquetipoBilingue(en: string, cards: Card[]) {
@@ -313,7 +314,7 @@ export default function Combos({
           <ComboSearch tabs={modos} extra={toggleRespostas} respostas={respostas} legal={legal} all={db.cards} byId={byId} format={format} combos={combos} known={known} fits={fits} onHover={onHover} />
         ) : (
         <div className="combos">
-          <section className="combos-setup">
+          <Lateral como="section" className="combos-setup" titulo={t("Mão inicial")} inicialAberta={!hand.length}>
             {modos}
             <CardPicker
               label={t("Mão inicial")}
@@ -327,7 +328,7 @@ export default function Combos({
             />
             {hand.length > 0 && <BotaoLink rota={{ tela: "combos", mao: hand.map((c) => c.id) }} className="combos-link" />}
             {toggleRespostas}
-          </section>
+          </Lateral>
 
           <section className="combos-result">
             {compartilhado && (

@@ -41,6 +41,7 @@ export const CAPITULOS: Capitulo[] = [
           t("Ao lado, **Português / English / Español** troca o idioma de todo o app (ele recarrega na hora). Em inglês e espanhol, as cartas aparecem com o nome e o texto oficiais em inglês; a busca continua aceitando o nome em português."),
           t("**Links**: o endereço do site acompanha a tela. **🔗 Copiar link** (no painel da carta, nos combos, na mão escolhida em Combos, no Guia de Deck e no Meta Call) copia um link que abre direto naquilo; no app de computador, o link é o do site. Combos só neste aparelho ou não compartilhados não têm link para outras pessoas."),
           t("Embaixo do menu aparecem a versão e se você está no app de computador (**Desktop**) ou no navegador (**Web**)."),
+          t("**No celular** (navegador do smartphone), cada tela mostra só o conteúdo principal. Os painéis laterais (filtros, lista de decks, índice, opções do deck) ficam recolhidos: toque na seta **›** na borda esquerda (ou **‹** na direita) para abrir e na seta do topo do painel, ou fora dele, para recolher. Ao escolher algo na lista, o painel se recolhe sozinho."),
         ],
       },
       {
