@@ -7,6 +7,8 @@
 // (núcleo do deck); afirmações de regra (o que cada hand trap responde) ficam na aba Interações,
 // que vem do motor de regras. Revise ao mudar a banlist ou ao sair uma carta nova do arquétipo.
 
+import { GUIAS_PASSOS } from "./guiasPassos";
+
 export type Idioma = "pt" | "en" | "es";
 
 export interface BlocoGuia {
@@ -27,7 +29,7 @@ export interface GuiaEscrito {
   textos: Record<Idioma, TextoGuia>;
 }
 
-export const GUIAS_ESCRITOS: GuiaEscrito[] = [
+const GUIAS_BASE: GuiaEscrito[] = [
   // ------------------------------------------------------------------ Kewl Tune
   {
     arquetipo: "Kewl Tune",
@@ -1011,4 +1013,25 @@ export const GUIAS_ESCRITOS: GuiaEscrito[] = [
       },
     },
   },
+];
+
+// Junta os blocos de guiasPassos.ts (combo passo a passo e jogo contra o deck): no fim das abas dos
+// guias acima, ou como guia novo para os arquétipos que ainda não têm um.
+export const GUIAS_ESCRITOS: GuiaEscrito[] = [
+  ...GUIAS_BASE.map((g) => {
+    const p = GUIAS_PASSOS.find((x) => x.arquetipo === g.arquetipo);
+    if (!p) return g;
+    const textos = {} as Record<Idioma, TextoGuia>;
+    for (const idioma of Object.keys(g.textos) as Idioma[]) {
+      const base = g.textos[idioma];
+      const extra = p.textos[idioma];
+      textos[idioma] = { resumo: base.resumo, iniciais: [...base.iniciais, ...extra.iniciais], avancadas: [...base.avancadas, ...extra.avancadas] };
+    }
+    return { ...g, revisado: p.revisado, textos };
+  }),
+  ...GUIAS_PASSOS.filter((p) => !GUIAS_BASE.some((g) => g.arquetipo === p.arquetipo)).map((p) => {
+    const textos = {} as Record<Idioma, TextoGuia>;
+    for (const idioma of Object.keys(p.textos) as Idioma[]) textos[idioma] = { resumo: p.textos[idioma].resumo ?? "", iniciais: p.textos[idioma].iniciais, avancadas: p.textos[idioma].avancadas };
+    return { arquetipo: p.arquetipo, revisado: p.revisado, textos };
+  }),
 ];

@@ -16,7 +16,7 @@ const SRC = resolve(RAIZ, "src");
 const conferir = process.argv.includes("--conferir");
 
 // arquivos sem textos de tela (ou com tradução própria)
-const IGNORAR = [/\/i18n(\/|\.ts)/, /\/data\/guias\.ts$/, /\/db\/ygoprodeck\.ts$/, /\/db\/supabase\.ts$/, /\/db\/idb\.ts$/, /\/version\.ts$/, /\/main\.tsx$/, /\/platform\.ts$/, /\.d\.ts$/];
+const IGNORAR = [/\/i18n(\/|\.ts)/, /\/data\/guias(Passos)?\.ts$/, /\/db\/ygoprodeck\.ts$/, /\/db\/supabase\.ts$/, /\/db\/idb\.ts$/, /\/version\.ts$/, /\/main\.tsx$/, /\/platform\.ts$/, /\.d\.ts$/];
 // declarações (por arquivo) que não são texto de tela: prompts de IA, dicionários próprios, valores gravados
 const DECL_IGNORADAS = {
   "db/ia.ts": ["systemPrompt", "pedido", "infoCarta", "executar", "PEDIDO_VIDEO", "validarRegistro", "converter", "FERRAMENTAS", "TOOLS"],
