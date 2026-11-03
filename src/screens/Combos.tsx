@@ -55,7 +55,7 @@ function CombosComunidade({
   const [exportacao, setExportacao] = useState<{ tipo: "ok" | "erro" | "enviando"; texto: string } | null>(null);
   const exportarLocais = async (compartilhar: boolean) => {
     setExportacao({ tipo: "enviando", texto: t("Exportando…") });
-    const r = await exportarTodos(compartilhar);
+    const r = await exportarTodos(compartilhar, byId);
     setExportacao(
       r.erros.length
         ? { tipo: "erro", texto: t("{0} exportado(s); falharam: {1}", [r.enviados, r.erros.join(" · ")]) }

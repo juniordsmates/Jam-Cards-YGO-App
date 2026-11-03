@@ -40,7 +40,8 @@ import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
 import { contarPapeis } from "../db/classificacao";
 import { FontesButton } from "../components/Fontes";
 import { isContaOpen, openConta } from "../components/Conta";
-import { arquetiposDe, criarComboDoTeste, validadeNoFormato } from "../db/baseCombos";
+import { arquetiposDe, arquetiposSemCartas, avisoSemCartas, criarComboDoTeste, validadeNoFormato } from "../db/baseCombos";
+import VincularArquetipos from "../components/VincularArquetipos";
 import { temRecursosAvancados, useConta } from "../db/conta";
 import { salvarComboLocal } from "../db/combosLocais";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
@@ -161,7 +162,7 @@ export default function TesteJogo({
   const [maoInicial, setMaoInicial] = useState<CartaJogo[]>(t.mao);
   // cópias usadas no combo: cada carta (uid) que saiu do Deck/Extra Deck ou começou na mão
   const usadas = useRef(new Map<string, number>());
-  const [criando, setCriando] = useState<{ titulo: string; obs: string; compartilhar: boolean } | null>(null);
+  const [criando, setCriando] = useState<{ titulo: string; obs: string; compartilhar: boolean; arquetipos: string[] } | null>(null);
   const [gravacao, setGravacao] = useState<{ tipo: "ok" | "erro" | "gravando"; texto: string } | null>(null);
   const recomecarAnotacao = (novo: Tabuleiro) => {
     setAnotados([]);
@@ -207,14 +208,19 @@ export default function TesteJogo({
     for (const id of porUid.values()) m.set(id, (m.get(id) ?? 0) + 1);
     return m;
   };
+  /** arquétipos das cartas usadas no combo (sugeridos e marcados de início ao vincular) */
+  const arquetiposDoCombo = () => arquetiposDe([...copiasUsadas().keys()].map((id) => byId.get(id)).filter((c): c is Card => !!c));
   const gravarCombo = async () => {
     if (!criando || !conta) return;
     const copias = copiasUsadas();
+    // compartilhar com um arquétipo que o combo não usa: avisa, não grava e mantém o formulário aberto
+    const faltam = criando.compartilhar && temRecursosAvancados(conta) ? arquetiposSemCartas(criando.arquetipos, copias.keys(), byId) : [];
+    if (faltam.length) return setGravacao({ tipo: "erro", texto: avisoSemCartas(faltam) });
     setGravacao({ tipo: "gravando", texto: tr("Criando o combo…") });
     const autorNome = conta.usuario || conta.email.split("@")[0];
     const dadosCombo = {
       iniciais: maoInicial.map((c) => c.id),
-      arquetipos: arquetiposDe([...copias.keys()].map((id) => byId.get(id)).filter((c): c is Card => !!c)),
+      arquetipos: criando.arquetipos,
       dados: { passos: anotados, campo: campoDoTabuleiro(t), copias: Object.fromEntries(copias), teste: true, ...(combo?.fontes?.length ? { fontes: combo.fontes } : {}) },
     };
     // Usuário Padrão: o combo fica só neste aparelho (aba Combos → Meus combos neste aparelho)
@@ -1081,7 +1087,8 @@ export default function TesteJogo({
             className="ghost-btn tj-criar-combo"
             onClick={() => {
               setGravacao(null);
-              setCriando({ titulo: combo?.titulo?.slice(0, 120) || tituloSugerido(), obs: "", compartilhar: false });
+              setGravacao(null);
+              setCriando({ titulo: combo?.titulo?.slice(0, 120) || tituloSugerido(), obs: "", compartilhar: false, arquetipos: arquetiposDoCombo() });
             }}
             title={tr("Cria um combo com os passos feitos neste teste (desde a mão inicial)")}
           >
@@ -1178,6 +1185,12 @@ export default function TesteJogo({
                 <span className="field-label">{tr("Observações")}</span>
                 <textarea rows={2} maxLength={2000} value={criando.obs} onChange={(e) => setCriando({ ...criando, obs: e.target.value })} />
               </label>
+              <VincularArquetipos
+                valor={criando.arquetipos}
+                aoMudar={(arquetipos) => setCriando({ ...criando, arquetipos })}
+                sugeridos={arquetiposDoCombo()}
+                semCartas={arquetiposSemCartas(criando.arquetipos, copias.keys(), byId)}
+              />
               {conta && !temRecursosAvancados(conta) ? (
                 <p className="tags-note tj-criar-local">
                   {tr("Usuário Padrão: o combo fica só neste aparelho (aba Combos → Meus combos neste aparelho). Para enviá-lo à base, use Exportar quando a conta for Avançado ou Mentor.")}</p>

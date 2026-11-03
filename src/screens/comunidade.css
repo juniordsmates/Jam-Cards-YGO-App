@@ -1,0 +1,255 @@
+/* Comunidade (arquétipos à esquerda, ranking + combos + guia à direita) e Rank dos duelistas */
+
+.comunidade {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: clamp(230px, 18vw, 320px) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.cm-lista,
+.cm-conteudo,
+.rank-topo > div,
+.rank-lista {
+  min-height: 0;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.cm-lista,
+.cm-conteudo {
+  overflow-y: auto;
+}
+
+.cm-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cm-lista > p {
+  margin: 4px 0 6px;
+}
+
+.cm-busca {
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.86rem;
+  color: inherit;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.cm-lista button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 0.84rem;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cm-lista button:hover {
+  background: color-mix(in srgb, var(--magenta) 10%, transparent);
+}
+
+.cm-lista button.active {
+  font-weight: 700;
+  color: #fff;
+  background: var(--magenta);
+}
+
+.cm-nome {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-cabecalho h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  color: var(--magenta);
+}
+
+.cm-bloco {
+  margin-top: 18px;
+}
+
+.cm-bloco h3,
+.rank h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.cm-topicos {
+  margin: 6px 0 10px;
+  padding-left: 18px;
+  font-size: 0.86rem;
+  color: var(--text-dim);
+}
+
+.cm-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Rank ---------- */
+
+.rank {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rank-topo {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr);
+  gap: 14px;
+}
+
+.rank-regra p {
+  margin: 4px 0;
+}
+
+.rank-meus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.rank-meus-pts {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--magenta);
+}
+
+.rank-tabela {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rank-tabela li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.rank-tabela li.rank-eu {
+  border-color: var(--magenta);
+  background: color-mix(in srgb, var(--magenta) 8%, var(--bg-elev));
+}
+
+.rank-pos {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-align: center;
+}
+
+.rank-nome {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.rank-combos {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.rank-pts {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--magenta);
+  white-space: nowrap;
+}
+
+.rank-tabela-curta li {
+  padding: 6px 10px;
+}
+
+@media (max-width: 760px) {
+  /* a lista de arquétipos vira gaveta (Lateral); o conteúdo fica com a largura toda */
+  .comunidade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rank-topo {
+    grid-template-columns: 1fr;
+  }
+
+  .rank-tabela li {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+  }
+
+  .rank-combos {
+    display: none;
+  }
+}
+
+/* ---------- Arquétipos vinculados (components/VincularArquetipos.tsx) ---------- */
+
+.vincular-arq .chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.vincular-sugeridos {
+  margin-top: 6px;
+}
+
+.vincular-arq .chip.vincular-sem-cartas {
+  color: #fff;
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.vincular-outro {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.vincular-outro input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.84rem;
+  color: inherit;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}

@@ -75,6 +75,26 @@ export function validadeNoFormato(copias: Map<number, number>, byId: Map<number,
 /** Arquétipos (nomes oficiais em inglês) das cartas do combo */
 export const arquetiposDe = (cards: Card[]) => [...new Set(cards.map((c) => c.archetype).filter((a): a is string => !!a))];
 
+/** Máximo de arquétipos vinculados a um combo */
+export const MAX_ARQUETIPOS = 5;
+
+/**
+ * Arquétipos vinculados que o combo não justifica: nenhuma carta dele é do arquétipo (o arquétipo
+ * da carta ou o nome dele no nome da carta, como "Kewl Tune" em JJ "Kewl Tune"). `ids`: as cartas do
+ * combo (copiasDoCombo). Compartilhar com
+ * um desses é bloqueado: o combo apareceria na aba Comunidade de um deck que ele não usa.
+ */
+export function arquetiposSemCartas(arquetipos: string[], ids: Iterable<number>, byId: Map<number, Card>): string[] {
+  const cartas = [...ids].map((id) => byId.get(id)).filter((c): c is Card => !!c);
+  return arquetipos.filter((a) => {
+    const alvo = a.toLowerCase();
+    return !cartas.some((c) => c.archetype?.toLowerCase() === alvo || c.name.toLowerCase().includes(alvo));
+  });
+}
+
+/** Mensagem do bloqueio (com os arquétipos sem cartas) */
+export const avisoSemCartas = (faltam: string[]) => `${t("Esse combo não possui cartas do arquétipo selecionado")} (${faltam.join(", ")}).`;
+
 /** Combos da base com todas as iniciais na mão e todas as finais em algum ponto do combo */
 export async function buscarNaBase(iniciais: number[], finais: number[]): Promise<ComboBase[]> {
   const sb = supabase();
@@ -119,7 +139,7 @@ export async function gravarBuscaIA(
 /** Publica um combo (sugerido pela IA ou da base) como Combo da Comunidade, com o nome do autor */
 export async function salvarComoComunidade(
   origem: ComboBase,
-  campos: { autorNome: string; titulo: string; observacoes: string },
+  campos: { autorNome: string; titulo: string; observacoes: string; arquetipos?: string[] },
 ): Promise<ComboBase> {
   const sb = supabase();
   if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
@@ -129,7 +149,7 @@ export async function salvarComoComunidade(
       origem: "comunidade",
       autor_nome: campos.autorNome.trim().slice(0, 60),
       titulo: campos.titulo.trim().slice(0, 120),
-      arquetipos: origem.arquetipos,
+      arquetipos: (campos.arquetipos ?? origem.arquetipos).slice(0, MAX_ARQUETIPOS),
       iniciais: origem.iniciais,
       finais: origem.finais,
       dados: { ...origem.dados, observacoes: campos.observacoes.trim().slice(0, 2000), modelo: undefined },
@@ -158,7 +178,7 @@ export async function criarComboDoTeste(
       origem: "comunidade",
       autor_nome: campos.autorNome.trim().slice(0, 60),
       titulo: campos.titulo.trim().slice(0, 120),
-      arquetipos: combo.arquetipos,
+      arquetipos: combo.arquetipos.slice(0, MAX_ARQUETIPOS),
       iniciais: combo.iniciais.slice(0, 10),
       dados: { ...combo.dados, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined, teste: true },
       publico: campos.compartilhar,
@@ -224,7 +244,7 @@ export async function combosDaComunidade(mao: number[], limite = 20): Promise<Co
  */
 export async function editarCombo(
   combo: ComboBase,
-  campos: { titulo: string; observacoes: string; compartilhar: boolean; passos: DadosCombo["passos"] },
+  campos: { titulo: string; observacoes: string; compartilhar: boolean; passos: DadosCombo["passos"]; arquetipos?: string[] },
 ): Promise<ComboBase> {
   const sb = supabase();
   if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
@@ -233,6 +253,7 @@ export async function editarCombo(
     .update({
       titulo: campos.titulo.trim().slice(0, 120),
       publico: campos.compartilhar,
+      arquetipos: (campos.arquetipos ?? combo.arquetipos).slice(0, MAX_ARQUETIPOS),
       dados: { ...combo.dados, passos: campos.passos, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined },
     })
     .eq("id", combo.id)

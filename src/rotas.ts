@@ -7,6 +7,8 @@ import { isDesktop } from "./platform";
 //   #/combos/mao/42493140,15005145        Combos com essa mão inicial
 //   #/guia/Kewl%20Tune/combos             Guia de Deck do Kewl Tune, aba Combos
 //   #/meta-call/TCG/Kewl%20Tune:17,Elfnote:12
+//   #/comunidade/Kewl%20Tune                aba Comunidade do arquétipo
+//   #/rank                                  Rank dos duelistas
 // O "#" funciona no GitHub Pages sem configurar o servidor. No app de computador, o link copiado é
 // o do site (abre em qualquer navegador).
 
@@ -21,7 +23,9 @@ export type Rota =
   | { tela: "deck" }
   | { tela: "teste" }
   | { tela: "colecao" }
-  | { tela: "manual" };
+  | { tela: "manual" }
+  | { tela: "rank" }
+  | { tela: "comunidade"; arquetipo?: string };
 
 const NOMES: Record<string, Rota["tela"]> = {
   busca: "search",
@@ -34,6 +38,8 @@ const NOMES: Record<string, Rota["tela"]> = {
   teste: "teste",
   colecao: "colecao",
   manual: "manual",
+  rank: "rank",
+  comunidade: "comunidade",
 };
 
 const dec = (s: string | undefined) => {
@@ -61,6 +67,8 @@ export function lerRota(hash = window.location.hash): Rota {
       return a === "mao" && ids(b).length ? { tela, mao: ids(b).slice(0, 10) } : { tela };
     case "guia":
       return { tela, arquetipo: dec(a), aba: dec(b) };
+    case "comunidade":
+      return { tela, arquetipo: dec(a) };
     case "metacall": {
       const formato = a === "OCG" ? "OCG" : a === "TCG" ? "TCG" : undefined;
       const decks: Record<string, number> = {};
@@ -97,6 +105,8 @@ export function hashDa(r: Rota): string {
         ? `#/meta-call/${r.formato ?? "TCG"}${decks.length ? `/${enc(decks.map(([a, p]) => `${a}:${p}`).join(","))}` : ""}`
         : "#/meta-call";
     }
+    case "comunidade":
+      return r.arquetipo ? `#/comunidade/${enc(r.arquetipo)}` : "#/comunidade";
     case "deck":
       return "#/editor";
     default:

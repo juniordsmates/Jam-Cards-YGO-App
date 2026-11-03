@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { exportarParaBase, type ComboBase, type DadosCombo } from "./baseCombos";
+import { arquetiposSemCartas, avisoSemCartas, copiasDoCombo, exportarParaBase, type ComboBase, type DadosCombo } from "./baseCombos";
+import type { Card } from "./types";
 
 // Combos só neste aparelho: o Usuário Padrão cria combos (Teste de Jogo ou "Salvar como Combo da
 // Comunidade"), mas eles não vão para a base. Ficam aqui, no mesmo formato da tabela combos, e
@@ -66,11 +67,12 @@ export function salvarComboLocal(
 
 export function editarComboLocal(
   combo: ComboBase,
-  campos: { titulo: string; observacoes: string; passos: DadosCombo["passos"] },
+  campos: { titulo: string; observacoes: string; passos: DadosCombo["passos"]; arquetipos?: string[] },
 ): ComboBase {
   const novo: ComboBase = {
     ...combo,
     titulo: campos.titulo.trim().slice(0, 120),
+    arquetipos: campos.arquetipos ?? combo.arquetipos,
     dados: { ...combo.dados, passos: campos.passos, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined },
   };
   gravar(lista.map((c) => (c.id === combo.id ? novo : c)));
@@ -87,10 +89,16 @@ export async function exportarComboLocal(combo: ComboBase, compartilhar: boolean
 }
 
 /** Exporta todos os combos do aparelho; devolve quantos foram e os erros */
-export async function exportarTodos(compartilhar: boolean): Promise<{ enviados: number; erros: string[] }> {
+export async function exportarTodos(compartilhar: boolean, byId?: Map<number, Card>): Promise<{ enviados: number; erros: string[] }> {
   let enviados = 0;
   const erros: string[] = [];
   for (const c of [...lista]) {
+    // compartilhado, o combo precisa ter cartas de cada arquétipo vinculado; senão fica no aparelho
+    const faltam = compartilhar && byId ? arquetiposSemCartas(c.arquetipos, copiasDoCombo(c).keys(), byId) : [];
+    if (faltam.length) {
+      erros.push(`${c.titulo}: ${avisoSemCartas(faltam)}`);
+      continue;
+    }
     try {
       await exportarComboLocal(c, compartilhar);
       enviados++;

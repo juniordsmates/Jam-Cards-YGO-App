@@ -154,6 +154,8 @@ export const CAPITULOS: Capitulo[] = [
           t("Abaixo das linhas do App aparecem os **Combos da Comunidade** que começam com a mesma mão (ou os mais recentes, sem mão escolhida)."),
           t("Cada um mostra o **autor**, a **data** e se ele é **Válido no TCG/OCG** com a banlist atual (cartas proibidas ou cópias acima do limite deixam o combo \"Fora da banlist\")."),
           t("Quem criou o combo vê **Editar** (título, passos, observações, compartilhar) e **Excluir**."),
+          t("**Arquétipos vinculados**: ao salvar, editar, exportar ou criar um combo, marque um ou mais arquétipos (até 5). Os arquétipos das cartas do combo já vêm sugeridos; dá para vincular outro digitando o nome. Compartilhado, o combo aparece na aba **Comunidade** de cada arquétipo vinculado."),
+          t("Antes de compartilhar, o app confere se o combo tem ao menos uma carta de cada arquétipo marcado. Se não tiver, aparece **Esse combo não possui cartas do arquétipo selecionado**, nada é gravado e o formulário continua aberto (o arquétipo fica em vermelho) para você desmarcá-lo."),
           t("**Meus combos neste aparelho**: os combos de Usuário Padrão (Criar combo ou Salvar como Combo da Comunidade) ficam aqui, só neste computador ou navegador. **Exportar** (ou **Exportar todos**) os envia para a base quando a conta for Avançado ou Mentor."),
         ],
       },
@@ -516,6 +518,31 @@ export const CAPITULOS: Capitulo[] = [
       t("Alimenta o **estoque de cartas** do Editor de Deck (possuo N e cópias escurecidas)."),
       t("Com login, fica salva na conta; sem login, só neste computador."),
     ],
+  },
+  {
+    id: "comunidade",
+    titulo: t("Comunidade e Rank"),
+    resumo: t("Pesquise um arquétipo e veja quem mais compartilha combos dele, os Combos da Comunidade com a tag dele e o resumo do Guia de Deck. No Rank, os duelistas com mais pontos."),
+    topicos: [
+      {
+        titulo: t("Comunidade"),
+        itens: [
+          t("À esquerda, pesquise o arquétipo pelo nome em inglês ou em português (os mesmos da busca de cartas); os decks do meta do TCG aparecem primeiro."),
+          t("**Quem mais compartilha combos**: os duelistas com mais combos compartilhados daquele arquétipo e os pontos deles."),
+          t("**Combos**: os Combos da Comunidade vinculados ao arquétipo (Arquétipos vinculados, ao compartilhar) e quantas linhas o App calculou; **Ver as linhas do App no Guia de Deck** abre a aba Combos do guia."),
+          t("**Guia de Deck**: o resumo e os tópicos do guia escrito; **Abrir o Guia de Deck** vai direto ao deck (o voltar retorna para a Comunidade)."),
+        ],
+      },
+      {
+        titulo: t("Pontos e Rank"),
+        itens: [
+          t("Por enquanto, as conquistas são só pontos: **compartilhar um combo vale 5 pontos** (Combo da Comunidade compartilhado com todos, criado por você)."),
+          t("Os pontos são calculados pelo servidor a partir dos combos: tirar o compartilhamento ou excluir o combo tira os pontos dele, e salvar o mesmo combo de novo não soma outra vez."),
+          t("O **Rank** lista os duelistas com mais pontos e mostra os seus pontos e a sua posição (com login)."),
+        ],
+      },
+    ],
+    ligacoes: [t("Os combos vêm da aba Combos e do Teste de Jogo (Arquétipos vinculados); o guia, do Guia de Deck.")],
   },
   {
     id: "conta",

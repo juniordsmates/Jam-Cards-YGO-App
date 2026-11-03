@@ -5,7 +5,11 @@ import BotaoLink from "./BotaoLink";
 import { FontesButton } from "./Fontes";
 import VerifiedCombos, { groupSteps, join, Name, StepText } from "./VerifiedCombos";
 import type { KnownCombo } from "../data/combos";
+import VincularArquetipos from "./VincularArquetipos";
 import {
+  arquetiposDe,
+  arquetiposSemCartas,
+  avisoSemCartas,
   buscarNaBase,
   copiasDoCombo,
   editarCombo,
@@ -84,27 +88,38 @@ export function ComboCard({
   const [combo, setCombo] = useState(recebido);
   useEffect(() => setCombo(recebido), [recebido]);
   const [excluido, setExcluido] = useState(false);
-  const [form, setForm] = useState<{ autor: string; titulo: string; obs: string } | null>(null);
-  const [edicao, setEdicao] = useState<{ titulo: string; obs: string; compartilhar: boolean; passos: ComboBase["dados"]["passos"] } | null>(null);
+  const [form, setForm] = useState<{ autor: string; titulo: string; obs: string; arquetipos: string[] } | null>(null);
+  const [edicao, setEdicao] = useState<{ titulo: string; obs: string; compartilhar: boolean; passos: ComboBase["dados"]["passos"]; arquetipos: string[] } | null>(null);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [estado, setEstado] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   // combo só neste aparelho (Usuário Padrão): "Exportar" envia para a base
   const local = ehLocal(combo);
   const avancado = temRecursosAvancados(conta);
-  const [exportando, setExportando] = useState<{ compartilhar: boolean; enviando: boolean } | null>(null);
+  const [exportando, setExportando] = useState<{ compartilhar: boolean; enviando: boolean; arquetipos: string[] } | null>(null);
   // só quem criou o Combo da Comunidade pode editar ou excluir (o banco também confere)
   const meu = local || (!!conta && combo.origem === "comunidade" && combo.autor_id === conta.id);
   const d = combo.dados;
   const groups = groupSteps(d.passos);
   const validade = format ? validadeNoFormato(copiasDoCombo(combo), byId, format) : null;
+  // arquétipos das cartas do combo: sugeridos (e marcados de início) ao vincular
+  const sugeridos = useMemo(() => arquetiposDe([...copiasDoCombo(combo).keys()].map((id) => byId.get(id)).filter((c): c is Card => !!c)), [combo, byId]);
+  const vinculoInicial = () => (combo.arquetipos.length ? combo.arquetipos : sugeridos);
+  const semCartas = (arqs: string[]) => arquetiposSemCartas(arqs, copiasDoCombo(combo).keys(), byId);
+  /** compartilhar com um arquétipo que o combo não usa: avisa, não grava e deixa o formulário aberto */
+  const bloqueado = (arqs: string[]) => {
+    const faltam = semCartas(arqs);
+    if (faltam.length) setEstado({ tipo: "erro", texto: avisoSemCartas(faltam) });
+    return faltam.length > 0;
+  };
 
   const salvarEdicao = async () => {
     if (!edicao) return;
+    if (edicao.compartilhar && !local && bloqueado(edicao.arquetipos)) return;
     try {
       setCombo(
         local
-          ? editarComboLocal(combo, { titulo: edicao.titulo, observacoes: edicao.obs, passos: edicao.passos })
-          : await editarCombo(combo, { titulo: edicao.titulo, observacoes: edicao.obs, compartilhar: edicao.compartilhar, passos: edicao.passos }),
+          ? editarComboLocal(combo, { titulo: edicao.titulo, observacoes: edicao.obs, passos: edicao.passos, arquetipos: edicao.arquetipos })
+          : await editarCombo(combo, { titulo: edicao.titulo, observacoes: edicao.obs, compartilhar: edicao.compartilhar, passos: edicao.passos, arquetipos: edicao.arquetipos }),
       );
       setEdicao(null);
       setEstado({ tipo: "ok", texto: t("Combo atualizado.") });
@@ -125,18 +140,20 @@ export function ComboCard({
 
   const salvar = async () => {
     if (!form) return;
+    // publicar como Combo da Comunidade é compartilhar com todos
+    if (avancado && bloqueado(form.arquetipos)) return;
     try {
       // Usuário Padrão: o combo fica só neste aparelho (pode ser exportado depois)
       if (!avancado) {
         salvarComboLocal(
           { autorId: conta?.id ?? null, autorNome: form.autor, titulo: form.titulo, observacoes: form.obs },
-          { iniciais: combo.iniciais, finais: combo.finais, arquetipos: combo.arquetipos, dados: { ...d, modelo: undefined } },
+          { iniciais: combo.iniciais, finais: combo.finais, arquetipos: form.arquetipos, dados: { ...d, modelo: undefined } },
         );
         setEstado({ tipo: "ok", texto: t("Salvo neste aparelho (Usuário Padrão). Para enviar à base depois, use Exportar no combo.") });
         setForm(null);
         return;
       }
-      await salvarComoComunidade(combo, { autorNome: form.autor, titulo: form.titulo, observacoes: form.obs });
+      await salvarComoComunidade(combo, { autorNome: form.autor, titulo: form.titulo, observacoes: form.obs, arquetipos: form.arquetipos });
       setEstado({ tipo: "ok", texto: t("Salvo como Combo da Comunidade.") });
       setForm(null);
     } catch (e) {
@@ -146,9 +163,10 @@ export function ComboCard({
 
   const exportar = async () => {
     if (!exportando) return;
+    if (exportando.compartilhar && bloqueado(exportando.arquetipos)) return;
     setExportando({ ...exportando, enviando: true });
     try {
-      await exportarComboLocal(combo, exportando.compartilhar);
+      await exportarComboLocal({ ...combo, arquetipos: exportando.arquetipos }, exportando.compartilhar);
       setExcluido(true);
     } catch (e) {
       setExportando(null);
@@ -244,7 +262,7 @@ export function ComboCard({
               className="link-btn combo-editar"
               onClick={() => {
                 setEstado(null);
-                setEdicao({ titulo: combo.titulo, obs: d.observacoes ?? "", compartilhar: combo.publico, passos: d.passos });
+                setEdicao({ titulo: combo.titulo, obs: d.observacoes ?? "", compartilhar: combo.publico, passos: d.passos, arquetipos: vinculoInicial() });
               }}
             >
               {t("Editar")}</button>
@@ -267,7 +285,10 @@ export function ComboCard({
                   className="link-btn combo-exportar"
                   disabled={!avancado}
                   title={avancado ? t("Envia este combo para a base (Combos da Comunidade)") : t("Exportar para a base: disponível para Usuário Avançado ou Mentor")}
-                  onClick={() => setExportando({ compartilhar: false, enviando: false })}
+                  onClick={() => {
+                    setEstado(null);
+                    setExportando({ compartilhar: false, enviando: false, arquetipos: vinculoInicial() });
+                  }}
                 >
                   {t("Exportar")}</button>
                 {!avancado && <small> {" "}{t("(exportar: Usuário Avançado ou Mentor)")}</small>}
@@ -280,7 +301,11 @@ export function ComboCard({
             {" · "}
             <button
               className="link-btn salvar-comunidade"
-              onClick={() => (conta ? setForm({ autor: conta.usuario, titulo: combo.titulo, obs: d.observacoes ?? "" }) : openConta())}
+              onClick={() => {
+                setEstado(null);
+                if (conta) setForm({ autor: conta.usuario, titulo: combo.titulo, obs: d.observacoes ?? "", arquetipos: vinculoInicial() });
+                else openConta();
+              }}
             >
               {t("Salvar como Combo da Comunidade")}</button>
           </>
@@ -312,6 +337,7 @@ export function ComboCard({
             <span className="field-label">{t("Observações")}</span>
             <textarea rows={3} maxLength={2000} value={edicao.obs} onChange={(e) => setEdicao({ ...edicao, obs: e.target.value })} />
           </label>
+          <VincularArquetipos valor={edicao.arquetipos} aoMudar={(arquetipos) => setEdicao({ ...edicao, arquetipos })} sugeridos={sugeridos} semCartas={semCartas(edicao.arquetipos)} />
           {!local && <label className="respostas-toggle">
             <input type="checkbox" checked={edicao.compartilhar} onChange={(e) => setEdicao({ ...edicao, compartilhar: e.target.checked })} /> {" "}{t("Compartilhar com todos na aba Combos")}</label>}
           <div className="dialog-actions">
@@ -325,6 +351,7 @@ export function ComboCard({
       {exportando && (
         <div className="comunidade-form combo-exportacao">
           <p className="tags-note">{t("O combo sai deste aparelho e vai para a base, como Combo da Comunidade seu.")}</p>
+          <VincularArquetipos valor={exportando.arquetipos} aoMudar={(arquetipos) => setExportando({ ...exportando, arquetipos })} sugeridos={sugeridos} semCartas={semCartas(exportando.arquetipos)} />
           <label className="respostas-toggle">
             <input type="checkbox" checked={exportando.compartilhar} onChange={(e) => setExportando({ ...exportando, compartilhar: e.target.checked })} /> {" "}{t("Compartilhar com todos na aba Combos")}</label>
           <div className="dialog-actions">
@@ -350,6 +377,7 @@ export function ComboCard({
             <span className="field-label">{t("Observações")}</span>
             <textarea rows={3} maxLength={2000} value={form.obs} onChange={(e) => setForm({ ...form, obs: e.target.value })} />
           </label>
+          <VincularArquetipos valor={form.arquetipos} aoMudar={(arquetipos) => setForm({ ...form, arquetipos })} sugeridos={sugeridos} semCartas={semCartas(form.arquetipos)} />
           <div className="dialog-actions">
             <button className="ghost-btn" onClick={() => setForm(null)}>
               {t("Cancelar")}</button>

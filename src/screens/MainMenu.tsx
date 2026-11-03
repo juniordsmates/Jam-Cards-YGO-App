@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, ExitIcon, HelpIcon, SearchIcon, TargetIcon } from "../icons";
+import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, ExitIcon, HelpIcon, PeopleIcon, SearchIcon, TargetIcon, TrophyIcon } from "../icons";
 import { isDesktop } from "../platform";
 import { BUILD_LABEL, VERSION_LABEL } from "../version";
 import { useConta } from "../db/conta";
@@ -22,6 +22,10 @@ type Props = {
   onTeste: () => void;
   /** Minha Coleção: as cartas que o usuário possui */
   onColecao: () => void;
+  /** Comunidade: por arquétipo, quem mais compartilha, combos e guia */
+  onComunidade: () => void;
+  /** Rank: duelistas com mais pontos */
+  onRank: () => void;
   /** Como Utilizar: manual das telas */
   onManual: () => void;
   onExit: () => void;
@@ -37,7 +41,7 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onManual, onExit, onConta }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onComunidade, onRank, onManual, onExit, onConta }: Props) {
   const conta = useConta();
   const items: Item[] = [
     { label: t("Buscar Carta"), hint: t("Encontre qualquer carta"), icon: <SearchIcon />, accent: "cyan", action: onSearch },
@@ -47,6 +51,8 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
     { label: t("Editor de Deck"), hint: t("Monte e ajuste seus decks"), icon: <DeckIcon />, accent: "magenta", action: onDeck },
     { label: t("Teste de Jogo"), hint: t("Teste de mão e jogadas com o seu deck"), icon: <DeckIcon />, accent: "magenta", action: onTeste },
     { label: t("Minha Coleção"), hint: t("Cartas que você possui, raridades e valor"), icon: <CollectionIcon />, accent: "magenta", action: onColecao },
+    { label: t("Comunidade"), hint: t("Por arquétipo: quem mais compartilha, combos e guia"), icon: <PeopleIcon />, accent: "magenta", action: onComunidade },
+    { label: t("Rank"), hint: t("Duelistas com mais pontos"), icon: <TrophyIcon />, accent: "magenta", action: onRank },
     { label: t("Como Utilizar"), hint: t("Manual de cada tela, com exemplos"), icon: <HelpIcon />, accent: "cyan", action: onManual },
     { label: t("Sair"), hint: isDesktop ? t("Fechar o aplicativo") : t("Encerrar a sessão"), icon: <ExitIcon />, accent: "red", action: onExit },
   ];

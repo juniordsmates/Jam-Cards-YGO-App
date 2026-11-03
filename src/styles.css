@@ -741,7 +741,8 @@ kbd {
   .meta-call,
   .manual,
   .deck-editor,
-  .teste-jogo {
+  .teste-jogo,
+  .comunidade {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
   }

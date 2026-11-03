@@ -80,3 +80,20 @@ export const BackIcon = () => (
     <path d="M15 18l-6-6 6-6" />
   </svg>
 );
+
+export const TrophyIcon = () => (
+  <svg {...base}>
+    <path d="M8 4h8v5a4 4 0 0 1-8 0Z" />
+    <path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" />
+    <path d="M12 13v4M8.5 20.5h7M10 17h4l.5 3.5h-5Z" />
+  </svg>
+);
+
+export const PeopleIcon = () => (
+  <svg {...base}>
+    <circle cx="9" cy="8" r="3" />
+    <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+    <circle cx="17" cy="9" r="2.4" />
+    <path d="M15.5 14.2A4.5 4.5 0 0 1 21 18.5" />
+  </svg>
+);

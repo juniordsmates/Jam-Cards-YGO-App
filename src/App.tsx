@@ -6,6 +6,8 @@ import Colecao from "./screens/Colecao";
 import Manual from "./screens/Manual";
 import GuiaDeck from "./screens/GuiaDeck";
 import MetaCall from "./screens/MetaCall";
+import Rank from "./screens/Rank";
+import Comunidade from "./screens/Comunidade";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
 import ExitDialog from "./components/ExitDialog";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
@@ -18,7 +20,7 @@ import type { Card } from "./db/types";
 import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "comunidade";
 
 /** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
 const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
@@ -32,6 +34,8 @@ export default function App() {
   // Editor de Deck aberto direto no Teste de Jogo (menu principal ou atalho de um combo)
   const [deckInicial, setDeckInicial] = useState<EditorInicial>(() => (rota.tela === "teste" ? { testar: true } : {}));
   const [deckFrom, setDeckFrom] = useState<Screen>("menu");
+  // Guia de Deck aberto pela Comunidade: o voltar retorna para ela
+  const [guiaFrom, setGuiaFrom] = useState<Screen>("menu");
   const [confirmingExit, setConfirmingExit] = useState(false);
   const [exited, setExited] = useState(false);
 
@@ -131,6 +135,8 @@ export default function App() {
             setScreen("deck");
           }}
           onColecao={() => setScreen("colecao")}
+          onComunidade={() => setScreen("comunidade")}
+          onRank={() => setScreen("rank")}
           onManual={() => setScreen("manual")}
           onGuia={() => setScreen("guia")}
           onMetaCall={() => setScreen("metacall")}
@@ -168,11 +174,30 @@ export default function App() {
       {screen === "colecao" && <Colecao onBack={() => setScreen("menu")} />}
       {screen === "manual" && <Manual onBack={() => setScreen("menu")} />}
       {screen === "metacall" && <MetaCall onBack={() => setScreen("menu")} inicial={rota.tela === "metacall" ? rota : undefined} onRota={aoRota} />}
+      {screen === "rank" && <Rank onBack={() => setScreen("menu")} onComunidade={() => setScreen("comunidade")} />}
+      {screen === "comunidade" && (
+        <Comunidade
+          inicial={rota.tela === "comunidade" ? rota : undefined}
+          onRota={aoRota}
+          onBack={() => setScreen("menu")}
+          onGuia={(arquetipo, aba) => {
+            // abre o Guia já no deck e na aba; o voltar do Guia retorna para a Comunidade
+            const r: Rota = { tela: "guia", arquetipo, aba };
+            setRota(r);
+            escreverRota(r);
+            setGuiaFrom("comunidade");
+            setScreen("guia");
+          }}
+        />
+      )}
       {screen === "guia" && (
         <GuiaDeck
           inicial={rota.tela === "guia" ? rota : undefined}
           onRota={aoRota}
-          onBack={() => setScreen("menu")}
+          onBack={() => {
+            setScreen(guiaFrom);
+            setGuiaFrom("menu");
+          }}
           onTestar={(deckId, combo) => {
             setDeckInicial({ deckId, testar: true, combo });
             setDeckFrom("guia");
