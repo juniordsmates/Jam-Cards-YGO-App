@@ -33,7 +33,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
   // ------------------------------------------------------------------ Kewl Tune
   {
     arquetipo: "Kewl Tune",
-    revisado: "2026-10",
+    revisado: "2026-11",
     textos: {
       pt: {
         resumo:
@@ -63,7 +63,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
               "Guarde uma [[Kewl Tune Synchro]] para o turno do oponente: por ser Mágica Rápida, ela busca e Sincroniza no turno dele, virando uma interrupção.",
               "[[Kewl Tune Track Maker]] busca uma carta \"Kewl Tune\" ao ser Invocado; como Matéria Sincro, devolve 1 carta do oponente à mão. Ele é uma peça de meio de combo e de interrupção ao mesmo tempo.",
               "Encha o Cemitério de monstros \"Kewl Tune\": o [[Kewl Tune Loudness War]] bane um deles quando o oponente ativa algo e aplica o efeito de \"Matéria Sincro\" dele. Cada monstro no Cemitério é uma resposta guardada.",
-              "Conte as Invocações-Normais: [[Kewl Tune Cue]] usa a sua; o [[JJ \"Kewl Tune\"]] dá outra só para Regulador; o [[Kewl Tune Rotary]] pode revelar-se com outro Regulador para Invocar-Normal um Regulador na hora.",
+              "Conte as Invocações-Normais: [[Kewl Tune Cue]] usa a sua; o [[JJ \"Kewl Tune\"]] dá outra só para Regulador; no OCG, o [[Kewl Tune Rotary]] pode revelar-se com outro Regulador para Invocar-Normal um Regulador na hora (no TCG ele está proibido).",
               "O deck usa muitas hand traps no Main (quase todas as listas têm 3 [[Ash Blossom & Joyous Spring]], 3 [[Effect Veiler]] e [[Ghost Belle & Haunted Mansion]]): no segundo turno, use-as no starter do oponente e jogue a sua parte no seu turno.",
             ],
           },
@@ -89,7 +89,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
             titulo: "Jogando através das hand traps",
             itens: [
               "Comece pelas cartas que o oponente mais quer parar e que você pode repetir (você pode ativar 2 [[Kewl Tune Synchro]] por turno). Veja na aba **Interações** quais respostas cada passo aceita.",
-              "O efeito de revelar do [[Kewl Tune Rotary]] acontece na mão: use-o como extensor depois que o oponente gastar uma negação em monstro no campo.",
+              "No OCG (no TCG o [[Kewl Tune Rotary]] está proibido desde setembro de 2026), o efeito de revelar do Rotary acontece na mão: use-o como extensor depois que o oponente gastar uma negação em monstro no campo. No TCG, esse papel fica com a 2ª [[Kewl Tune Synchro]] do turno.",
               "Contra [[Droll & Lock Bird]], priorize a busca que monta o resto (normalmente a que leva ao [[Kewl Tune Track Maker]]).",
             ],
           },
@@ -131,7 +131,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
               "Keep a [[Kewl Tune Synchro]] for your opponent's turn: as a Quick-Play it searches and Synchro Summons during their turn, becoming an interruption.",
               "[[Kewl Tune Track Maker]] searches a \"Kewl Tune\" card when Summoned and, as Synchro Material, returns 1 opponent's card to the hand: it is a combo piece and an interruption at once.",
               "Fill your GY with \"Kewl Tune\" monsters: [[Kewl Tune Loudness War]] banishes one of them when your opponent activates something and applies its \"Synchro Material\" effect. Every monster in the GY is a stored answer.",
-              "Count your Normal Summons: [[Kewl Tune Cue]] uses yours; [[JJ \"Kewl Tune\"]] grants an extra one for Tuners; [[Kewl Tune Rotary]] can be revealed with another Tuner to Normal Summon a Tuner immediately.",
+              "Count your Normal Summons: [[Kewl Tune Cue]] uses yours; [[JJ \"Kewl Tune\"]] grants an extra one for Tuners; in the OCG, [[Kewl Tune Rotary]] can be revealed with another Tuner to Normal Summon a Tuner immediately (it is Forbidden in the TCG).",
               "The deck runs many hand traps in the Main Deck (almost every list has 3 [[Ash Blossom & Joyous Spring]], 3 [[Effect Veiler]] and [[Ghost Belle & Haunted Mansion]]): going second, use them on your opponent's starter and play your own turn afterwards.",
             ],
           },
@@ -157,7 +157,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
             titulo: "Playing through hand traps",
             itens: [
               "Start with the cards your opponent most wants to stop and that you can repeat (you can activate 2 [[Kewl Tune Synchro]] per turn). The **Interactions** tab shows which answers each step accepts.",
-              "[[Kewl Tune Rotary]]'s reveal effect happens in the hand: use it as an extender after your opponent spends a negation on a monster on the field.",
+              "In the OCG (in the TCG [[Kewl Tune Rotary]] is Forbidden since September 2026), Rotary's reveal effect happens in the hand: use it as an extender after your opponent spends a negation on a monster on the field. In the TCG, that job goes to the turn's 2nd [[Kewl Tune Synchro]].",
               "Against [[Droll & Lock Bird]], prioritize the search that builds the rest (usually the one leading to [[Kewl Tune Track Maker]]).",
             ],
           },
@@ -199,7 +199,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
               "Guarda una [[Kewl Tune Synchro]] para el turno del rival: al ser de Juego Rápido busca y Sincroniza en su turno, como interrupción.",
               "[[Kewl Tune Track Maker]] busca una carta \"Kewl Tune\" al ser Invocado y, como Material de Sincronía, devuelve 1 carta rival a la mano: es pieza de combo e interrupción a la vez.",
               "Llena tu Cementerio de monstruos \"Kewl Tune\": [[Kewl Tune Loudness War]] destierra uno cuando el rival activa algo y aplica su efecto de \"Material de Sincronía\". Cada monstruo en el Cementerio es una respuesta guardada.",
-              "Cuenta tus Invocaciones Normales: [[Kewl Tune Cue]] usa la tuya; [[JJ \"Kewl Tune\"]] da otra solo para Cantantes; [[Kewl Tune Rotary]] puede revelarse con otro Cantante para Invocar de Modo Normal un Cantante al momento.",
+              "Cuenta tus Invocaciones Normales: [[Kewl Tune Cue]] usa la tuya; [[JJ \"Kewl Tune\"]] da otra solo para Cantantes; en el OCG, [[Kewl Tune Rotary]] puede revelarse con otro Cantante para Invocar de Modo Normal un Cantante al momento (en el TCG está prohibido).",
               "El deck juega muchas hand traps en el Main (casi todas las listas tienen 3 [[Ash Blossom & Joyous Spring]], 3 [[Effect Veiler]] y [[Ghost Belle & Haunted Mansion]]): yendo segundo, úsalas en el iniciador del rival y juega tu turno después.",
             ],
           },
@@ -225,7 +225,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
             titulo: "Jugar a través de las hand traps",
             itens: [
               "Empieza por lo que el rival más quiere parar y que tú puedes repetir (puedes activar 2 [[Kewl Tune Synchro]] por turno). La pestaña **Interacciones** muestra qué respuestas acepta cada paso.",
-              "El efecto de revelar de [[Kewl Tune Rotary]] ocurre en la mano: úsalo como extensor después de que el rival gaste una negación en un monstruo del campo.",
+              "En el OCG (en el TCG [[Kewl Tune Rotary]] está prohibido desde septiembre de 2026), el efecto de revelar de Rotary ocurre en la mano: úsalo como extensor después de que el rival gaste una negación en un monstruo del campo. En el TCG, ese papel lo cumple la 2ª [[Kewl Tune Synchro]] del turno.",
               "Contra [[Droll & Lock Bird]], prioriza la búsqueda que arma el resto (normalmente la que lleva a [[Kewl Tune Track Maker]]).",
             ],
           },
@@ -244,7 +244,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
   // ------------------------------------------------------------------ Elfnote
   {
     arquetipo: "Elfnote",
-    revisado: "2026-10",
+    revisado: "2026-11",
     textos: {
       pt: {
         resumo:
@@ -253,7 +253,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           {
             titulo: "Como o deck funciona",
             itens: [
-              "[[Elfnote Lucina]], [[Elfnote Fortuna]] e [[Elfnote Tinia]] se Invocam por Invocação-Especial da mão para a **zona do centro** (1 vez por turno cada). Na sua Main Phase: Lucina busca um monstro \"Elfnote\", Fortuna coloca uma Armadilha Contínua \"Elfnote\" e Tinia coloca uma Mágica Contínua \"Elfnote\".",
+              "[[Elfnote Lucina]], [[Elfnote Fortuna]] e [[Elfnote Tinia]] se Invocam por Invocação-Especial da mão para a **zona do centro** (1 vez por turno cada). Na sua Main Phase: Lucina busca um monstro \"Elfnote\", Fortuna coloca uma Armadilha Contínua \"Elfnote\" e Tinia coloca uma Mágica Contínua \"Elfnote\". A Tinia está proibida no TCG desde outubro de 2026: lá, só Lucina e Fortuna.",
               "No turno do oponente (Efeito Rápido), cada um troca de lugar com o monstro do centro e interrompe: Lucina devolve 1 monstro de Nível 6 ou menor à mão, Fortuna devolve 1 Mágica/Armadilha virada para cima e Tinia bane 1 carta aleatória da mão do oponente até a End Phase.",
               "[[Elfnote Regina]] (Efeito Rápido, da mão): envia outra carta \"Elfnote\" da mão ou do campo para se Invocar; se chegar ao centro, Invoca outro \"Elfnote\" do Deck. Como Matéria Sincro, volta para a mão.",
               "[[Elfnote Power Patron]] (Regulador Nível 1): na Main Phase (Efeito Rápido), aumenta em 3 o Nível do monstro do centro e Sincroniza um Sincro \"Elfnote\" ou [[Junora the Power Patron of Tuning]]. Como Matéria Sincro, busca uma carta \"Elfnote\". Com ele em campo, você só Invoca Sincros do Extra Deck.",
@@ -293,7 +293,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
               "[[Elfnote Seraphim Strelitzia]] (Nível 7): no centro tem 3000 de ATK; na Main Phase (Efeito Rápido) Invoca um \"Elfnote\" de Nível 6 ou menor da mão/Cemitério e reduz em 3 os Níveis dos monstros de Nível 4+ (abre Sincros novos).",
               "[[Junora the Power Patron of Tuning]] (Nível 10): pode tratar o monstro do centro como Regulador; ao ser Invocada por Sincro, nega os efeitos de todas as cartas viradas para cima do oponente. É a principal jogada indo para o ataque.",
               "[[Elfnote June Pride]] (Nível 10): no centro, só monstros de zonas centrais atacam; ela volta ao Extra Deck para Invocar até 1 \"Elfnote\" da mão, do Deck e do Cemitério.",
-              "Os Sincros genéricos das listas ([[Crystal Wing Synchro Dragon]], [[F.A. Dawn Dragster]], [[Chaos Angel]], [[Black Rose Dragon]]) cobrem negação de monstro, de Mágica/Armadilha, remoção e limpeza de campo.",
+              "Os Sincros genéricos das listas atuais ([[Adamancipator Risen - Dragite]], [[Chaos Angel]], [[Black Rose Dragon]]) cobrem negação de Mágica/Armadilha, remoção e limpeza de campo; a negação de monstro passou para o [[Number 90: Galaxy-Eyes Photon Lord]], já que [[Crystal Wing Synchro Dragon]] e [[F.A. Dawn Dragster]] estão proibidos no TCG desde outubro de 2026.",
             ],
           },
           {
@@ -306,7 +306,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["As listas usam [[Solemn Judgment]], [[Harpie's Feather Duster]], [[Triple Tactics Talent]], [[Nibiru, the Primal Being]] e hand traps extras ([[Mulcharmy Purulia]], [[Ghost Ogre & Snow Rabbit]])."],
+            itens: ["As listas usam [[Solemn Judgment]], [[Harpie's Feather Duster]], [[Nibiru, the Primal Being]] e hand traps extras ([[Mulcharmy Purulia]], [[Ghost Ogre & Snow Rabbit]])."],
           },
         ],
       },
@@ -317,7 +317,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           {
             titulo: "How the deck works",
             itens: [
-              "[[Elfnote Lucina]], [[Elfnote Fortuna]] and [[Elfnote Tinia]] Special Summon themselves from the hand to the **center zone** (once per turn each). During your Main Phase: Lucina searches an \"Elfnote\" monster, Fortuna places an \"Elfnote\" Continuous Trap and Tinia places an \"Elfnote\" Continuous Spell.",
+              "[[Elfnote Lucina]], [[Elfnote Fortuna]] and [[Elfnote Tinia]] Special Summon themselves from the hand to the **center zone** (once per turn each). During your Main Phase: Lucina searches an \"Elfnote\" monster, Fortuna places an \"Elfnote\" Continuous Trap and Tinia places an \"Elfnote\" Continuous Spell. Tinia is Forbidden in the TCG since October 2026: there, only Lucina and Fortuna.",
               "On your opponent's turn (Quick Effect), each switches places with the center monster and interrupts: Lucina bounces 1 Level 6 or lower monster, Fortuna bounces 1 face-up Spell/Trap and Tinia banishes 1 random card from your opponent's hand until the End Phase.",
               "[[Elfnote Regina]] (Quick Effect, from the hand): send another \"Elfnote\" card from your hand or field to Summon it; if it lands in the center, it Summons another \"Elfnote\" from the Deck. As Synchro Material, it returns to the hand.",
               "[[Elfnote Power Patron]] (Level 1 Tuner): during the Main Phase (Quick Effect), raise the center monster's Level by 3 and Synchro Summon an \"Elfnote\" Synchro or [[Junora the Power Patron of Tuning]]. As Synchro Material, it searches an \"Elfnote\" card. While you control it, you can only Special Summon Synchros from the Extra Deck.",
@@ -357,7 +357,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
               "[[Elfnote Seraphim Strelitzia]] (Level 7): 3000 ATK in the center; during the Main Phase (Quick Effect) it Summons a Level 6 or lower \"Elfnote\" from the hand/GY and lowers Level 4+ monsters by 3 (opening new Synchros).",
               "[[Junora the Power Patron of Tuning]] (Level 10): can treat the center monster as a Tuner; when Synchro Summoned, negates all face-up cards your opponent controls. The key play going second.",
               "[[Elfnote June Pride]] (Level 10): in the center, only center-zone monsters can attack; it returns to the Extra Deck to Summon up to 1 \"Elfnote\" each from the hand, Deck and GY.",
-              "The generic Synchros in the lists ([[Crystal Wing Synchro Dragon]], [[F.A. Dawn Dragster]], [[Chaos Angel]], [[Black Rose Dragon]]) cover monster negation, Spell/Trap negation, removal and board wipes.",
+              "The generic Synchros in current lists ([[Adamancipator Risen - Dragite]], [[Chaos Angel]], [[Black Rose Dragon]]) cover Spell/Trap negation, removal and board wipes; monster negation moved to [[Number 90: Galaxy-Eyes Photon Lord]], since [[Crystal Wing Synchro Dragon]] and [[F.A. Dawn Dragster]] are Forbidden in the TCG since October 2026.",
             ],
           },
           {
@@ -370,7 +370,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["Lists side [[Solemn Judgment]], [[Harpie's Feather Duster]], [[Triple Tactics Talent]], [[Nibiru, the Primal Being]] and extra hand traps ([[Mulcharmy Purulia]], [[Ghost Ogre & Snow Rabbit]])."],
+            itens: ["Lists side [[Solemn Judgment]], [[Harpie's Feather Duster]], [[Nibiru, the Primal Being]] and extra hand traps ([[Mulcharmy Purulia]], [[Ghost Ogre & Snow Rabbit]])."],
           },
         ],
       },
@@ -381,7 +381,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           {
             titulo: "Cómo funciona el deck",
             itens: [
-              "[[Elfnote Lucina]], [[Elfnote Fortuna]] y [[Elfnote Tinia]] se Invocan de Modo Especial desde la mano a la **zona del centro** (1 vez por turno cada uno). En tu Main Phase: Lucina busca un monstruo \"Elfnote\", Fortuna coloca una Trampa Continua \"Elfnote\" y Tinia una Mágica Continua \"Elfnote\".",
+              "[[Elfnote Lucina]], [[Elfnote Fortuna]] y [[Elfnote Tinia]] se Invocan de Modo Especial desde la mano a la **zona del centro** (1 vez por turno cada uno). En tu Main Phase: Lucina busca un monstruo \"Elfnote\", Fortuna coloca una Trampa Continua \"Elfnote\" y Tinia una Mágica Continua \"Elfnote\". Tinia está prohibida en el TCG desde octubre de 2026: allí, solo Lucina y Fortuna.",
               "En el turno rival (Efecto Rápido), cada uno cambia de lugar con el monstruo del centro e interrumpe: Lucina devuelve 1 monstruo de Nivel 6 o menor a la mano, Fortuna devuelve 1 Mágica/Trampa boca arriba y Tinia destierra 1 carta aleatoria de la mano rival hasta la End Phase.",
               "[[Elfnote Regina]] (Efecto Rápido, desde la mano): envía otra carta \"Elfnote\" de tu mano o campo para Invocarse; si llega al centro, Invoca otro \"Elfnote\" del Deck. Como Material de Sincronía, vuelve a la mano.",
               "[[Elfnote Power Patron]] (Cantante de Nivel 1): en la Main Phase (Efecto Rápido), sube 3 Niveles al monstruo del centro e Invoca por Sincronía una Sincronía \"Elfnote\" o [[Junora the Power Patron of Tuning]]. Como Material de Sincronía, busca una carta \"Elfnote\". Mientras lo controlas, solo Invocas Sincronías del Deck Extra.",
@@ -421,7 +421,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
               "[[Elfnote Seraphim Strelitzia]] (Nivel 7): 3000 de ATK en el centro; en la Main Phase (Efecto Rápido) Invoca un \"Elfnote\" de Nivel 6 o menor de la mano/Cementerio y baja 3 Niveles a los monstruos de Nivel 4+ (abre nuevas Sincronías).",
               "[[Junora the Power Patron of Tuning]] (Nivel 10): puede tratar al monstruo del centro como Cantante; al ser Invocada por Sincronía niega todas las cartas boca arriba del rival. La jugada clave yendo segundo.",
               "[[Elfnote June Pride]] (Nivel 10): en el centro, solo atacan los monstruos de zonas centrales; vuelve al Deck Extra para Invocar hasta 1 \"Elfnote\" de la mano, del Deck y del Cementerio.",
-              "Las Sincronías genéricas de las listas ([[Crystal Wing Synchro Dragon]], [[F.A. Dawn Dragster]], [[Chaos Angel]], [[Black Rose Dragon]]) cubren negación de monstruos, de Mágicas/Trampas, remoción y limpieza de campo.",
+              "Las Sincronías genéricas de las listas actuales ([[Adamancipator Risen - Dragite]], [[Chaos Angel]], [[Black Rose Dragon]]) cubren negación de Mágicas/Trampas, remoción y limpieza de campo; la negación de monstruos pasó a [[Number 90: Galaxy-Eyes Photon Lord]], ya que [[Crystal Wing Synchro Dragon]] y [[F.A. Dawn Dragster]] están prohibidos en el TCG desde octubre de 2026.",
             ],
           },
           {
@@ -434,7 +434,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["Las listas usan [[Solemn Judgment]], [[Harpie's Feather Duster]], [[Triple Tactics Talent]], [[Nibiru, the Primal Being]] y hand traps extra ([[Mulcharmy Purulia]], [[Ghost Ogre & Snow Rabbit]])."],
+            itens: ["Las listas usan [[Solemn Judgment]], [[Harpie's Feather Duster]], [[Nibiru, the Primal Being]] y hand traps extra ([[Mulcharmy Purulia]], [[Ghost Ogre & Snow Rabbit]])."],
           },
         ],
       },
@@ -443,7 +443,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
   // ------------------------------------------------------------------ Branded
   {
     arquetipo: "Branded",
-    revisado: "2026-10",
+    revisado: "2026-11",
     textos: {
       pt: {
         resumo:
@@ -639,7 +639,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
   // ------------------------------------------------------------------ Light and Darkness Ritual
   {
     arquetipo: "Light and Darkness Ritual",
-    revisado: "2026-10",
+    revisado: "2026-11",
     textos: {
       pt: {
         resumo:
@@ -698,7 +698,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["As listas usam [[Pot of Sloth]], [[Lava Golem]], [[Nibiru, the Primal Being]], [[Mulcharmy Purulia]], [[Solemn Judgment]], [[Triple Tactics Talent]] e [[Harpie's Feather Duster]]."],
+            itens: ["As listas usam [[Pot of Sloth]], [[Lava Golem]], [[Nibiru, the Primal Being]], [[Mulcharmy Purulia]], [[Solemn Judgment]] e [[Harpie's Feather Duster]]."],
           },
         ],
       },
@@ -759,7 +759,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["Lists side [[Pot of Sloth]], [[Lava Golem]], [[Nibiru, the Primal Being]], [[Mulcharmy Purulia]], [[Solemn Judgment]], [[Triple Tactics Talent]] and [[Harpie's Feather Duster]]."],
+            itens: ["Lists side [[Pot of Sloth]], [[Lava Golem]], [[Nibiru, the Primal Being]], [[Mulcharmy Purulia]], [[Solemn Judgment]] and [[Harpie's Feather Duster]]."],
           },
         ],
       },
@@ -820,7 +820,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["Las listas usan [[Pot of Sloth]], [[Lava Golem]], [[Nibiru, the Primal Being]], [[Mulcharmy Purulia]], [[Solemn Judgment]], [[Triple Tactics Talent]] y [[Harpie's Feather Duster]]."],
+            itens: ["Las listas usan [[Pot of Sloth]], [[Lava Golem]], [[Nibiru, the Primal Being]], [[Mulcharmy Purulia]], [[Solemn Judgment]] y [[Harpie's Feather Duster]]."],
           },
         ],
       },
@@ -829,7 +829,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
   // ------------------------------------------------------------------ Mitsurugi
   {
     arquetipo: "Mitsurugi",
-    revisado: "2026-10",
+    revisado: "2026-11",
     textos: {
       pt: {
         resumo:
@@ -887,7 +887,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["As listas usam [[Harpie's Feather Duster]], [[Lightning Storm]], [[Triple Tactics Talent]], [[Solemn Judgment]], [[Lava Golem]] e [[Droll & Lock Bird]]."],
+            itens: ["As listas usam [[Harpie's Feather Duster]], [[Lightning Storm]], [[Solemn Judgment]], [[Lava Golem]] e [[Droll & Lock Bird]]."],
           },
         ],
       },
@@ -947,7 +947,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["Lists side [[Harpie's Feather Duster]], [[Lightning Storm]], [[Triple Tactics Talent]], [[Solemn Judgment]], [[Lava Golem]] and [[Droll & Lock Bird]]."],
+            itens: ["Lists side [[Harpie's Feather Duster]], [[Lightning Storm]], [[Solemn Judgment]], [[Lava Golem]] and [[Droll & Lock Bird]]."],
           },
         ],
       },
@@ -1007,7 +1007,7 @@ const GUIAS_BASE: GuiaEscrito[] = [
           },
           {
             titulo: "Side deck",
-            itens: ["Las listas usan [[Harpie's Feather Duster]], [[Lightning Storm]], [[Triple Tactics Talent]], [[Solemn Judgment]], [[Lava Golem]] y [[Droll & Lock Bird]]."],
+            itens: ["Las listas usan [[Harpie's Feather Duster]], [[Lightning Storm]], [[Solemn Judgment]], [[Lava Golem]] y [[Droll & Lock Bird]]."],
           },
         ],
       },

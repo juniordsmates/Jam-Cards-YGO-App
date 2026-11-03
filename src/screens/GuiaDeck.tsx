@@ -9,7 +9,7 @@ import { apagarArtigo, enviarArtigo, listarArtigos, moderarArtigo, type Artigo, 
 import { combosDoArquetipo, type ComboBase } from "../db/baseCombos";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { useConta } from "../db/conta";
-import { deckDoCombo } from "../db/decks";
+import { copiasPermitidas, deckDoCombo } from "../db/decks";
 import { calcularInteracoes, linhasDoArquetipo, passoNoIdioma, startersCalculados } from "../db/guiaDeck";
 import { cardImage } from "../db/images";
 import { semCartaDoCalculo, CARTA_QUALQUER, type LinhaCombo, type Passo } from "../db/motor";
@@ -48,6 +48,8 @@ const T = {
     parceiros: "Misturado com",
     semGuia: "Ainda não há texto escrito para este deck. As seções abaixo vêm direto dos decklists de torneio e do motor de regras.",
     revisado: (m: string) => `Texto revisado em ${m}. O núcleo, os combos e as interações se atualizam sozinhos.`,
+    proibida: "proibida no TCG",
+    proibidaExpl: "Na banlist TCG atual, esta carta está proibida: as jogadas do texto que dependem dela não valem mais no TCG.",
     nucleo: "Núcleo do deck",
     nucleoExpl: "Cartas presentes em boa parte das listas de torneio: % = listas que usam a carta; × = média de cópias nelas.",
     main: "Main Deck",
@@ -118,6 +120,8 @@ const T = {
     parceiros: "Mixed with",
     semGuia: "There is no written text for this deck yet. The sections below come straight from tournament decklists and the rules engine.",
     revisado: (m: string) => `Text reviewed in ${m}. The core, combos and interactions update on their own.`,
+    proibida: "Forbidden in the TCG",
+    proibidaExpl: "This card is Forbidden on the current TCG list: the plays in the text that depend on it no longer work in the TCG.",
     nucleo: "Deck core",
     nucleoExpl: "Cards found in most tournament lists: % = lists that play the card; × = average copies in them.",
     main: "Main Deck",
@@ -188,6 +192,8 @@ const T = {
     parceiros: "Mezclado con",
     semGuia: "Todavía no hay texto escrito para este deck. Las secciones de abajo salen directamente de los decklists de torneo y del motor de reglas.",
     revisado: (m: string) => `Texto revisado en ${m}. El núcleo, los combos y las interacciones se actualizan solos.`,
+    proibida: "prohibida en el TCG",
+    proibidaExpl: "En la banlist TCG actual esta carta está prohibida: las jugadas del texto que dependen de ella ya no valen en el TCG.",
     nucleo: "Núcleo del deck",
     nucleoExpl: "Cartas presentes en la mayoría de las listas de torneo: % = listas que la juegan; × = media de copias en ellas.",
     main: "Main Deck",
@@ -319,7 +325,16 @@ export default function GuiaDeck({
       if (parte.startsWith("[[")) {
         const nome = parte.slice(2, -2);
         const card = byName.get(nome);
-        return card ? <Carta key={i} card={card} /> : <strong key={i}>{nome}</strong>;
+        if (!card) return <strong key={i}>{nome}</strong>;
+        // a banlist muda toda semana; o texto escrito não: a carta proibida hoje ganha o aviso sozinha
+        return copiasPermitidas(card, "TCG") === 0 ? (
+          <span key={i} className="gd-proibida">
+            <Carta card={card} />{" "}
+            <small title={t.proibidaExpl}>({t.proibida})</small>
+          </span>
+        ) : (
+          <Carta key={i} card={card} />
+        );
       }
       if (parte.startsWith("**")) return <strong key={i}>{parte.slice(2, -2)}</strong>;
       return parte;

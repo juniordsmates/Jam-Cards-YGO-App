@@ -391,3 +391,10 @@
 .gd-idiomas button {
   white-space: nowrap;
 }
+
+/* carta citada no texto escrito que está proibida na banlist TCG atual */
+.gd-proibida small {
+  color: var(--red);
+  font-weight: 600;
+  white-space: nowrap;
+}
