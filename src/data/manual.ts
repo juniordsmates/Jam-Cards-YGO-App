@@ -520,6 +520,36 @@ export const CAPITULOS: Capitulo[] = [
     ],
   },
   {
+    id: "desejos",
+    titulo: t("Lista de Desejos"),
+    resumo: t("As cartas que você quer conseguir, com a quantidade de cada uma e quantas já tem na Minha Coleção."),
+    topicos: [
+      {
+        titulo: t("Adicionar cartas"),
+        itens: [
+          t("Na própria Lista de Desejos, em **Adicionar cartas**, busque pelo nome (português ou inglês), escolha uma ou várias e clique em **Adicionar à lista**."),
+          t("Em qualquer painel de carta (**Buscar Carta**, **Editor de Deck** e **Minha Coleção**), o botão **♡ Lista de Desejos** pede a quantidade e soma à lista; com a carta já na lista, ele mostra **♥ Na Lista de Desejos (N)**."),
+        ],
+      },
+      {
+        titulo: t("Adicionar deck"),
+        itens: [
+          t("No **Editor de Deck**, bloco Deck, **♡ Adicionar deck à Lista de Desejos** leva as cartas do deck aberto com as quantidades (Main, Extra e Side)."),
+          t("Escolha **Todas as cartas do deck** ou **Só o que falta na Minha Coleção**. Carta que já está na lista fica com a quantidade maior: adicionar o mesmo deck duas vezes não dobra a lista."),
+        ],
+      },
+      {
+        titulo: t("Selecionar e remover"),
+        itens: [
+          t("Marque as cartas uma por uma ou use **Selecionar todas** (vale para as que aparecem com o filtro) e clique em **Remover selecionadas**, depois em **Confirmar**."),
+          t("O **✕** de cada linha tira só aquela carta; **−** e **+** mudam a quantidade."),
+          t("Cada linha mostra quantas você já tem na coleção e quantas faltam; a carta completa aparece com **✓ Já tenho**."),
+        ],
+      },
+    ],
+    ligacoes: [t("Com login, a lista fica salva na conta; sem login, só neste aparelho."), t("Usa a **Minha Coleção** para saber o que falta.")],
+  },
+  {
     id: "comunidade",
     titulo: t("Comunidade e Rank"),
     resumo: t("Pesquise um arquétipo e veja quem mais compartilha combos dele, os Combos da Comunidade com a tag dele e o resumo do Guia de Deck. No Rank, os duelistas com mais pontos."),

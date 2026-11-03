@@ -3,6 +3,7 @@ import ScreenShell from "./ScreenShell";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { temRecursosAvancados, useConta } from "../db/conta";
 import { copiasPorCarta, juntarColecaoDaConta, useColecao } from "../db/colecao";
+import { adicionarDesejos } from "../db/listaDesejos";
 import {
   avisos,
   contagem,
@@ -30,6 +31,7 @@ import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
 import { t, LOCALE } from "../i18n";
 import Lateral from "../components/Lateral";
+import BotaoDesejo from "../components/BotaoDesejo";
 
 const POR_PAGINA = 24;
 // grade do deck: 10 cartas por linha no Main (4 a 6 linhas, até 60) e as 15 do Extra numa linha só
@@ -117,6 +119,25 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const [importando, setImportando] = useState(false);
   const [textoImport, setTextoImport] = useState("");
   const [mensagem, setMensagem] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  // "Adicionar deck à Lista de Desejos": todas as cartas ou só o que falta na coleção
+  const [desejoDeck, setDesejoDeck] = useState<"tudo" | "falta" | null>(null);
+  const totalDeck = trabalho ? trabalho.main.length + trabalho.extra.length + trabalho.side.length : 0;
+  const adicionarDeckAosDesejos = () => {
+    if (!trabalho || !desejoDeck) return;
+    const porCarta = new Map<number, number>();
+    for (const id of [...trabalho.main, ...trabalho.extra, ...trabalho.side]) porCarta.set(id, (porCarta.get(id) ?? 0) + 1);
+    const cartas = [...porCarta].map(([cartaId, n]) => ({ cartaId, quantidade: desejoDeck === "falta" ? n - (naColecao.get(cartaId) ?? 0) : n })).filter((c) => c.quantidade > 0);
+    const mudaram = adicionarDesejos(cartas, false);
+    setDesejoDeck(null);
+    setMensagem({
+      tipo: "ok",
+      texto: !cartas.length
+        ? t("Você já tem todas as cartas deste deck na coleção.")
+        : mudaram
+          ? t("{0} carta(s) do deck na Lista de Desejos.", [mudaram])
+          : t("As cartas deste deck já estavam na Lista de Desejos."),
+    });
+  };
   const arrastando = useRef<{ id: number; de?: Parte; indice?: number } | null>(null);
   // Teste de Jogo (Solo Mode) com o deck aberto
   const [testando, setTestando] = useState(!!inicial.testar);
@@ -478,6 +499,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                     </button>
                     <button className="ghost-btn" disabled={!trabalho} onClick={() => setNomeando({ modo: "salvarComo", valor: `${trabalho?.nome ?? ""} (cópia)` })}>{t("Salvar como")}</button>
                     <button className="ghost-btn de-importar" onClick={() => setImportando(!importando)}>{t("Importar deck list")}</button>
+                    <button className="ghost-btn de-desejo" disabled={!trabalho || !totalDeck} onClick={() => setDesejoDeck(desejoDeck ? null : "tudo")}>{t("♡ Adicionar deck à Lista de Desejos")}</button>
                   <button className="ghost-btn" disabled={!trabalho || trabalho.id === padrao} onClick={() => trabalho && definirPadrao(trabalho.id)}>{t("Definir padrão")}</button>
                     {confirmarExclusao ? (
                       <button
@@ -495,6 +517,21 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                   </div>
                 )}
 
+                {desejoDeck && trabalho && (
+                  <div className="de-painel de-desejo-painel">
+                    <p className="tags-note">{t("Leva as cartas deste deck, com as quantidades (Main, Extra e Side), para a Lista de Desejos. Carta que já está na lista fica com a quantidade maior.")}</p>
+                    <label className="respostas-toggle">
+                      <input type="radio" checked={desejoDeck === "tudo"} onChange={() => setDesejoDeck("tudo")} /> {t("Todas as cartas do deck")}
+                    </label>
+                    <label className="respostas-toggle">
+                      <input type="radio" checked={desejoDeck === "falta"} onChange={() => setDesejoDeck("falta")} /> {t("Só o que falta na Minha Coleção")}
+                    </label>
+                    <div className="de-botoes">
+                      <button className="ghost-btn" onClick={adicionarDeckAosDesejos}>{t("Adicionar deck")}</button>
+                      <button className="ghost-btn" onClick={() => setDesejoDeck(null)}>{t("Cancelar")}</button>
+                    </div>
+                  </div>
+                )}
                 {importando && (
                 <div className="de-painel">
                   <label className="ghost-btn de-arquivo">
@@ -547,6 +584,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                         {categoryOf(preview) === "monster" && t(" · ATK {0}{1}", [preview.atk ?? "?", preview.frame === "link" ? "" : t(" / DEF {0}", [preview.def ?? "?"])])}
                       </small>
                       <PapeisDaCarta card={preview} />
+                      <BotaoDesejo cartaId={preview.id} />
                       <p>{preview.descPt ?? preview.desc}</p>
                     </div>
                   </>

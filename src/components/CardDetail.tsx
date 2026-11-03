@@ -20,6 +20,7 @@ import { BAN_LABELS, frameColor, kindLabel } from "../db/labels";
 import { useTagLookup } from "../db/cardStore";
 import { displayName, type Card } from "../db/types";
 import { t as tr } from "../i18n";
+import BotaoDesejo from "./BotaoDesejo";
 
 type Props = {
   card: Card;
@@ -165,6 +166,11 @@ export default function CardDetail({
         <button className="drawer-close ghost-btn" onClick={onClose} aria-label={tr("Fechar")}>
           ✕
         </button>
+      </div>
+
+      {/* Lista de Desejos: quantas cópias quero desta carta */}
+      <div className="drawer-desejo">
+        <BotaoDesejo cartaId={card.id} />
       </div>
 
       <div className="drawer-art">

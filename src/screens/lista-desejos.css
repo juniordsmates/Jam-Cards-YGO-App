@@ -1,0 +1,183 @@
+/* Lista de Desejos: adicionar cartas no topo e a lista com seleção embaixo */
+
+.desejos {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ld-bloco {
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.ld-adicionar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ld-adicionar > .ghost-btn {
+  align-self: flex-start;
+}
+
+.ld-topo,
+.ld-selecao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ld-topo strong {
+  flex: 1 1 260px;
+}
+
+.ld-topo input,
+.ld-topo select {
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.84rem;
+  color: inherit;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.ld-selecao {
+  margin: 10px 0 6px;
+}
+
+.ld-itens {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ld-itens li {
+  display: grid;
+  grid-template-columns: auto 44px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.ld-itens li.ld-sel {
+  border-color: var(--magenta);
+  background: color-mix(in srgb, var(--magenta) 7%, var(--bg-elev));
+}
+
+.ld-itens img,
+.ld-sem-img {
+  width: 44px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--skeleton);
+}
+
+.ld-nome {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ld-nome strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ld-nome small {
+  color: var(--text-dim);
+}
+
+.ld-completa .ld-nome small {
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+.ld-qtd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.ld-qtd .ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.ld-qtd > span {
+  min-width: 22px;
+  text-align: center;
+}
+
+.ld-tirar {
+  font-size: 1rem;
+}
+
+.ld-vazia {
+  margin: 14px 0;
+}
+
+/* botão de desejo no painel das cartas (components/BotaoDesejo.tsx) */
+.botao-desejo {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.botao-desejo input {
+  width: 56px;
+  padding: 4px 6px;
+  font: inherit;
+  color: inherit;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.drawer-desejo {
+  margin: 8px 0;
+}
+
+@media (max-width: 760px) {
+  .ld-itens li {
+    grid-template-columns: auto 36px minmax(0, 1fr) auto;
+  }
+
+  .ld-itens img,
+  .ld-sem-img {
+    width: 36px;
+    height: 52px;
+  }
+
+  .ld-tirar {
+    display: none;
+  }
+}

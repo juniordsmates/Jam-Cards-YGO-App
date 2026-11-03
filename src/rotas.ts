@@ -9,6 +9,7 @@ import { isDesktop } from "./platform";
 //   #/meta-call/TCG/Kewl%20Tune:17,Elfnote:12
 //   #/comunidade/Kewl%20Tune                aba Comunidade do arquétipo
 //   #/rank                                  Rank dos duelistas
+//   #/desejos                               Lista de Desejos
 // O "#" funciona no GitHub Pages sem configurar o servidor. No app de computador, o link copiado é
 // o do site (abre em qualquer navegador).
 
@@ -25,6 +26,7 @@ export type Rota =
   | { tela: "colecao" }
   | { tela: "manual" }
   | { tela: "rank" }
+  | { tela: "desejos" }
   | { tela: "comunidade"; arquetipo?: string };
 
 const NOMES: Record<string, Rota["tela"]> = {
@@ -39,6 +41,7 @@ const NOMES: Record<string, Rota["tela"]> = {
   colecao: "colecao",
   manual: "manual",
   rank: "rank",
+  desejos: "desejos",
   comunidade: "comunidade",
 };
 

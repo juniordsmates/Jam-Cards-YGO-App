@@ -28,6 +28,7 @@ import "./deck-editor.css";
 import "./colecao.css";
 import { t, LOCALE } from "../i18n";
 import Lateral from "../components/Lateral";
+import BotaoDesejo from "../components/BotaoDesejo";
 
 const POR_PAGINA = 24;
 const nomeEdicao = (id: string) => EDICOES.find((e) => e.id === id)?.label ?? "";
@@ -227,6 +228,7 @@ export default function Colecao({ onBack }: { onBack: () => void }) {
                     <strong>{displayName(carta)}</strong>
                     <small>{kindLabel(carta)}</small>
                     <PapeisDaCarta card={carta} />
+                    <BotaoDesejo cartaId={carta.id} />
                   </div>
                 </div>
               ) : (

@@ -7,6 +7,7 @@ import Manual from "./screens/Manual";
 import GuiaDeck from "./screens/GuiaDeck";
 import MetaCall from "./screens/MetaCall";
 import Rank from "./screens/Rank";
+import ListaDesejos from "./screens/ListaDesejos";
 import Comunidade from "./screens/Comunidade";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
 import ExitDialog from "./components/ExitDialog";
@@ -20,7 +21,7 @@ import type { Card } from "./db/types";
 import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "comunidade";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "comunidade" | "desejos";
 
 /** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
 const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
@@ -135,6 +136,7 @@ export default function App() {
             setScreen("deck");
           }}
           onColecao={() => setScreen("colecao")}
+          onDesejos={() => setScreen("desejos")}
           onComunidade={() => setScreen("comunidade")}
           onRank={() => setScreen("rank")}
           onManual={() => setScreen("manual")}
@@ -174,6 +176,7 @@ export default function App() {
       {screen === "colecao" && <Colecao onBack={() => setScreen("menu")} />}
       {screen === "manual" && <Manual onBack={() => setScreen("menu")} />}
       {screen === "metacall" && <MetaCall onBack={() => setScreen("menu")} inicial={rota.tela === "metacall" ? rota : undefined} onRota={aoRota} />}
+      {screen === "desejos" && <ListaDesejos onBack={() => setScreen("menu")} />}
       {screen === "rank" && <Rank onBack={() => setScreen("menu")} onComunidade={() => setScreen("comunidade")} />}
       {screen === "comunidade" && (
         <Comunidade
