@@ -1132,3 +1132,55 @@ kbd {
 .left-tabs.conta-abas {
   min-width: 260px;
 }
+
+/* ---------- Aviso de erro numa tela (components/ErroApp.tsx) ---------- */
+
+.erro-app {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: var(--bg);
+}
+
+.erro-app-caixa {
+  width: min(560px, 100%);
+  padding: 24px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--red);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.erro-app-caixa h1 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--red);
+}
+
+.erro-app-msg {
+  padding: 8px 10px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.84rem;
+  background: var(--bg);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.erro-app-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.erro-app pre {
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+  user-select: text;
+}

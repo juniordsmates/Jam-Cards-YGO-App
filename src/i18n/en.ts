@@ -2156,4 +2156,10 @@ export const EN: Record<string, string> = {
   "À esquerda, pesquise o arquétipo pelo nome em inglês ou em português (os mesmos da busca de cartas). A lista vem em três grupos, separados por uma linha: os **5 mais jogados no meta atual** (fatia dos torneios do TCG nos últimos 2 meses), os **5 mais ativos na comunidade** (combos compartilhados e artigos aprovados) e **todos os demais em ordem alfabética**.": "On the left, search the archetype by its English or Portuguese name (the same as in card search). The list comes in three groups, separated by a line: the **5 most played in the current meta** (share of TCG tournaments in the last 2 months), the **5 most active in the community** (shared combos and approved articles) and **all the others in alphabetical order**.",
   "1 interação": "1 interaction",
   "{0}% dos decks do TCG nos últimos 2 meses · {1}% em 6 meses": "{0}% of TCG decks in the last 2 months · {1}% in 6 months",
+  "Algo deu errado nesta tela": "Something went wrong on this screen",
+  "O app não perdeu seus dados. Volte ao menu ou recarregue a página.": "The app didn't lose your data. Go back to the menu or reload the page.",
+  "Recarregar": "Reload",
+  "✓ Detalhes copiados": "✓ Details copied",
+  "Copiar detalhes do erro": "Copy error details",
+  "componentStack:": "componentStack:",
 };
