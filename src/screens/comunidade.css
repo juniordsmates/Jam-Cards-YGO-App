@@ -253,3 +253,26 @@
   border: 1px solid var(--line);
   border-radius: 8px;
 }
+
+/* grupos da lista de arquétipos: meta atual | mais ativos na comunidade | todos (A–Z) */
+.cm-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cm-linha {
+  width: 100%;
+  margin: 8px 0 4px;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.cm-grupo-titulo {
+  margin: 4px 0 2px 8px;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}

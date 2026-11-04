@@ -557,7 +557,7 @@ export const CAPITULOS: Capitulo[] = [
       {
         titulo: t("Comunidade"),
         itens: [
-          t("À esquerda, pesquise o arquétipo pelo nome em inglês ou em português (os mesmos da busca de cartas); os decks do meta do TCG aparecem primeiro."),
+          t("À esquerda, pesquise o arquétipo pelo nome em inglês ou em português (os mesmos da busca de cartas). A lista vem em três grupos, separados por uma linha: os **5 mais jogados no meta atual** (fatia dos torneios do TCG nos últimos 2 meses), os **5 mais ativos na comunidade** (combos compartilhados e artigos aprovados) e **todos os demais em ordem alfabética**."),
           t("**Quem mais compartilha combos**: os duelistas com mais combos compartilhados daquele arquétipo e os pontos deles."),
           t("**Combos**: os Combos da Comunidade vinculados ao arquétipo (Arquétipos vinculados, ao compartilhar) e quantas linhas o App calculou; **Ver as linhas do App no Guia de Deck** abre a aba Combos do guia."),
           t("**Guia de Deck**: o resumo e os tópicos do guia escrito; **Abrir o Guia de Deck** vai direto ao deck (o voltar retorna para a Comunidade)."),

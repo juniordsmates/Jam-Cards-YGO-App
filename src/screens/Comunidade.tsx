@@ -7,13 +7,13 @@ import Lateral from "../components/Lateral";
 import { GUIAS_ESCRITOS, type Idioma } from "../data/guias";
 import { combosDoArquetipo, type ComboBase } from "../db/baseCombos";
 import { initCardDb, useCardDb } from "../db/cardStore";
-import { rankingDoArquetipo, type Duelista, type Leitura } from "../db/conquistas";
+import { interacoesPorArquetipo, rankingDoArquetipo, type Duelista, type InteracoesArquetipo, type Leitura } from "../db/conquistas";
 import { linhasDoArquetipo } from "../db/guiaDeck";
 import { normalize } from "../db/search";
 import { supabaseReady } from "../db/supabase";
 import { displayName, type Card } from "../db/types";
 import type { Rota } from "../rotas";
-import { IDIOMA, t } from "../i18n";
+import { IDIOMA, t, LOCALE } from "../i18n";
 import "./comunidade.css";
 
 // Comunidade: escolha um arquétipo (os mesmos da busca de cartas; os do meta do TCG primeiro) e
@@ -39,21 +39,56 @@ export default function Comunidade({
   const [busca, setBusca] = useState("");
   const [escolhido, setEscolhido] = useState<string | null>(inicial?.arquetipo ?? null);
 
-  // arquétipos: os do meta (com a fatia de uso) e depois os demais em ordem alfabética
-  const lista = useMemo(() => {
-    const doMeta = meta?.arquetipos.map((a) => a.arquetipo) ?? [];
-    const noMeta = new Set(doMeta.map((a) => a.toLowerCase()));
-    return [...doMeta, ...db.archetypes.filter((a) => !noMeta.has(a.toLowerCase())).sort((a, b) => a.localeCompare(b))];
-  }, [meta, db.archetypes]);
+  // interações da comunidade por arquétipo (combos compartilhados e artigos aprovados)
+  const [interacoes, setInteracoes] = useState<Map<string, InteracoesArquetipo>>(new Map());
+  useEffect(() => {
+    let vivo = true;
+    void interacoesPorArquetipo().then((m) => vivo && setInteracoes(m));
+    return () => void (vivo = false);
+  }, []);
+
+  // três grupos, separados por uma linha:
+  // 1. os 5 decks com mais representatividade no meta atual (fatia dos últimos 2 meses de torneios);
+  // 2. os 5 com mais interações da comunidade (fora os do grupo 1);
+  // 3. o restante, em ordem alfabética.
+  const grupos = useMemo(() => {
+    const chave = (a: string) => a.toLowerCase();
+    const usados = new Set<string>();
+    const doMeta = [...(meta?.arquetipos ?? [])].sort((a, b) => b.pct2m - a.pct2m || b.pct6m - a.pct6m).slice(0, 5).map((a) => a.arquetipo);
+    doMeta.forEach((a) => usados.add(chave(a)));
+    const ativos = [...interacoes]
+      .filter(([a, i]) => i.total > 0 && !usados.has(chave(a)))
+      .sort((a, b) => b[1].total - a[1].total || a[0].localeCompare(b[0]))
+      .slice(0, 5)
+      .map(([a]) => a);
+    ativos.forEach((a) => usados.add(chave(a)));
+    // todos os arquétipos conhecidos: os da base de cartas e os do meta (alguns só existem no meta)
+    const todos = new Map<string, string>();
+    for (const a of [...db.archetypes, ...(meta?.arquetipos.map((x) => x.arquetipo) ?? [])]) if (!todos.has(chave(a))) todos.set(chave(a), a);
+    // fora os nomes quebrados da base de cartas ("| supports_archetypes …", "-Eyes Dragon"); a ordem
+    // ignora a pontuação do começo ("C" fica no C, /Assault Mode no A)
+    const ordem = (a: string) => a.replace(/^[^\p{L}\p{N}]+/u, "");
+    const resto = [...todos.values()]
+      .filter((a) => !usados.has(chave(a)) && !/\||supports_archetypes/.test(a) && !/^-/.test(a))
+      .sort((a, b) => ordem(a).localeCompare(ordem(b), LOCALE));
+    return [
+      { id: "meta", titulo: t("Mais jogados no meta atual"), itens: doMeta },
+      { id: "comunidade", titulo: t("Mais ativos na comunidade"), itens: ativos },
+      { id: "todos", titulo: t("Todos (A–Z)"), itens: resto },
+    ];
+  }, [meta, interacoes, db.archetypes]);
+  const lista = useMemo(() => grupos.flatMap((g) => g.itens), [grupos]);
   const nome = (a: string) => {
     const pt = IDIOMA === "pt" ? db.archetypePt.get(a) : undefined;
     return pt && pt.toLowerCase() !== a.toLowerCase() ? `${a} · ${pt}` : a;
   };
+  // a pesquisa filtra dentro de cada grupo (os grupos vazios somem)
   const filtrados = useMemo(() => {
     const q = normalize(busca.trim());
-    if (!q) return lista.slice(0, 60);
-    return lista.filter((a) => normalize(a).includes(q) || normalize(db.archetypePt.get(a) ?? "").includes(q)).slice(0, 80);
-  }, [busca, lista, db.archetypePt]);
+    const bate = (a: string) => !q || normalize(a).includes(q) || normalize(db.archetypePt.get(a) ?? "").includes(q);
+    return grupos.map((g) => ({ ...g, itens: g.itens.filter(bate) })).filter((g) => g.itens.length);
+  }, [busca, grupos, db.archetypePt]);
+  const encontrados = filtrados.reduce((s, g) => s + g.itens.length, 0);
   const arquetipo = escolhido ?? lista[0] ?? null;
   const daMeta = meta?.arquetipos.find((a) => a.arquetipo.toLowerCase() === arquetipo?.toLowerCase());
 
@@ -105,16 +140,24 @@ export default function Comunidade({
             placeholder={t("Pesquisar arquétipo (ex.: Kewl Tune)")}
             aria-label={t("Pesquisar arquétipo")}
           />
-          <p className="tags-note">{busca ? t("{0} encontrado(s)", [filtrados.length]) : t("Os do meta do TCG primeiro; pesquise para ver todos.")}</p>
-          {filtrados.map((a) => {
-            const m = meta?.arquetipos.find((x) => x.arquetipo === a);
-            return (
-              <button key={a} className={a === arquetipo ? "active" : ""} onClick={() => setEscolhido(a)}>
-                <span className="cm-nome">{nome(a)}</span>
-                {m && <small>{m.pct6m}%</small>}
-              </button>
-            );
-          })}
+          {busca && <p className="tags-note">{t("{0} encontrado(s)", [encontrados])}</p>}
+          {filtrados.map((g, gi) => (
+            <div key={g.id} className="cm-grupo">
+              {gi > 0 && <hr className="cm-linha" />}
+              <p className="cm-grupo-titulo">{g.titulo}</p>
+              {g.itens.map((a) => {
+                const m = meta?.arquetipos.find((x) => x.arquetipo === a);
+                const i = interacoes.get(a);
+                return (
+                  <button key={a} className={a === arquetipo ? "active" : ""} onClick={() => setEscolhido(a)}>
+                    <span className="cm-nome">{nome(a)}</span>
+                    {g.id === "meta" && m && <small title={t("Fatia dos decks de torneio do TCG nos últimos 2 meses")}>{m.pct2m}%</small>}
+                    {g.id === "comunidade" && i && <small title={t("{0} combo(s) compartilhado(s) · {1} artigo(s)", [i.combos, i.artigos])}>{i.total === 1 ? t("1 interação") : t("{0} interações", [i.total])}</small>}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </Lateral>
 
         <div className="cm-conteudo">
@@ -125,7 +168,7 @@ export default function Comunidade({
               <header className="cm-cabecalho">
                 <h2>{nome(arquetipo)}</h2>
                 <BotaoLink rota={{ tela: "comunidade", arquetipo }} />
-                {daMeta && <p className="tags-note">{t("{0}% dos decks do TCG nos últimos 6 meses", [daMeta.pct6m])}</p>}
+                {daMeta && <p className="tags-note">{t("{0}% dos decks do TCG nos últimos 2 meses · {1}% em 6 meses", [daMeta.pct2m, daMeta.pct6m])}</p>}
               </header>
 
               <section className="cm-bloco">

@@ -88,3 +88,29 @@ export async function minhasContribuicoes(usuarioId: string): Promise<Contribuic
   ]);
   return { combosCompartilhados, combosSoMeus, artigosAprovados, artigosPendentes, membroDesde: perfil?.criado_em ?? null };
 }
+
+/** Interações da comunidade por arquétipo: combos compartilhados (os que pontuam) e artigos aprovados */
+export interface InteracoesArquetipo {
+  combos: number;
+  artigos: number;
+  total: number;
+}
+
+export async function interacoesPorArquetipo(): Promise<Map<string, InteracoesArquetipo>> {
+  const sb = supabase();
+  const mapa = new Map<string, InteracoesArquetipo>();
+  if (!sb) return mapa;
+  const somar = (arquetipo: string, campo: "combos" | "artigos", n: number) => {
+    const atual = mapa.get(arquetipo) ?? { combos: 0, artigos: 0, total: 0 };
+    atual[campo] += n;
+    atual.total += n;
+    mapa.set(arquetipo, atual);
+  };
+  const [combos, artigos] = await Promise.all([
+    sb.from("ranking_arquetipos").select("arquetipo, combos_compartilhados").limit(10000),
+    sb.from("artigos").select("arquetipo").eq("status", "aprovado").limit(10000),
+  ]);
+  for (const r of (combos.data ?? []) as { arquetipo: string; combos_compartilhados: number }[]) somar(r.arquetipo, "combos", r.combos_compartilhados);
+  for (const r of (artigos.data ?? []) as { arquetipo: string }[]) somar(r.arquetipo, "artigos", 1);
+  return mapa;
+}
