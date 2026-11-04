@@ -63,3 +63,28 @@ export function rankingDoArquetipo(arquetipo: string, limite = 10): Promise<Leit
       .limit(limite),
   );
 }
+
+/** Contribuições de uma conta: combos (compartilhados ou só dela), artigos e a data do cadastro */
+export interface Contribuicoes {
+  combosCompartilhados: number;
+  combosSoMeus: number;
+  artigosAprovados: number;
+  artigosPendentes: number;
+  membroDesde: string | null;
+}
+
+export async function minhasContribuicoes(usuarioId: string): Promise<Contribuicoes | null> {
+  const sb = supabase();
+  if (!sb) return null;
+  const conta = (q: PromiseLike<{ count: number | null }>) => Promise.resolve(q).then((r) => r.count ?? 0, () => 0);
+  const combos = () => sb.from("combos").select("id", { count: "exact", head: true }).eq("autor_id", usuarioId).eq("origem", "comunidade");
+  const artigos = () => sb.from("artigos").select("id", { count: "exact", head: true }).eq("autor_id", usuarioId);
+  const [combosCompartilhados, combosSoMeus, artigosAprovados, artigosPendentes, perfil] = await Promise.all([
+    conta(combos().eq("publico", true)),
+    conta(combos().eq("publico", false)),
+    conta(artigos().eq("status", "aprovado")),
+    conta(artigos().eq("status", "pendente")),
+    Promise.resolve(sb.from("perfis").select("criado_em").eq("id", usuarioId).maybeSingle()).then((r) => r.data as { criado_em: string } | null, () => null),
+  ]);
+  return { combosCompartilhados, combosSoMeus, artigosAprovados, artigosPendentes, membroDesde: perfil?.criado_em ?? null };
+}

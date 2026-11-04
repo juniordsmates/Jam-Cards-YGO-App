@@ -9,6 +9,7 @@ import termosEn from "../../docs/termos-de-uso.en.md?raw";
 import termosEs from "../../docs/termos-de-uso.es.md?raw";
 import {
   aoRecuperarSenha,
+  cadastrar,
   contaAtual,
   criarUsuarioComoAdmin,
   definirNivel,
@@ -47,16 +48,22 @@ import {
 } from "../db/ia";
 import { supabaseReady } from "../db/supabase";
 import { publicarCamada } from "../db/overlay";
+import { meusPontos, minhasContribuicoes, PONTOS_POR_COMBO, rankingDuelistas, type Contribuicoes, type Duelista, type Leitura } from "../db/conquistas";
+import { useCombosLocais } from "../db/combosLocais";
+import { useListaDesejos } from "../db/listaDesejos";
+import { useColecao } from "../db/colecao";
+import "../screens/comunidade.css";
 
 // documentos no idioma do app (as traduções avisam que vale a versão em português)
 const politica = IDIOMA === "en" ? politicaEn : IDIOMA === "es" ? politicaEs : politicaPt;
 const termos = IDIOMA === "en" ? termosEn : IDIOMA === "es" ? termosEs : termosPt;
 import { IDIOMA, t, LOCALE } from "../i18n";
 
-// Tela "Minha conta": entrar, recuperar senha, IAs, documentos e (administrador) recálculos e
-// cadastro de usuários. Novas contas só pelo administrador. Abre de qualquer lugar e o Esc fecha só ela.
+// Tela "Minha conta": entrar, criar conta, recuperar senha e documentos. Logado, abre maior, com
+// Visão Geral (dados, pontos, ranking e contribuições) e Opções (IAs e, para o administrador,
+// usuários, recálculos e camada). Abre de qualquer lugar e o Esc fecha só ela.
 
-type Aba = "entrar" | "senha" | "novaSenha" | "politica" | "termos";
+type Aba = "entrar" | "criar" | "senha" | "novaSenha" | "politica" | "termos";
 
 let aberta: Aba | "conta" | null = null;
 const listeners = new Set<() => void>();
@@ -527,7 +534,9 @@ function Formulario() {
   const conta = useConta();
   const aba = useSyncExternalStore(subscribe, () => aberta);
   const [email, setEmail] = useState("");
+  const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
+  const [aceite, setAceite] = useState(false);
   const [msg, setMsg] = useState<{ tipo: "erro" | "ok"; texto: string } | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -558,34 +567,13 @@ function Formulario() {
     </p>
   );
 
-  if (conta) {
-    return (
-      <>
-        <section>
-          <div className="conta-row">
-            <span>
-              <strong>@{conta.usuario}</strong> · {conta.email}
-              <small className="conta-nivel"> · {NIVEIS.find((n) => n.id === (conta.admin ? "mentor" : conta.nivel))!.label}</small>
-            </span>
-            <button className="ghost-btn" onClick={() => void sair()}>
-              {t("Sair")}</button>
-          </div>
-        </section>
-        <IntegracaoIA />
-        {conta.admin && <UsuariosCadastrados />}
-        {conta.admin && <CadastroUsuarios />}
-        {conta.admin && <Administracao />}
-        {conta.admin && <PublicarCamada />}
-        {docs}
-      </>
-    );
-  }
+  if (conta) return <MinhaConta docs={docs} />;
 
   const abas = (
     <div className="left-tabs conta-tabs" role="tablist">
-      {(["entrar", "senha"] as const).map((a) => (
+      {(["entrar", "criar", "senha"] as const).map((a) => (
         <button key={a} role="tab" aria-selected={aba === a} className={aba === a ? "active" : ""} onClick={() => openConta(a)}>
-          {a === "entrar" ? t("Entrar") : t("Esqueci a senha")}
+          {a === "entrar" ? t("Entrar") : a === "criar" ? t("Criar conta") : t("Esqueci a senha")}
         </button>
       ))}
     </div>
@@ -604,33 +592,238 @@ function Formulario() {
               void enviar(e, async () => {
                 if (aba === "senha") {
                   await recuperarSenha(email);
-                  return "Se o e-mail tiver conta, você vai receber um link para criar uma nova senha.";
+                  return t("Se o e-mail tiver conta, você vai receber um link para criar uma nova senha.");
+                }
+                if (aba === "criar") {
+                  if (!aceite) throw new Error(t("Para criar a conta, aceite a Política de Privacidade e os Termos de Uso."));
+                  const r = await cadastrar(email, usuario, senha);
+                  if (r === "confirmar") return t("Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre.");
+                  return;
                 }
                 await entrar(email, senha);
               })
             }
           >
+            {aba === "criar" && (
+              <label className="field">
+                <span className="field-label">{t("Nome de usuário (aparece como autor e no Rank)")}</span>
+                <input
+                  autoComplete="username"
+                  required
+                  pattern="[a-z0-9_]{3,20}"
+                  title={t("3 a 20 letras minúsculas, números ou _")}
+                  value={usuario}
+                  onChange={(e) => setUsuario(e.target.value.toLowerCase())}
+                />
+              </label>
+            )}
             <label className="field">
               <span className="field-label">{t("E-mail")}</span>
               <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
             {aba !== "senha" && (
               <label className="field">
-                <span className="field-label">{t("Senha")}</span>
-                <input type="password" autoComplete="current-password" required value={senha} onChange={(e) => setSenha(e.target.value)} />
+                <span className="field-label">{aba === "criar" ? t("Senha (mínimo 8 caracteres)") : t("Senha")}</span>
+                <input
+                  type="password"
+                  autoComplete={aba === "criar" ? "new-password" : "current-password"}
+                  required
+                  minLength={aba === "criar" ? 8 : undefined}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                />
+              </label>
+            )}
+            {aba === "criar" && (
+              <label className="conta-aceite">
+                <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} /> {t("Li e aceito a Política de Privacidade e os Termos de Uso.")}
               </label>
             )}
             {msg && <p className={msg.tipo === "erro" ? "db-warning" : "conta-ok"}>{msg.texto}</p>}
             <button className="ghost-btn conta-enviar" type="submit" disabled={enviando}>
-              {enviando ? t("Aguarde…") : aba === "senha" ? t("Enviar link") : t("Entrar")}
+              {enviando ? t("Aguarde…") : aba === "senha" ? t("Enviar link") : aba === "criar" ? t("Criar conta") : t("Entrar")}
             </button>
           </form>
-          <p className="tags-note">{t("Novas contas são criadas pelo administrador do app. Ao entrar, você aceita a Política de Privacidade e os Termos de Uso.")}</p>
+          {aba !== "criar" && <p className="tags-note">{t("Ao entrar, você aceita a Política de Privacidade e os Termos de Uso.")}</p>}
         </>
       )}
       <IntegracaoIA />
       {docs}
     </>
+  );
+}
+
+/** Vai para uma tela do app pelo endereço (o App acompanha o #) e fecha a conta */
+const irPara = (hash: string) => {
+  closeConta();
+  window.location.hash = hash;
+};
+
+/** Conta logada: Visão Geral (dados, pontos, ranking, contribuições) e Opções (IAs, administração) */
+function MinhaConta({ docs }: { docs: ReactNode }) {
+  const conta = useConta()!;
+  // "Cadastrar o Gemini" (aba Vídeo de Combos) abre direto nas Opções
+  const [aba, setAba] = useState<"visao" | "opcoes">(() => (iaInicial ? "opcoes" : "visao"));
+  const nivel = NIVEIS.find((n) => n.id === (conta.admin ? "mentor" : conta.nivel))!;
+  return (
+    <>
+      <div className="conta-topo">
+        <div className="left-tabs conta-tabs conta-abas" role="tablist">
+          {(["visao", "opcoes"] as const).map((a) => (
+            <button key={a} role="tab" aria-selected={aba === a} className={aba === a ? "active" : ""} onClick={() => setAba(a)}>
+              {a === "visao" ? t("Visão Geral") : t("Opções")}
+            </button>
+          ))}
+        </div>
+        <span className="conta-quem">
+          <strong>@{conta.usuario}</strong> <small className="conta-nivel">{nivel.label}</small>
+        </span>
+        <button className="ghost-btn" onClick={() => void sair()}>
+          {t("Sair")}
+        </button>
+      </div>
+      {aba === "visao" ? (
+        <VisaoGeral />
+      ) : (
+        <div className="conta-opcoes">
+          <IntegracaoIA />
+          {conta.admin && <UsuariosCadastrados />}
+          {conta.admin && <CadastroUsuarios />}
+          {conta.admin && <Administracao />}
+          {conta.admin && <PublicarCamada />}
+        </div>
+      )}
+      {docs}
+    </>
+  );
+}
+
+/** Visão Geral: dados básicos, pontos e posição, ranking geral e contribuições */
+function VisaoGeral() {
+  const conta = useConta()!;
+  const nivel = NIVEIS.find((n) => n.id === (conta.admin ? "mentor" : conta.nivel))!;
+  const [contrib, setContrib] = useState<Contribuicoes | null>(null);
+  const [pontos, setPontos] = useState<Awaited<ReturnType<typeof meusPontos>> | null>(null);
+  const [rank, setRank] = useState<Leitura<Duelista[]> | null>(null);
+  const locais = useCombosLocais();
+  const desejos = useListaDesejos();
+  const colecao = useColecao();
+  useEffect(() => {
+    let vivo = true;
+    void minhasContribuicoes(conta.id).then((c) => vivo && setContrib(c));
+    void meusPontos(conta.id).then((p) => vivo && setPontos(p));
+    void rankingDuelistas(5).then((r) => vivo && setRank(r));
+    return () => void (vivo = false);
+  }, [conta.id]);
+  const fmt = (n: number) => n.toLocaleString(LOCALE);
+  const rankAtivo = pontos ? pontos.ok || !pontos.indisponivel : true;
+
+  return (
+    <div className="conta-visao">
+      <section className="conta-cartao conta-dados">
+        <h3>{t("Dados da conta")}</h3>
+        <dl>
+          <dt>{t("Usuário")}</dt>
+          <dd>@{conta.usuario}</dd>
+          <dt>{t("E-mail")}</dt>
+          <dd>{conta.email}</dd>
+          <dt>{t("Nível")}</dt>
+          <dd>
+            {nivel.label}
+            {conta.admin ? t(" · administrador") : ""} <small className="tags-note">({nivel.hint})</small>
+          </dd>
+          <dt>{t("Membro desde")}</dt>
+          <dd>{contrib?.membroDesde ? new Date(contrib.membroDesde).toLocaleDateString(LOCALE) : "—"}</dd>
+          <dt>{t("Minha Coleção")}</dt>
+          <dd>{t("{0} carta(s) diferente(s)", [fmt(new Set(colecao.itens.map((i) => i.cartaId)).size)])}</dd>
+          <dt>{t("Lista de Desejos")}</dt>
+          <dd>
+            <button className="link-btn" onClick={() => irPara("#/desejos")}>
+              {t("{0} carta(s)", [fmt(desejos.itens.length)])}
+            </button>
+          </dd>
+        </dl>
+      </section>
+
+      <section className="conta-cartao conta-pontos">
+        <h3>{t("Pontos")}</h3>
+        {!rankAtivo ? (
+          <p className="tags-note">{t("O Rank ainda não está ativo neste servidor (falta aplicar a atualização do banco das conquistas).")}</p>
+        ) : (
+          <>
+            <span className="rank-meus-pts">{pontos?.ok ? fmt(pontos.dados.pontos) : "…"}</span>
+            <span className="tags-note">
+              {pontos?.ok && pontos.dados.posicao ? t("{0}º lugar no ranking geral", [pontos.dados.posicao]) : t("Compartilhe um combo para entrar no Rank.")}
+            </span>
+            <small className="tags-note">{t("Compartilhar um combo: {0} pts", [PONTOS_POR_COMBO])}</small>
+          </>
+        )}
+      </section>
+
+      <section className="conta-cartao conta-ranking">
+        <h3>{t("Ranking geral")}</h3>
+        {!rank ? (
+          <p className="tags-note">{t("Carregando…")}</p>
+        ) : !rank.ok ? (
+          <p className="tags-note">{rank.indisponivel ? t("O Rank ainda não está ativo neste servidor (falta aplicar a atualização do banco das conquistas).") : rank.erro}</p>
+        ) : !rank.dados.length ? (
+          <p className="tags-note">{t("Ninguém pontuou ainda. Compartilhe o primeiro combo!")}</p>
+        ) : (
+          <ol className="rank-tabela rank-tabela-curta">
+            {rank.dados.map((d, i) => (
+              <li key={d.usuario_id} className={d.usuario_id === conta.id ? "rank-eu" : ""}>
+                <span className="rank-pos">{["🥇", "🥈", "🥉"][i] ?? `${i + 1}º`}</span>
+                <span className="rank-nome">@{d.usuario}</span>
+                <span className="rank-pts">{t("{0} pts", [fmt(d.pontos)])}</span>
+              </li>
+            ))}
+            {pontos?.ok && pontos.dados.posicao && pontos.dados.posicao > rank.dados.length && (
+              <li className="rank-eu">
+                <span className="rank-pos">{pontos.dados.posicao}º</span>
+                <span className="rank-nome">@{conta.usuario}</span>
+                <span className="rank-pts">{t("{0} pts", [fmt(pontos.dados.pontos)])}</span>
+              </li>
+            )}
+          </ol>
+        )}
+        <button className="ghost-btn" onClick={() => irPara("#/rank")}>
+          {t("Ver o Rank completo")} →
+        </button>
+      </section>
+
+      <section className="conta-cartao conta-contrib">
+        <h3>{t("Contribuições")}</h3>
+        {!contrib ? (
+          <p className="tags-note">{t("Carregando…")}</p>
+        ) : (
+          <ul>
+            <li>
+              <strong>{fmt(contrib.combosCompartilhados)}</strong> {t("combo(s) compartilhado(s) com todos")}
+            </li>
+            <li>
+              <strong>{fmt(contrib.combosSoMeus)}</strong> {t("combo(s) só seus (compartilhe para pontuar)")}
+            </li>
+            {locais.length > 0 && (
+              <li>
+                <strong>{fmt(locais.length)}</strong> {t("combo(s) neste aparelho (exportar: Usuário Avançado ou Mentor)")}
+              </li>
+            )}
+            <li>
+              <strong>{fmt(contrib.artigosAprovados)}</strong> {t("artigo(s) publicado(s) no Guia de Deck")}
+              {contrib.artigosPendentes > 0 && <small className="tags-note"> {t("· {0} aguardando aprovação", [contrib.artigosPendentes])}</small>}
+            </li>
+          </ul>
+        )}
+        <div className="conta-atalhos">
+          <button className="ghost-btn" onClick={() => irPara("#/combos")}>
+            {t("Combos")}
+          </button>
+          <button className="ghost-btn" onClick={() => irPara("#/comunidade")}>
+            {t("Comunidade")}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -693,7 +886,7 @@ export function ContaDialog() {
 
   return createPortal(
     <div className="overlay fontes-overlay" onClick={closeConta}>
-      <div className="dialog fontes-dialog conta-dialog" role="dialog" aria-modal="true" aria-labelledby="conta-title" onClick={(e) => e.stopPropagation()}>
+      <div className={`dialog fontes-dialog conta-dialog ${conta && aba === "conta" ? "conta-grande" : ""}`} role="dialog" aria-modal="true" aria-labelledby="conta-title" onClick={(e) => e.stopPropagation()}>
         <div className="fontes-head">
           <h2 id="conta-title">{titulo}</h2>
           <span>

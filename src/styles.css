@@ -128,10 +128,10 @@ kbd {
 /* ---------- Menu principal ---------- */
 
 .menu {
-  width: min(440px, 100%);
+  width: min(1180px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 32px;
   animation: rise 0.6s ease-out both;
 }
 
@@ -163,10 +163,35 @@ kbd {
   color: var(--text-dim);
 }
 
+/* até 3 colunas com até 4 opções cada; 2 colunas em telas médias e 1 no celular */
 .menu-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+
+.menu-coluna {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  min-width: 0;
+}
+
+.menu-coluna-titulo {
+  margin: 0 0 2px 4px;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+@media (max-width: 1100px) {
+  .menu-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .menu-btn {
@@ -200,7 +225,7 @@ kbd {
 
 .menu-btn:hover,
 .menu-btn:focus-visible {
-  transform: translateX(6px);
+  transform: translateY(-3px);
   border-color: var(--accent);
   box-shadow:
     0 0 0 1px var(--accent),
@@ -208,7 +233,7 @@ kbd {
 }
 
 .menu-btn:active {
-  transform: translateX(6px) scale(0.985);
+  transform: translateY(-3px) scale(0.985);
 }
 
 .menu-btn-icon {
@@ -920,4 +945,190 @@ kbd {
     max-width: 100%;
     overflow-x: auto;
   }
+}
+
+/* ---------- Minha conta logada: janela maior com Visão Geral | Opções ---------- */
+
+.dialog.conta-dialog.conta-grande {
+  width: min(1040px, 96vw);
+  max-height: min(880px, 92vh);
+}
+
+.conta-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.conta-topo .conta-abas {
+  margin: 0;
+}
+
+.conta-quem {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conta-visao {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.conta-cartao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.conta-cartao h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.conta-cartao > .ghost-btn {
+  align-self: flex-start;
+}
+
+.conta-dados dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.conta-dados dt {
+  color: var(--text-dim);
+}
+
+.conta-dados dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.conta-pontos {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.conta-contrib ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+.conta-atalhos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.conta-ranking .rank-tabela li {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+}
+
+@media (max-width: 760px) {
+  .conta-visao {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .conta-quem {
+    text-align: left;
+  }
+}
+
+/* ---------- Menu principal: colunas sem itens sobrepostos ou pequenos ---------- */
+
+.menu-coluna .menu-btn {
+  min-height: 84px;
+}
+
+.menu-btn-hint {
+  line-height: 1.3;
+}
+
+/*
+ * Telas médias (2 colunas) ou baixas: o menu pode passar da altura da janela. Ele passa a rolar a
+ * partir do topo (centralizado, a parte de cima ficaria cortada) e idioma/conta entram no fluxo,
+ * acima do logo, em vez de ficarem por cima dos botões.
+ */
+@media (max-width: 1100px), (max-height: 820px) {
+  .stage:has(.menu) {
+    grid-template-rows: auto auto;
+    align-content: start;
+    overflow-y: auto;
+  }
+
+  .menu-topo {
+    position: static;
+    justify-self: end;
+    margin-bottom: 10px;
+  }
+
+  .menu {
+    padding-bottom: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .menu-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .menu-coluna {
+    gap: 8px;
+  }
+
+  .menu-coluna .menu-btn {
+    min-height: 0;
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .menu-btn-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .menu-btn-label {
+    font-size: 0.98rem;
+  }
+
+  .menu-footer {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 14px;
+  }
+}
+
+/* abas da conta numa linha só (Entrar | Criar conta | Esqueci a senha; Visão Geral | Opções) */
+.left-tabs.conta-tabs {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: none;
+}
+
+.left-tabs.conta-tabs button {
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.left-tabs.conta-abas {
+  min-width: 260px;
 }

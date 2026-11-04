@@ -59,6 +59,9 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
     { label: t("Como Utilizar"), hint: t("Manual de cada tela, com exemplos"), icon: <HelpIcon />, accent: "cyan", action: onManual },
     { label: t("Sair"), hint: isDesktop ? t("Fechar o aplicativo") : t("Encerrar a sessão"), icon: <ExitIcon />, accent: "red", action: onExit },
   ];
+  // até 3 colunas com até 4 opções cada (a ordem de items é a das colunas)
+  const POR_COLUNA = 4;
+  const colunas = [t("Explorar"), t("Seus decks e cartas"), t("Comunidade e app")].map((titulo, c) => ({ titulo, itens: items.slice(c * POR_COLUNA, (c + 1) * POR_COLUNA) }));
 
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const activeRef = useRef(active);
@@ -73,9 +76,15 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
       const alvo = e.target as HTMLElement | null;
       if (alvo?.closest("input, textarea, select, [contenteditable]")) return;
       const current = refs.current.findIndex((el) => el === document.activeElement);
+      // ↑ ↓ dentro da coluna (e passam para a próxima no fim); ← → para a coluna ao lado, na mesma linha
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const step = e.key === "ArrowDown" ? 1 : -1;
+        const next = (Math.max(current, 0) + step + items.length) % items.length;
+        refs.current[next]?.focus();
+      } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        const step = e.key === "ArrowRight" ? 4 : -4;
         const next = (Math.max(current, 0) + step + items.length) % items.length;
         refs.current[next]?.focus();
       }
@@ -109,26 +118,31 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
       </header>
 
       <nav className="menu-list" aria-label={t("Menu principal")}>
-        {items.map((item, i) => (
-          <button
-            key={item.label}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            className={`menu-btn accent-${item.accent}`}
-            onClick={item.action}
-          >
-            <span className="menu-btn-icon">{item.icon}</span>
-            <span className="menu-btn-text">
-              <span className="menu-btn-label">{item.label}</span>
-              <span className="menu-btn-hint">{item.hint}</span>
-            </span>
-          </button>
+        {colunas.map((col, c) => (
+          <div key={col.titulo} className="menu-coluna" role="group" aria-label={col.titulo}>
+            <h2 className="menu-coluna-titulo">{col.titulo}</h2>
+            {col.itens.map((item, j) => (
+              <button
+                key={item.label}
+                ref={(el) => {
+                  refs.current[c * POR_COLUNA + j] = el;
+                }}
+                className={`menu-btn accent-${item.accent}`}
+                onClick={item.action}
+              >
+                <span className="menu-btn-icon">{item.icon}</span>
+                <span className="menu-btn-text">
+                  <span className="menu-btn-label">{item.label}</span>
+                  <span className="menu-btn-hint">{item.hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 
       <footer className="menu-footer">
-        <span>{t("↑ ↓ navegar")}</span>
+        <span>{t("↑ ↓ ← → navegar")}</span>
         <span>{t("Enter selecionar")}</span>
         <span title={BUILD_LABEL}>{t("v{0} · {1} · {2}", [VERSION_LABEL, isDesktop ? t("Desktop") : t("Web"), BUILD_LABEL])}</span>
       </footer>

@@ -86,6 +86,8 @@ function traduzir(msg: string): string {
   if (/already registered|already exists/i.test(msg)) return t("Já existe uma conta com este e-mail.");
   if (/password should be at least/i.test(msg)) return t("A senha precisa ter pelo menos 8 caracteres.");
   if (/rate limit/i.test(msg)) return t("Muitas tentativas. Aguarde alguns minutos.");
+  // o servidor ainda com o bloqueio de cadastro (migração 20261104000000 não aplicada)
+  if (/database error saving new user|cadastro de novos usuários desativado/i.test(msg)) return t("O cadastro de novas contas ainda não foi liberado no servidor. Tente mais tarde.");
   return msg;
 }
 
@@ -101,9 +103,22 @@ export async function entrar(email: string, senha: string) {
 }
 
 /**
- * Cadastro de usuário (só o administrador): o banco cria a conta já confirmada e o perfil com o
- * nome de usuário. O cadastro público por e-mail fica bloqueado no banco.
+ * Cadastro pelo próprio usuário: o perfil (nome de usuário) é criado no banco pelo gatilho do
+ * cadastro. Sem sessão na volta, o projeto pede a confirmação do e-mail antes do primeiro acesso.
  */
+export async function cadastrar(email: string, usuario: string, senha: string): Promise<"confirmar" | "pronto"> {
+  const sb = exigirCliente();
+  const nome = usuario.trim().toLowerCase();
+  if (!USUARIO.test(nome)) throw new Error(t("Usuário: 3 a 20 letras minúsculas, números ou _."));
+  if (senha.length < 8) throw new Error(t("A senha precisa ter pelo menos 8 caracteres."));
+  const { data: livre } = await sb.rpc("usuario_disponivel", { nome });
+  if (livre === false) throw new Error(t("Este nome de usuário já está em uso."));
+  const { data, error } = await sb.auth.signUp({ email: email.trim(), password: senha, options: { data: { usuario: nome } } });
+  if (error) throw new Error(traduzir(error.message));
+  return data.session ? "pronto" : "confirmar";
+}
+
+/** Cadastro feito pelo administrador: o banco cria a conta já confirmada e o perfil com o nome de usuário */
 export async function criarUsuarioComoAdmin(usuario: string, email: string, senha: string) {
   const nome = usuario.trim().toLowerCase();
   if (!USUARIO.test(nome)) throw new Error(t("Usuário: 3 a 20 letras minúsculas, números ou _."));
