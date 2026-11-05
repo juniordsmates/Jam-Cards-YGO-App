@@ -79,11 +79,11 @@
 }
 
 .gd-tend.sobe {
-  color: #1d7a46;
+  color: var(--ok);
 }
 
 .gd-tend.desce {
-  color: #b3261e;
+  color: var(--erro);
 }
 
 .gd-lista button.active .gd-tend {
@@ -233,7 +233,7 @@
 
 .gd-resp {
   font-size: 0.78rem;
-  color: #a4471c;
+  color: var(--laranja);
 }
 
 .gd-campo {
@@ -337,13 +337,13 @@
 }
 
 .gd-pendente {
-  color: #8a5a00;
+  color: var(--aviso);
   background: color-mix(in srgb, #e0a100 18%, transparent);
 }
 
 .gd-recusado {
-  color: #b3261e;
-  background: color-mix(in srgb, #b3261e 12%, transparent);
+  color: var(--erro);
+  background: color-mix(in srgb, var(--erro) 12%, transparent);
 }
 
 .gd-recusar input {

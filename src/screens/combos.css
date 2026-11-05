@@ -499,7 +499,7 @@
   display: block;
   margin: 2px 0 0;
   font-size: 0.74rem;
-  color: #a1461c;
+  color: var(--laranja);
 }
 
 .vc-resp-label {
@@ -513,7 +513,7 @@
 .vc-resp-sempre {
   margin: 8px 0 0;
   padding: 6px 10px;
-  background: color-mix(in srgb, #a1461c 7%, transparent);
+  background: color-mix(in srgb, var(--laranja) 7%, transparent);
   border-radius: 8px;
 }
 
@@ -529,7 +529,7 @@
   margin-left: 6px;
   font-size: 0.74rem;
   font-weight: 700;
-  color: #a1461c;
+  color: var(--laranja);
 }
 
 /* ---------- Janela: todas as respostas ---------- */
@@ -600,13 +600,13 @@
 .rt-classe.rt-torneio {
   color: #fff;
   background: #a1461c;
-  border-color: #a1461c;
+  border-color: var(--laranja);
 }
 
 .rt-classe.rt-ht-staple,
 .rt-classe.rt-hand-trap {
-  color: #a1461c;
-  border-color: color-mix(in srgb, #a1461c 45%, transparent);
+  color: var(--laranja);
+  border-color: color-mix(in srgb, var(--laranja) 45%, transparent);
 }
 
 @media (max-width: 640px) {
@@ -638,13 +638,13 @@
 
 /* combo válido (ou não) na banlist atual do formato */
 .combo-validade.valido {
-  color: #1d7a46;
-  background: color-mix(in srgb, #1d7a46 12%, transparent);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
 }
 
 .combo-validade.invalido {
-  color: #b3261e;
-  background: color-mix(in srgb, #b3261e 12%, transparent);
+  color: var(--erro);
+  background: color-mix(in srgb, var(--erro) 12%, transparent);
 }
 
 .combos-comunidade {
@@ -674,6 +674,6 @@
 }
 
 .combo-excluir-ok {
-  color: #b3261e;
+  color: var(--erro);
   font-weight: 700;
 }

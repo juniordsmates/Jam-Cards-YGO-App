@@ -82,7 +82,7 @@
 
 .tj-m,
 .tj-em {
-  border-color: #c23a6a;
+  border-color: var(--rosa);
 }
 
 .tj-st,
@@ -710,7 +710,7 @@
   line-height: 1.2;
   color: #fff;
   background: rgb(194 58 106 / 0.35);
-  border: 2px dashed #c23a6a;
+  border: 2px dashed var(--rosa);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -739,7 +739,7 @@
 }
 
 .tj-lp-op strong {
-  color: #c23a6a;
+  color: var(--rosa);
 }
 
 /* painel das Indicações de resposta (coluna da direita, entre as fases e os botões) */
@@ -823,7 +823,7 @@
 }
 
 .tj-ind-tem h5 {
-  color: #c23a6a;
+  color: var(--rosa);
 }
 
 .tj-ind-grupo ul {
@@ -872,7 +872,7 @@
 }
 
 .tj-ind-aviso {
-  color: #b3261e;
+  color: var(--erro);
 }
 
 .tj-ind-impedida {
@@ -881,7 +881,7 @@
 
 .tj-ind-onde {
   font-size: 0.72rem;
-  color: #c23a6a;
+  color: var(--rosa);
 }
 
 .tj-ind-selos {
@@ -938,7 +938,7 @@
 .tj-adicionar-sugestoes em {
   grid-column: 2;
   font-size: 0.66rem;
-  color: #b3261e;
+  color: var(--erro);
 }
 
 .tj-adicionar-destinos {
@@ -950,7 +950,7 @@
 
 .tj-adicionar-acao {
   font-weight: 700;
-  color: #c23a6a;
+  color: var(--rosa);
 }
 
 /* as mãos não encolhem (as cartas não invadem o campo) */

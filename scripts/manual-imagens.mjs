@@ -35,6 +35,8 @@ await page.evaluate(
     localStorage.setItem("cartas-decks", JSON.stringify({ decks: [deck], padrao: deck.id }));
     localStorage.setItem("cartas-colecao", JSON.stringify({ itens: colecao }));
     localStorage.setItem("cartas-editor-estoque", "todas");
+    // fotos no modo claro, qualquer que seja o tema do sistema
+    localStorage.setItem("cartas-tema", "claro");
     // Teste Avançado sem login (só vale no servidor de desenvolvimento)
     localStorage.setItem("cartas-dev-avancado", "1");
   },

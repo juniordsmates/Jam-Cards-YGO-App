@@ -7,6 +7,7 @@ import { isContaOpen } from "../components/Conta";
 import { isFontesOpen } from "../components/Fontes";
 import { isRespostasOpen } from "../components/RespostasDialog";
 import { definirIdioma, IDIOMA, IDIOMAS_APP, t } from "../i18n";
+import { definirTema, useTema } from "../tema";
 
 type Props = {
   /** false enquanto um diálogo está aberto por cima do menu */
@@ -45,6 +46,7 @@ type Item = {
 
 export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onDesejos, onComunidade, onRank, onManual, onExit, onConta }: Props) {
   const conta = useConta();
+  const tema = useTema();
   const items: Item[] = [
     { label: t("Buscar Carta"), hint: t("Encontre qualquer carta"), icon: <SearchIcon />, accent: "cyan", action: onSearch },
     { label: t("Combos"), hint: t("Mão inicial e Combo Search"), icon: <ComboIcon />, accent: "cyan", action: onCombos },
@@ -97,8 +99,16 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
   return (
     <>
     {/* fora do bloco animado do menu: canto superior direito da tela */}
-    {/* idioma do app (recarrega ao trocar), ao lado da conta */}
+    {/* tema (claro/escuro) e idioma do app (recarrega ao trocar), ao lado da conta */}
     <div className="menu-topo">
+    <div className="menu-idioma menu-tema" role="radiogroup" aria-label={t("Tema")}>
+      <button role="radio" aria-checked={tema === "claro"} className={tema === "claro" ? "active" : ""} onClick={() => definirTema("claro")} title={t("Modo claro")}>
+        {t("☀ Claro")}
+      </button>
+      <button role="radio" aria-checked={tema === "escuro"} className={tema === "escuro" ? "active" : ""} onClick={() => definirTema("escuro")} title={t("Modo escuro")}>
+        {t("☾ Escuro")}
+      </button>
+    </div>
     <div className="menu-idioma" role="radiogroup" aria-label={t("Idioma / Language / Idioma")}>
       {IDIOMAS_APP.map((i) => (
         <button key={i.id} role="radio" aria-checked={IDIOMA === i.id} className={IDIOMA === i.id ? "active" : ""} onClick={() => definirIdioma(i.id)} title={i.label}>

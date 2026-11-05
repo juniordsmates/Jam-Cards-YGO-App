@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import "@fontsource/orbitron/500.css";
 import "@fontsource/orbitron/800.css";
 import "./styles.css";
+import "./tema";
 import App from "./App";
 import ErroApp from "./components/ErroApp";
 import { isDesktop } from "./platform";

@@ -3,6 +3,7 @@
   --bg-elev: #ffffff;
   --panel: rgb(255 255 255 / 0.78);
   --skeleton: #ebe9f5;
+  --skeleton-brilho: #f6f5fc;
   --line: #e2dfef;
   --text: #1b1830;
   --text-dim: #6b6787;
@@ -10,11 +11,45 @@
   --magenta: #d61f8f;
   --red: #e0364f;
   --on-accent: #ffffff;
+  /* textos de estado (certo, erro, aviso…) sobre o fundo das telas */
+  --ok: #1d7a46;
+  --erro: #b3261e;
+  --aviso: #8a5a00;
+  --laranja: #a1461c;
+  --roxo: #7a3fd1;
+  --rosa: #c23a6a;
   --shadow: 0 6px 24px rgb(40 30 90 / 0.08);
   --font-display: "Orbitron", system-ui, sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 14px;
   color-scheme: light;
+}
+
+/*
+ * Modo escuro (src/tema.ts põe data-tema="escuro" no <html>): fundo azul-acinzentado escuro, nunca
+ * preto, e as cores de destaque e de estado mais claras para manter o contraste.
+ */
+:root[data-tema="escuro"] {
+  --bg: #161d2b;
+  --bg-elev: #1f2839;
+  --panel: rgb(31 40 57 / 0.82);
+  --skeleton: #273246;
+  --skeleton-brilho: #334059;
+  --line: #313d55;
+  --text: #e3e8f3;
+  --text-dim: #98a3bb;
+  --cyan: #22bfdc;
+  --magenta: #f0459f;
+  --red: #ff5f74;
+  --on-accent: #ffffff;
+  --ok: #5cc98a;
+  --erro: #ff8a80;
+  --aviso: #e4b44c;
+  --laranja: #f0975f;
+  --roxo: #b08cff;
+  --rosa: #ff7eaa;
+  --shadow: 0 6px 24px rgb(5 10 25 / 0.35);
+  color-scheme: dark;
 }
 
 * {
@@ -530,11 +565,11 @@ kbd {
 }
 
 .ia-pronta {
-  border-color: color-mix(in srgb, #1d7a46 55%, var(--line));
+  border-color: color-mix(in srgb, var(--ok) 55%, var(--line));
 }
 
 .ia-pronta small {
-  color: #1d7a46;
+  color: var(--ok);
 }
 
 .ia-detalhe .conta-row h3 {
@@ -587,7 +622,7 @@ kbd {
 .conta-ok {
   margin: 8px 0;
   font-size: 0.84rem;
-  color: #12805c;
+  color: var(--ok);
 }
 
 .conta-docs {
@@ -720,7 +755,7 @@ kbd {
 
 .botao-link-aviso {
   max-width: 320px;
-  color: #8a5a00;
+  color: var(--aviso);
 }
 
 .combo-compartilhado {

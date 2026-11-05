@@ -2162,4 +2162,10 @@ export const EN: Record<string, string> = {
   "✓ Detalhes copiados": "✓ Details copied",
   "Copiar detalhes do erro": "Copy error details",
   "componentStack:": "componentStack:",
+  "Tema": "Theme",
+  "Modo claro": "Light mode",
+  "Modo escuro": "Dark mode",
+  "☀ Claro": "☀ Light",
+  "☾ Escuro": "☾ Dark",
+  "Mais à esquerda, **☀ Claro / ☾ Escuro** troca o tema de todas as telas na hora. O modo escuro usa um fundo azul-acinzentado. A escolha fica salva neste aparelho; na primeira vez, o app segue o tema do sistema.": "Further left, **☀ Light / ☾ Dark** switches the theme of every screen right away. Dark mode uses a blue-gray background. The choice is saved on this device; the first time, the app follows the system theme.",
 };

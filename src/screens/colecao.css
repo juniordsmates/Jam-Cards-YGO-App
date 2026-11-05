@@ -153,5 +153,5 @@
 }
 
 .col-erro td {
-  color: #b3261e;
+  color: var(--erro);
 }

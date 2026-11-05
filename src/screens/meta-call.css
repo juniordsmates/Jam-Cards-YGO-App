@@ -92,11 +92,11 @@
 }
 
 .mc-lista .sobe {
-  color: #1d7a46;
+  color: var(--ok);
 }
 
 .mc-lista .desce {
-  color: #b3261e;
+  color: var(--erro);
 }
 
 .mc-peso {
@@ -225,7 +225,7 @@
 }
 
 .mc-possuo {
-  color: #1d7a46;
+  color: var(--ok);
 }
 
 .mc-cats {
@@ -272,7 +272,7 @@
 }
 
 .mc-ban {
-  color: #8a5a00;
+  color: var(--aviso);
 }
 
 .mc-papel {
@@ -331,11 +331,11 @@
 }
 
 .mc-requisito {
-  color: #8a5a00;
+  color: var(--aviso);
 }
 
 .mc-aviso {
-  color: #b3261e;
+  color: var(--erro);
 }
 
 .mc-detalhe {
@@ -372,11 +372,11 @@
 }
 
 .mc-selo-ban {
-  color: #8a5a00;
+  color: var(--aviso);
 }
 
 .mc-selo-possuo {
-  color: #1d7a46;
+  color: var(--ok);
 }
 
 /* consultar decks: qualquer arquétipo, relevante agora ou no passado */
@@ -466,8 +466,8 @@
 }
 
 .mc-add.on {
-  color: #1d7a46;
-  border-color: #1d7a46;
+  color: var(--ok);
+  border-color: var(--ok);
 }
 
 .mc-sub {

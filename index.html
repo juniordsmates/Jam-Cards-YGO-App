@@ -10,6 +10,14 @@
     <meta name="GPTBot" content="noindex, nofollow" />
     <meta name="CCBot" content="noindex, nofollow" />
     <meta name="tdm-reservation" content="1" />
+    <!-- modo claro/escuro salvo (src/tema.ts), aplicado antes de desenhar para a tela não piscar -->
+    <script>
+      try {
+        var t = localStorage.getItem("cartas-tema");
+        if (t !== "claro" && t !== "escuro") t = matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro";
+        document.documentElement.dataset.tema = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

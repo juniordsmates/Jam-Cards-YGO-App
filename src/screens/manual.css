@@ -122,8 +122,8 @@
 }
 
 .manual-exemplo {
-  background: color-mix(in srgb, #1d7a46 9%, transparent);
-  border-left: 4px solid #1d7a46;
+  background: color-mix(in srgb, var(--ok) 9%, transparent);
+  border-left: 4px solid var(--ok);
 }
 
 .manual-ligacoes {
