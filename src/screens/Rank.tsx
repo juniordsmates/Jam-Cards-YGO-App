@@ -11,7 +11,7 @@ import "./comunidade.css";
 
 const MEDALHA = ["🥇", "🥈", "🥉"];
 
-export default function Rank({ onBack, onComunidade }: { onBack: () => void; onComunidade: () => void }) {
+export default function Rank({ onBack, onComunidade, onConquistas }: { onBack: () => void; onComunidade: () => void; onConquistas: () => void }) {
   const conta = useConta();
   const [lista, setLista] = useState<Leitura<Duelista[]> | null>(null);
   const [meus, setMeus] = useState<Awaited<ReturnType<typeof meusPontos>> | null>(null);
@@ -31,7 +31,17 @@ export default function Rank({ onBack, onComunidade }: { onBack: () => void; onC
   const fmt = (n: number) => n.toLocaleString(LOCALE);
 
   return (
-    <ScreenShell title={t("Rank")} accent="magenta" onBack={onBack} plain>
+    <ScreenShell
+      title={t("Rank")}
+      accent="magenta"
+      onBack={onBack}
+      plain
+      actions={
+        <button className="ghost-btn" onClick={onConquistas}>
+          {t("Conquistas")} →
+        </button>
+      }
+    >
       <div className="rank">
         <section className="rank-topo">
           <div className="rank-regra">

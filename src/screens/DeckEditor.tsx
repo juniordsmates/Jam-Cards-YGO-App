@@ -26,6 +26,7 @@ import { ATTRIBUTES, kindLabel, levelLabel, MONSTER_CLASSES, MONSTER_RACES, SPEL
 import { FORMATS, type GameFormat } from "../db/legality";
 import { EMPTY_FILTERS, searchCards, type Filters, type SortKey } from "../db/search";
 import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
+import { conquistar } from "../db/minhasConquistas";
 import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
 import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
@@ -261,7 +262,10 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     if (!nome) return;
     const existente = deckComNome(nome, nomeando.modo === "renomear" ? trabalho?.id : undefined);
     if (nomeando.modo === "novo") setDeckId(criarDeck(nome).id);
-    else if (nomeando.modo === "salvarComo" && trabalho) setDeckId(criarDeck(nome, { main: trabalho.main, extra: trabalho.extra, side: trabalho.side }).id);
+    else if (nomeando.modo === "salvarComo" && trabalho) {
+      setDeckId(criarDeck(nome, { main: trabalho.main, extra: trabalho.extra, side: trabalho.side }).id);
+      conquistar("meu_primeiro_deck");
+    }
     else if (nomeando.modo === "renomear" && trabalho && existente) {
       // renomear para um nome que já existe: este deck vai por cima do existente
       salvarDeck({ ...existente, main: trabalho.main, extra: trabalho.extra, side: trabalho.side });
@@ -278,6 +282,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const salvar = () => {
     if (!trabalho) return;
     salvarDeck(trabalho);
+    conquistar("meu_primeiro_deck");
     avisar("ok", conta ? t("Deck salvo neste computador e na sua conta.") : t("Deck salvo neste computador."));
   };
 
@@ -290,6 +295,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
     if (!deck.main.length && !deck.extra.length) return avisar("erro", "Nenhuma carta reconhecida. Use um arquivo .ydk (#main, #extra, !side) ou um link ydke://.");
     const nome = nomeArquivo?.replace(/\.(ydk|txt)$/i, "").trim() || t("Deck importado");
     const novo = criarDeck(nome, { main: deck.main, extra: deck.extra, side: [] });
+    conquistar("meu_primeiro_deck");
     setDeckId(novo.id);
     setTrabalho({ ...novo, main: [...novo.main], extra: [...novo.extra], side: [] });
     setImportando(false);

@@ -57,7 +57,7 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
     { label: t("Minha Coleção"), hint: t("Cartas que você possui, raridades e valor"), icon: <CollectionIcon />, accent: "magenta", action: onColecao },
     { label: t("Lista de Desejos"), hint: t("Cartas que você quer conseguir"), icon: <HeartIcon />, accent: "magenta", action: onDesejos },
     { label: t("Comunidade"), hint: t("Por arquétipo: quem mais compartilha, combos e guia"), icon: <PeopleIcon />, accent: "magenta", action: onComunidade },
-    { label: t("Rank"), hint: t("Duelistas com mais pontos"), icon: <TrophyIcon />, accent: "magenta", action: onRank },
+    { label: t("Rank e Conquistas"), hint: t("Duelistas com mais pontos e suas conquistas"), icon: <TrophyIcon />, accent: "magenta", action: onRank },
     { label: t("Como Utilizar"), hint: t("Manual de cada tela, com exemplos"), icon: <HelpIcon />, accent: "cyan", action: onManual },
     { label: t("Sair"), hint: isDesktop ? t("Fechar o aplicativo") : t("Encerrar a sessão"), icon: <ExitIcon />, accent: "red", action: onExit },
   ];

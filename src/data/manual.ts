@@ -35,7 +35,7 @@ export const CAPITULOS: Capitulo[] = [
       {
         titulo: t("Menu principal"),
         itens: [
-          t("Os botões ficam em três colunas: **Explorar** (Buscar Carta, Combos, Guia de Deck, Meta Call), **Seus decks e cartas** (Editor de Deck, Teste de Jogo, Minha Coleção, Lista de Desejos) e **Comunidade e app** (Comunidade, Rank, este Como Utilizar e Sair). Em telas menores viram duas colunas e, no celular, uma."),
+          t("Os botões ficam em três colunas: **Explorar** (Buscar Carta, Combos, Guia de Deck, Meta Call), **Seus decks e cartas** (Editor de Deck, Teste de Jogo, Minha Coleção, Lista de Desejos) e **Comunidade e app** (Comunidade, Rank e Conquistas, este Como Utilizar e Sair). Em telas menores viram duas colunas e, no celular, uma."),
           t("Dá para navegar com as setas do teclado (**↑ ↓** na coluna, **← →** entre as colunas) e abrir com **Enter**. Em qualquer tela, **Esc** volta para a anterior."),
           t("No canto superior direito fica **Entrar**: com uma conta, seus decks, sua coleção e seus combos ficam salvos na nuvem e aparecem em qualquer computador ou navegador."),
           t("Ao lado, **Português / English / Español** troca o idioma de todo o app (ele recarrega na hora). Em inglês e espanhol, as cartas aparecem com o nome e o texto oficiais em inglês; a busca continua aceitando o nome em português."),
@@ -567,13 +567,39 @@ export const CAPITULOS: Capitulo[] = [
       {
         titulo: t("Pontos e Rank"),
         itens: [
-          t("Por enquanto, as conquistas são só pontos: **compartilhar um combo vale 5 pontos** (Combo da Comunidade compartilhado com todos, criado por você)."),
+          t("**Compartilhar um combo vale 5 pontos** (Combo da Comunidade compartilhado com todos, criado por você)."),
           t("Os pontos são calculados pelo servidor a partir dos combos: tirar o compartilhamento ou excluir o combo tira os pontos dele, e salvar o mesmo combo de novo não soma outra vez."),
-          t("O **Rank** lista os duelistas com mais pontos e mostra os seus pontos e a sua posição (com login)."),
+          t("O **Rank** lista os duelistas com mais pontos e mostra os seus pontos e a sua posição (com login). O botão **Conquistas**, no topo, abre as suas conquistas."),
         ],
       },
     ],
     ligacoes: [t("Os combos vêm da aba Combos e do Teste de Jogo (Arquétipos vinculados); o guia, do Guia de Deck.")],
+  },
+  {
+    id: "conquistas",
+    titulo: t("Conquistas"),
+    resumo: t("Conquistas desbloqueáveis, como os troféus do PS5 e as conquistas da Steam: cada uma tem um ícone (a arte de uma carta), uma descrição e um nível. Abra pelo botão **Conquistas** no Rank, pela Visão Geral da conta ou tocando no aviso de desbloqueio."),
+    imagem: { arquivo: "conquistas.jpg", legenda: t("Conquistas com duas desbloqueadas") },
+    topicos: [
+      {
+        titulo: t("Como funcionam"),
+        itens: [
+          t("No topo, quantas você já tem e a porcentagem. As bloqueadas aparecem apagadas, com cadeado; as obtidas mostram a data."),
+          t("Ao desbloquear, aparece um aviso no alto da tela (em qualquer tela); toque nele para abrir as Conquistas."),
+          t("Cada conquista tem um nível (**Bronze**, **Prata**, **Ouro** ou **Platina**) e, com o servidor ativo, a **raridade**: quantos % dos duelistas com conta já a obtiveram."),
+          t("Sem login, as conquistas ficam neste aparelho; ao entrar, vão para a sua conta, e as da conta aparecem aqui. Quem já tinha compartilhado combos ou salvo decks na conta já começa com essas conquistas."),
+        ],
+      },
+      {
+        titulo: t("As conquistas"),
+        itens: [
+          t("**Compartilhar**: obtida após compartilhar o primeiro combo (Combo da Comunidade compartilhado com todos)."),
+          t("**Entrando na Comunidade**: obtida após entrar na aba Comunidade e acessar qualquer arquétipo."),
+          t("**Meu Primeiro Deck**: obtida após salvar o primeiro deck (Salvar, Salvar como ou Importar deck list no Editor de Deck)."),
+        ],
+      },
+    ],
+    ligacoes: [t("As conquistas vêm da aba Combos e do Teste de Jogo (compartilhar), da Comunidade e do Editor de Deck.")],
   },
   {
     id: "conta",
@@ -586,7 +612,7 @@ export const CAPITULOS: Capitulo[] = [
         itens: [
           t("**Entrar** com e-mail e senha. **Esqueci a senha** envia um link; ao abri-lo, o app pede a senha nova."),
           t("**Criar conta**: nome de usuário (3 a 20 letras minúsculas, números ou _; aparece como autor e no Rank), e-mail, senha de 8+ caracteres e o aceite da Política de Privacidade e dos Termos de Uso. Se o servidor pedir, confirme pelo link enviado ao e-mail antes de entrar."),
-          t("Logado, a tela fica maior e tem duas abas. **Visão Geral**: dados da conta (usuário, e-mail, nível, membro desde, coleção e Lista de Desejos), os seus **pontos** e a posição, o **ranking geral** (os 5 primeiros, com você destacado) e as **contribuições** (combos compartilhados, combos só seus, combos no aparelho e artigos). **Opções**: as IAs e, para o administrador, usuários, recálculos e camada."),
+          t("Logado, a tela fica maior e tem duas abas. **Visão Geral**: dados da conta (usuário, e-mail, nível, membro desde, coleção e Lista de Desejos), os seus **pontos** e a posição, o **ranking geral** (os 5 primeiros, com você destacado), as **contribuições** (combos compartilhados, combos só seus, combos no aparelho e artigos) e as **conquistas** (os ícones e quantas você já tem). **Opções**: as IAs e, para o administrador, usuários, recálculos e camada."),
           t("Com login, ficam salvos: decks, coleção, combos que você cria e, se quiser, as IAs."),
         ],
       },

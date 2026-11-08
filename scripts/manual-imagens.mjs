@@ -50,6 +50,18 @@ const etapas = {
     await page.waitForTimeout(1500);
     await foto("menu");
   },
+  conquistas: async () => {
+    // duas conquistas obtidas e uma bloqueada
+    await page.evaluate(() =>
+      localStorage.setItem("cartas-conquistas", JSON.stringify({ obtidas: { entrando_comunidade: "2026-11-08T12:00:00.000Z", meu_primeiro_deck: "2026-11-08T12:05:00.000Z" } })),
+    );
+    await page.goto(`${URL}/#/conquistas`);
+    // só troca o "#": recarrega para o app ler as conquistas gravadas
+    await page.reload();
+    await page.waitForSelector(".cq-item");
+    await page.waitForTimeout(2500);
+    await foto("conquistas");
+  },
   busca: async () => {
     await menu();
     await page.click(".menu-btn:has-text('Buscar Carta')");

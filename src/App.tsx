@@ -7,10 +7,12 @@ import Manual from "./screens/Manual";
 import GuiaDeck from "./screens/GuiaDeck";
 import MetaCall from "./screens/MetaCall";
 import Rank from "./screens/Rank";
+import Conquistas from "./screens/Conquistas";
 import ListaDesejos from "./screens/ListaDesejos";
 import Comunidade from "./screens/Comunidade";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
 import ExitDialog from "./components/ExitDialog";
+import AvisoConquista from "./components/AvisoConquista";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
 import { ContaDialog, isContaOpen, openConta } from "./components/Conta";
 import { isRespostasOpen, RespostasDialog } from "./components/RespostasDialog";
@@ -21,7 +23,7 @@ import type { Card } from "./db/types";
 import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "comunidade" | "desejos";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "comunidade" | "desejos";
 
 /** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
 const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
@@ -116,6 +118,8 @@ export default function App() {
   return (
     <main className="stage">
       <div className="backdrop" aria-hidden />
+      {/* aviso de conquista desbloqueada, por cima de qualquer tela */}
+      <AvisoConquista />
 
       {screen === "menu" && (
         <MainMenu
@@ -177,7 +181,8 @@ export default function App() {
       {screen === "manual" && <Manual onBack={() => setScreen("menu")} />}
       {screen === "metacall" && <MetaCall onBack={() => setScreen("menu")} inicial={rota.tela === "metacall" ? rota : undefined} onRota={aoRota} />}
       {screen === "desejos" && <ListaDesejos onBack={() => setScreen("menu")} />}
-      {screen === "rank" && <Rank onBack={() => setScreen("menu")} onComunidade={() => setScreen("comunidade")} />}
+      {screen === "rank" && <Rank onBack={() => setScreen("menu")} onComunidade={() => setScreen("comunidade")} onConquistas={() => setScreen("conquistas")} />}
+      {screen === "conquistas" && <Conquistas onBack={() => setScreen("menu")} onRank={() => setScreen("rank")} />}
       {screen === "comunidade" && (
         <Comunidade
           inicial={rota.tela === "comunidade" ? rota : undefined}

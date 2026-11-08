@@ -75,6 +75,8 @@ const subscribe = (l: () => void) => {
 };
 
 export const useConta = () => useSyncExternalStore(subscribe, () => conta);
+/** Avisa ao entrar, sair ou trocar de conta */
+export const aoMudarConta = subscribe;
 export const contaAtual = () => conta;
 
 const USUARIO = /^[a-z0-9_]{3,20}$/;

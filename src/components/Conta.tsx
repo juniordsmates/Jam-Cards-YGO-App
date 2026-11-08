@@ -52,6 +52,9 @@ import { meusPontos, minhasContribuicoes, PONTOS_POR_COMBO, rankingDuelistas, ty
 import { useCombosLocais } from "../db/combosLocais";
 import { useListaDesejos } from "../db/listaDesejos";
 import { useColecao } from "../db/colecao";
+import { useMinhasConquistas } from "../db/minhasConquistas";
+import { cardImage } from "../db/images";
+import { CONQUISTAS } from "../data/conquistas";
 import "../screens/comunidade.css";
 
 // documentos no idioma do app (as traduções avisam que vale a versão em português)
@@ -708,6 +711,7 @@ function VisaoGeral() {
   const locais = useCombosLocais();
   const desejos = useListaDesejos();
   const colecao = useColecao();
+  const { obtidas } = useMinhasConquistas();
   useEffect(() => {
     let vivo = true;
     void minhasContribuicoes(conta.id).then((c) => vivo && setContrib(c));
@@ -822,6 +826,21 @@ function VisaoGeral() {
             {t("Comunidade")}
           </button>
         </div>
+      </section>
+
+      <section className="conta-cartao conta-conquistas">
+        <h3>{t("Conquistas")}</h3>
+        <span className="tags-note">{t("{0} de {1} conquistas", [CONQUISTAS.filter((c) => obtidas[c.id]).length, CONQUISTAS.length])}</span>
+        <ul className="conta-conquistas-icones">
+          {CONQUISTAS.map((c) => (
+            <li key={c.id} className={obtidas[c.id] ? "cq-obtida" : "cq-bloqueada"} title={obtidas[c.id] || !c.secreta ? `${c.nome}: ${c.descricao}` : t("Conquista secreta")}>
+              <img src={cardImage(c.cartaId, "cropped")} alt={c.nome} loading="lazy" />
+            </li>
+          ))}
+        </ul>
+        <button className="ghost-btn" onClick={() => irPara("#/conquistas")}>
+          {t("Ver conquistas")} →
+        </button>
       </section>
     </div>
   );

@@ -1,3 +1,4 @@
+import { conquistar } from "./minhasConquistas";
 import { supabase } from "./supabase";
 import { copiasPermitidas } from "./decks";
 import type { GameFormat } from "./legality";
@@ -159,6 +160,7 @@ export async function salvarComoComunidade(
     .select(COLS)
     .single();
   if (error) throw new Error(t("Salvar combo: {0}", [error.message]));
+  conquistar("compartilhar");
   return data as ComboBase;
 }
 
@@ -186,6 +188,7 @@ export async function criarComboDoTeste(
     .select(COLS)
     .single();
   if (error) throw new Error(t("Criar combo: {0}", [error.message]));
+  if (campos.compartilhar) conquistar("compartilhar");
   return data as ComboBase;
 }
 
@@ -211,6 +214,7 @@ export async function exportarParaBase(combo: ComboBase, compartilhar: boolean):
     .select(COLS)
     .single();
   if (error) throw new Error(t("Exportar combo: {0}", [error.message]));
+  if (compartilhar) conquistar("compartilhar");
   return data as ComboBase;
 }
 
@@ -260,6 +264,7 @@ export async function editarCombo(
     .select(COLS)
     .single();
   if (error) throw new Error(t("Editar combo: {0}", [error.message]));
+  if (campos.compartilhar) conquistar("compartilhar");
   return data as ComboBase;
 }
 

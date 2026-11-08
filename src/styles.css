@@ -1077,6 +1077,33 @@ kbd {
   grid-template-columns: 40px minmax(0, 1fr) auto;
 }
 
+/* conquistas na Visão Geral: os ícones (bloqueadas apagadas), na largura toda */
+.conta-conquistas {
+  grid-column: 1 / -1;
+}
+
+.conta-conquistas-icones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.conta-conquistas-icones img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.conta-conquistas-icones .cq-bloqueada img {
+  filter: grayscale(1) brightness(0.75);
+  opacity: 0.55;
+}
+
 @media (max-width: 760px) {
   .conta-visao {
     grid-template-columns: minmax(0, 1fr);

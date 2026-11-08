@@ -12,6 +12,7 @@ import { linhasDoArquetipo } from "../db/guiaDeck";
 import { normalize } from "../db/search";
 import { supabaseReady } from "../db/supabase";
 import { displayName, type Card } from "../db/types";
+import { conquistar } from "../db/minhasConquistas";
 import type { Rota } from "../rotas";
 import { IDIOMA, t, LOCALE } from "../i18n";
 import "./comunidade.css";
@@ -95,6 +96,10 @@ export default function Comunidade({
   useEffect(() => {
     if (arquetipo) onRota?.({ tela: "comunidade", arquetipo });
   }, [arquetipo]); // eslint-disable-line react-hooks/exhaustive-deps
+  // conquista "Entrando na Comunidade": abriu um arquétipo (escolhido na lista ou pelo link)
+  useEffect(() => {
+    if (escolhido) conquistar("entrando_comunidade");
+  }, [escolhido]);
 
   // ranking e combos do arquétipo
   const [ranking, setRanking] = useState<Leitura<Duelista[]> | null>(null);
