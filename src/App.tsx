@@ -8,6 +8,7 @@ import GuiaDeck from "./screens/GuiaDeck";
 import MetaCall from "./screens/MetaCall";
 import Rank from "./screens/Rank";
 import Conquistas from "./screens/Conquistas";
+import Eventos from "./screens/Eventos";
 import ListaDesejos from "./screens/ListaDesejos";
 import Comunidade from "./screens/Comunidade";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
@@ -23,7 +24,7 @@ import type { Card } from "./db/types";
 import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "comunidade" | "desejos";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos";
 
 /** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
 const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
@@ -143,6 +144,7 @@ export default function App() {
           onDesejos={() => setScreen("desejos")}
           onComunidade={() => setScreen("comunidade")}
           onRank={() => setScreen("rank")}
+          onEventos={() => setScreen("eventos")}
           onManual={() => setScreen("manual")}
           onGuia={() => setScreen("guia")}
           onMetaCall={() => setScreen("metacall")}
@@ -183,6 +185,7 @@ export default function App() {
       {screen === "desejos" && <ListaDesejos onBack={() => setScreen("menu")} />}
       {screen === "rank" && <Rank onBack={() => setScreen("menu")} onComunidade={() => setScreen("comunidade")} onConquistas={() => setScreen("conquistas")} />}
       {screen === "conquistas" && <Conquistas onBack={() => setScreen("menu")} onRank={() => setScreen("rank")} />}
+      {screen === "eventos" && <Eventos inicial={rota.tela === "eventos" ? rota : undefined} onRota={aoRota} onBack={() => setScreen("menu")} />}
       {screen === "comunidade" && (
         <Comunidade
           inicial={rota.tela === "comunidade" ? rota : undefined}

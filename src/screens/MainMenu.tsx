@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, ExitIcon, HeartIcon, HelpIcon, PeopleIcon, SearchIcon, TargetIcon, TrophyIcon } from "../icons";
+import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, EventIcon, ExitIcon, HeartIcon, HelpIcon, PeopleIcon, SearchIcon, TargetIcon, TrophyIcon } from "../icons";
 import { isDesktop } from "../platform";
 import { BUILD_LABEL, VERSION_LABEL } from "../version";
 import { useConta } from "../db/conta";
@@ -29,6 +29,8 @@ type Props = {
   onComunidade: () => void;
   /** Rank: duelistas com mais pontos */
   onRank: () => void;
+  /** Eventos: resultados de torneio compartilhados, com a decklist */
+  onEventos: () => void;
   /** Como Utilizar: manual das telas */
   onManual: () => void;
   onExit: () => void;
@@ -44,7 +46,7 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onDesejos, onComunidade, onRank, onManual, onExit, onConta }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onDesejos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
   const conta = useConta();
   const tema = useTema();
   const items: Item[] = [
@@ -57,9 +59,9 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
     { label: t("Minha Coleção"), hint: t("Cartas que você possui, raridades e valor"), icon: <CollectionIcon />, accent: "magenta", action: onColecao },
     { label: t("Lista de Desejos"), hint: t("Cartas que você quer conseguir"), icon: <HeartIcon />, accent: "magenta", action: onDesejos },
     { label: t("Comunidade"), hint: t("Por arquétipo: quem mais compartilha, combos e guia"), icon: <PeopleIcon />, accent: "magenta", action: onComunidade },
+    { label: t("Eventos"), hint: t("Resultados de torneio com a decklist"), icon: <EventIcon />, accent: "magenta", action: onEventos },
     { label: t("Rank e Conquistas"), hint: t("Duelistas com mais pontos e suas conquistas"), icon: <TrophyIcon />, accent: "magenta", action: onRank },
     { label: t("Como Utilizar"), hint: t("Manual de cada tela, com exemplos"), icon: <HelpIcon />, accent: "cyan", action: onManual },
-    { label: t("Sair"), hint: isDesktop ? t("Fechar o aplicativo") : t("Encerrar a sessão"), icon: <ExitIcon />, accent: "red", action: onExit },
   ];
   // até 3 colunas com até 4 opções cada (a ordem de items é a das colunas)
   const POR_COLUNA = 4;
@@ -118,6 +120,10 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
     </div>
     <button className="ghost-btn menu-conta" onClick={onConta} title={conta ? t("Minha conta") : t("Entrar ou criar conta")}>
       {conta ? `@${conta.usuario}` : t("Entrar")}
+    </button>
+    {/* Sair fica no topo (as três colunas do menu têm até 4 botões) */}
+    <button className="ghost-btn menu-sair" onClick={onExit} title={isDesktop ? t("Fechar o aplicativo") : t("Encerrar a sessão")}>
+      <ExitIcon /> {t("Sair")}
     </button>
     </div>
     <section className="menu">

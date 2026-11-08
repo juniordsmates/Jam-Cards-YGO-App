@@ -10,6 +10,8 @@ import { isDesktop } from "./platform";
 //   #/comunidade/Kewl%20Tune                aba Comunidade do arquétipo
 //   #/rank                                  Rank dos duelistas
 //   #/conquistas                            Conquistas
+//   #/eventos  #/eventos/compartilhar      Eventos (resultados de torneio) e o envio
+//   #/evento/<id>                           um resultado de evento
 //   #/desejos                               Lista de Desejos
 // O "#" funciona no GitHub Pages sem configurar o servidor. No app de computador, o link copiado é
 // o do site (abre em qualquer navegador).
@@ -28,6 +30,7 @@ export type Rota =
   | { tela: "manual" }
   | { tela: "rank" }
   | { tela: "conquistas" }
+  | { tela: "eventos"; resultado?: string; aba?: "compartilhar" | "analise" }
   | { tela: "desejos" }
   | { tela: "comunidade"; arquetipo?: string };
 
@@ -44,6 +47,8 @@ const NOMES: Record<string, Rota["tela"]> = {
   manual: "manual",
   rank: "rank",
   conquistas: "conquistas",
+  eventos: "eventos",
+  evento: "eventos",
   desejos: "desejos",
   comunidade: "comunidade",
 };
@@ -75,6 +80,9 @@ export function lerRota(hash = window.location.hash): Rota {
       return { tela, arquetipo: dec(a), aba: dec(b) };
     case "comunidade":
       return { tela, arquetipo: dec(a) };
+    case "eventos":
+      if (nome === "evento" && a && /^[0-9a-f-]{36}$/i.test(a)) return { tela, resultado: a };
+      return a === "compartilhar" || a === "analise" ? { tela, aba: a } : { tela };
     case "metacall": {
       const formato = a === "OCG" ? "OCG" : a === "TCG" ? "TCG" : undefined;
       const decks: Record<string, number> = {};
@@ -113,6 +121,8 @@ export function hashDa(r: Rota): string {
     }
     case "comunidade":
       return r.arquetipo ? `#/comunidade/${enc(r.arquetipo)}` : "#/comunidade";
+    case "eventos":
+      return r.resultado ? `#/evento/${r.resultado}` : r.aba ? `#/eventos/${r.aba}` : "#/eventos";
     case "deck":
       return "#/editor";
     default:

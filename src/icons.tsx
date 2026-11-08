@@ -89,6 +89,15 @@ export const TrophyIcon = () => (
   </svg>
 );
 
+/** Eventos: calendário com a marca de um resultado */
+export const EventIcon = () => (
+  <svg {...base}>
+    <rect x="4" y="5" width="16" height="15" rx="2" />
+    <path d="M8 3v4M16 3v4M4 10h16" />
+    <path d="m12 12.5.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3Z" />
+  </svg>
+);
+
 export const PeopleIcon = () => (
   <svg {...base}>
     <circle cx="9" cy="8" r="3" />

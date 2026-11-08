@@ -709,6 +709,18 @@ kbd {
   position: static;
 }
 
+.menu-sair {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--red);
+}
+
+.menu-sair svg {
+  width: 16px;
+  height: 16px;
+}
+
 .menu-idioma {
   display: flex;
   padding: 3px;

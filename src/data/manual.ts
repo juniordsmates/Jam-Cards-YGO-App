@@ -35,9 +35,9 @@ export const CAPITULOS: Capitulo[] = [
       {
         titulo: t("Menu principal"),
         itens: [
-          t("Os botões ficam em três colunas: **Explorar** (Buscar Carta, Combos, Guia de Deck, Meta Call), **Seus decks e cartas** (Editor de Deck, Teste de Jogo, Minha Coleção, Lista de Desejos) e **Comunidade e app** (Comunidade, Rank e Conquistas, este Como Utilizar e Sair). Em telas menores viram duas colunas e, no celular, uma."),
+          t("Os botões ficam em três colunas: **Explorar** (Buscar Carta, Combos, Guia de Deck, Meta Call), **Seus decks e cartas** (Editor de Deck, Teste de Jogo, Minha Coleção, Lista de Desejos) e **Comunidade e app** (Comunidade, Eventos, Rank e Conquistas e este Como Utilizar). Em telas menores viram duas colunas e, no celular, uma."),
           t("Dá para navegar com as setas do teclado (**↑ ↓** na coluna, **← →** entre as colunas) e abrir com **Enter**. Em qualquer tela, **Esc** volta para a anterior."),
-          t("No canto superior direito fica **Entrar**: com uma conta, seus decks, sua coleção e seus combos ficam salvos na nuvem e aparecem em qualquer computador ou navegador."),
+          t("No canto superior direito fica **Entrar**: com uma conta, seus decks, sua coleção e seus combos ficam salvos na nuvem e aparecem em qualquer computador ou navegador. Ao lado, **Sair** fecha o aplicativo (no navegador, encerra a sessão)."),
           t("Ao lado, **Português / English / Español** troca o idioma de todo o app (ele recarrega na hora). Em inglês e espanhol, as cartas aparecem com o nome e o texto oficiais em inglês; a busca continua aceitando o nome em português."),
           t("Mais à esquerda, **☀ Claro / ☾ Escuro** troca o tema de todas as telas na hora. O modo escuro usa um fundo azul-acinzentado. A escolha fica salva neste aparelho; na primeira vez, o app segue o tema do sistema."),
           t("**Links**: o endereço do site acompanha a tela. **🔗 Copiar link** (no painel da carta, nos combos, na mão escolhida em Combos, no Guia de Deck e no Meta Call) copia um link que abre direto naquilo; no app de computador, o link é o do site. Combos só neste aparelho ou não compartilhados não têm link para outras pessoas."),
@@ -574,6 +574,26 @@ export const CAPITULOS: Capitulo[] = [
       },
     ],
     ligacoes: [t("Os combos vêm da aba Combos e do Teste de Jogo (Arquétipos vinculados); o guia, do Guia de Deck.")],
+  },
+  {
+    id: "eventos",
+    titulo: t("Eventos"),
+    resumo: t("Resultados de torneio compartilhados pelos jogadores, com a decklist completa. Filtre por **TCG / OCG** e por **Meta, Conceito ou Local**, abra um resultado para ver as cartas e salve o deck em Meus decks."),
+    topicos: [
+      {
+        titulo: t("Resultados"),
+        itens: [t("Cada cartão mostra a arte da carta mais usada do deck, a categoria, o **nome do deck**, o **nome do jogador**, a colocação (ex.: 1º de ~32 jogadores), o evento e a data."), t("Abra um resultado para ver o Main, o Extra e o Side, as observações do jogador, **🔗 Copiar link** e **Salvar em Meus decks** (abre no Editor de Deck).")],
+      },
+      {
+        titulo: t("Compartilhar resultado"),
+        itens: [t("Com login: escolha um dos seus decks ou cole um link **ydke://** ou o conteúdo de um **.ydk**; informe o nome do jogador e o nome do deck."), t("Escolha o formato (**TCG** ou **OCG**) e a categoria: **Meta** (torneio competitivo), **Local** (resultado em torneio) ou **Conceito** (ideia de deck, sem torneio)."), t("Em Meta e Local, informe o **tipo de torneio** (os principais oficiais da Konami, como YCS, WCQ e Regional, ou **Torneio Local**), a **posição final** e **quantos jogadores**, aproximadamente, participaram."), t("Conceito e Local são publicados na hora. **Meta passa por uma avaliação antes de ser publicado**: até lá, só você e os administradores veem o resultado (com o selo Em avaliação)."), t("A banlist atual aparece só como aviso: o torneio pode ter usado outra lista. Quem enviou pode excluir o próprio resultado.")],
+      },
+      {
+        titulo: t("Análise de resultados (administradores)"),
+        itens: [t("Só para administradores: **Aguardando análise** lista os resultados Meta enviados; **Aprovar e publicar** coloca o resultado na lista, **Recusar** (com motivo opcional) tira da lista, e o autor vê o motivo. **Já analisados** permite mudar a decisão.")],
+      },
+    ],
+    ligacoes: [t("O deck vem do **Editor de Deck** (Meus decks) ou de uma deck list importada; **Salvar em Meus decks** leva o deck de volta ao Editor.")],
   },
   {
     id: "conquistas",
