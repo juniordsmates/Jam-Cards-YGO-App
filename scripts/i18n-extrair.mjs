@@ -27,6 +27,7 @@ const DECL_IGNORADAS = {
   "db/tags.ts": ["applyTags"],
   "db/metaCall.ts": ["DO_MOTOR"],
   "sim/cliente.ts": ["VERSAO_LOCAL"],
+  "db/duelos.ts": ["COLUNAS", "criarDuelo", "obterDuelo", "enviarResposta", "respostasDoDuelo", "nomesDeUsuarios", "assinarDuelo"],
   "screens/Simulador.tsx": ["opcoes"],
   "db/indicar.ts": ["CONTRA_MONSTRO", "CONTRA_MAGIA_ARMADILHA"],
   "db/search.ts": ["normalize", "descKey", "relatedKey", "archetypeKey", "searchCards"],

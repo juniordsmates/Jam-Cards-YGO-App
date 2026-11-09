@@ -58,7 +58,7 @@ export async function obterPacote(aoProgresso?: (msg: string) => void): Promise<
 /** Conversa com o Worker do motor */
 export class ClienteSim {
   private worker: Worker;
-  private esperaPronto: { ok: (nomes: Record<string, string>) => void; erro: (e: Error) => void } | null = null;
+  private esperaPronto: { ok: (r: { nomes: Record<string, string>; versao: string }) => void; erro: (e: Error) => void } | null = null;
 
   constructor(
     private aoQuadro: (q: Quadro) => void,
@@ -68,7 +68,7 @@ export class ClienteSim {
     this.worker.onmessage = (e: MessageEvent<DoWorker>) => {
       const m = e.data;
       if (m.tipo === "pronto") {
-        this.esperaPronto?.ok(m.nomes);
+        this.esperaPronto?.ok({ nomes: m.nomes, versao: m.versao });
         this.esperaPronto = null;
       } else if (m.tipo === "quadro") this.aoQuadro(m.quadro);
       else if (this.esperaPronto) {
@@ -88,8 +88,8 @@ export class ClienteSim {
     this.worker.postMessage(m, transferir);
   }
 
-  /** Carrega o pacote no motor; devolve os nomes das cartas do motor (inclui fichas) */
-  carregar(dados: ArrayBuffer): Promise<Record<string, string>> {
+  /** Carrega o pacote no motor; devolve os nomes das cartas do motor (inclui fichas) e a versão do pacote */
+  carregar(dados: ArrayBuffer): Promise<{ nomes: Record<string, string>; versao: string }> {
     return new Promise((ok, erro) => {
       this.esperaPronto = { ok, erro };
       // cópia: o pacote salvo continua inteiro para a próxima partida
@@ -104,6 +104,11 @@ export class ClienteSim {
 
   responder(resp: OcgResponse) {
     this.enviar({ tipo: "responder", resp });
+  }
+
+  /** Partida 1x1: jogada do oponente */
+  remota(n: number, resp: OcgResponse) {
+    this.enviar({ tipo: "remota", n, resp });
   }
 
   janelas(janelas: "acao" | "todas") {

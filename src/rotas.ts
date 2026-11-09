@@ -14,6 +14,7 @@ import { isDesktop } from "./platform";
 //   #/evento/<id>                           um resultado de evento
 //   #/desejos                               Lista de Desejos
 //   #/simulador                             Simulador (duelo contra a IA)
+//   #/duelo/<id>                            sala de uma partida 1x1 do Simulador
 // O "#" funciona no GitHub Pages sem configurar o servidor. No app de computador, o link copiado é
 // o do site (abre em qualquer navegador).
 
@@ -34,7 +35,7 @@ export type Rota =
   | { tela: "eventos"; resultado?: string; aba?: "compartilhar" | "analise" }
   | { tela: "desejos" }
   | { tela: "meuscombos" }
-  | { tela: "simulador" }
+  | { tela: "simulador"; duelo?: string }
   | { tela: "comunidade"; arquetipo?: string };
 
 const NOMES: Record<string, Rota["tela"]> = {
@@ -55,6 +56,7 @@ const NOMES: Record<string, Rota["tela"]> = {
   desejos: "desejos",
   "meus-combos": "meuscombos",
   simulador: "simulador",
+  duelo: "simulador",
   comunidade: "comunidade",
 };
 
@@ -85,6 +87,8 @@ export function lerRota(hash = window.location.hash): Rota {
       return { tela, arquetipo: dec(a), aba: dec(b) };
     case "comunidade":
       return { tela, arquetipo: dec(a) };
+    case "simulador":
+      return nome === "duelo" && a && /^[0-9a-f-]{36}$/i.test(a) ? { tela, duelo: a.toLowerCase() } : { tela };
     case "eventos":
       if (nome === "evento" && a && /^[0-9a-f-]{36}$/i.test(a)) return { tela, resultado: a };
       return a === "compartilhar" || a === "analise" ? { tela, aba: a } : { tela };
@@ -132,6 +136,8 @@ export function hashDa(r: Rota): string {
       return "#/editor";
     case "meuscombos":
       return "#/meus-combos";
+    case "simulador":
+      return r.duelo ? `#/duelo/${r.duelo}` : "#/simulador";
     default:
       return `#/${r.tela}`;
   }

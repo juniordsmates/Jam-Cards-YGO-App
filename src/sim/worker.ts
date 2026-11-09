@@ -9,7 +9,9 @@ export type ParaWorker =
   | { tipo: "pacote"; dados: ArrayBuffer }
   | { tipo: "iniciar"; cfg: ConfigSessao }
   | { tipo: "responder"; resp: OcgResponse }
-  | { tipo: "janelas"; janelas: "acao" | "todas" };
+  | { tipo: "janelas"; janelas: "acao" | "todas" }
+  /** partida 1x1: jogada do oponente na posição n do histórico */
+  | { tipo: "remota"; n: number; resp: OcgResponse };
 
 export type DoWorker =
   | { tipo: "pronto"; versao: string; nomes: Record<string, string> }
@@ -46,6 +48,9 @@ onmessage = async (e: MessageEvent<ParaWorker>) => {
     } else if (m.tipo === "responder") {
       if (!sessao) throw new Error("nenhum duelo em andamento");
       quadro(sessao.responder(m.resp, quadro));
+    } else if (m.tipo === "remota") {
+      const q = sessao?.receberRemota(m.n, m.resp);
+      if (q) quadro(q);
     } else if (m.tipo === "janelas") {
       sessao?.definirJanelas(m.janelas);
     }

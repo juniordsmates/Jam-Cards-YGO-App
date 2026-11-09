@@ -233,7 +233,7 @@ export default function App() {
       )}
       {screen === "simulador" && (
         <Suspense fallback={<p className="tags-note">{t("Carregando o Simulador…")}</p>}>
-          <Simulador onBack={() => setScreen("menu")} />
+          <Simulador onBack={() => setScreen("menu")} duelo={rota.tela === "simulador" ? rota.duelo : undefined} onRota={aoRota} />
         </Suspense>
       )}
       {screen === "deck" && <DeckEditor key={JSON.stringify(deckInicial)} inicial={deckInicial} onBack={() => setScreen(deckFrom)} />}

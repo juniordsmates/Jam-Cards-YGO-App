@@ -89,6 +89,10 @@ export interface Quadro {
   fim?: { vencedor: number; motivo: number };
   /** a IA está decidindo (só nos quadros de progresso) */
   pensando?: boolean;
+  /** duelo contra outra pessoa: é a vez do oponente decidir */
+  aguardando?: boolean;
+  /** duelo contra outra pessoa: respostas deste aparelho a enviar ao oponente (posição no histórico) */
+  publicar?: { n: number; resp: OcgResponse }[];
 }
 
 export interface ConfigSessao {
@@ -99,6 +103,10 @@ export interface ConfigSessao {
   linhas?: LinhaIA[];
   /** janelas de resposta do jogador: "acao" só pergunta logo depois de uma jogada da IA; "todas" pergunta sempre */
   janelas?: "acao" | "todas";
+  /** o oponente é outra pessoa (partida 1x1): sem IA; as decisões dele chegam por `receberRemota` */
+  remoto?: boolean;
+  /** respostas já dadas no duelo (para voltar a uma partida 1x1 depois de cair) */
+  historico?: OcgResponse[];
 }
 
 // código, posição, ATK, DEF, matérias, marcadores e se a carta é pública
@@ -114,7 +122,13 @@ export class Sessao {
   private fim?: { vencedor: number; motivo: number };
   /** última dica de seleção de cada jogador */
   private dica: [bigint | null, bigint | null] = [null, null];
-  private ia: IA;
+  private ia: IA | null;
+  /** respostas conhecidas ainda não aplicadas (histórico salvo ou jogadas do oponente), em ordem */
+  private pendentes: OcgResponse[] = [];
+  /** jogadas do oponente que chegaram fora de ordem (posição → resposta) */
+  private adiantadas = new Map<number, OcgResponse>();
+  /** respostas deste aparelho que ainda não foram entregues à tela para envio */
+  private saida: { n: number; resp: OcgResponse }[] = [];
   private eventos: EventoSim[] = [];
   /** pedido do jogador antes de uma resposta recusada (RETRY) */
   private ultimoPedido: OcgMessage | null = null;
@@ -128,7 +142,8 @@ export class Sessao {
     readonly motor: Motor,
     readonly cfg: ConfigSessao,
   ) {
-    this.ia = new IA(cfg.nivel, 1 - cfg.humano as 0 | 1, cfg.linhas ?? []);
+    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? []);
+    this.pendentes = [...(cfg.historico ?? [])];
     this.duel = motor.novoDuelo(cfg.partida);
   }
 
@@ -143,30 +158,34 @@ export class Sessao {
       }
       let d = r.decisao;
       const repetida = d.type === T.RETRY;
+      if (!repetida) this.ultimoPedido = d;
+      const dono = (m: OcgMessage | null) => (m && "player" in m ? m.player : this.cfg.humano);
+      // respostas já conhecidas (histórico salvo ou jogadas do oponente) vêm antes de perguntar
+      if (this.pendentes.length) {
+        this.aplicar(this.pendentes.shift()!, dono(this.ultimoPedido), false);
+        continue;
+      }
       if (repetida) {
         // a última resposta não valia: quem respondeu escolhe de novo
         const ultimo = this.ultimoPedido;
-        if (ultimo && "player" in ultimo && ultimo.player === this.cfg.humano) {
+        if (ultimo && dono(ultimo) === this.cfg.humano) {
           this.decisao = ultimo;
           return this.quadro(true);
         }
         d = ultimo ?? d;
-        this.ia.recusada();
+        this.ia?.recusada();
       }
       this.decisao = d;
-      // janela de resposta sem jogada da IA para responder: passa sozinha (a não ser que o jogador peça todas)
+      // janela de resposta sem jogada do oponente para responder: passa sozinha (a não ser que o jogador peça todas)
       if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && this.cfg.janelas !== "todas" && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)) {
-        this.ultimoPedido = d;
         this.aplicar({ type: R.SELECT_CHAIN, index: null }, this.cfg.humano);
         continue;
       }
-      if (!("player" in d) || d.player === this.cfg.humano) {
-        this.ultimoPedido = d;
-        return this.quadro();
-      }
-      this.ultimoPedido = d;
+      if (dono(d) === this.cfg.humano) return this.quadro();
+      // partida 1x1: a decisão é do oponente, que responde do aparelho dele
+      if (!this.ia) return { ...this.quadro(), aguardando: true };
       if (aoPensar && this.ia.vaiPensar(d, this)) aoPensar({ ...this.quadro(), pedido: null, pensando: true });
-      this.aplicar(this.ia.decidir(d, this, repetida), d.player);
+      this.aplicar(this.ia.decidir(d, this, repetida), dono(d));
     }
     throw new Error("simulador: a IA não terminou de jogar");
   }
@@ -183,9 +202,33 @@ export class Sessao {
     return this.avancar(aoPensar);
   }
 
-  private aplicar(resp: OcgResponse, jogador: number) {
+  /**
+   * Partida 1x1: jogada do oponente na posição n do histórico. Repetidas são ignoradas e as que
+   * chegam antes da hora esperam a vez. Devolve o quadro novo quando o duelo andou.
+   */
+  receberRemota(n: number, resp: OcgResponse): Quadro | null {
+    const proxima = () => this.historico.length + this.pendentes.length;
+    if (n < proxima()) return null;
+    this.adiantadas.set(n, resp);
+    let chegou = false;
+    while (this.adiantadas.has(proxima())) {
+      const k = proxima();
+      this.pendentes.push(this.adiantadas.get(k)!);
+      this.adiantadas.delete(k);
+      chegou = true;
+    }
+    // só anda se o duelo estava esperando o oponente (a decisão em aberto não é deste aparelho)
+    if (!chegou || this.fim || !this.decisao || ("player" in this.decisao && this.decisao.player === this.cfg.humano)) return null;
+    // a resposta vai antes de o motor processar de novo: processar sem resposta conta como "não ativar"
+    this.aplicar(this.pendentes.shift()!, "player" in this.decisao ? this.decisao.player : 1 - this.cfg.humano, false);
+    return this.avancar();
+  }
+
+  /** `publicar`: resposta deste aparelho, que numa partida 1x1 vai para o oponente */
+  private aplicar(resp: OcgResponse, jogador: number, publicar = true) {
     this.historico.push(resp);
-    this.ia.observar(resp, jogador);
+    this.ia?.observar(resp, jogador);
+    if (publicar && this.cfg.remoto && jogador === this.cfg.humano) this.saida.push({ n: this.historico.length - 1, resp });
     this.motor.core.duelSetResponse(this.duel, resp);
   }
 
@@ -376,7 +419,9 @@ export class Sessao {
   quadro(repetir = false): Quadro {
     const eventos = this.eventos;
     this.eventos = [];
-    return { estado: this.estado(), pedido: this.pedido(repetir), eventos, ...(this.fim ? { fim: this.fim } : {}) };
+    const publicar = this.saida;
+    this.saida = [];
+    return { estado: this.estado(), pedido: this.pedido(repetir), eventos, ...(this.fim ? { fim: this.fim } : {}), ...(publicar.length ? { publicar } : {}) };
   }
 
   /** Dados que a IA precisa da partida (sem expor o resto) */

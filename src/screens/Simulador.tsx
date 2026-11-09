@@ -8,6 +8,11 @@ import { cardImage } from "../db/images";
 import { kindLabel } from "../db/labels";
 import { displayName, type Card } from "../db/types";
 import { aleatorio } from "../db/testeJogo";
+import { useConta } from "../db/conta";
+import { openConta } from "../components/Conta";
+import { assinarDuelo, criarDuelo, decksDoDuelo, encerrarDuelo, entrarDuelo, enviarResposta, idDaSala, meuJogador, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
+import { copiarLink, linkPara, type Rota } from "../rotas";
+import { APP_VERSION } from "../version";
 import { t } from "../i18n";
 import { ClienteSim, obterPacote } from "../sim/cliente";
 import { zonasLivres } from "../sim/opcoes";
@@ -134,6 +139,8 @@ interface Config {
   primeiro: "eu" | "ia" | "sorteio";
   /** pausar em todas as janelas de resposta (senão, só depois de uma jogada da IA) */
   todasJanelas?: boolean;
+  /** contra a IA ou contra outra pessoa (partida 1x1) */
+  modo?: "ia" | "amigo";
 }
 function lerConfig(): Partial<Config> {
   try {
@@ -157,7 +164,8 @@ interface DeckOpcao {
   linhas: LinhaIA[];
 }
 
-export default function Simulador({ onBack }: { onBack: () => void }) {
+export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBack: () => void; duelo?: string; onRota?: (r: Rota) => void }) {
+  const conta = useConta();
   const db = useCardDb();
   const { decks } = useDecks();
   const byId = useMemo(() => {
@@ -185,11 +193,23 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
   }, [decks, db.extras?.combos]);
 
   const salvo = useMemo(lerConfig, []);
-  const [cfg, setCfg] = useState<Config>(() => ({ meu: salvo.meu ?? "", ia: salvo.ia ?? "", nivel: salvo.nivel ?? "normal", primeiro: salvo.primeiro ?? "sorteio" }));
+  const [cfg, setCfg] = useState<Config>(() => ({
+    meu: salvo.meu ?? "",
+    ia: salvo.ia ?? "",
+    nivel: salvo.nivel ?? "normal",
+    primeiro: salvo.primeiro ?? "sorteio",
+    todasJanelas: salvo.todasJanelas,
+    modo: salvo.modo ?? "ia",
+  }));
   const meu = opcoes.find((o) => o.valor === cfg.meu) ?? opcoes[0];
   const doIA = opcoes.find((o) => o.valor === cfg.ia) ?? opcoes.find((o) => o.valor.startsWith("meta:")) ?? opcoes[0];
 
-  const [etapa, setEtapa] = useState<"config" | "carregando" | "duelo">("config");
+  const [etapa, setEtapaEstado] = useState<"config" | "carregando" | "sala" | "duelo">("config");
+  const etapaRef = useRef(etapa);
+  const setEtapa = (e: typeof etapa) => {
+    etapaRef.current = e;
+    setEtapaEstado(e);
+  };
   const [progresso, setProgresso] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -204,7 +224,8 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
   };
   const [nomes, setNomes] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<number | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; acoes: Acao[] } | null>(null);
+  // menu de ações ancorado na carta clicada (esquerda, topo e base dela na tela)
+  const [menu, setMenu] = useState<{ x: number; topo: number; base: number; acoes: Acao[] } | null>(null);
   const [lista, setLista] = useState<{ titulo: string; cartas: { c: CartaSim; k: string; oculta: boolean }[] } | null>(null);
   const [sair, setSair] = useState(false);
   // cartas marcadas na escolha em aberto (índices da mensagem) e carta em foco (opção sob o mouse)
@@ -218,12 +239,75 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
   // cartas mostradas ao jogador (ex.: a mão do oponente)
   const [revelacao, setRevelacao] = useState<{ code: number; controller: number; location: number }[] | null>(null);
   const cliente = useRef<ClienteSim | null>(null);
+  const versaoMotor = useRef<string>("");
+  // partida 1x1: a sala, o nome do oponente, a sala de outra pessoa para entrar e o fim fora do motor
+  const [sala, setSalaEstado] = useState<Duelo | null>(null);
+  const salaRef = useRef<Duelo | null>(null);
+  const setSala = (d: Duelo | null) => {
+    salaRef.current = d;
+    setSalaEstado(d);
+  };
+  const [nomeOp, setNomeOp] = useState<string | null>(null);
+  const [convite, setConvite] = useState<{ duelo: Duelo; criador: string } | null>(null);
+  const [codigo, setCodigo] = useState("");
+  const [copiado, setCopiado] = useState(false);
+  const [desistencia, setDesistencia] = useState<{ vencedor: number | null; quem: "eu" | "oponente" } | null>(null);
+  const [confirmarDesistir, setConfirmarDesistir] = useState(false);
+  const pararSala = useRef<(() => void) | null>(null);
+  // jogadas do oponente que chegam antes de o duelo começar neste aparelho
+  const remotasAntes = useRef<{ n: number; resp: OcgResponse }[] | null>(null);
+  // envio das jogadas em ordem (o banco só aceita a próxima posição)
+  const filaEnvio = useRef<Promise<void>>(Promise.resolve());
+  const fimEnviado = useRef(false);
+  const desistenciaRef = useRef(desistencia);
+  desistenciaRef.current = desistencia;
+  const quadroRef = useRef<Quadro | null>(null);
 
-  useEffect(() => () => cliente.current?.encerrar(), []);
+  useEffect(
+    () => () => {
+      cliente.current?.encerrar();
+      pararSala.current?.();
+      // sala aberta e ninguém entrou: sair cancela
+      const d = salaRef.current;
+      if (d?.estado === "aguardando") void encerrarDuelo(d.id, null).catch(() => {});
+    },
+    [],
+  );
 
   const nomeDe = (code: number) => {
     const c = byId.get(code);
     return c ? displayName(c) : nomes[code] ?? `#${code}`;
+  };
+
+  /** Baixa (se preciso) e abre o motor num Worker novo; devolve o cliente pronto */
+  async function prepararMotor(deck?: DeckSim): Promise<ClienteSim> {
+    const dados = await obterPacote(setProgresso);
+    cliente.current?.encerrar();
+    const c = new ClienteSim(receber, (msg) => setErro(msg));
+    cliente.current = c;
+    setProgresso(t("Abrindo o motor de regras…"));
+    const { nomes: n, versao } = await c.carregar(dados);
+    versaoMotor.current = versao;
+    setNomes(n);
+    // cartas que o motor não tem ficam de fora do duelo
+    const fora = deck ? [...deck.main, ...deck.extra].filter((id) => !(id in n)) : [];
+    setAviso(fora.length ? t("{0} carta(s) do seu deck ainda não existem no motor e ficaram de fora: {1}.", [fora.length, [...new Set(fora)].map(nomeDe).join(", ")]) : null);
+    return c;
+  }
+
+  /** Zera o que é de um duelo (registro, cadeia, revelações, fim) antes de começar outro */
+  function limparDuelo() {
+    setRegistro([]);
+    setAtivacoes({ itens: [], aberta: false });
+    setRevelacao(null);
+    setQuadro(null);
+    setDesistencia(null);
+    fimEnviado.current = false;
+  }
+
+  const falhou = (e: unknown) => {
+    setErro(e instanceof Error ? e.message : String(e));
+    setEtapa("config");
   };
 
   async function iniciar() {
@@ -231,39 +315,177 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
     gravarConfig({ ...cfg, meu: meu.valor, ia: doIA.valor });
     setEtapa("carregando");
     setErro(null);
-    setAviso(null);
+    pararSala.current?.();
+    setSala(null);
     try {
-      const dados = await obterPacote(setProgresso);
-      cliente.current?.encerrar();
-      const c = new ClienteSim(receber, (msg) => setErro(msg));
-      cliente.current = c;
-      setProgresso(t("Abrindo o motor de regras…"));
-      const n = await c.carregar(dados);
-      setNomes(n);
-      // cartas que o motor não tem ficam de fora do duelo
-      const fora = [...meu.deck.main, ...meu.deck.extra].filter((id) => !(id in n));
-      if (fora.length) setAviso(t("{0} carta(s) do seu deck ainda não existem no motor e ficaram de fora: {1}.", [fora.length, [...new Set(fora)].map(nomeDe).join(", ")]));
+      const c = await prepararMotor(meu.deck);
       const humano = cfg.primeiro === "eu" ? 0 : cfg.primeiro === "ia" ? 1 : (aleatorio(2) as 0 | 1);
       // o motor sempre dá o primeiro turno ao jogador 0
       const par: [DeckSim, DeckSim] = humano === 0 ? [meu.deck, doIA.deck] : [doIA.deck, meu.deck];
       const semente = Array.from(crypto.getRandomValues(new Uint32Array(4)), String) as [string, string, string, string];
       setEu(humano);
-      setRegistro([]);
-      setAtivacoes({ itens: [], aberta: false });
-      setRevelacao(null);
-      setQuadro(null);
+      limparDuelo();
       setPensando(true);
       setEtapa("duelo");
       c.iniciar({ partida: { decks: par, semente }, humano, nivel: cfg.nivel, linhas: doIA.linhas, janelas: cfg.todasJanelas ? "todas" : "acao" });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : String(e));
-      setEtapa("config");
+      falhou(e);
     }
+  }
+
+  // ---------- partida 1x1 ----------
+
+  /** Acompanha a sala: entrada do oponente, fim ou desistência, e as jogadas dele */
+  function acompanhar(d: Duelo) {
+    pararSala.current?.();
+    pararSala.current = assinarDuelo(d.id, {
+      duelo: (novo) => {
+        setSala({ ...(salaRef.current ?? d), ...novo });
+        if (novo.estado === "em-andamento" && etapaRef.current === "sala") void comecarPvp(novo);
+        // o oponente desistiu ou saiu: o duelo acaba aqui também
+        if (novo.estado === "encerrado" && etapaRef.current === "duelo" && !quadroRef.current?.fim && !desistenciaRef.current)
+          setDesistencia({ vencedor: novo.vencedor, quem: "oponente" });
+      },
+      resposta: (n, jogador, resp) => {
+        if (jogador === euRef.current) return;
+        if (remotasAntes.current) remotasAntes.current.push({ n, resp });
+        else cliente.current?.remota(n, resp);
+      },
+    });
+  }
+
+  /** Começa (ou retoma, depois de cair) o duelo 1x1 com a sala já com os dois jogadores */
+  async function comecarPvp(d: Duelo) {
+    if (!conta) return;
+    setEtapa("carregando");
+    setErro(null);
+    try {
+      remotasAntes.current = [];
+      acompanhar(d);
+      const c = cliente.current && versaoMotor.current ? cliente.current : await prepararMotor();
+      if (versaoMotor.current !== d.versao_motor) throw new Error(t("O motor de regras deste aparelho é diferente do da sala. Abram o Simulador de novo para os dois baixarem o mais recente."));
+      if (APP_VERSION !== d.versao_app) throw new Error(t("Versões diferentes do app (sala: {0}, sua: {1}). Atualizem para a mesma versão.", [d.versao_app, APP_VERSION]));
+      const historico = await respostasDoDuelo(d.id);
+      const humano = meuJogador(d, conta.id);
+      const outro = d.criador === conta.id ? d.convidado : d.criador;
+      if (outro) void nomesDeUsuarios([outro]).then((n) => setNomeOp(n[outro] ?? null));
+      setEu(humano);
+      setSala(d);
+      setConvite(null);
+      limparDuelo();
+      setPensando(true);
+      setEtapa("duelo");
+      c.iniciar({ partida: { decks: decksDoDuelo(d), semente: d.semente }, humano, nivel: "normal", remoto: true, historico: historico.map((h) => h.resp), janelas: cfg.todasJanelas ? "todas" : "acao" });
+      // jogadas que chegaram enquanto o duelo era montado (as repetidas o motor ignora)
+      for (const r of remotasAntes.current ?? []) c.remota(r.n, r.resp);
+      remotasAntes.current = null;
+    } catch (e) {
+      remotasAntes.current = null;
+      falhou(e);
+    }
+  }
+
+  /** Cria a sala com o seu deck e espera o oponente entrar pelo link */
+  async function criarSala() {
+    if (!meu || !conta) return;
+    gravarConfig({ ...cfg, meu: meu.valor, ia: doIA?.valor ?? cfg.ia });
+    setEtapa("carregando");
+    setErro(null);
+    try {
+      await prepararMotor(meu.deck);
+      const d = await criarDuelo(meu.deck, versaoMotor.current, APP_VERSION);
+      setSala(d);
+      acompanhar(d);
+      setCopiado(false);
+      setEtapa("sala");
+      onRota?.({ tela: "simulador", duelo: d.id });
+    } catch (e) {
+      falhou(e);
+    }
+  }
+
+  /** Entra na sala de outra pessoa com o seu deck */
+  async function entrarSala(d: Duelo) {
+    if (!meu || !conta) return;
+    gravarConfig({ ...cfg, meu: meu.valor, ia: doIA?.valor ?? cfg.ia });
+    setEtapa("carregando");
+    setErro(null);
+    try {
+      await prepararMotor(meu.deck);
+      const novo = await entrarDuelo(d.id, meu.deck, versaoMotor.current, APP_VERSION);
+      await comecarPvp(novo);
+    } catch (e) {
+      falhou(e);
+    }
+  }
+
+  /** Abre a sala do link: entrar, esperar o oponente (sua sala) ou voltar a um duelo em andamento */
+  async function abrirSala(id: string) {
+    setCfg((c) => ({ ...c, modo: "amigo" }));
+    if (!conta) return setErro(t("Entre na sua conta para duelar com um amigo."));
+    setErro(null);
+    try {
+      const d = await obterDuelo(id);
+      if (!d) throw new Error(t("Sala não encontrada (ou você não participa dela)."));
+      if (d.estado === "encerrado") throw new Error(t("Esta partida já terminou."));
+      const participo = conta.id === d.criador || conta.id === d.convidado;
+      if (d.estado === "em-andamento") {
+        if (!participo) throw new Error(t("Esta partida já começou com outros jogadores."));
+        return void comecarPvp(d);
+      }
+      if (d.criador === conta.id) {
+        setSala(d);
+        acompanhar(d);
+        setEtapa("sala");
+        return;
+      }
+      const n = await nomesDeUsuarios([d.criador]);
+      setConvite({ duelo: d, criador: n[d.criador] ?? t("um jogador") });
+    } catch (e) {
+      falhou(e);
+    }
+  }
+
+  // link de sala aberto (#/duelo/<id>): espera a conta carregar
+  useEffect(() => {
+    if (dueloDaRota && etapaRef.current !== "duelo" && salaRef.current?.id !== dueloDaRota) void abrirSala(dueloDaRota);
+  }, [dueloDaRota, conta?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Desiste: na partida 1x1, o oponente vence; contra a IA, o duelo só termina */
+  function desistir() {
+    setConfirmarDesistir(false);
+    const vencedor = 1 - euRef.current;
+    setDesistencia({ vencedor, quem: "eu" });
+    const d = salaRef.current;
+    if (d) void encerrarDuelo(d.id, vencedor as 0 | 1).catch(() => {});
+  }
+
+  /** Volta à configuração para outra partida (fecha a sala acompanhada) */
+  function novaPartida() {
+    pararSala.current?.();
+    pararSala.current = null;
+    setSala(null);
+    setNomeOp(null);
+    setConvite(null);
+    setEtapa("config");
+    if (dueloDaRota) onRota?.({ tela: "simulador" });
   }
 
   function receber(q: Quadro) {
     setPensando(!!q.pensando);
     setQuadro(q);
+    quadroRef.current = q;
+    const d = salaRef.current;
+    if (d && q.publicar)
+      for (const p of q.publicar)
+        filaEnvio.current = filaEnvio.current
+          .then(() => enviarResposta(d.id, p.n, euRef.current, p.resp))
+          .catch((e) => setErro(t("Falha ao enviar a jogada: {0}", [e instanceof Error ? e.message : String(e)])));
+    if (d && q.fim && !fimEnviado.current) {
+      fimEnviado.current = true;
+      const v = q.fim.vencedor;
+      void encerrarDuelo(d.id, v === 0 || v === 1 ? v : null).catch(() => {});
+    }
     if (q.eventos.length) setRegistro((r) => [...r, ...q.eventos].slice(-400));
     for (const e of q.eventos) {
       if (e.t === "ativa") setAtivacoes((a) => ({ itens: e.elo === 1 || !a.aberta ? [e] : [...a.itens, e], aberta: true }));
@@ -397,6 +619,54 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
     else setZonas(novas);
   };
 
+  const amigo = cfg.modo === "amigo" || !!convite;
+  const trocarModo = (modo: Config["modo"]) => {
+    const novo = { ...cfg, modo };
+    setCfg(novo);
+    gravarConfig({ ...novo, meu: meu?.valor ?? novo.meu, ia: doIA?.valor ?? novo.ia });
+  };
+  const carregando = etapa === "carregando";
+
+  if (etapa === "sala" && sala) {
+    const link = linkPara({ tela: "simulador", duelo: sala.id });
+    return (
+      <ScreenShell title={t("Simulador")} accent="magenta" onBack={onBack}>
+        <div className="sim-config">
+          <h3>{t("Sala criada")}</h3>
+          <p>{t("Mande este link para o seu oponente. O duelo começa assim que ele entrar com o deck dele.")}</p>
+          <label className="sim-campo">
+            <span className="field-label">{t("Link da sala")}</span>
+            <input readOnly value={link} onFocus={(e) => e.target.select()} />
+          </label>
+          <small className="tags-note">{t("Código da sala: {0}", [sala.id])}</small>
+          <div className="sim-niveis">
+            <button className="ghost-btn" onClick={() => void copiarLink({ tela: "simulador", duelo: sala.id }).then(setCopiado)}>
+              {copiado ? t("Link copiado") : t("Copiar link")}
+            </button>
+            <button
+              className="ghost-btn"
+              onClick={() => {
+                void encerrarDuelo(sala.id, null).catch(() => {});
+                novaPartida();
+              }}
+            >
+              {t("Cancelar sala")}
+            </button>
+          </div>
+          <p className="sim-pensando" role="status">
+            {t("Aguardando o oponente entrar…")}
+          </p>
+          <small className="tags-note">{t("Os dois precisam estar com a mesma versão do app.")}</small>
+          {erro && (
+            <p className="conta-erro" role="alert">
+              {erro}
+            </p>
+          )}
+        </div>
+      </ScreenShell>
+    );
+  }
+
   if (etapa !== "duelo" || !quadro) {
     return (
       <ScreenShell title={t("Simulador")} accent="magenta" onBack={onBack}>
@@ -404,8 +674,83 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
           <p className="tags-note">
             {t("Duelo com as regras do jogo contra a IA. O motor é o do EDOPro (Project Ignis): custos, condições, cadeias e “uma vez por turno” valem como no jogo.")}
           </p>
+          {!convite && (
+            <div className="sim-niveis" role="group" aria-label={t("Modo")}>
+              <button className={`ghost-btn ${!amigo ? "sim-ativo" : ""}`} onClick={() => trocarModo("ia")} aria-pressed={!amigo}>
+                {t("Contra a IA")}
+              </button>
+              <button className={`ghost-btn ${amigo ? "sim-ativo" : ""}`} onClick={() => trocarModo("amigo")} aria-pressed={amigo}>
+                {t("Contra um amigo")}
+              </button>
+            </div>
+          )}
           {!opcoes.length ? (
             <p>{t("Monte um deck no Editor de Deck para duelar.")}</p>
+          ) : amigo && !conta ? (
+            <div className="sim-campo">
+              <p>{t("Para duelar com um amigo, entre na sua conta: a sala e as jogadas passam pelo servidor do app.")}</p>
+              <button className="ghost-btn" onClick={() => openConta()}>
+                {t("Entrar na conta")}
+              </button>
+            </div>
+          ) : convite ? (
+            <>
+              <p>
+                <strong>{t("Convite de {0}", [convite.criador])}</strong> — {t("escolha o seu deck e entre no duelo.")}
+              </p>
+              <label className="sim-campo">
+                <span className="field-label">{t("Seu deck")}</span>
+                <select value={meu?.valor} onChange={(e) => setCfg({ ...cfg, meu: e.target.value })}>
+                  {opcoes.map((o) => (
+                    <option key={o.valor} value={o.valor}>
+                      {o.valor.startsWith("meta:") ? `${t("Torneio")}: ${o.nome}` : o.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="sim-niveis">
+                <button className="ghost-btn sim-duelar" onClick={() => void entrarSala(convite.duelo)} disabled={carregando}>
+                  {carregando ? progresso || t("Preparando…") : t("Entrar no duelo")}
+                </button>
+                <button className="ghost-btn" onClick={novaPartida} disabled={carregando}>
+                  {t("Recusar")}
+                </button>
+              </div>
+            </>
+          ) : amigo ? (
+            <>
+              <label className="sim-campo">
+                <span className="field-label">{t("Seu deck")}</span>
+                <select value={meu?.valor} onChange={(e) => setCfg({ ...cfg, meu: e.target.value })}>
+                  {opcoes.map((o) => (
+                    <option key={o.valor} value={o.valor}>
+                      {o.valor.startsWith("meta:") ? `${t("Torneio")}: ${o.nome}` : o.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="ghost-btn sim-duelar" onClick={() => void criarSala()} disabled={carregando}>
+                {carregando ? progresso || t("Preparando…") : t("Criar sala")}
+              </button>
+              <small className="tags-note">{t("Você recebe um link para mandar ao seu oponente. Quem começa é sorteado.")}</small>
+              <label className="sim-campo">
+                <span className="field-label">{t("Entrar numa sala (código ou link)")}</span>
+                <div className="sim-niveis">
+                  <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder={t("Cole aqui o link que recebeu")} />
+                  <button
+                    className="ghost-btn"
+                    disabled={!idDaSala(codigo) || carregando}
+                    onClick={() => {
+                      const id = idDaSala(codigo)!;
+                      onRota?.({ tela: "simulador", duelo: id });
+                      void abrirSala(id);
+                    }}
+                  >
+                    {t("Abrir")}
+                  </button>
+                </div>
+              </label>
+            </>
           ) : (
             <>
               <label className="sim-campo">
@@ -469,6 +814,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
   }
 
   const op = (1 - eu) as 0 | 1;
+  const rotuloOp = sala ? (nomeOp ?? t("Oponente")) : t("IA");
   const est = quadro.estado;
   const meuLado = est.lados[eu];
   const lado2 = est.lados[op];
@@ -476,7 +822,8 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
 
   const abrirMenu = (e: MouseEvent, lista: Acao[]) => {
     e.stopPropagation();
-    setMenu({ x: e.clientX, y: e.clientY, acoes: lista });
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenu({ x: r.left, topo: r.top, base: r.bottom, acoes: lista });
   };
 
   // carta desenhada (não componente, para o React não recriar o elemento a cada quadro)
@@ -584,10 +931,15 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
   };
 
   const preCard = preview !== null ? byId.get(preview) : undefined;
-  const fimTexto = quadro.fim ? (quadro.fim.vencedor === eu ? t("Você venceu!") : quadro.fim.vencedor === op ? t("A IA venceu.") : t("Empate.")) : null;
+  const vencedorFim = quadro.fim?.vencedor ?? desistencia?.vencedor;
+  const fimTexto =
+    quadro.fim || desistencia
+      ? (desistencia && !quadro.fim ? (desistencia.quem === "eu" ? t("Você desistiu.") + " " : t("{0} desistiu ou saiu.", [rotuloOp]) + " ") : "") +
+        (vencedorFim === eu ? t("Você venceu!") : vencedorFim === op ? t("{0} venceu.", [rotuloOp]) : t("Fim do duelo."))
+      : null;
 
   return (
-    <ScreenShell title={t("Simulador")} accent="magenta" onBack={() => (quadro.fim ? onBack() : setSair(true))} plain>
+    <ScreenShell title={t("Simulador")} accent="magenta" onBack={() => (fimTexto ? onBack() : setSair(true))} plain>
       <div className="teste-jogo sim">
         <Lateral className="tj-esq" titulo={t("Carta")}>
           {preview !== null ? (
@@ -655,7 +1007,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
 
         <Lateral lado="dir" className="tj-dir sim-dir" titulo={t("Duelo")} abrirCom={pedido && pedido.msg.type !== T.SELECT_IDLECMD && pedido.msg.type !== T.SELECT_BATTLECMD ? pedido : undefined}>
           <div className="sim-pv">
-            <Pv rotulo={t("IA")} lp={lado2.lp} vez={!minhaVez} />
+            <Pv rotulo={rotuloOp} lp={lado2.lp} vez={!minhaVez} />
             <Pv rotulo={t("Você")} lp={meuLado.lp} vez={minhaVez} />
           </div>
           {ativacoes.itens.length > 0 && (
@@ -675,7 +1027,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
                     <span className="sim-elo-num">{a.elo}</span>
                     <span>
                       <strong>
-                        {a.p === eu ? t("Você") : t("IA")}: {nomeDe(a.code)}
+                        {a.p === eu ? t("Você") : rotuloOp}: {nomeDe(a.code)}
                       </strong>
                       <small>{lugarDe(a.location, a.p === eu)}</small>
                       {a.texto && <em>{a.texto}</em>}
@@ -689,13 +1041,13 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
           {fimTexto ? (
             <div className="sim-fim" role="status">
               <strong>{fimTexto}</strong>
-              <button className="ghost-btn" onClick={() => setEtapa("config")}>
+              <button className="ghost-btn" onClick={novaPartida}>
                 {t("Nova partida")}
               </button>
             </div>
           ) : pensando || !pedido ? (
             <p className="sim-pensando" role="status">
-              {t("A IA está pensando…")}
+              {sala ? t("Vez de {0}…", [rotuloOp]) : t("A IA está pensando…")}
             </p>
           ) : (
             <Escolha pedido={pedido} nomeDe={nomeDe} responder={responder} eu={eu} setPreview={setPreview} marcadas={marcadas} setMarcadas={setMarcadas} tocar={tocar} setFoco={setFoco} />
@@ -713,6 +1065,11 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
             />
             {t("Pausar em todas as janelas de resposta")}
           </label>
+          {!fimTexto && (
+            <button className="danger-btn sim-desistir" onClick={() => setConfirmarDesistir(true)}>
+              {t("Desistir")}
+            </button>
+          )}
           {aviso && <p className="tags-note">{aviso}</p>}
           {erro && (
             <p className="conta-erro" role="alert">
@@ -726,7 +1083,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
               .map((e, i) => [e, registro.length - i] as const)
               .filter(([e]) => e.t !== "resolve" && e.t !== "cadeia-fim")
               .map(([e, k]) => (
-                <li key={k}>{textoEvento(e, eu, nomeDe)}</li>
+                <li key={k}>{textoEvento(e, eu, nomeDe, rotuloOp)}</li>
               ))}
           </ol>
         </Lateral>
@@ -744,8 +1101,16 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
         )}
 
         {menu && (
-          <div className="tj-menu-fundo" onClick={() => setMenu(null)}>
-            <ul className="tj-menu" style={{ left: Math.min(menu.x, window.innerWidth - 260), top: Math.min(menu.y, window.innerHeight - 40 * menu.acoes.length - 20) }} role="menu">
+          <div className="tj-menu-fundo sim-menu-fundo" onClick={() => setMenu(null)}>
+            {/* logo acima da carta clicada, sem cobrir ela nem as vizinhas da lista; sem espaço em cima, logo abaixo */}
+            <ul
+              className="tj-menu"
+              style={{
+                left: Math.max(8, Math.min(menu.x, window.innerWidth - 300)),
+                top: menu.topo - 44 * menu.acoes.length - 22 >= 8 ? menu.topo - 44 * menu.acoes.length - 22 : Math.min(menu.base + 6, window.innerHeight - 44 * menu.acoes.length - 22),
+              }}
+              role="menu"
+            >
               {menu.acoes.map((a, i) => (
                 <li key={i}>
                   <button role="menuitem" onClick={() => responder(a.resp)}>
@@ -776,13 +1141,37 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
           </div>
         )}
 
+        {confirmarDesistir && (
+          <div className="tj-menu-fundo" onClick={() => setConfirmarDesistir(false)}>
+            <div className="tj-lista sim-sair" role="dialog" aria-label={t("Desistir")} onClick={(e) => e.stopPropagation()}>
+              <h4>{t("Desistir do duelo?")}</h4>
+              <p>{t("{0} vence o duelo.", [rotuloOp])}</p>
+              <div className="sim-niveis">
+                <button className="danger-btn" onClick={desistir} autoFocus>
+                  {t("Desistir")}
+                </button>
+                <button className="ghost-btn" onClick={() => setConfirmarDesistir(false)}>
+                  {t("Continuar duelando")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {sair && (
           <div className="tj-menu-fundo" onClick={() => setSair(false)}>
             <div className="tj-lista sim-sair" role="dialog" aria-label={t("Sair do duelo")} onClick={(e) => e.stopPropagation()}>
               <h4>{t("Sair do duelo?")}</h4>
-              <p>{t("O duelo em andamento será perdido.")}</p>
+              <p>{sala ? t("Sair conta como desistência: {0} vence.", [rotuloOp]) : t("O duelo em andamento será perdido.")}</p>
               <div className="sim-niveis">
-                <button className="danger-btn" onClick={onBack} autoFocus>
+                <button
+                  className="danger-btn"
+                  onClick={() => {
+                    if (!fimTexto) desistir();
+                    onBack();
+                  }}
+                  autoFocus
+                >
                   {t("Sair")}
                 </button>
                 <button className="ghost-btn" onClick={() => setSair(false)}>
@@ -1130,15 +1519,15 @@ function lugarDe(location: number, minha: boolean): string {
 }
 
 /** Linha do registro do duelo */
-function textoEvento(e: EventoSim, eu: number, nomeDe: (c: number) => string): string {
-  const quem = (p: number) => (p === eu ? t("Você") : t("IA"));
+function textoEvento(e: EventoSim, eu: number, nomeDe: (c: number) => string, oponente: string): string {
+  const quem = (p: number) => (p === eu ? t("Você") : oponente);
   switch (e.t) {
     case "turno":
       return t("— Turno {0}: {1} —", [e.n, quem(e.p)]);
     case "fase":
       return t("Fase: {0}", [siglaFase(e.fase)]);
     case "compra":
-      return e.p === eu ? t("Você comprou {0}", [e.codes.map(nomeDe).join(", ")]) : t("IA comprou {0} carta(s)", [e.codes.length]);
+      return e.p === eu ? t("Você comprou {0}", [e.codes.map(nomeDe).join(", ")]) : t("{0} comprou {1} carta(s)", [oponente, e.codes.length]);
     case "invoca":
       return e.como === "normal"
         ? t("{0} Invocou por Invocação-Normal {1}", [quem(e.p), nomeDe(e.code)])
@@ -1152,12 +1541,12 @@ function textoEvento(e: EventoSim, eu: number, nomeDe: (c: number) => string): s
     case "nega":
       return t("Ativação ou efeito negado");
     case "revela":
-      return e.p === eu ? t("Cartas mostradas a você: {0}", [e.cartas.map((c) => nomeDe(c.code)).join(", ")]) : t("A IA viu {0} carta(s)", [e.cartas.length]);
+      return e.p === eu ? t("Cartas mostradas a você: {0}", [e.cartas.map((c) => nomeDe(c.code)).join(", ")]) : t("{0} viu {1} carta(s)", [oponente, e.cartas.length]);
     case "resolve":
     case "cadeia-fim":
       return "";
     case "embaralha":
-      return e.p === eu ? t("Seu Deck foi embaralhado") : t("O Deck da IA foi embaralhado");
+      return e.p === eu ? t("Seu Deck foi embaralhado") : t("O Deck de {0} foi embaralhado", [oponente]);
     case "move": {
       if (e.para & L.OVERLAY) return t("{0} virou matéria Xyz", [nomeDe(e.code)]);
       const para = e.para & L.GRAVE ? t("Cemitério") : e.para & L.REMOVED ? t("banidas") : e.para & L.HAND ? t("mão") : e.para & L.EXTRA ? t("Extra Deck") : e.para & L.DECK ? t("Deck") : t("campo");
@@ -1172,6 +1561,6 @@ function textoEvento(e: EventoSim, eu: number, nomeDe: (c: number) => string): s
     case "custo":
       return t("{0} pagou {1} PV", [quem(e.p), e.v]);
     case "fim":
-      return e.vencedor === eu ? t("Você venceu o duelo") : t("A IA venceu o duelo");
+      return e.vencedor === eu ? t("Você venceu o duelo") : t("{0} venceu o duelo", [oponente]);
   }
 }

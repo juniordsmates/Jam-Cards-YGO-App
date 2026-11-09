@@ -414,3 +414,21 @@
   border-radius: 50%;
   z-index: 3;
 }
+
+/* menu de ações por cima de tudo, inclusive da lista do Extra Deck/Cemitério/banidas */
+.sim-menu-fundo {
+  z-index: 1300;
+}
+
+.sim-desistir {
+  align-self: flex-start;
+}
+
+.sim-config h3 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.sim-config input {
+  width: 100%;
+}

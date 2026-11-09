@@ -172,6 +172,12 @@ Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-was
   - cartas com ações ficam com contorno brilhante; o clique abre as ações (Invocar, Ativar, Baixar, Atacar…);
   - as outras decisões do motor (alvos, matérias, zonas, posições, sim/não, declarar carta…) aparecem no painel da direita;
   - por padrão, o simulador só pergunta "Encadear?" logo depois de uma jogada da IA; **Pausar em todas as janelas de resposta** liga as outras.
+- **Partidas 1x1 (contra um amigo):** quem cria a sala recebe o link `#/duelo/<id>` (ou o código) para mandar ao oponente; o duelo começa quando ele entra com o deck dele. Precisa estar com a conta aberta.
+  - Os dois aparelhos rodam o motor com a mesma semente e os mesmos decks e trocam só as respostas (o motor é determinístico). As salas ficam em `duelos` e as respostas, numeradas, em `duelo_respostas`, com Realtime: migração [20261110000000_duelos.sql](supabase/migrations/20261110000000_duelos.sql).
+  - O banco só aceita a resposta de quem tem a vez e na ordem; entrar confere se os dois têm a mesma versão do app e do motor.
+  - Quem cai volta ao duelo abrindo o link: o duelo é refeito pelas respostas salvas.
+  - **Desistir** (ou sair) dá a vitória ao oponente, que vê o aviso na hora.
+  - Limite: o duelo inteiro fica nos dois aparelhos (quem souber abrir as ferramentas do navegador consegue ver a mão do outro). Serve para partidas entre amigos, não para competição; não vale pontos no Rank.
 - **Motor:** roda num Worker ([src/sim/worker.ts](src/sim/worker.ts)), para a IA pensar sem travar a tela.
   - [src/sim/regras.ts](src/sim/regras.ts): abre o motor com o pacote e cria o duelo;
   - [src/sim/sessao.ts](src/sim/sessao.ts): conduz o duelo, monta o estado e o registro;
