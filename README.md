@@ -4,7 +4,7 @@ App de busca de cartas e montagem de decks de Yu-Gi-Oh! que roda na **web**, no 
 
 > **⬇ Instaladores:** abra a pasta [Install](Install/) para baixar o Jam Cards - YGO! para Windows (`.exe`) ou macOS (`.dmg`), com as instruções de instalação.
 >
-> Este repositório é privado. Para o público, só a versão final (hoje **1.0.0 Alpha**) é publicada, nas [Releases do repositório Jam-Cards-YGO](https://github.com/juniordsmates/Jam-Cards-YGO/releases).
+> Este repositório é público, sob a licença [AGPL-3.0](LICENSE) (o Simulador usa o motor e os scripts do Project Ignis, que são AGPL). Os instaladores da versão final ficam nas [Releases do repositório Jam-Cards-YGO](https://github.com/juniordsmates/Jam-Cards-YGO/releases).
 
 - **Frontend:** React 18 + TypeScript + Vite
 - **Desktop:** Tauri 2 (Rust + WebView do sistema)
@@ -37,12 +37,12 @@ O instalador de cada sistema precisa ser gerado nesse sistema (ou via CI, como G
 
 ## Versões e branches
 
-Versão atual: **1.0.1 Alpha** (número em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`; canal em [src/version.ts](src/version.ts) e na Action).
+Versão atual: **1.0.6 Alpha** (número em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`; canal em [src/version.ts](src/version.ts) e na Action).
 
 | Branch | Papel |
 | --- | --- |
 | `main` | desenvolvimento: tudo é feito aqui |
-| `release` | versão de distribuição (hoje 1.0.1): só recebe as mudanças da `main` **quando o dono do projeto pede**; cada push nela gera os instaladores |
+| `release` | versão de distribuição (hoje 1.0.6): só recebe as mudanças da `main` **quando o dono do projeto pede**; cada push nela gera os instaladores |
 
 O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **desativado**: o que estiver nele não é aplicado ao projeto.
 
@@ -189,7 +189,7 @@ Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-was
   - os textos dos efeitos nas escolhas vêm em inglês (os do Project Ignis);
   - a ordem de cartas e de cadeia (SORT_CARD/SORT_CHAIN) usa a ordem proposta pelo motor;
   - a IA vê o estado inteiro do duelo (mão e Deck do jogador): ela é para treino, não para jogo justo.
-- **Licença:** o `ocgcore` e os scripts do Project Ignis são AGPL-3.0, e por isso o app inteiro está sob a AGPL-3.0 ([LICENSE](LICENSE)). Quem recebe o app (instalador ou site) tem direito ao código-fonte: antes de distribuir uma versão com o Simulador, o código precisa estar disponível publicamente (por exemplo, com o repositório aberto e um link no app).
+- **Licença:** o `ocgcore` e os scripts do Project Ignis são AGPL-3.0, e por isso o app inteiro está sob a AGPL-3.0 ([LICENSE](LICENSE)). Quem recebe o app (instalador ou site) tem direito ao código-fonte: este repositório é público, e o rodapé do menu principal tem o link **Código-fonte**.
 
 ## Combo Search, contas e base de combos (Supabase)
 

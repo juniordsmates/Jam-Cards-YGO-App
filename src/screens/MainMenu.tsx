@@ -5,6 +5,10 @@ import { BUILD_LABEL, VERSION_LABEL } from "../version";
 import { useConta } from "../db/conta";
 import { isContaOpen } from "../components/Conta";
 import { isFontesOpen } from "../components/Fontes";
+import ExternalLink from "../components/ExternalLink";
+
+/** Repositório público do app (licença AGPL-3.0) */
+export const CODIGO_FONTE = "https://github.com/juniordsmates/Jam-Cards-YGO-App";
 import { isRespostasOpen } from "../components/RespostasDialog";
 import { definirIdioma, IDIOMA, IDIOMAS_APP, t } from "../i18n";
 import { definirTema, useTema } from "../tema";
@@ -185,6 +189,10 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
         <span>{t("↑ ↓ ← → navegar")}</span>
         <span>{t("Enter selecionar")}</span>
         <span title={BUILD_LABEL}>{t("v{0} · {1} · {2}", [VERSION_LABEL, isDesktop ? t("Desktop") : t("Web"), BUILD_LABEL])}</span>
+        {/* AGPL-3.0: quem usa o app (inclusive pelo site) tem direito ao código-fonte */}
+        <ExternalLink href={CODIGO_FONTE} title={t("Código-fonte do app (licença AGPL-3.0)")}>
+          {t("Código-fonte")}
+        </ExternalLink>
       </footer>
     </section>
     </>

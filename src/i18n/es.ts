@@ -2513,4 +2513,6 @@ export const ES: Record<string, string> = {
   "{0} pagou {1} PV": "{0} pagó {1} LP",
   "{0} sofreu {1} de dano": "{0} recibió {1} de daño",
   "— Turno {0}: {1} —": "— Turno {0}: {1} —",
+  "Código-fonte": "Código fuente",
+  "Código-fonte do app (licença AGPL-3.0)": "Código fuente de la app (licencia AGPL-3.0)",
 };
