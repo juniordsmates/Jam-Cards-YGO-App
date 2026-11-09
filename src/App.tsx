@@ -10,6 +10,7 @@ import Rank from "./screens/Rank";
 import Conquistas from "./screens/Conquistas";
 import Eventos from "./screens/Eventos";
 import ListaDesejos from "./screens/ListaDesejos";
+import MeusCombos from "./screens/MeusCombos";
 import Comunidade from "./screens/Comunidade";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
 import ExitDialog from "./components/ExitDialog";
@@ -24,7 +25,7 @@ import type { Card } from "./db/types";
 import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos" | "meuscombos";
 
 /** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
 const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
@@ -142,6 +143,7 @@ export default function App() {
           }}
           onColecao={() => setScreen("colecao")}
           onDesejos={() => setScreen("desejos")}
+          onMeusCombos={() => setScreen("meuscombos")}
           onComunidade={() => setScreen("comunidade")}
           onRank={() => setScreen("rank")}
           onEventos={() => setScreen("eventos")}
@@ -183,6 +185,16 @@ export default function App() {
       {screen === "manual" && <Manual onBack={() => setScreen("menu")} />}
       {screen === "metacall" && <MetaCall onBack={() => setScreen("menu")} inicial={rota.tela === "metacall" ? rota : undefined} onRota={aoRota} />}
       {screen === "desejos" && <ListaDesejos onBack={() => setScreen("menu")} />}
+      {screen === "meuscombos" && (
+        <MeusCombos
+          onBack={() => setScreen("menu")}
+          onTestar={(deck, combo) => {
+            setDeckInicial({ temporario: deck, testar: true, combo });
+            setDeckFrom("meuscombos");
+            setScreen("deck");
+          }}
+        />
+      )}
       {screen === "rank" && <Rank onBack={() => setScreen("menu")} onComunidade={() => setScreen("comunidade")} onConquistas={() => setScreen("conquistas")} />}
       {screen === "conquistas" && <Conquistas onBack={() => setScreen("menu")} onRank={() => setScreen("rank")} />}
       {screen === "eventos" && <Eventos inicial={rota.tela === "eventos" ? rota : undefined} onRota={aoRota} onBack={() => setScreen("menu")} />}

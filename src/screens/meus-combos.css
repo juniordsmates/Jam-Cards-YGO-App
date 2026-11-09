@@ -1,0 +1,20 @@
+/* ---------- Meus Combos ---------- */
+
+.meus-combos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.meus-combos-busca {
+  max-width: 420px;
+}
+
+/* ☆ Salvar / ★ Salvo nos cabeçalhos dos combos (components/BotaoSalvarCombo.tsx) */
+.combo-salvar.salvo {
+  border-color: var(--magenta);
+  color: var(--magenta);
+}

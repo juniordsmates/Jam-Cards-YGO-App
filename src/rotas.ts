@@ -32,6 +32,7 @@ export type Rota =
   | { tela: "conquistas" }
   | { tela: "eventos"; resultado?: string; aba?: "compartilhar" | "analise" }
   | { tela: "desejos" }
+  | { tela: "meuscombos" }
   | { tela: "comunidade"; arquetipo?: string };
 
 const NOMES: Record<string, Rota["tela"]> = {
@@ -50,6 +51,7 @@ const NOMES: Record<string, Rota["tela"]> = {
   eventos: "eventos",
   evento: "eventos",
   desejos: "desejos",
+  "meus-combos": "meuscombos",
   comunidade: "comunidade",
 };
 
@@ -125,6 +127,8 @@ export function hashDa(r: Rota): string {
       return r.resultado ? `#/evento/${r.resultado}` : r.aba ? `#/eventos/${r.aba}` : "#/eventos";
     case "deck":
       return "#/editor";
+    case "meuscombos":
+      return "#/meus-combos";
     default:
       return `#/${r.tela}`;
   }

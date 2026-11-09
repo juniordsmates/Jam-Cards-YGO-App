@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { FontesButton } from "./Fontes";
+import BotaoSalvarCombo from "./BotaoSalvarCombo";
+import { linhaComoCombo } from "../db/combosSalvos";
 import type { KnownCombo } from "../data/combos";
 import { CARTA_QUALQUER, METODO_LABEL, moveText, origemText, respostasDaLinha, semCartaDoCalculo, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
 import { openRespostas } from "./RespostasDialog";
@@ -196,6 +198,9 @@ export default function VerifiedCombos({ title = tr("Combos calculados"), lines,
               <span className="vc-acoes">
                 <span className="vc-badge" title={tr("Linha jogada pelo App com as regras oficiais das cartas: custos, condições, travas e limites aplicados")}>
                   {tr("Calculado com o App")}</span>
+                <BotaoSalvarCombo
+                  combo={linhaComoCombo(l, `${deck?.nome ?? tr("Combo")}: ${(top.length ? top : l.mao).map((id) => (byId.get(id) ? displayName(byId.get(id)!) : `#${id}`)).join(" · ")}`)}
+                />
                 {onTestar && (
                   <button
                     className="ghost-btn vc-testar"

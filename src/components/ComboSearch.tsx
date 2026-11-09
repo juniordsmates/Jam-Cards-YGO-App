@@ -7,6 +7,7 @@ import VerifiedCombos, { groupSteps, join, Name, StepText } from "./VerifiedComb
 import type { KnownCombo } from "../data/combos";
 import VincularArquetipos from "./VincularArquetipos";
 import PassosOrdenaveis from "./PassosOrdenaveis";
+import BotaoSalvarCombo from "./BotaoSalvarCombo";
 import {
   arquetiposDe,
   arquetiposSemCartas,
@@ -213,6 +214,7 @@ export function ComboCard({
             className="combo-link"
           />
         )}
+        <BotaoSalvarCombo combo={combo} />
         {onTestar && (
           <button
             className="ghost-btn vc-testar"

@@ -25,6 +25,8 @@ type Props = {
   onColecao: () => void;
   /** Lista de Desejos: cartas que o jogador quer conseguir */
   onDesejos: () => void;
+  /** Meus Combos: combos salvos pelo jogador */
+  onMeusCombos: () => void;
   /** Comunidade: por arquétipo, quem mais compartilha, combos e guia */
   onComunidade: () => void;
   /** Rank: duelistas com mais pontos */
@@ -46,51 +48,70 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onDesejos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onDesejos, onMeusCombos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
   const conta = useConta();
   const tema = useTema();
-  const items: Item[] = [
-    { label: t("Buscar Carta"), hint: t("Encontre qualquer carta"), icon: <SearchIcon />, accent: "cyan", action: onSearch },
-    { label: t("Combos"), hint: t("Mão inicial e Combo Search"), icon: <ComboIcon />, accent: "cyan", action: onCombos },
-    { label: t("Guia de Deck"), hint: t("Decks do meta: ideias, combos e interações"), icon: <BookIcon />, accent: "cyan", action: onGuia },
-    { label: t("Meta Call"), hint: t("Decks esperados no torneio → cartas contra eles"), icon: <TargetIcon />, accent: "cyan", action: onMetaCall },
-    { label: t("Editor de Deck"), hint: t("Monte e ajuste seus decks"), icon: <DeckIcon />, accent: "magenta", action: onDeck },
-    { label: t("Teste de Jogo"), hint: t("Teste de mão e jogadas com o seu deck"), icon: <DeckIcon />, accent: "magenta", action: onTeste },
-    { label: t("Minha Coleção"), hint: t("Cartas que você possui, raridades e valor"), icon: <CollectionIcon />, accent: "magenta", action: onColecao },
-    { label: t("Lista de Desejos"), hint: t("Cartas que você quer conseguir"), icon: <HeartIcon />, accent: "magenta", action: onDesejos },
-    { label: t("Comunidade"), hint: t("Por arquétipo: quem mais compartilha, combos e guia"), icon: <PeopleIcon />, accent: "magenta", action: onComunidade },
-    { label: t("Eventos"), hint: t("Resultados de torneio com a decklist"), icon: <EventIcon />, accent: "magenta", action: onEventos },
-    { label: t("Rank e Conquistas"), hint: t("Duelistas com mais pontos e suas conquistas"), icon: <TrophyIcon />, accent: "magenta", action: onRank },
-    { label: t("Como Utilizar"), hint: t("Manual de cada tela, com exemplos"), icon: <HelpIcon />, accent: "cyan", action: onManual },
+  const B = (label: string, hint: string, icon: Item["icon"], accent: Item["accent"], action: () => void): Item => ({ label, hint, icon, accent, action });
+  // três colunas; a ordem dentro de cada uma é a dos botões
+  const colunas: { titulo: string; itens: Item[] }[] = [
+    {
+      titulo: t("Explorar"),
+      itens: [
+        B(t("Buscar Carta"), t("Encontre qualquer carta"), <SearchIcon />, "cyan", onSearch),
+        B(t("Combos"), t("Mão inicial e Combo Search"), <ComboIcon />, "cyan", onCombos),
+        B(t("Guia de Deck"), t("Decks do meta: ideias, combos e interações"), <BookIcon />, "cyan", onGuia),
+        B(t("Meta Call"), t("Decks esperados no torneio → cartas contra eles"), <TargetIcon />, "cyan", onMetaCall),
+      ],
+    },
+    {
+      titulo: t("Seus decks e cartas"),
+      itens: [
+        B(t("Editor de Deck"), t("Monte e ajuste seus decks"), <DeckIcon />, "magenta", onDeck),
+        B(t("Teste de Jogo"), t("Teste de mão e jogadas com o seu deck"), <DeckIcon />, "magenta", onTeste),
+        B(t("Minha Coleção"), t("Cartas que você possui, raridades e valor"), <CollectionIcon />, "magenta", onColecao),
+        B(t("Meus Combos"), t("Combos que você salvou, para abrir rápido"), <ComboIcon />, "magenta", onMeusCombos),
+      ],
+    },
+    {
+      titulo: t("Comunidade e app"),
+      itens: [
+        B(t("Lista de Desejos"), t("Cartas que você quer conseguir"), <HeartIcon />, "magenta", onDesejos),
+        B(t("Comunidade"), t("Por arquétipo: quem mais compartilha, combos e guia"), <PeopleIcon />, "magenta", onComunidade),
+        B(t("Eventos"), t("Resultados de torneio com a decklist"), <EventIcon />, "magenta", onEventos),
+        B(t("Rank e Conquistas"), t("Duelistas com mais pontos e suas conquistas"), <TrophyIcon />, "magenta", onRank),
+        B(t("Como Utilizar"), t("Manual de cada tela, com exemplos"), <HelpIcon />, "cyan", onManual),
+      ],
+    },
   ];
-  // até 3 colunas com até 4 opções cada (a ordem de items é a das colunas)
-  const POR_COLUNA = 4;
-  const colunas = [t("Explorar"), t("Seus decks e cartas"), t("Comunidade e app")].map((titulo, c) => ({ titulo, itens: items.slice(c * POR_COLUNA, (c + 1) * POR_COLUNA) }));
 
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  // botões por coluna (refs.current[coluna][linha])
+  const refs = useRef<(HTMLButtonElement | null)[][]>([]);
+  const tamanhos = colunas.map((c) => c.itens.length);
   const activeRef = useRef(active);
   activeRef.current = active;
 
   // Setas navegam entre os botões (Enter aciona). Sem atalhos de letras ou números: digitar numa
   // janela aberta por cima do menu (ex.: senha na tela de conta) não pode acionar o menu.
   useEffect(() => {
-    refs.current[0]?.focus();
+    refs.current[0]?.[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (!activeRef.current || isFontesOpen() || isContaOpen() || isRespostasOpen()) return;
       const alvo = e.target as HTMLElement | null;
       if (alvo?.closest("input, textarea, select, [contenteditable]")) return;
-      const current = refs.current.findIndex((el) => el === document.activeElement);
+      // posição do botão em foco (coluna, linha); sem foco num botão, o primeiro
+      let [c, j] = [0, 0];
+      refs.current.forEach((col, ci) => col.forEach((el, ji) => el === document.activeElement && ([c, j] = [ci, ji])));
       // ↑ ↓ dentro da coluna (e passam para a próxima no fim); ← → para a coluna ao lado, na mesma linha
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
-        const step = e.key === "ArrowDown" ? 1 : -1;
-        const next = (Math.max(current, 0) + step + items.length) % items.length;
-        refs.current[next]?.focus();
+        const ordem = tamanhos.flatMap((n, ci) => Array.from({ length: n }, (_, ji) => [ci, ji]));
+        const atual = ordem.findIndex(([ci, ji]) => ci === c && ji === j);
+        const [nc, nj] = ordem[(atual + (e.key === "ArrowDown" ? 1 : -1) + ordem.length) % ordem.length];
+        refs.current[nc]?.[nj]?.focus();
       } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
         e.preventDefault();
-        const step = e.key === "ArrowRight" ? 4 : -4;
-        const next = (Math.max(current, 0) + step + items.length) % items.length;
-        refs.current[next]?.focus();
+        const nc = (c + (e.key === "ArrowRight" ? 1 : -1) + tamanhos.length) % tamanhos.length;
+        refs.current[nc]?.[Math.min(j, tamanhos[nc] - 1)]?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -121,7 +142,7 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
     <button className="ghost-btn menu-conta" onClick={onConta} title={conta ? t("Minha conta") : t("Entrar ou criar conta")}>
       {conta ? `@${conta.usuario}` : t("Entrar")}
     </button>
-    {/* Sair fica no topo (as três colunas do menu têm até 4 botões) */}
+    {/* Sair fica no topo, fora das colunas do menu */}
     <button className="ghost-btn menu-sair" onClick={onExit} title={isDesktop ? t("Fechar o aplicativo") : t("Encerrar a sessão")}>
       <ExitIcon /> {t("Sair")}
     </button>
@@ -141,7 +162,7 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
               <button
                 key={item.label}
                 ref={(el) => {
-                  refs.current[c * POR_COLUNA + j] = el;
+                  (refs.current[c] ??= [])[j] = el;
                 }}
                 className={`menu-btn accent-${item.accent}`}
                 onClick={item.action}
