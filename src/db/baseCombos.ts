@@ -23,7 +23,41 @@ export interface DadosCombo {
   copias?: Record<string, number>;
   /** combo criado no Teste de Jogo (passos anotados das ações do jogador) */
   teste?: boolean;
+  /** ordem em que os passos foram criados; só gravada quando `passos` foi reordenado (Voltar para a ordem original) */
+  passosOriginais?: Passo[];
 }
+
+// ---------------------------------------------------------------- ordem dos passos
+
+/** Move um passo de uma posição para outra (arrastar e soltar) */
+export function moverPasso(passos: Passo[], de: number, para: number): Passo[] {
+  const lista = [...passos];
+  const [p] = lista.splice(de, 1);
+  lista.splice(para, 0, p);
+  return lista;
+}
+
+/**
+ * Os passos atuais na ordem em que o combo foi criado: passos tirados continuam fora, e um passo
+ * que não esteja na ordem original (não deveria acontecer) vai para o fim.
+ */
+export function naOrdemOriginal(atuais: Passo[], originais: Passo[]): Passo[] {
+  const chave = (p: Passo) => JSON.stringify(p);
+  const restam = new Map<string, Passo[]>();
+  for (const p of atuais) restam.set(chave(p), [...(restam.get(chave(p)) ?? []), p]);
+  const out: Passo[] = [];
+  for (const o of originais) {
+    const iguais = restam.get(chave(o));
+    if (iguais?.length) out.push(iguais.shift()!);
+  }
+  return [...out, ...[...restam.values()].flat()];
+}
+
+/** A lista atual está fora da ordem de criação? */
+export const foraDaOrdem = (atuais: Passo[], originais: Passo[]) => JSON.stringify(naOrdemOriginal(atuais, originais)) !== JSON.stringify(atuais);
+
+/** Ordem de criação a gravar com o combo: só quando os passos foram reordenados */
+export const ordemParaGravar = (atuais: Passo[], originais: Passo[]) => (foraDaOrdem(atuais, originais) ? originais : undefined);
 
 export interface ComboBase {
   id: string;
@@ -248,7 +282,7 @@ export async function combosDaComunidade(mao: number[], limite = 20): Promise<Co
  */
 export async function editarCombo(
   combo: ComboBase,
-  campos: { titulo: string; observacoes: string; compartilhar: boolean; passos: DadosCombo["passos"]; arquetipos?: string[] },
+  campos: { titulo: string; observacoes: string; compartilhar: boolean; passos: DadosCombo["passos"]; passosOriginais?: Passo[]; arquetipos?: string[] },
 ): Promise<ComboBase> {
   const sb = supabase();
   if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
@@ -258,7 +292,7 @@ export async function editarCombo(
       titulo: campos.titulo.trim().slice(0, 120),
       publico: campos.compartilhar,
       arquetipos: (campos.arquetipos ?? combo.arquetipos).slice(0, MAX_ARQUETIPOS),
-      dados: { ...combo.dados, passos: campos.passos, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined },
+      dados: { ...combo.dados, passos: campos.passos, passosOriginais: campos.passosOriginais, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined },
     })
     .eq("id", combo.id)
     .select(COLS)

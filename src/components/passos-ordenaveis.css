@@ -1,0 +1,36 @@
+/* passos do combo que dá para reordenar (Criar combo e Editar): components/PassosOrdenaveis.tsx */
+.passos-ordenaveis li {
+  cursor: grab;
+  border-radius: 4px;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+}
+
+.passos-ordenaveis li:focus-visible {
+  outline: 2px solid var(--magenta);
+  outline-offset: 1px;
+}
+
+.passos-ordenaveis li.arrastando {
+  opacity: 0.45;
+}
+
+/* onde o passo arrastado vai entrar */
+.passos-ordenaveis li.solta-acima {
+  border-top-color: var(--magenta);
+}
+
+.passos-ordenaveis li.solta-abaixo {
+  border-bottom-color: var(--magenta);
+}
+
+.passo-alca {
+  margin-right: 6px;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.passos-ordem-original {
+  align-self: flex-start;
+  margin: 4px 0;
+}

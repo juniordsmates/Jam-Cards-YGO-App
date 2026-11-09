@@ -43,8 +43,9 @@ import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
 import { contarPapeis } from "../db/classificacao";
 import { FontesButton } from "../components/Fontes";
 import { isContaOpen, openConta } from "../components/Conta";
-import { arquetiposDe, arquetiposSemCartas, avisoSemCartas, criarComboDoTeste, validadeNoFormato } from "../db/baseCombos";
+import { arquetiposDe, arquetiposSemCartas, avisoSemCartas, criarComboDoTeste, ordemParaGravar, validadeNoFormato } from "../db/baseCombos";
 import VincularArquetipos from "../components/VincularArquetipos";
+import PassosOrdenaveis from "../components/PassosOrdenaveis";
 import { temRecursosAvancados, useConta } from "../db/conta";
 import { salvarComboLocal } from "../db/combosLocais";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
@@ -174,6 +175,8 @@ export default function TesteJogo({
   // Criar combo: cada ação vira um passo (como nas linhas da tela de Combos), a partir da mão inicial
   const conta = useConta();
   const [anotados, setAnotados] = useState<Passo[]>([]);
+  // os mesmos passos na ordem em que foram feitos (Voltar para a ordem original no Criar combo)
+  const [criados, setCriados] = useState<Passo[]>([]);
   const [maoInicial, setMaoInicial] = useState<CartaJogo[]>(t.mao);
   // cópias usadas no combo: cada carta (uid) que saiu do Deck/Extra Deck ou começou na mão
   const usadas = useRef(new Map<string, number>());
@@ -181,6 +184,7 @@ export default function TesteJogo({
   const [gravacao, setGravacao] = useState<{ tipo: "ok" | "erro" | "gravando"; texto: string } | null>(null);
   const recomecarAnotacao = (novo: Tabuleiro) => {
     setAnotados([]);
+    setCriados([]);
     setMaoInicial(novo.mao);
     usadas.current = new Map();
     setGravacao(null);
@@ -189,6 +193,7 @@ export default function TesteJogo({
   const anotar = (p: Passo | null, c?: CartaJogo, opts: { virada?: boolean } = {}) => {
     if (!p) return;
     setAnotados((ps) => anotarPasso(ps, p));
+    setCriados((ps) => anotarPasso(ps, p));
     // tokens não contam como cópias de cartas do deck
     if (c && !c.ficha) usadas.current.set(c.uid, c.id);
     avaliar(p, "eu", opts);
@@ -236,7 +241,7 @@ export default function TesteJogo({
     const dadosCombo = {
       iniciais: maoInicial.map((c) => c.id),
       arquetipos: criando.arquetipos,
-      dados: { passos: anotados, campo: campoDoTabuleiro(t), copias: Object.fromEntries(copias), teste: true, ...(combo?.fontes?.length ? { fontes: combo.fontes } : {}) },
+      dados: { passos: anotados, passosOriginais: ordemParaGravar(anotados, criados), campo: campoDoTabuleiro(t), copias: Object.fromEntries(copias), teste: true, ...(combo?.fontes?.length ? { fontes: combo.fontes } : {}) },
     };
     // Usuário Padrão: o combo fica só neste aparelho (aba Combos → Meus combos neste aparelho)
     if (!temRecursosAvancados(conta)) {
@@ -1169,7 +1174,7 @@ export default function TesteJogo({
             onClick={() => {
               setGravacao(null);
               setGravacao(null);
-              setCriando({ titulo: combo?.titulo?.slice(0, 120) || tituloSugerido(), obs: "", compartilhar: false, arquetipos: arquetiposDoCombo() });
+              setCriando({ titulo: combo?.titulo?.slice(0, 120) || tituloSugerido(), obs: "", compartilhar: true, arquetipos: arquetiposDoCombo() });
             }}
             title={tr("Cria um combo com os passos feitos neste teste (desde a mão inicial)")}
           >
@@ -1266,16 +1271,7 @@ export default function TesteJogo({
                 <span className="field-label">{tr("Mão inicial")}</span> {maoInicial.map((c) => nomeId(c.id)).join(" + ") || "—"}
               </p>
               {anotados.length ? (
-                <ol className="tj-criar-passos">
-                  {anotados.map((p, i) => (
-                    <li key={i}>
-                      {textoPasso(p)}
-                      <button className="link-btn" onClick={() => setAnotados((ps) => ps.filter((_, j) => j !== i))} aria-label={tr("Tirar o passo {0}", [i + 1])} title={tr("Tirar este passo")}>
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ol>
+                <PassosOrdenaveis className="tj-criar-passos" passos={anotados} originais={criados} onChange={setAnotados} render={textoPasso} />
               ) : (
                 <p className="db-warning">{tr("Nenhum passo ainda: jogue a partir da mão inicial (invocar, ativar, mover…) e volte aqui.")}</p>
               )}

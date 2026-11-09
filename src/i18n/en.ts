@@ -2327,4 +2327,6 @@ export const EN: Record<string, string> = {
   "Tornar administrador": "Make administrator",
   "Tirar administrador": "Remove administrator",
   ", virando para cima": ", flipping it face-up",
+  "Arraste para mudar a ordem (ou Alt + ↑/↓)": "Drag to change the order (or Alt + ↑/↓)",
+  "Voltar para a ordem original": "Back to the original order",
 };

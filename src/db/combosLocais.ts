@@ -67,13 +67,13 @@ export function salvarComboLocal(
 
 export function editarComboLocal(
   combo: ComboBase,
-  campos: { titulo: string; observacoes: string; passos: DadosCombo["passos"]; arquetipos?: string[] },
+  campos: { titulo: string; observacoes: string; passos: DadosCombo["passos"]; passosOriginais?: DadosCombo["passos"]; arquetipos?: string[] },
 ): ComboBase {
   const novo: ComboBase = {
     ...combo,
     titulo: campos.titulo.trim().slice(0, 120),
     arquetipos: campos.arquetipos ?? combo.arquetipos,
-    dados: { ...combo.dados, passos: campos.passos, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined },
+    dados: { ...combo.dados, passos: campos.passos, passosOriginais: campos.passosOriginais, observacoes: campos.observacoes.trim().slice(0, 2000) || undefined },
   };
   gravar(lista.map((c) => (c.id === combo.id ? novo : c)));
   return novo;

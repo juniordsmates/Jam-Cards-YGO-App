@@ -6,6 +6,7 @@ import { FontesButton } from "./Fontes";
 import VerifiedCombos, { groupSteps, join, Name, StepText } from "./VerifiedCombos";
 import type { KnownCombo } from "../data/combos";
 import VincularArquetipos from "./VincularArquetipos";
+import PassosOrdenaveis from "./PassosOrdenaveis";
 import {
   arquetiposDe,
   arquetiposSemCartas,
@@ -15,6 +16,7 @@ import {
   editarCombo,
   excluirCombo,
   gravarBuscaIA,
+  ordemParaGravar,
   salvarComoComunidade,
   validadeNoFormato,
   type ComboBase,
@@ -112,14 +114,17 @@ export function ComboCard({
     return faltam.length > 0;
   };
 
+  // ordem em que o combo foi criado (gravada só se já foi reordenado)
+  const originais = d.passosOriginais ?? d.passos;
   const salvarEdicao = async () => {
     if (!edicao) return;
     if (edicao.compartilhar && !local && bloqueado(edicao.arquetipos)) return;
+    const passosOriginais = ordemParaGravar(edicao.passos, originais);
     try {
       setCombo(
         local
-          ? editarComboLocal(combo, { titulo: edicao.titulo, observacoes: edicao.obs, passos: edicao.passos, arquetipos: edicao.arquetipos })
-          : await editarCombo(combo, { titulo: edicao.titulo, observacoes: edicao.obs, compartilhar: edicao.compartilhar, passos: edicao.passos, arquetipos: edicao.arquetipos }),
+          ? editarComboLocal(combo, { titulo: edicao.titulo, observacoes: edicao.obs, passos: edicao.passos, passosOriginais, arquetipos: edicao.arquetipos })
+          : await editarCombo(combo, { titulo: edicao.titulo, observacoes: edicao.obs, compartilhar: edicao.compartilhar, passos: edicao.passos, passosOriginais, arquetipos: edicao.arquetipos }),
       );
       setEdicao(null);
       setEstado({ tipo: "ok", texto: t("Combo atualizado.") });
@@ -287,7 +292,7 @@ export function ComboCard({
                   title={avancado ? t("Envia este combo para a base (Combos da Comunidade)") : t("Exportar para a base: disponível para Usuário Avançado ou Mentor")}
                   onClick={() => {
                     setEstado(null);
-                    setExportando({ compartilhar: false, enviando: false, arquetipos: vinculoInicial() });
+                    setExportando({ compartilhar: true, enviando: false, arquetipos: vinculoInicial() });
                   }}
                 >
                   {t("Exportar")}</button>
@@ -318,21 +323,13 @@ export function ComboCard({
             <input value={edicao.titulo} maxLength={120} onChange={(e) => setEdicao({ ...edicao, titulo: e.target.value })} aria-label={t("Título do combo")} />
           </label>
           <span className="field-label">{t("Passos")}</span>
-          <ol className="combo-edicao-passos">
-            {edicao.passos.map((p, i) => (
-              <li key={i}>
-                <StepText p={p} byId={byId} onHover={onHover} />
-                <button
-                  className="link-btn"
-                  onClick={() => setEdicao({ ...edicao, passos: edicao.passos.filter((_, j) => j !== i) })}
-                  aria-label={t("Tirar o passo {0}", [i + 1])}
-                  title={t("Tirar este passo")}
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ol>
+          <PassosOrdenaveis
+            className="combo-edicao-passos"
+            passos={edicao.passos}
+            originais={originais}
+            onChange={(passos) => setEdicao({ ...edicao, passos })}
+            render={(p) => <StepText p={p} byId={byId} onHover={onHover} />}
+          />
           <label className="field">
             <span className="field-label">{t("Observações")}</span>
             <textarea rows={3} maxLength={2000} value={edicao.obs} onChange={(e) => setEdicao({ ...edicao, obs: e.target.value })} />
