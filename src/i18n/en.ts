@@ -2533,4 +2533,6 @@ export const EN: Record<string, string> = {
   "{0} ativou {1} {2}": "{0} activated {1} {2}",
   "Última ativação": "Last activation",
   "{0} virou matéria Xyz": "{0} became an Xyz Material",
+  "Revelada: o oponente vê esta carta": "Revealed: your opponent can see this card",
+  "Revelada por um efeito: você vê esta carta": "Revealed by an effect: you can see this card",
 };

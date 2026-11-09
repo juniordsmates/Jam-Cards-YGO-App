@@ -508,6 +508,11 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
             {c.mat.length}
           </span>
         )}
+        {c.pub && !verso && (virada(c.pos) || k.split(":")[1] === String(L.HAND)) && (
+          <span className="sim-pub" title={k.startsWith(`${eu}:`) ? t("Revelada: o oponente vê esta carta") : t("Revelada por um efeito: você vê esta carta")}>
+            👁
+          </span>
+        )}
         {elo && (
           <span className="sim-elo" title={t("Elo {0} da cadeia", [elo])}>
             {elo}
@@ -534,7 +539,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
         onClick={() => livre && !marcada && escolherZona(livre)}
         data-zona={k}
       >
-        {c && carta(c, k, p === op && virada(c.pos), location === L.MZONE)}
+        {c && carta(c, k, p === op && virada(c.pos) && !c.pub, location === L.MZONE)}
       </div>
     );
   };
@@ -549,7 +554,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
     const temEscolha = cartas.some((_, i) => escolhiveis.has(chave(p, location, i)));
     const titulo = `${p === op ? t("Oponente — ") : ""}${tipo === "deck" ? t("Deck") : tipo === "extra" ? t("Extra Deck") : tipo === "cemiterio" ? t("Cemitério") : t("Banidas")}`;
     // Extra Deck do oponente: só as cartas com a face para cima (Pêndulos) ficam visíveis
-    const oculta = (c: CartaSim) => tipo === "extra" && p === op && !(c.pos & 1);
+    const oculta = (c: CartaSim) => p === op && !c.pub && ((tipo === "extra" && !(c.pos & 1)) || (tipo === "banido" && virada(c.pos)));
     const topo = tipo === "extra" ? null : cartas[cartas.length - 1];
     return (
       <div
@@ -558,7 +563,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
         onClick={() => cartas.length && setLista({ titulo, cartas: cartas.map((c, i) => ({ c, k: chave(p, location, i), oculta: oculta(c) })) })}
         title={titulo}
       >
-        {tipo === "deck" || tipo === "extra" ? n > 0 && <div className="tj-verso" /> : topo && carta(topo, chave(p, location, cartas.length - 1), false)}
+        {tipo === "deck" || tipo === "extra" ? n > 0 && <div className="tj-verso" /> : topo && carta(topo, chave(p, location, cartas.length - 1), oculta(topo))}
         {tipo === "deck" && embaralhando[p] && (
           <span className="tj-embaralhando" aria-label={t("Embaralhando")}>
             ⟳

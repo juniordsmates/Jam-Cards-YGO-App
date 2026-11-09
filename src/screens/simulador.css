@@ -398,3 +398,19 @@
   font-weight: 600;
   cursor: help;
 }
+
+/* carta escondida que um efeito revelou (ex.: Mind Scan): selo de olho */
+.sim-pub {
+  position: absolute;
+  bottom: -6px;
+  left: -6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  z-index: 3;
+}
