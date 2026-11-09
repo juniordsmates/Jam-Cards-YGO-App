@@ -48,6 +48,7 @@ import {
 } from "../db/ia";
 import { supabaseReady } from "../db/supabase";
 import { publicarCamada } from "../db/overlay";
+import { checkForUpdate, useCardDb } from "../db/cardStore";
 import { meusPontos, minhasContribuicoes, PONTOS_POR_COMBO, rankingDuelistas, type Contribuicoes, type Duelista, type Leitura } from "../db/conquistas";
 import { useCombosLocais } from "../db/combosLocais";
 import { useListaDesejos } from "../db/listaDesejos";
@@ -471,6 +472,26 @@ function PublicarCamada() {
   );
 }
 
+/** Só administradores: baixa de novo a base de cartas da YGOPRODeck neste aparelho, mesmo sem versão nova */
+function AtualizarBase() {
+  const db = useCardDb();
+  return (
+    <section className="conta-ia conta-admin">
+      <h3>{t("Base de cartas")}</h3>
+      <p className="tags-note">
+        {t("Baixa de novo a base inteira da YGOPRODeck neste aparelho, mesmo sem versão nova: a YGOPRODeck às vezes acrescenta cartas sem mudar a versão.")}</p>
+      {db.meta && (
+        <p className="tags-note">
+          {t("{0} cartas · base v{1} · conferida em {2}", [db.cards.length.toLocaleString(LOCALE), db.meta.version, new Date(db.meta.checkedAt).toLocaleString(LOCALE)])}</p>
+      )}
+      <button className="ghost-btn conta-enviar" disabled={db.status !== "ready" || db.updating} onClick={() => void checkForUpdate(true)}>
+        {db.updating ? (db.step ?? t("Atualizando…")) : t("Atualizar base de cartas")}
+      </button>
+      {db.error && <p className="db-warning">{db.error}</p>}
+    </section>
+  );
+}
+
 /** Só administradores: pede o recálculo das ações (combos e respostas) no pipeline da base */
 function Administracao() {
   const [tipo, setTipo] = useState<TipoRecalculo>("tudo");
@@ -693,6 +714,7 @@ function MinhaConta({ docs }: { docs: ReactNode }) {
           {conta.admin && <UsuariosCadastrados />}
           {conta.admin && <CadastroUsuarios />}
           {conta.admin && <Administracao />}
+          {conta.admin && <AtualizarBase />}
           {conta.admin && <PublicarCamada />}
         </div>
       )}

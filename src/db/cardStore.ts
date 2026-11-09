@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { idbGet, idbSetMany } from "./idb";
-import { buildCards, fetchAllCards, fetchDbVersion, fetchStapleIds } from "./ygoprodeck";
+import { buildCards, fetchAllCards, fetchDbVersion, fetchRecentIds, fetchStapleIds } from "./ygoprodeck";
 import { applyOverlay, fetchOverlay, type Overlay, type TagDefinition } from "./overlay";
 import { archetypeNamesPt, buildRelations, type RelationIndex } from "./relations";
 import type { Card } from "./types";
@@ -14,6 +14,8 @@ const OVERLAY_KEY = "overlay-v2";
 // versões anteriores, apagadas ao salvar a nova
 const OLD_KEYS = ["cards-v1", "cards-meta-v1", "cards-v2", "cards-meta-v2", "overlay-v1"];
 const CHECK_INTERVAL = 24 * 60 * 60 * 1000;
+/** janela da conferência de cartas novas (ver missingRecentCards) */
+const RECENT_DAYS = 90;
 
 interface Meta {
   version: string;
@@ -145,14 +147,26 @@ export async function initCardDb() {
   }
 }
 
-/** Atualiza a camada e consulta checkDBVer.php; só baixa a base de novo se a versão mudou */
+/**
+ * A YGOPRODeck acrescenta cartas (ex.: anúncios do OCG) sem mudar a versão do checkDBVer.php
+ * (B.L.A.C.K. Parfait entrou dias depois da última versão). Por isso a conferência também procura
+ * cartas com lançamento recente ou futuro que faltam na base local; um id provisório trocado pelo
+ * definitivo também conta como falta.
+ */
+async function missingRecentCards(): Promise<boolean> {
+  const since = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const known = new Set(state.cards.flatMap((c) => c.images));
+  return (await fetchRecentIds(since)).some((id) => !known.has(id));
+}
+
+/** Atualiza a camada e consulta checkDBVer.php; baixa a base de novo se a versão mudou ou faltam cartas novas */
 export async function checkForUpdate(force = false) {
   if (state.status !== "ready" || state.updating) return;
   set({ updating: true });
   try {
     const overlayChanged = await refreshOverlay();
     const remote = await fetchDbVersion();
-    if (force || remote.version !== state.meta?.version) {
+    if (force || remote.version !== state.meta?.version || (await missingRecentCards())) {
       await download(true);
     } else {
       const meta = { ...state.meta!, checkedAt: Date.now() };

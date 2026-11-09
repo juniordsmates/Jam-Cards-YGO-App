@@ -51,6 +51,20 @@ export async function fetchGenesysPoints(): Promise<Record<number, number>> {
   return points;
 }
 
+/** Ids das cartas com lançamento (TCG ou OCG) a partir da data, inclusive as anunciadas com data futura */
+export async function fetchRecentIds(since: string): Promise<number[]> {
+  const region = (r: "tcg" | "ocg") =>
+    getJson<{ data: { id: number }[] }>(`cardinfo.php?startdate=${since}&dateregion=${r}`).then(
+      (d) => d.data.map((c) => c.id),
+      // sem cartas no período a API responde com erro; outras falhas sobem
+      (e: Error) => {
+        if (e.message.startsWith("No card matching")) return [];
+        throw e;
+      },
+    );
+  return (await Promise.all([region("tcg"), region("ocg")])).flat();
+}
+
 /** Ids das cartas marcadas como "staple" pela comunidade da YGOPRODeck */
 export async function fetchStapleIds(): Promise<number[]> {
   return (await getJson<{ data: { id: number }[] }>("cardinfo.php?staple=yes")).data.map((c) => c.id);
