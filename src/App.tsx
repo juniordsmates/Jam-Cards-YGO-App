@@ -171,8 +171,8 @@ export default function App() {
           comboId={rota.tela === "combos" ? rota.combo : undefined}
           maoIds={rota.tela === "combos" ? rota.mao : undefined}
           onRota={aoRota}
-          onTestar={(deckId, combo) => {
-            setDeckInicial({ deckId, testar: true, combo });
+          onTestar={(deck, combo) => {
+            setDeckInicial({ temporario: deck, testar: true, combo });
             setDeckFrom("combos");
             setScreen("deck");
           }}
@@ -209,8 +209,8 @@ export default function App() {
             setScreen(guiaFrom);
             setGuiaFrom("menu");
           }}
-          onTestar={(deckId, combo) => {
-            setDeckInicial({ deckId, testar: true, combo });
+          onTestar={(deck, combo) => {
+            setDeckInicial({ temporario: deck, testar: true, combo });
             setDeckFrom("guia");
             setScreen("deck");
           }}

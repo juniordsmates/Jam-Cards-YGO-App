@@ -965,3 +965,99 @@
   font-size: 0.64rem;
   letter-spacing: 0.04em;
 }
+
+/* Executar (passo do combo) */
+.tj-play {
+  font-weight: 700;
+  border-color: var(--magenta);
+  color: var(--magenta);
+}
+
+.tj-executado {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* efeito ativado pelo Executar: as cartas aparecem no centro, com um anel dourado, por um instante */
+.tj-anuncio {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 960;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 22px;
+  background: rgb(20 14 40 / 0.82);
+  border: 2px solid rgb(255 196 0);
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  animation: tj-anuncio 1.8s ease-out forwards;
+}
+
+.tj-anuncio-cartas {
+  display: flex;
+  gap: 12px;
+}
+
+.tj-anuncio figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 130px;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.tj-anuncio img {
+  width: 110px;
+  border-radius: 4px;
+  animation: tj-anel 0.9s ease-out 2;
+}
+
+.tj-anuncio strong {
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: rgb(255 214 80);
+}
+
+@keyframes tj-anuncio {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+  20%,
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes tj-anel {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 196 0 / 0.95);
+  }
+  100% {
+    box-shadow: 0 0 0 18px rgb(255 196 0 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tj-anuncio,
+  .tj-anuncio img {
+    animation: none;
+  }
+}

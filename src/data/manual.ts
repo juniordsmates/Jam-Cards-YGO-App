@@ -632,7 +632,7 @@ export const CAPITULOS: Capitulo[] = [
         itens: [
           t("**Entrar** com e-mail e senha. **Esqueci a senha** envia um link; ao abri-lo, o app pede a senha nova."),
           t("**Criar conta**: nome de usuário (3 a 20 letras minúsculas, números ou _; aparece como autor e no Rank), e-mail, senha de 8+ caracteres e o aceite da Política de Privacidade e dos Termos de Uso. Se o servidor pedir, confirme pelo link enviado ao e-mail antes de entrar."),
-          t("Logado, a tela fica maior e tem duas abas. **Visão Geral**: dados da conta (usuário, e-mail, nível, membro desde, coleção e Lista de Desejos), os seus **pontos** e a posição, o **ranking geral** (os 5 primeiros, com você destacado), as **contribuições** (combos compartilhados, combos só seus, combos no aparelho e artigos) e as **conquistas** (os ícones e quantas você já tem). **Opções**: as IAs e, para o administrador, usuários, recálculos, base de cartas (Atualizar base de cartas baixa a base de novo neste aparelho) e camada."),
+          t("Logado, a tela fica maior e tem duas abas. **Visão Geral**: dados da conta (usuário, e-mail, nível, membro desde, coleção e Lista de Desejos), os seus **pontos** e a posição, o **ranking geral** (os 5 primeiros, com você destacado), as **contribuições** (combos compartilhados, combos só seus, combos no aparelho e artigos) e as **conquistas** (os ícones e quantas você já tem). **Opções**: as IAs e, para o administrador, usuários, recálculos e camada."),
           t("Com login, ficam salvos: decks, coleção, combos que você cria e, se quiser, as IAs."),
         ],
       },

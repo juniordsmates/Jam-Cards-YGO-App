@@ -20,6 +20,7 @@ import {
   probabilidadeDaMao,
   probabilidadeGeral,
   embaralharDeck,
+  executarPasso,
   maoDoCombo,
   MAGIAS,
   MONSTROS,
@@ -30,7 +31,9 @@ import {
   testeDeMao,
   ZONAS_UNICAS,
   type CartaJogo,
+  type PassoAplicado,
   type Tabuleiro,
+  type TipoCarta,
   type ZonaId,
 } from "../db/testeJogo";
 import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
@@ -92,6 +95,7 @@ export default function TesteJogo({
   byId,
   formato = "TCG",
   onFechar,
+  onImportar,
   combo,
   avancado = false,
   onModo,
@@ -103,6 +107,8 @@ export default function TesteJogo({
   /** formato do editor: banlist dos selos nas cartas */
   formato?: GameFormat;
   onFechar: () => void;
+  /** deck temporário de um combo: "Importar Deck" leva o deck a Meus decks (devolve o nome usado) */
+  onImportar?: () => string;
   /** aberto pela tela de Combos: habilita o "Executar combo" */
   combo?: ComboTeste;
   /** Teste Avançado: campo do oponente e Indicações de resposta */
@@ -112,6 +118,15 @@ export default function TesteJogo({
 }) {
   // passo atual do "Executar combo" (null: caixa de passos fechada)
   const [passo, setPasso] = useState<number | null>(null);
+  // passos já aplicados pelo "Executar" (não se aplica o mesmo passo duas vezes)
+  const [executados, setExecutados] = useState<Set<number>>(new Set());
+  // efeito ativado pelo "Executar": as cartas aparecem em destaque no centro por um instante
+  const [anuncio, setAnuncio] = useState<{ ids: number[]; n: number } | null>(null);
+  useEffect(() => {
+    if (!anuncio) return;
+    const id = setTimeout(() => setAnuncio(null), 1800);
+    return () => clearTimeout(id);
+  }, [anuncio]);
   const grupos = combo ? groupSteps(semCartaDoCalculo({ qualquer: combo.qualquer, passos: combo.passos }).passos) : [];
   const textoPasso = (p: Passo) => {
     const t = passoEmTexto(p, (id) => (id === TOKEN_GENERICO ? tr("Token") : id === CARTA_QUALQUER ? tr("carta qualquer") : byId.get(id) ? displayName(byId.get(id)!) : `#${id}`));
@@ -397,6 +412,7 @@ export default function TesteJogo({
     setLp(8000);
     setFase("M1");
     setPasso(0);
+    setExecutados(new Set());
     setIndicacoes([]);
     zerarTurno();
     setLog([tr("Executar combo: mão inicial ({0}).", [combo.mao.map((id) => (byId.get(id) ? displayName(byId.get(id)!) : id)).join(" + ")])]);
@@ -432,6 +448,61 @@ export default function TesteJogo({
   const emzOcupada = (z: ZonaId, lado: Lado) => avancado && MONSTROS_EXTRA.includes(z) && tabuleiro(outroLado(lado))[espelhoEMZ(z)].length > 0;
   const livreNo = (lado: Lado, zonas: ZonaId[]) => zonas.find((z) => !tabuleiro(lado)[z].length && !emzOcupada(z, lado));
   const livre = (zonas: ZonaId[]) => livreNo("eu", zonas);
+
+  // ---------------------------------------------------------------- Executar (passo do combo)
+
+  const tipoCarta = (id: number): TipoCarta => {
+    const c = byId.get(id);
+    if (!c) return { monstro: true, extra: false, xyz: false, campo: false, permanece: false };
+    const monstro = categoryOf(c) === "monster" || c.frame === "token";
+    return {
+      monstro,
+      extra: ehExtra(c),
+      xyz: c.frame.startsWith("xyz"),
+      campo: c.frame === "spell" && c.race === "Field",
+      permanece: !monstro && ["Continuous", "Field", "Equip"].includes(c.race),
+    };
+  };
+  /** Aplica no tabuleiro o passo atual (e as consequências dele), como se o usuário tivesse feito à mão */
+  const executarPassoAtual = () => {
+    const g = passo !== null ? grupos[passo] : undefined;
+    if (passo === null || !g) return;
+    let tab = t;
+    const aplicados: PassoAplicado[] = [];
+    const falhas: Passo[] = [];
+    for (const p of [g.step, ...g.subs]) {
+      const r = executarPasso(tab, p, tipoCarta, (z) => !emzOcupada(z, "eu"));
+      tab = r.t;
+      aplicados.push(...r.aplicados);
+      falhas.push(...r.falhas);
+    }
+    setT(tab);
+    // histórico, Criar combo e Indicações: um registro por passo; as outras cartas (matérias, compras) contam como usadas
+    const vistos = new Set<Passo>();
+    for (const a of aplicados) {
+      if (vistos.has(a.p)) {
+        if (!a.carta.ficha) usadas.current.set(a.carta.uid, a.carta.id);
+        continue;
+      }
+      vistos.add(a.p);
+      // sem as respostas calculadas pelo pipeline (o Criar combo grava só o passo)
+      const limpo: Passo = { ...a.p };
+      delete limpo.resp;
+      anotar(limpo, a.carta);
+    }
+    for (const f of falhas) registrar(tr("Não deu para executar: {0} (a carta não está onde o passo indica ou não há zona livre).", [textoPasso(f)]));
+    if (!aplicados.length) return;
+    registrar(tr("Executou o passo {0}: {1}", [passo + 1, textoPasso(g.step)]));
+    const ativadas = aplicados.filter((a) => a.ativou);
+    if (ativadas.length) {
+      setAnuncio({ ids: ativadas.map((a) => a.carta.id), n: Date.now() });
+      const uid = ativadas[0].carta.uid;
+      setAtivada(uid);
+      setTimeout(() => setAtivada((a) => (a === uid ? null : a)), 1800);
+    }
+    setExecutados((e) => new Set(e).add(passo));
+    if (passo < grupos.length - 1) setPasso(passo + 1);
+  };
 
   // ---------------------------------------------------------------- oponente (Teste Avançado)
 
@@ -992,6 +1063,8 @@ export default function TesteJogo({
             />
           </div>
         )}
+        {/* teste de combo: o combo acontece na Main Phase, sem a barra de fases */}
+        {!combo && (
         <div className="tj-fases">
           {FASES.map((f) => (
             <button
@@ -1007,6 +1080,7 @@ export default function TesteJogo({
             </button>
           ))}
         </div>
+        )}
         {avancado && (
           <div className="left-tabs tj-turno" role="tablist" aria-label={tr("De quem é o turno")}>
             <span className="field-label">{tr("Turno")}</span>
@@ -1051,6 +1125,7 @@ export default function TesteJogo({
               setFase("M1");
               setSelecionada(null);
               setPasso(null);
+              setExecutados(new Set());
               setIndicacoes([]);
               zerarTurno();
               setLog(["Reiniciado: cartas recolhidas, Deck embaralhado, 5 cartas compradas."]);
@@ -1093,6 +1168,17 @@ export default function TesteJogo({
             title={tr("Cria um combo com os passos feitos neste teste (desde a mão inicial)")}
           >
             {tr("Criar combo")}</button>
+          {onImportar && (
+            <button
+              className="ghost-btn tj-importar"
+              onClick={() => {
+                const nome = onImportar();
+                if (nome) registrar(tr("Deck importado em Meus decks como \"{0}\".", [nome]));
+              }}
+              title={tr("Salva o deck deste teste em Meus decks (Editor de Deck); sem isso, ele não fica salvo")}
+            >
+              {tr("Importar Deck")}</button>
+          )}
         </div>
         <ol className="tj-log" aria-label={tr("Histórico")}>
           {log.map((l, i) => (
@@ -1106,6 +1192,20 @@ export default function TesteJogo({
         <p className="tags-note">
           {tr("Sem regras: arraste uma carta até a zona, ou clique nela e depois na zona; botão direito para ações. O embaralhamento usa o gerador aleatório criptográfico do sistema.")}</p>
       </Lateral>
+
+      {anuncio && (
+        <div key={anuncio.n} className="tj-anuncio" role="status" aria-live="assertive" onClick={() => setAnuncio(null)}>
+          <div className="tj-anuncio-cartas">
+            {anuncio.ids.map((id, i) => (
+              <figure key={i}>
+                {id !== TOKEN_GENERICO && <img src={cardImage(id, "small")} alt="" draggable={false} />}
+                <figcaption>{nomeId(id)}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <strong>⚡ {tr("Efeito ativado")}</strong>
+        </div>
+      )}
 
       {combo && passo !== null && grupos[passo] && (
         <div className="tj-passo" role="status" aria-live="polite">
@@ -1128,6 +1228,17 @@ export default function TesteJogo({
           <div className="tj-passo-nav">
             <button className="ghost-btn" disabled={passo === 0} onClick={() => setPasso(passo - 1)}>
               {tr("‹ Anterior")}</button>
+            {executados.has(passo) ? (
+              <span className="tj-executado">✓ {tr("Executado")}</span>
+            ) : (
+              <button
+                className="ghost-btn tj-play"
+                disabled={grupos[passo].step.t === "texto"}
+                onClick={executarPassoAtual}
+                title={grupos[passo].step.t === "texto" ? tr("Passo descrito em texto: faça no tabuleiro") : tr("Aplica o passo no tabuleiro e vai para o próximo")}
+              >
+                ▶ {tr("Executar")}</button>
+            )}
             <button className="ghost-btn" disabled={passo >= grupos.length - 1} onClick={() => setPasso(passo + 1)}>
               {tr("Próximo ›")}</button>
           </div>

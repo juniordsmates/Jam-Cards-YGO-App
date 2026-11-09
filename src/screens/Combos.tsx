@@ -11,7 +11,7 @@ import { KNOWN_COMBOS } from "../data/combos";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
 import { cardsOfLine, linesForHand, semCartaDoCalculo, uniqueLines, type LinhaCombo } from "../db/motor";
-import { deckDoCombo } from "../db/decks";
+import { deckDoCombo, type DeckTemporario } from "../db/decks";
 import type { ComboTeste } from "./TesteJogo";
 import { comboPorId, combosDaComunidade, type ComboBase } from "../db/baseCombos";
 import BotaoLink from "../components/BotaoLink";
@@ -127,7 +127,7 @@ export default function Combos({
   /** o endereço acompanha a mão escolhida */
   onRota?: (r: Rota) => void;
   /** abre o Teste de Jogo com um deck temporário da linha */
-  onTestar?: (deckId: string, combo: ComboTeste) => void;
+  onTestar?: (deck: DeckTemporario, combo: ComboTeste) => void;
 }) {
   const db = useCardDb();
   const [format, setFormat] = useState<GameFormat>("TCG");
@@ -238,23 +238,20 @@ export default function Combos({
   const testar = onTestar
     ? (l: LinhaCombo) => {
         const linha = semCartaDoCalculo(l);
-        const deck = deckDoCombo(linha, byId, format);
-        onTestar(deck.id, { mao: linha.mao, passos: linha.passos, qualquer: linha.qualquer });
+        onTestar(deckDoCombo(linha, byId, format), { mao: linha.mao, passos: linha.passos, qualquer: linha.qualquer });
       }
     : undefined;
   // o mesmo para um Combo da Comunidade
   const testarDaComunidade = onTestar
     ? (c: ComboBase) => {
-        const deck = deckDoCombo({ mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo }, byId, format);
-        onTestar(deck.id, { mao: c.iniciais, passos: c.dados.passos });
+        onTestar(deckDoCombo({ mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo }, byId, format), { mao: c.iniciais, passos: c.dados.passos });
       }
     : undefined;
   // "Editar e Importar" (combo lido de vídeo): Teste de Jogo já no combo, para refazer os passos e
   // salvar pelo Criar combo com o título e o link do vídeo
   const editarEImportar = onTestar
     ? (c: ComboBase) => {
-        const deck = deckDoCombo({ mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo }, byId, format);
-        onTestar(deck.id, { mao: c.iniciais, passos: c.dados.passos, titulo: c.titulo, fontes: c.dados.fontes, iniciar: true });
+        onTestar(deckDoCombo({ mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo }, byId, format), { mao: c.iniciais, passos: c.dados.passos, titulo: c.titulo, fontes: c.dados.fontes, iniciar: true });
       }
     : undefined;
   const legal = useCallback((id: number) => {

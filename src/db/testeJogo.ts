@@ -2,7 +2,7 @@
 // as cartas do deck à mão para testar jogadas. Este módulo guarda o estado e as ações; a tela fica
 // em src/screens/TesteJogo.tsx.
 
-import type { CampoFinal, Metodo, Passo, Zona } from "./motor";
+import { CARTA_QUALQUER, type CampoFinal, type Metodo, type Passo, type Zona } from "./motor";
 import { t as tr } from "../i18n";
 
 export type ZonaId =
@@ -330,4 +330,189 @@ export function campoDoTabuleiro(t: Tabuleiro): CampoFinal {
     magias: (["campo-magia", ...MAGIAS] as ZonaId[]).flatMap((z) => t[z].map((c): [number, boolean] => [c.id, c.baixada])),
     mao: t.mao.map((c) => c.id),
   };
+}
+
+// ---------------------------------------------------------------- Executar combo (passo a passo)
+
+/** O que o Executar precisa saber de uma carta para colocá-la no lugar certo (a tela resolve pela base) */
+export interface TipoCarta {
+  monstro: boolean;
+  /** monstro do Extra Deck (Fusão, Sincro, Xyz, Link) */
+  extra: boolean;
+  xyz: boolean;
+  /** Magia de Campo: vai para a Zona de Campo */
+  campo: boolean;
+  /** Magia/Armadilha que fica no campo depois de resolver (Contínua, de Campo, de Equipamento) */
+  permanece: boolean;
+}
+
+/** Um passo aplicado: a carta que ele moveu ou ativou (para o histórico, o Criar combo e o destaque) */
+export interface PassoAplicado {
+  p: Passo;
+  carta: CartaJogo;
+  /** o passo ativou um efeito (recurso visual de efeito ativado) */
+  ativou: boolean;
+}
+
+export interface Execucao {
+  t: Tabuleiro;
+  aplicados: PassoAplicado[];
+  /** passos que não deu para aplicar (carta não encontrada ou sem zona livre) */
+  falhas: Passo[];
+}
+
+const PILHAS_DE: Record<Exclude<Zona, "material" | "fora">, ZonaId[]> = {
+  mao: ["mao"],
+  deck: ["deck"],
+  extra: ["extra"],
+  cemiterio: ["cemiterio"],
+  banido: ["banido"],
+  campo: [...MONSTROS_EXTRA, ...MONSTROS],
+  magia: MAGIAS,
+  "campo-magia": ["campo-magia"],
+  pendulo: ["st0", "st4"],
+};
+
+const TODAS = Object.keys(NOMES_ZONA) as ZonaId[];
+
+/** Primeira cópia da carta (id) nas zonas; CARTA_QUALQUER aceita qualquer carta da mão */
+function acharNas(t: Tabuleiro, id: number, zonas: ZonaId[]): CartaJogo | undefined {
+  for (const z of zonas) {
+    const c = id === CARTA_QUALQUER ? t[z][t[z].length - 1] : t[z].find((x) => x.id === id);
+    if (c) return c;
+  }
+}
+
+/** A carta do passo: primeiro onde o passo diz que ela está, depois em qualquer lugar (o usuário pode ter mexido) */
+function acharDoPasso(t: Tabuleiro, id: number, de: Zona | undefined): CartaJogo | undefined {
+  if (de === "material" || de === undefined) {
+    for (const z of TODAS) for (const c of t[z]) {
+      const m = c.materiais.find((x) => x.id === id);
+      if (m) return m;
+    }
+    if (de === "material") return acharNas(t, id, TODAS);
+  }
+  return (de && de !== "fora" && acharNas(t, id, PILHAS_DE[de])) || acharNas(t, id, de === "mao" || de === undefined ? ["mao", ...TODAS] : TODAS);
+}
+
+/**
+ * Aplica no tabuleiro o que o passo do combo diz (sem regras: só leva cada carta ao lugar indicado).
+ * - Invocação: as matérias saem do campo (ou da mão) para o Cemitério, ou ficam anexadas no Xyz;
+ *   monstros do Extra Deck vão para a Zona de Monstros Extra se ela estiver livre.
+ * - Ativação: Magia/Armadilha da mão ou baixada fica virada para cima no campo se permanece
+ *   (Contínua, de Campo, de Equipamento); as outras resolvem e vão para o Cemitério.
+ * `livre` diz se uma zona vazia pode ser usada (no Teste Avançado a Zona de Monstros Extra é dividida).
+ */
+export function executarPasso(t: Tabuleiro, p: Passo, tipo: (id: number) => TipoCarta, livre: (z: ZonaId) => boolean = () => true): Execucao {
+  const aplicados: PassoAplicado[] = [];
+  const falha = (): Execucao => ({ t, aplicados, falhas: [p] });
+  const vaga = (tab: Tabuleiro, zonas: ZonaId[]) => zonas.find((z) => !tab[z].length && livre(z));
+  /** Zona de Monstros para a carta (Extra Deck: a Zona de Monstros Extra, se ainda não tiver uma sua) */
+  const zonaMonstro = (tab: Tabuleiro, id: number) => {
+    const temEMZ = MONSTROS_EXTRA.some((z) => tab[z].length);
+    return tipo(id).extra && !temEMZ ? vaga(tab, [...MONSTROS_EXTRA, ...MONSTROS]) : vaga(tab, MONSTROS);
+  };
+  const zonaMagia = (tab: Tabuleiro, id: number) => (tipo(id).campo ? "campo-magia" : vaga(tab, MAGIAS));
+
+  // passo descrito em texto: não há o que aplicar sozinho
+  if (p.t === "texto") return falha();
+
+  if (p.t === "compra") {
+    let novo = t;
+    const cartas: CartaJogo[] = [];
+    for (const id of p.c) {
+      const c = acharNas(novo, id, ["deck"]);
+      if (!c) return falha();
+      novo = mover(novo, c.uid, "mao");
+      cartas.push(c);
+    }
+    return { t: novo, aplicados: cartas.map((carta) => ({ p, carta, ativou: false })), falhas: [] };
+  }
+
+  if (p.t === "normal" || p.t === "baixa") {
+    const c = acharDoPasso(t, p.c, "mao");
+    if (!c) return falha();
+    const k = tipo(c.id);
+    const baixa = p.t === "baixa";
+    const para = k.monstro ? zonaMonstro(t, c.id) : zonaMagia(t, c.id);
+    if (!para) return falha();
+    return { t: mover(t, c.uid, para, { baixada: baixa, defesa: baixa && k.monstro }), aplicados: [{ p, carta: c, ativou: false }], falhas: [] };
+  }
+
+  if (p.t === "invoca") {
+    let novo = t;
+    // matérias: saem do campo (ou da mão, na Fusão e no Ritual); só as que ainda estão lá
+    const zonasMat: ZonaId[] = [...MONSTROS_EXTRA, ...MONSTROS, ...MAGIAS, "mao"];
+    const materiais: CartaJogo[] = [];
+    for (const id of p.mat ?? []) {
+      // duas cópias da mesma carta como matéria: cada uma é uma carta diferente
+      const m = zonasMat.flatMap((z) => novo[z]).find((c) => c.id === id && !materiais.includes(c));
+      if (m) materiais.push(m);
+    }
+    const xyz = p.m === "xyz";
+    if (!xyz) for (const m of materiais) novo = mover(novo, m.uid, "cemiterio");
+    else for (const m of materiais) novo = { ...novo, ...semCarta(novo, m.uid) };
+
+    let carta: CartaJogo | undefined;
+    if (p.de === "fora") {
+      // token: criado na hora
+      const para = zonaMonstro(novo, p.c);
+      if (!para) return falha();
+      novo = criarToken(novo, p.c, para);
+      carta = novo[para][0];
+    } else {
+      carta = acharDoPasso(novo, p.c, p.de);
+      const para = carta && zonaMonstro(novo, carta.id);
+      if (!carta || !para) return falha();
+      novo = mover(novo, carta.uid, para, { baixada: false, defesa: false });
+      if (xyz && materiais.length)
+        novo = { ...novo, [para]: novo[para].map((c) => (c.uid === carta!.uid ? { ...c, materiais: [...c.materiais, ...materiais.map((m) => ({ ...m, baixada: false, defesa: false, materiais: [] }))] } : c)) };
+    }
+    return { t: novo, aplicados: [{ p, carta, ativou: false }, ...materiais.map((m) => ({ p, carta: m, ativou: false }))], falhas: [] };
+  }
+
+  if (p.t === "move") {
+    const c = acharDoPasso(t, p.c, p.de);
+    if (!c && p.de !== "fora") return falha();
+    if (p.para === "fora") return c ? { t: removerCarta(t, c.uid), aplicados: [{ p, carta: c, ativou: false }], falhas: [] } : falha();
+    let para: ZonaId | undefined;
+    if (p.para === "material") {
+      // anexa ao monstro que causou o passo, ou ao primeiro Xyz no campo
+      const campo = [...MONSTROS_EXTRA, ...MONSTROS];
+      const dono = (p.por !== undefined && acharNas(t, p.por, campo)) || campo.flatMap((z) => t[z]).find((x) => tipo(x.id).xyz);
+      para = dono ? campo.find((z) => t[z][0]?.uid === dono.uid) : undefined;
+    } else if (p.para === "campo") para = zonaMonstro(t, p.c);
+    else if (p.para === "magia") para = tipo(p.c).campo ? "campo-magia" : vaga(t, MAGIAS);
+    else if (p.para === "pendulo") para = vaga(t, PILHAS_DE.pendulo);
+    else para = PILHAS_DE[p.para][0];
+    if (!para) return falha();
+    if (c) return { t: mover(t, c.uid, para), aplicados: [{ p, carta: c, ativou: false }], falhas: [] };
+    // carta que vem de fora do duelo (criada por um efeito): entra na hora
+    const criada = adicionarCarta(t, p.c, para);
+    const nova = criada.uid ? acharCarta(criada.t, criada.uid)?.carta : undefined;
+    return nova ? { t: criada.t, aplicados: [{ p, carta: nova, ativou: false }], falhas: [] } : falha();
+  }
+
+  // ativação de efeito
+  const c = acharDoPasso(t, p.c, p.de);
+  if (!c) return falha();
+  const k = tipo(c.id);
+  const onde = acharCarta(t, c.uid);
+  let novo = t;
+  if (!k.monstro && onde && !onde.dono && (onde.zona === "mao" || onde.zona === "deck" || ZONAS_UNICAS.has(onde.zona))) {
+    if (!k.permanece) novo = mover(t, c.uid, "cemiterio");
+    else if (!ZONAS_UNICAS.has(onde.zona)) {
+      // Magia de Campo nova manda a anterior para o Cemitério
+      if (k.campo && t["campo-magia"][0]) novo = mover(novo, t["campo-magia"][0].uid, "cemiterio");
+      const para = zonaMagia(novo, c.id);
+      if (!para) return falha();
+      novo = mover(novo, c.uid, para, { baixada: false });
+    } else if (c.baixada) novo = alternar(t, c.uid, "baixada");
+  }
+  return { t: novo, aplicados: [{ p, carta: c, ativou: true }], falhas: [] };
+}
+
+/** Tira a carta do tabuleiro sem mandá-la a lugar nenhum (matéria que vai ser anexada a um Xyz) */
+function semCarta(t: Tabuleiro, uid: string): Tabuleiro {
+  return retirar(t, uid)?.t ?? t;
 }

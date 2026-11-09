@@ -19,6 +19,7 @@ import {
   trazerDecksDaConta,
   useDecks,
   type Deck,
+  type DeckTemporario,
   type Parte,
 } from "../db/decks";
 import { cardImage } from "../db/images";
@@ -63,6 +64,8 @@ export interface EditorInicial {
   deckId?: string;
   testar?: boolean;
   combo?: ComboTeste;
+  /** deck montado para testar um combo: fica só em memória até o usuário importar */
+  temporario?: DeckTemporario;
 }
 
 export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => void; inicial?: EditorInicial }) {
@@ -142,6 +145,18 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const arrastando = useRef<{ id: number; de?: Parte; indice?: number } | null>(null);
   // Teste de Jogo (Solo Mode) com o deck aberto
   const [testando, setTestando] = useState(!!inicial.testar);
+  // deck temporário do combo (sai ao voltar ao editor); `importado`: já está em Meus decks
+  const [temporario, setTemporario] = useState(inicial.temporario);
+  const [importado, setImportado] = useState(false);
+  /** Importar Deck: o deck temporário vira um deck em Meus decks, com nome livre (não substitui outro) */
+  const importarTemporario = () => {
+    if (!temporario) return "";
+    let nome = temporario.nome;
+    for (let n = 2; deckComNome(nome); n++) nome = `${temporario.nome} (${n})`;
+    setDeckId(criarDeck(nome, { main: temporario.main, extra: temporario.extra, side: temporario.side }).id);
+    setImportado(true);
+    return nome;
+  };
   // Teste Avançado (campo do oponente e Indicações de resposta): Usuário Avançado ou Mentor
   const [avancado, setAvancado] = useState(false);
   const podeAvancado = temRecursosAvancados(conta);
@@ -451,15 +466,20 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           <span className="spinner" />
           <p>{db.step ?? t("Carregando base de cartas…")}</p>
         </div>
-      ) : testando && trabalho ? (
+      ) : testando && (temporario ?? trabalho) ? (
         <TesteJogo
-          nome={trabalho.nome}
-          main={trabalho.main}
-          extra={trabalho.extra}
+          nome={(temporario ?? trabalho)!.nome}
+          main={(temporario ?? trabalho)!.main}
+          extra={(temporario ?? trabalho)!.extra}
           byId={byId}
           formato={formato}
-          onFechar={() => setTestando(false)}
-          combo={inicial.combo}
+          onFechar={() => {
+            setTestando(false);
+            setTemporario(undefined);
+          }}
+          onImportar={temporario && !importado ? importarTemporario : undefined}
+          // o combo vem com o deck temporário dele; sem ele, o teste é do deck aberto
+          combo={temporario ? inicial.combo : undefined}
           avancado={avancado && podeAvancado}
           onModo={setAvancado}
         />

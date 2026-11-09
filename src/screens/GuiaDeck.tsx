@@ -9,7 +9,7 @@ import { apagarArtigo, enviarArtigo, listarArtigos, moderarArtigo, type Artigo, 
 import { combosDoArquetipo, type ComboBase } from "../db/baseCombos";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { useConta } from "../db/conta";
-import { copiasPermitidas, deckDoCombo } from "../db/decks";
+import { copiasPermitidas, deckDoCombo, type DeckTemporario } from "../db/decks";
 import { calcularInteracoes, linhasDoArquetipo, passoNoIdioma, startersCalculados } from "../db/guiaDeck";
 import { cardImage } from "../db/images";
 import { semCartaDoCalculo, CARTA_QUALQUER, type LinhaCombo, type Passo } from "../db/motor";
@@ -274,7 +274,7 @@ export default function GuiaDeck({
   onRota,
 }: {
   onBack: () => void;
-  onTestar?: (deckId: string, combo: ComboTeste) => void;
+  onTestar?: (deck: DeckTemporario, combo: ComboTeste) => void;
   /** link compartilhado: deck e aba (#/guia/<arquétipo>/<aba>) */
   inicial?: { arquetipo?: string; aba?: string };
   /** o endereço acompanha o deck e a aba abertos */
@@ -355,8 +355,7 @@ export default function GuiaDeck({
   const testar = (l: LinhaCombo) => {
     if (!onTestar) return;
     const linha = semCartaDoCalculo(l);
-    const d = deckDoCombo(linha, byId, "TCG");
-    onTestar(d.id, { mao: linha.mao, passos: linha.passos, qualquer: linha.qualquer });
+    onTestar(deckDoCombo(linha, byId, "TCG"), { mao: linha.mao, passos: linha.passos, qualquer: linha.qualquer });
   };
 
   // ---------------------------------------------------------------- partes

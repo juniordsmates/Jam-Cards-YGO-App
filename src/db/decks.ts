@@ -13,6 +13,9 @@ import { t, LOCALE } from "../i18n";
 
 export type Parte = "main" | "extra" | "side";
 
+/** Deck montado para testar um combo, ainda fora de Meus decks */
+export type DeckTemporario = Pick<Deck, "nome" | "main" | "extra" | "side">;
+
 export interface Deck {
   id: string;
   nome: string;
@@ -308,13 +311,14 @@ export function ordenarParte(ids: number[], byId: Map<number, Card>): number[] {
 /**
  * Deck para testar uma linha de combo: a mão inicial e as cartas que a linha usa (no Main o que
  * sai da mão/Deck, no Extra o que é invocado do Extra Deck), com o limite de cópias da banlist.
- * Nome: arquétipo da carta principal + "Temporário". Se já existir, é atualizado (não duplica).
+ * Nome: arquétipo da carta principal + "Temporário". Não é salvo: o Teste de Jogo usa o deck em
+ * memória, e ele só vai para Meus decks se o usuário pedir (botão Importar Deck).
  */
 export function deckDoCombo(
   linha: { mao: number[]; passos: Passo[]; campo: { monstros: number[]; magias: [number, boolean][] } },
   byId: Map<number, Card>,
   formato: GameFormat,
-): Deck {
+): DeckTemporario {
   const principal = byId.get(linha.mao[0]);
   const nome = t("{0} Temporário", [principal?.archetype ?? (principal ? (principal.namePt ?? principal.name) : t("Combo"))]);
   const ids: number[] = [...linha.mao];
@@ -340,7 +344,5 @@ export function deckDoCombo(
     deck[parte].push(id);
     vistos.set(id, ja + 1);
   }
-  const existente = estado.decks.find((d) => d.temporario && d.nome === nome);
-  if (existente) return salvarDeck({ ...existente, ...deck });
-  return criarDeck(nome, deck, true);
+  return { nome, ...deck };
 }
