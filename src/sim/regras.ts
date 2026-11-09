@@ -94,7 +94,7 @@ export interface Motor {
   dados(code: number): OcgCardData | null;
   tipo(code: number): number;
   nome(code: number): string;
-  /** texto de um efeito (descrição = id da carta × 16 + número do texto); undefined se não houver */
+  /** texto de um efeito (descrição do EDOPro = id da carta << 20 | número do texto); undefined se não houver */
   texto(desc: bigint | number): string | undefined;
   /** constantes do Lua (ex.: HINTMSG_DESTROY → 502), lidas do constant.lua do pacote */
   constante(valor: number, prefixo: string): string | undefined;
@@ -149,6 +149,8 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
   }
 
   function novoDuelo({ decks, semente }: Partida): OcgDuelHandle {
+    // o motor não embaralha o Deck no início (no EDOPro quem embaralha é o servidor): embaralha aqui,
+    // com a semente do duelo, para a mesma partida repetir a mesma ordem (a IA depende disso)
     const time = { startingLP: 8000, startingDrawCount: 5, drawCountPerTurn: 1 };
     const duel = core.createDuel({
       flags: OcgDuelMode.MODE_MR5,
@@ -164,7 +166,7 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     decks.forEach((deck, team) => {
       const add = (code: number, location: L) =>
         core.duelNewCard(duel, { team: team as 0 | 1, duelist: 0, code, controller: team as 0 | 1, location, sequence: 0, position: OcgPosition.FACEDOWN_DEFENSE });
-      deck.main.filter((c) => pacote.cartas[c]).forEach((c) => add(c, L.DECK));
+      embaralhar(deck.main.filter((c) => pacote.cartas[c]), `${semente.join(":")}:${team}`).forEach((c) => add(c, L.DECK));
       deck.extra.filter((c) => pacote.cartas[c]).forEach((c) => add(c, L.EXTRA));
     });
     core.startDuel(duel);
@@ -194,13 +196,31 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     nome: (code) => pacote.nomes[code] ?? String(code),
     texto(desc) {
       const d = BigInt(desc);
-      const code = Number(d >> 4n);
-      return pacote.textos[code]?.[Number(d & 15n)] || undefined;
+      const code = Number(d >> 20n);
+      return pacote.textos[code]?.[Number(d & 0xfffffn)] || undefined;
     },
     constante: (valor, prefixo) => constantes.get(`${prefixo}_:${valor}`),
     novoDuelo,
     ate,
   };
+}
+
+/** Embaralha (Fisher-Yates) com um gerador determinístico pela semente (mulberry32 sobre o hash da semente) */
+export function embaralhar<T>(lista: T[], semente: string): T[] {
+  let h = 2166136261;
+  for (let i = 0; i < semente.length; i++) h = Math.imul(h ^ semente.charCodeAt(i), 16777619);
+  const aleatorio = () => {
+    h = (h + 0x6d2b79f5) | 0;
+    let x = Math.imul(h ^ (h >>> 15), 1 | h);
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+  const a = [...lista];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(aleatorio() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 /** A resposta repetida em outro duelo igual (para a IA testar jogadas) é a mesma: o motor é determinístico */

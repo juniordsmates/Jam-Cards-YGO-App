@@ -15,6 +15,8 @@ export interface CartaSim {
   mat?: number[];
   /** marcadores (tipo → quantidade) */
   marc?: Record<string, number>;
+  /** carta da mão revelada a todos (o oponente também vê) */
+  pub?: boolean;
 }
 
 export interface LadoSim {
@@ -37,7 +39,8 @@ export interface EstadoSim {
   /** OcgPhase */
   fase: number;
   lados: [LadoSim, LadoSim];
-  cadeia: { code: number; controller: number }[];
+  /** cadeia em aberto (elo 1 primeiro): carta, onde foi ativada e o texto do efeito */
+  cadeia: { code: number; controller: number; location: number; sequence: number; texto?: string }[];
 }
 
 /** Acontecimentos do duelo, para o registro da tela */
@@ -47,8 +50,14 @@ export type EventoSim =
   | { t: "compra"; p: number; codes: number[] }
   | { t: "invoca"; p: number; code: number; como: "normal" | "especial" | "virar" }
   | { t: "baixa"; p: number; code: number }
-  | { t: "ativa"; p: number; code: number; texto?: string }
+  /** ativação: elo da cadeia e onde a carta foi ativada (dono, local e posição) */
+  | { t: "ativa"; p: number; code: number; texto?: string; elo: number; location: number; sequence: number }
+  | { t: "resolve"; elo: number }
+  | { t: "cadeia-fim" }
   | { t: "nega"; code?: number }
+  | { t: "embaralha"; p: number }
+  /** cartas mostradas ao jogador p (ex.: a mão do oponente, o topo do Deck) */
+  | { t: "revela"; p: number; cartas: { code: number; controller: number; location: number }[] }
   | { t: "move"; code: number; de: number; para: number; p: number }
   | { t: "ataque"; p: number; code: number; alvo?: number }
   | { t: "dano"; p: number; v: number }
@@ -65,6 +74,8 @@ export interface PedidoSim {
   dicaTexto?: string;
   /** textos dos efeitos citados na mensagem (descrição → texto em inglês do Project Ignis) */
   textos: Record<string, string>;
+  /** carta cujo efeito está resolvendo (ou sendo ativado) quando a escolha aparece */
+  carta?: number;
   /** ANNOUNCE_CARD: cartas que podem ser declaradas [id, nome em inglês] */
   candidatos?: [number, string][];
   /** a resposta anterior não valia: escolha de novo */
@@ -90,8 +101,8 @@ export interface ConfigSessao {
   janelas?: "acao" | "todas";
 }
 
-// código, posição, ATK, DEF, matérias e marcadores
-const QUERY = (1 | 2 | 256 | 512 | 65536 | 131072) as never;
+// código, posição, ATK, DEF, matérias, marcadores e se a carta é pública
+const QUERY = (1 | 2 | 256 | 512 | 65536 | 131072 | 1048576) as never;
 
 export class Sessao {
   readonly duel: OcgDuelHandle;
@@ -107,6 +118,9 @@ export class Sessao {
   private eventos: EventoSim[] = [];
   /** pedido do jogador antes de uma resposta recusada (RETRY) */
   private ultimoPedido: OcgMessage | null = null;
+  /** cartas da cadeia (pelo elo) e a que está resolvendo agora */
+  private cadeia: number[] = [];
+  private resolvendo: number | null = null;
   /** jogador e carta da última ativação (para a IA responder às do oponente) */
   ultimaAcao: { p: number; code: number; tipo: "ativa" | "invoca" | "ataque" } | null = null;
 
@@ -206,8 +220,28 @@ export class Sessao {
           ev.push({ t: "baixa", p: m.controller, code: m.code });
           break;
         case T.CHAINING:
-          ev.push({ t: "ativa", p: m.controller, code: m.code, texto: this.motor.texto(m.description) });
+          this.cadeia[m.chain_size - 1] = m.code;
+          ev.push({ t: "ativa", p: m.controller, code: m.code, texto: this.motor.texto(m.description), elo: m.chain_size, location: m.triggering_location, sequence: m.triggering_sequence });
           this.ultimaAcao = { p: m.controller, code: m.code, tipo: "ativa" };
+          break;
+        case T.CHAIN_SOLVING:
+          this.resolvendo = this.cadeia[m.chain_size - 1] ?? null;
+          break;
+        case T.CHAIN_SOLVED:
+          ev.push({ t: "resolve", elo: m.chain_size });
+          break;
+        case T.CHAIN_END:
+          this.cadeia = [];
+          this.resolvendo = null;
+          ev.push({ t: "cadeia-fim" });
+          break;
+        case T.CONFIRM_CARDS:
+        case T.CONFIRM_DECKTOP:
+        case T.CONFIRM_EXTRATOP:
+          if (m.cards.length) ev.push({ t: "revela", p: m.player, cartas: m.cards.map((c) => ({ code: c.code, controller: c.controller, location: c.location })) });
+          break;
+        case T.SHUFFLE_DECK:
+          ev.push({ t: "embaralha", p: m.player });
           break;
         case T.CHAIN_NEGATED:
         case T.CHAIN_DISABLED:
@@ -271,7 +305,7 @@ export class Sessao {
     const campo = core.duelQueryField(this.duel);
     const lado = (p: 0 | 1): LadoSim => {
       const q = (location: number) =>
-        core.duelQueryLocation(this.duel, { flags: QUERY, controller: p, location: location as L }).map((c) => {
+        core.duelQueryLocation(this.duel, { flags: QUERY, controller: p, location: location as L }).map((c): CartaSim | null => {
           if (!c?.code) return null;
           const r = c as Record<string, unknown>;
           const mat = (r.overlayCards as number[] | undefined) ?? [];
@@ -282,7 +316,8 @@ export class Sessao {
             ...(r.attack !== undefined ? { atk: r.attack as number, def: r.defense as number } : {}),
             ...(mat.length ? { mat } : {}),
             ...(Object.keys(marc).length ? { marc } : {}),
-          } satisfies CartaSim;
+            ...(r.isPublic ? { pub: true } : {}),
+          };
         });
       const cheias = (location: number) => q(location).filter((c): c is CartaSim => !!c);
       const monstros = q(L.MZONE);
@@ -305,7 +340,7 @@ export class Sessao {
       vez: this.vez,
       fase: this.fase,
       lados: [lado(0), lado(1)],
-      cadeia: campo.chain.map((c) => ({ code: c.code, controller: c.controller })),
+      cadeia: campo.chain.map((c) => ({ code: c.code, controller: c.triggering_controller, location: c.triggering_location, sequence: c.triggering_sequence, texto: this.motor.texto(c.description) })),
     };
   }
 
@@ -333,7 +368,9 @@ export class Sessao {
         if (c && !(c.alias && Math.abs(c.alias - c.code) < 20) && cardMatchesOpcode(c, d.opcodes)) candidatos.push([c.code, this.motor.nome(c.code)]);
       }
     }
-    return { msg: d, dica: dica.nome, dicaTexto: dica.texto, textos, ...(candidatos ? { candidatos } : {}), ...(repetir ? { repetir } : {}) };
+    // carta do efeito: a que está resolvendo, ou a que pergunta (efeito opcional)
+    const carta = d.type === T.SELECT_EFFECTYN ? d.code : (this.resolvendo ?? undefined);
+    return { msg: d, dica: dica.nome, dicaTexto: dica.texto, textos, ...(carta ? { carta } : {}), ...(candidatos ? { candidatos } : {}), ...(repetir ? { repetir } : {}) };
   }
 
   quadro(repetir = false): Quadro {

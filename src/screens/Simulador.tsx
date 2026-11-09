@@ -122,6 +122,8 @@ interface Acao {
 
 /** Chave de uma carta no motor: dono, local e posição na zona */
 const chave = (controller: number, location: number, sequence: number) => `${controller}:${location}:${sequence}`;
+/** Chave da carta de uma escolha no tabuleiro: a matéria Xyz acende o monstro que a tem */
+const chaveRef = (c: { controller: number; location: number; sequence: number }) => (c.location & L.OVERLAY ? chave(c.controller, L.MZONE, c.sequence) : chave(c.controller, c.location, c.sequence));
 const virada = (pos: number) => (pos & 0xa) !== 0;
 
 const CONFIG = "simulador-config";
@@ -194,12 +196,27 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
   const [quadro, setQuadro] = useState<Quadro | null>(null);
   const [pensando, setPensando] = useState(false);
   const [registro, setRegistro] = useState<EventoSim[]>([]);
-  const [eu, setEu] = useState<0 | 1>(0);
+  const [eu, setEuEstado] = useState<0 | 1>(0);
+  const euRef = useRef<0 | 1>(0);
+  const setEu = (v: 0 | 1) => {
+    euRef.current = v;
+    setEuEstado(v);
+  };
   const [nomes, setNomes] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<number | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; acoes: Acao[] } | null>(null);
   const [lista, setLista] = useState<{ titulo: string; cartas: { c: CartaSim; k: string; oculta: boolean }[] } | null>(null);
   const [sair, setSair] = useState(false);
+  // cartas marcadas na escolha em aberto (índices da mensagem) e carta em foco (opção sob o mouse)
+  const [marcadas, setMarcadas] = useState<number[]>([]);
+  const [foco, setFoco] = useState<string | null>(null);
+  // Deck embaralhado agora há pouco (por jogador), para o aviso na pilha
+  const [embaralhando, setEmbaralhando] = useState<[boolean, boolean]>([false, false]);
+  const timerEmbaralho = useRef<number[]>([]);
+  // ativações: a cadeia atual (ou a última, já resolvida), para mostrar abaixo dos PV
+  const [ativacoes, setAtivacoes] = useState<{ itens: (Extract<EventoSim, { t: "ativa" }> & { resolvida?: boolean })[]; aberta: boolean }>({ itens: [], aberta: false });
+  // cartas mostradas ao jogador (ex.: a mão do oponente)
+  const [revelacao, setRevelacao] = useState<{ code: number; controller: number; location: number }[] | null>(null);
   const cliente = useRef<ClienteSim | null>(null);
 
   useEffect(() => () => cliente.current?.encerrar(), []);
@@ -232,6 +249,8 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
       const semente = Array.from(crypto.getRandomValues(new Uint32Array(4)), String) as [string, string, string, string];
       setEu(humano);
       setRegistro([]);
+      setAtivacoes({ itens: [], aberta: false });
+      setRevelacao(null);
       setQuadro(null);
       setPensando(true);
       setEtapa("duelo");
@@ -246,6 +265,17 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
     setPensando(!!q.pensando);
     setQuadro(q);
     if (q.eventos.length) setRegistro((r) => [...r, ...q.eventos].slice(-400));
+    for (const e of q.eventos) {
+      if (e.t === "ativa") setAtivacoes((a) => ({ itens: e.elo === 1 || !a.aberta ? [e] : [...a.itens, e], aberta: true }));
+      if (e.t === "resolve") setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, resolvida: true } : x)) }));
+      if (e.t === "cadeia-fim") setAtivacoes((a) => ({ itens: a.itens.map((x) => ({ ...x, resolvida: true })), aberta: false }));
+      if (e.t === "revela" && e.p === euRef.current) setRevelacao(e.cartas);
+      if (e.t !== "embaralha") continue;
+      const p = e.p as 0 | 1;
+      setEmbaralhando((v) => (p === 0 ? [true, v[1]] : [v[0], true]));
+      window.clearTimeout(timerEmbaralho.current[p]);
+      timerEmbaralho.current[p] = window.setTimeout(() => setEmbaralhando((v) => (p === 0 ? [false, v[1]] : [v[0], false])), 900);
+    }
   }
 
   function responder(resp: OcgResponse) {
@@ -302,6 +332,59 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
     }
     return m;
   }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // cartas da escolha em aberto (alvos, cadeia, matérias…): chave no tabuleiro → índices na mensagem
+  useEffect(() => {
+    setMarcadas([]);
+    setFoco(null);
+    if (pedido?.carta) setPreview(pedido.carta);
+  }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
+  const escolhiveis = useMemo(() => {
+    const m = new Map<string, number[]>();
+    if (!d) return m;
+    const add = (c: { controller: number; location: number; sequence: number }, i: number) => {
+      const k = chaveRef(c);
+      m.set(k, [...(m.get(k) ?? []), i]);
+    };
+    if (d.type === T.SELECT_CHAIN || d.type === T.SELECT_CARD || d.type === T.SELECT_TRIBUTE || d.type === T.SELECT_SUM) d.selects.forEach(add);
+    if (d.type === T.SELECT_UNSELECT_CARD) {
+      d.select_cards.forEach(add);
+      d.unselect_cards.forEach((c, i) => add(c, d.select_cards.length + i));
+    }
+    if (d.type === T.SELECT_EFFECTYN) add(d, 0);
+    return m;
+  }, [d]);
+  const obrigatorias = useMemo(() => new Set(d?.type === T.SELECT_SUM ? d.selects_must.map(chaveRef) : []), [d]);
+
+  /** Escolhe (ou desmarca) a carta de índice i da escolha em aberto: pelo painel ou pelo tabuleiro */
+  function tocar(i: number) {
+    if (!d) return;
+    switch (d.type) {
+      case T.SELECT_CHAIN:
+        return responder({ type: R.SELECT_CHAIN, index: i });
+      case T.SELECT_UNSELECT_CARD:
+        return responder({ type: R.SELECT_UNSELECT_CARD, index: i });
+      case T.SELECT_CARD:
+      case T.SELECT_TRIBUTE:
+        // uma carta só: responde no clique
+        if (d.max === 1 && d.min === 1) return responder(d.type === T.SELECT_CARD ? { type: R.SELECT_CARD, indicies: [i] } : { type: R.SELECT_TRIBUTE, indicies: [i] });
+        return setMarcadas((m) => (m.includes(i) ? m.filter((x) => x !== i) : m.length < d.max ? [...m, i] : m));
+      case T.SELECT_SUM:
+        return setMarcadas((m) => (m.includes(i) ? m.filter((x) => x !== i) : [...m, i]));
+    }
+  }
+  /** Clique numa carta escolhível do tabuleiro: a primeira opção dela ainda não marcada (ou desmarca) */
+  // cartas da cadeia em aberto no tabuleiro: chave → elo
+  const elos = useMemo(() => {
+    const m = new Map<string, number>();
+    quadro?.estado.cadeia.forEach((c, i) => m.set(chave(c.controller, c.location, c.sequence), i + 1));
+    return m;
+  }, [quadro?.estado.cadeia]);
+  const tocarChave = (k: string) => {
+    const idx = escolhiveis.get(k);
+    if (!idx || !d || d.type === T.SELECT_EFFECTYN) return;
+    tocar(idx.find((i) => !marcadas.includes(i)) ?? idx[0]);
+  };
 
   // SELECT_PLACE: zonas livres e as já marcadas
   const [zonas, setZonas] = useState<SelectFieldPlace[]>([]);
@@ -399,14 +482,21 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
   // carta desenhada (não componente, para o React não recriar o elemento a cada quadro)
   const carta = (c: CartaSim, k: string, oculta: boolean, monstro = false) => {
     const ac = acoes.get(k);
+    const idx = escolhiveis.get(k);
+    const jaEscolhida = (i: number) => marcadas.includes(i) || (d?.type === T.SELECT_UNSELECT_CARD && i >= d.select_cards.length);
+    const marcada = obrigatorias.has(k) || !!idx?.some(jaEscolhida);
+    const elo = elos.get(k);
     const verso = oculta;
     return (
       <div
         key={k}
-        className={`tj-carta ${monstro && c.pos & 0xc ? "tj-defesa" : ""} ${ac ? "sim-acao" : ""} ${!oculta && virada(c.pos) ? "sim-baixada" : ""}`}
+        className={`tj-carta ${monstro && c.pos & 0xc ? "tj-defesa" : ""} ${ac && !idx ? "sim-acao" : ""} ${idx ? "sim-escolhivel" : ""} ${marcada ? "sim-marcada" : ""} ${foco === k ? "sim-foco" : ""} ${elo ? "sim-ativando" : ""} ${!oculta && virada(c.pos) ? "sim-baixada" : ""}`}
         onMouseEnter={() => !verso && setPreview(c.code)}
         onClick={(e) => {
-          if (ac) abrirMenu(e, ac);
+          if (idx) {
+            e.stopPropagation();
+            tocarChave(k);
+          } else if (ac) abrirMenu(e, ac);
           else if (!verso) setPreview(c.code);
         }}
         title={verso ? t("Carta virada para baixo") : nomeDe(c.code)}
@@ -416,6 +506,11 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
         {c.mat && c.mat.length > 0 && (
           <span className="tj-materiais" title={t("Matérias Xyz")}>
             {c.mat.length}
+          </span>
+        )}
+        {elo && (
+          <span className="sim-elo" title={t("Elo {0} da cadeia", [elo])}>
+            {elo}
           </span>
         )}
         {monstro && !verso && c.atk !== undefined && c.pos & 5 ? (
@@ -451,6 +546,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
     const cartas = tipo === "deck" ? [] : tipo === "extra" ? l.extra : tipo === "cemiterio" ? l.cemiterio : l.banidas;
     const n = tipo === "deck" ? l.deck : cartas.length;
     const temAcao = cartas.some((_, i) => acoes.has(chave(p, location, i)));
+    const temEscolha = cartas.some((_, i) => escolhiveis.has(chave(p, location, i)));
     const titulo = `${p === op ? t("Oponente — ") : ""}${tipo === "deck" ? t("Deck") : tipo === "extra" ? t("Extra Deck") : tipo === "cemiterio" ? t("Cemitério") : t("Banidas")}`;
     // Extra Deck do oponente: só as cartas com a face para cima (Pêndulos) ficam visíveis
     const oculta = (c: CartaSim) => tipo === "extra" && p === op && !(c.pos & 1);
@@ -458,11 +554,16 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
     return (
       <div
         key={`p-${p}-${tipo}`}
-        className={`tj-zona tj-${tipo} ${p === op ? "tj-zona-op" : ""} ${temAcao ? "sim-acao" : ""}`}
+        className={`tj-zona tj-${tipo} ${p === op ? "tj-zona-op" : ""} ${temAcao && !temEscolha ? "sim-acao" : ""} ${temEscolha ? "sim-escolhivel" : ""}`}
         onClick={() => cartas.length && setLista({ titulo, cartas: cartas.map((c, i) => ({ c, k: chave(p, location, i), oculta: oculta(c) })) })}
         title={titulo}
       >
         {tipo === "deck" || tipo === "extra" ? n > 0 && <div className="tj-verso" /> : topo && carta(topo, chave(p, location, cartas.length - 1), false)}
+        {tipo === "deck" && embaralhando[p] && (
+          <span className="tj-embaralhando" aria-label={t("Embaralhando")}>
+            ⟳
+          </span>
+        )}
         <span className="tj-contagem">{n}</span>
         {!n && <span className="tj-rotulo">{tipo === "cemiterio" ? t("Cemitério") : tipo === "banido" ? t("Banidas") : tipo === "extra" ? t("Extra") : t("Deck")}</span>}
       </div>
@@ -500,7 +601,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
           <div className="tj-mao tj-mao-op" aria-label={t("Mão do oponente")}>
             {lado2.mao.map((c, i) => (
               <div key={i} className="tj-mao-carta">
-                {carta(c, chave(op, L.HAND, i), true)}
+                {carta(c, chave(op, L.HAND, i), !c.pub)}
               </div>
             ))}
           </div>
@@ -552,6 +653,34 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
             <Pv rotulo={t("IA")} lp={lado2.lp} vez={!minhaVez} />
             <Pv rotulo={t("Você")} lp={meuLado.lp} vez={minhaVez} />
           </div>
+          {ativacoes.itens.length > 0 && (
+            <div className={`sim-cadeia ${ativacoes.aberta ? "sim-cadeia-aberta" : ""}`} aria-live="polite">
+              <h4>{ativacoes.aberta ? t("Em ativação") : t("Última ativação")}</h4>
+              <ol>
+                {[...ativacoes.itens].reverse().map((a) => (
+                  <li
+                    key={a.elo}
+                    className={a.resolvida ? "sim-resolvida" : ""}
+                    onMouseEnter={() => {
+                      setPreview(a.code);
+                      setFoco(chave(a.p, a.location, a.sequence));
+                    }}
+                    onMouseLeave={() => setFoco(null)}
+                  >
+                    <span className="sim-elo-num">{a.elo}</span>
+                    <span>
+                      <strong>
+                        {a.p === eu ? t("Você") : t("IA")}: {nomeDe(a.code)}
+                      </strong>
+                      <small>{lugarDe(a.location, a.p === eu)}</small>
+                      {a.texto && <em>{a.texto}</em>}
+                    </span>
+                    {a.resolvida && <span aria-label={t("resolvida")}>✓</span>}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
           {fimTexto ? (
             <div className="sim-fim" role="status">
               <strong>{fimTexto}</strong>
@@ -564,7 +693,7 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
               {t("A IA está pensando…")}
             </p>
           ) : (
-            <Escolha pedido={pedido} nomeDe={nomeDe} responder={responder} eu={eu} setPreview={setPreview} />
+            <Escolha pedido={pedido} nomeDe={nomeDe} responder={responder} eu={eu} setPreview={setPreview} marcadas={marcadas} setMarcadas={setMarcadas} tocar={tocar} setFoco={setFoco} />
           )}
           <label className="sim-janelas" title={t("Desligado: o simulador só pergunta se você quer encadear logo depois de uma jogada da IA.")}>
             <input
@@ -587,11 +716,27 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
           )}
           <h3>{t("Registro")}</h3>
           <ol className="tj-log sim-log" aria-label={t("Registro do duelo")}>
-            {[...registro].reverse().map((e, i) => (
-              <li key={registro.length - i}>{textoEvento(e, eu, nomeDe)}</li>
-            ))}
+            {[...registro]
+              .reverse()
+              .map((e, i) => [e, registro.length - i] as const)
+              .filter(([e]) => e.t !== "resolve" && e.t !== "cadeia-fim")
+              .map(([e, k]) => (
+                <li key={k}>{textoEvento(e, eu, nomeDe)}</li>
+              ))}
           </ol>
         </Lateral>
+
+        {lista && (
+          <div className="tj-menu-fundo" onClick={() => setLista(null)}>
+            <div className="tj-lista" role="dialog" aria-label={lista.titulo} onClick={(e) => e.stopPropagation()}>
+              <h4>{lista.titulo}</h4>
+              <div className="tj-lista-cartas">{lista.cartas.map(({ c, k, oculta }) => carta(c, k, oculta))}</div>
+              <button className="ghost-btn" onClick={() => setLista(null)}>
+                {t("Fechar")}
+              </button>
+            </div>
+          </div>
+        )}
 
         {menu && (
           <div className="tj-menu-fundo" onClick={() => setMenu(null)}>
@@ -607,12 +752,19 @@ export default function Simulador({ onBack }: { onBack: () => void }) {
           </div>
         )}
 
-        {lista && (
-          <div className="tj-menu-fundo" onClick={() => setLista(null)}>
-            <div className="tj-lista" role="dialog" aria-label={lista.titulo} onClick={(e) => e.stopPropagation()}>
-              <h4>{lista.titulo}</h4>
-              <div className="tj-lista-cartas">{lista.cartas.map(({ c, k, oculta }) => carta(c, k, oculta))}</div>
-              <button className="ghost-btn" onClick={() => setLista(null)}>
+        {revelacao && (
+          <div className="tj-menu-fundo" onClick={() => setRevelacao(null)}>
+            <div className="tj-lista" role="dialog" aria-label={t("Cartas reveladas")} onClick={(e) => e.stopPropagation()}>
+              <h4>{t("Cartas reveladas")}</h4>
+              <div className="tj-lista-cartas">
+                {revelacao.map((c, i) => (
+                  <div key={i} className="tj-carta" onMouseEnter={() => setPreview(c.code)} title={nomeDe(c.code)}>
+                    <img src={cardImage(c.code, "small")} alt={nomeDe(c.code)} onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
+                  </div>
+                ))}
+              </div>
+              <small className="tags-note">{revelacao.every((c) => c.controller === op) ? t("Cartas do oponente") : t("Cartas mostradas")}</small>
+              <button className="ghost-btn" onClick={() => setRevelacao(null)} autoFocus>
                 {t("Fechar")}
               </button>
             </div>
@@ -653,13 +805,26 @@ function Pv({ rotulo, lp, vez }: { rotulo: string; lp: number; vez: boolean }) {
 }
 
 /** Painel da decisão em aberto (tudo menos as ações de Main/Battle Phase, que ficam nas cartas) */
-function Escolha({ pedido, nomeDe, responder, eu, setPreview }: { pedido: PedidoSim; nomeDe: (c: number) => string; responder: (r: OcgResponse) => void; eu: number; setPreview: (c: number) => void }) {
+interface PropsEscolha {
+  pedido: PedidoSim;
+  nomeDe: (c: number) => string;
+  responder: (r: OcgResponse) => void;
+  eu: number;
+  setPreview: (c: number) => void;
+  /** seleção compartilhada com o tabuleiro (índices da mensagem) */
+  marcadas: number[];
+  setMarcadas: (f: (m: number[]) => number[]) => void;
+  /** escolhe a carta de índice i (o mesmo que clicar nela no tabuleiro) */
+  tocar: (i: number) => void;
+  /** acende no tabuleiro a carta da opção sob o mouse */
+  setFoco: (k: string | null) => void;
+}
+
+function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarcadas, tocar, setFoco }: PropsEscolha) {
   const d = pedido.msg;
-  const [marcadas, setMarcadas] = useState<number[]>([]);
   const [busca, setBusca] = useState("");
   const [contadores, setContadores] = useState<number[]>([]);
   useEffect(() => {
-    setMarcadas([]);
     setBusca("");
     setContadores(d.type === T.SELECT_COUNTER ? d.cards.map(() => 0) : []);
   }, [d]);
@@ -670,8 +835,18 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview }: { pedido: Pedido
   const aviso = pedido.repetir ? <p className="conta-erro">{t("Essa escolha não vale aqui. Escolha de novo.")}</p> : null;
   const lugar = (c: { controller: number; location: number }) =>
     `${c.controller === eu ? "" : t("do oponente, ")}${c.location & L.HAND ? t("mão") : c.location & L.DECK ? t("Deck") : c.location & L.GRAVE ? t("Cemitério") : c.location & L.REMOVED ? t("banida") : c.location & L.EXTRA ? t("Extra Deck") : c.location & L.OVERLAY ? t("matéria") : t("campo")}`;
-  const cartaBotao = (c: { code: number; controller: number; location: number }, i: number, ativo: boolean, onClick: () => void, sufixo?: ReactNode) => (
-    <button key={i} className={`sim-opcao-carta ${ativo ? "sim-ativo" : ""}`} onClick={onClick} onMouseEnter={() => c.code && setPreview(c.code)} aria-pressed={ativo}>
+  const cartaBotao = (c: { code: number; controller: number; location: number; sequence?: number }, i: number, ativo: boolean, onClick: () => void, sufixo?: ReactNode) => (
+    <button
+      key={i}
+      className={`sim-opcao-carta ${ativo ? "sim-ativo" : ""}`}
+      onClick={onClick}
+      onMouseEnter={() => {
+        if (c.code) setPreview(c.code);
+        if (c.sequence !== undefined) setFoco(chaveRef({ ...c, sequence: c.sequence }));
+      }}
+      onMouseLeave={() => setFoco(null)}
+      aria-pressed={ativo}
+    >
       {c.code ? <img src={cardImage(c.code, "small")} alt="" onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} /> : <div className="tj-verso" />}
       <span>
         <strong>{c.code ? nomeDe(c.code) : t("Carta virada para baixo")}</strong>
@@ -714,7 +889,7 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview }: { pedido: Pedido
         return (
           <>
             <h4>{d.forced ? t("Ative um efeito obrigatório") : t("Encadear um efeito?")}</h4>
-            {d.selects.map((c, i) => cartaBotao(c, i, false, () => responder({ type: R.SELECT_CHAIN, index: i }), texto(c.description) && <em>{texto(c.description)}</em>))}
+            {d.selects.map((c, i) => cartaBotao(c, i, false, () => tocar(i), texto(c.description) && <em>{texto(c.description)}</em>))}
             {!d.forced && (
               <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_CHAIN, index: null })} autoFocus>
                 {t("Não encadear")}
@@ -744,7 +919,7 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview }: { pedido: Pedido
             <h4>{titulo}</h4>
             {d.options.map((o, i) => (
               <button key={i} className="ghost-btn sim-opcao" onClick={() => responder({ type: R.SELECT_OPTION, index: i })}>
-                {texto(o) ?? t("Opção {0}", [i + 1])}
+                {texto(o) ?? (pedido.carta ? t("Opção {0} do efeito de {1} (veja o texto da carta à esquerda)", [i + 1, nomeDe(pedido.carta)]) : t("Opção {0}", [i + 1]))}
               </button>
             ))}
           </>
@@ -756,13 +931,7 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview }: { pedido: Pedido
           <>
             <h4>{titulo}</h4>
             <small className="tags-note">{d.min === d.max ? t("Escolha {0}.", [d.min]) : t("Escolha de {0} a {1}.", [d.min, d.max])}</small>
-            {d.selects.map((c, i) =>
-              cartaBotao(c, i, marcadas.includes(i), () => {
-                // uma carta só: responde no clique
-                if (d.max === 1 && d.min === 1) return responder(d.type === T.SELECT_CARD ? { type: R.SELECT_CARD, indicies: [i] } : { type: R.SELECT_TRIBUTE, indicies: [i] });
-                setMarcadas((m) => (m.includes(i) ? m.filter((x) => x !== i) : m.length < d.max ? [...m, i] : m));
-              }),
-            )}
+            {d.selects.map((c, i) => cartaBotao(c, i, marcadas.includes(i), () => tocar(i)))}
             <div className="sim-niveis">
               {!(d.max === 1 && d.min === 1) && (
                 <button className="ghost-btn" disabled={!ok} onClick={() => responder(d.type === T.SELECT_CARD ? { type: R.SELECT_CARD, indicies: marcadas } : { type: R.SELECT_TRIBUTE, indicies: marcadas })}>
@@ -783,8 +952,8 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview }: { pedido: Pedido
           <>
             <h4>{titulo}</h4>
             {/* as já escolhidas vêm depois das disponíveis na resposta */}
-            {d.select_cards.map((c, i) => cartaBotao(c, i, false, () => responder({ type: R.SELECT_UNSELECT_CARD, index: i })))}
-            {d.unselect_cards.map((c, i) => cartaBotao(c, d.select_cards.length + i, true, () => responder({ type: R.SELECT_UNSELECT_CARD, index: d.select_cards.length + i })))}
+            {d.select_cards.map((c, i) => cartaBotao(c, i, false, () => tocar(i)))}
+            {d.unselect_cards.map((c, i) => cartaBotao(c, d.select_cards.length + i, true, () => tocar(d.select_cards.length + i)))}
             {(d.can_finish || d.can_cancel) && (
               <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_UNSELECT_CARD, index: null })}>
                 {d.can_finish ? t("Concluir") : t("Cancelar")}
@@ -800,7 +969,7 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview }: { pedido: Pedido
             <h4>{titulo}</h4>
             <small className="tags-note">{t("Some {0} (agora: {1}).", [d.amount, soma])}</small>
             {d.selects_must.map((c, i) => cartaBotao(c, 1000 + i, true, () => {}, <small>{t("obrigatória")}</small>))}
-            {d.selects.map((c, i) => cartaBotao(c, i, marcadas.includes(i), () => setMarcadas((m) => (m.includes(i) ? m.filter((x) => x !== i) : [...m, i])), <small>{valor(c.amount)}</small>))}
+            {d.selects.map((c, i) => cartaBotao(c, i, marcadas.includes(i), () => tocar(i), <small>{valor(c.amount)}</small>))}
             <button className="ghost-btn" disabled={!marcadas.length && !d.selects_must.length} onClick={() => responder({ type: R.SELECT_SUM, indicies: marcadas })}>
               {t("Confirmar")}
             </button>
@@ -939,9 +1108,20 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview }: { pedido: Pedido
   return (
     <div className="sim-escolha" role="group" aria-label={titulo}>
       {aviso}
+      {pedido.carta && d.type !== T.SELECT_EFFECTYN && (
+        <small className="sim-de-carta" onMouseEnter={() => setPreview(pedido.carta!)}>
+          {t("Efeito de {0}", [nomeDe(pedido.carta)])}
+        </small>
+      )}
       {corpo()}
     </div>
   );
+}
+
+/** Onde a carta foi ativada */
+function lugarDe(location: number, minha: boolean): string {
+  const onde = location & L.HAND ? t("da mão") : location & L.GRAVE ? t("do Cemitério") : location & L.REMOVED ? t("das banidas") : location & L.DECK ? t("do Deck") : location & L.EXTRA ? t("do Extra Deck") : location & L.MZONE ? t("na Zona de Monstros") : location & (L.SZONE | L.FZONE) ? t("na Zona de Magias e Armadilhas") : "";
+  return minha ? onde : onde && t("{0} (oponente)", [onde]);
 }
 
 /** Linha do registro do duelo */
@@ -963,10 +1143,18 @@ function textoEvento(e: EventoSim, eu: number, nomeDe: (c: number) => string): s
     case "baixa":
       return t("{0} baixou uma carta", [quem(e.p)]);
     case "ativa":
-      return t("{0} ativou {1}", [quem(e.p), nomeDe(e.code)]) + (e.texto ? ` — ${e.texto}` : "");
+      return t("{0} ativou {1} {2}", [quem(e.p), nomeDe(e.code), lugarDe(e.location, e.p === eu)]).trim() + (e.texto ? ` — ${e.texto}` : "");
     case "nega":
       return t("Ativação ou efeito negado");
+    case "revela":
+      return e.p === eu ? t("Cartas mostradas a você: {0}", [e.cartas.map((c) => nomeDe(c.code)).join(", ")]) : t("A IA viu {0} carta(s)", [e.cartas.length]);
+    case "resolve":
+    case "cadeia-fim":
+      return "";
+    case "embaralha":
+      return e.p === eu ? t("Seu Deck foi embaralhado") : t("O Deck da IA foi embaralhado");
     case "move": {
+      if (e.para & L.OVERLAY) return t("{0} virou matéria Xyz", [nomeDe(e.code)]);
       const para = e.para & L.GRAVE ? t("Cemitério") : e.para & L.REMOVED ? t("banidas") : e.para & L.HAND ? t("mão") : e.para & L.EXTRA ? t("Extra Deck") : e.para & L.DECK ? t("Deck") : t("campo");
       return t("{0} foi para: {1}", [nomeDe(e.code), para]);
     }

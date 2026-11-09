@@ -60,13 +60,61 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sim .sim-acao {
+  .sim .sim-acao,
+  .sim .sim-escolhivel {
     animation: none;
   }
 }
 
 .sim .tj-carta {
   cursor: default;
+}
+
+/* cartas que a escolha em aberto aceita (alvo, cadeia, matéria…): contorno ciano pulsando */
+.sim .sim-escolhivel {
+  cursor: pointer;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px #35d6ff, 0 0 14px 2px rgb(53 214 255 / 0.75);
+  animation: sim-pulso-escolha 1.2s ease-in-out infinite;
+}
+
+@keyframes sim-pulso-escolha {
+  50% {
+    box-shadow: 0 0 0 2px #35d6ff, 0 0 4px 0 rgb(53 214 255 / 0.4);
+  }
+}
+
+/* carta já marcada na escolha */
+.sim .sim-marcada {
+  animation: none;
+  box-shadow: 0 0 0 3px #35d6ff, 0 0 18px 4px rgb(53 214 255 / 0.9);
+}
+
+.sim .sim-marcada::after {
+  content: "✓";
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #04212b;
+  background: #35d6ff;
+  border-radius: 50%;
+}
+
+/* opção sob o mouse no painel: a carta correspondente no tabuleiro cresce e brilha */
+.sim .sim-foco {
+  z-index: 2;
+  transform: scale(1.12);
+  box-shadow: 0 0 0 3px #fff, 0 0 22px 6px rgb(53 214 255 / 0.95);
+}
+
+.sim .tj-defesa.sim-foco {
+  transform: rotate(90deg) scale(1.12);
 }
 
 /* carta sua virada para baixo: você vê, mas apagada */
@@ -253,4 +301,100 @@
   align-items: center;
   font-size: 0.75rem;
   color: var(--text-dim);
+}
+
+/* carta em ativação na cadeia: brilho magenta e o número do elo */
+.sim .sim-ativando {
+  box-shadow: 0 0 0 2px var(--magenta), 0 0 18px 4px color-mix(in srgb, var(--magenta) 70%, transparent);
+}
+
+.sim-elo {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: #fff;
+  background: var(--magenta);
+  border-radius: 50%;
+  z-index: 3;
+}
+
+.tj-defesa .sim-elo {
+  transform: rotate(-90deg);
+}
+
+.sim-cadeia {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sim-cadeia-aberta {
+  border-color: var(--magenta);
+  box-shadow: 0 0 0 1px var(--magenta);
+}
+
+.sim-cadeia h4 {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+}
+
+.sim-cadeia ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sim-cadeia li {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 6px;
+  align-items: start;
+}
+
+.sim-cadeia li span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sim-cadeia small,
+.sim-cadeia em {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.sim-elo-num {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--magenta);
+  border-radius: 50%;
+}
+
+.sim-resolvida {
+  opacity: 0.6;
+}
+
+.sim-resolvida .sim-elo-num {
+  background: var(--text-dim);
+}
+
+.sim-de-carta {
+  color: var(--accent);
+  font-weight: 600;
+  cursor: help;
 }
