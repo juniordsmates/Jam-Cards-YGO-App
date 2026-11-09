@@ -145,16 +145,19 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const arrastando = useRef<{ id: number; de?: Parte; indice?: number } | null>(null);
   // Teste de Jogo (Solo Mode) com o deck aberto
   const [testando, setTestando] = useState(!!inicial.testar);
-  // deck temporário do combo (sai ao voltar ao editor); `importado`: já está em Meus decks
+  // deck temporário do combo: fica disponível no editor (bloco "Teste do combo") até ser descartado;
+  // `importado`: nome com que já foi para Meus decks
   const [temporario, setTemporario] = useState(inicial.temporario);
-  const [importado, setImportado] = useState(false);
+  const [importado, setImportado] = useState<string | null>(null);
+  // o teste aberto é o do combo (deck temporário e Executar combo) ou o do deck aberto no editor
+  const [testeCombo, setTesteCombo] = useState(!!inicial.temporario && !!inicial.testar);
   /** Importar Deck: o deck temporário vira um deck em Meus decks, com nome livre (não substitui outro) */
   const importarTemporario = () => {
     if (!temporario) return "";
     let nome = temporario.nome;
     for (let n = 2; deckComNome(nome); n++) nome = `${temporario.nome} (${n})`;
     setDeckId(criarDeck(nome, { main: temporario.main, extra: temporario.extra, side: temporario.side }).id);
-    setImportado(true);
+    setImportado(nome);
     return nome;
   };
   // Teste Avançado (campo do oponente e Indicações de resposta): Usuário Avançado ou Mentor
@@ -162,8 +165,10 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   const podeAvancado = temRecursosAvancados(conta);
   const abrirTeste = (modo: "simples" | "avancado") => {
     setAvancado(modo === "avancado");
+    setTesteCombo(false);
     setTestando(true);
   };
+  const deckTeste = testeCombo && temporario ? temporario : trabalho;
 
   useEffect(() => void initCardDb(), []);
   // com conta: traz os decks salvos nela que ainda não estão neste computador
@@ -466,20 +471,17 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           <span className="spinner" />
           <p>{db.step ?? t("Carregando base de cartas…")}</p>
         </div>
-      ) : testando && (temporario ?? trabalho) ? (
+      ) : testando && deckTeste ? (
         <TesteJogo
-          nome={(temporario ?? trabalho)!.nome}
-          main={(temporario ?? trabalho)!.main}
-          extra={(temporario ?? trabalho)!.extra}
+          nome={deckTeste.nome}
+          main={deckTeste.main}
+          extra={deckTeste.extra}
           byId={byId}
           formato={formato}
-          onFechar={() => {
-            setTestando(false);
-            setTemporario(undefined);
-          }}
-          onImportar={temporario && !importado ? importarTemporario : undefined}
-          // o combo vem com o deck temporário dele; sem ele, o teste é do deck aberto
-          combo={temporario ? inicial.combo : undefined}
+          onFechar={() => setTestando(false)}
+          onImportar={testeCombo && temporario && !importado ? importarTemporario : undefined}
+          // o combo vem com o deck temporário dele; no teste do deck aberto, não
+          combo={testeCombo && temporario ? inicial.combo : undefined}
           avancado={avancado && podeAvancado}
           onModo={setAvancado}
         />
@@ -487,6 +489,26 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
         <div className="deck-editor">
           {/* ---------------- esquerda: carta e controles */}
           <Lateral className="de-left" titulo={t("Deck")}>
+            {/* combo testado com deck temporário: volta ao teste dele, importa o deck ou descarta */}
+            {temporario && (
+              <section className="de-bloco de-combo-teste" aria-label={t("Teste do combo")}>
+                <h3 className="de-bloco-titulo">{t("Teste do combo")}</h3>
+                <p className="tags-note">
+                  {importado
+                    ? t("O deck do combo já está em Meus decks como \"{0}\".", [importado])
+                    : t("Deck temporário \"{0}\": não fica salvo, a menos que você o importe.", [temporario.nome])}
+                </p>
+                <div className="de-controles">
+                  <button className="ghost-btn" onClick={() => { setTesteCombo(true); setTestando(true); }}>
+                    ▶ {t("Voltar ao teste do combo")}</button>
+                  {!importado && (
+                    <button className="ghost-btn" onClick={() => { const nome = importarTemporario(); setMensagem({ tipo: "ok", texto: t("Deck importado em Meus decks como \"{0}\".", [nome]) }); }}>
+                      {t("Importar Deck")}</button>
+                  )}
+                  <button className="ghost-btn" onClick={() => setTemporario(undefined)}>{t("Descartar")}</button>
+                </div>
+              </section>
+            )}
             {/* opções do deck (escolher, criar, salvar…), num bloco separado da carta */}
             <section className="de-bloco de-opcoes" aria-label={t("Opções do deck")}>
               <h3 className="de-bloco-titulo">{t("Deck")}</h3>

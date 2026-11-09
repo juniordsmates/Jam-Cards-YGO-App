@@ -2332,4 +2332,9 @@ export const EN: Record<string, string> = {
   "Retornar": "Rewind",
   "Retornou ao passo {0}.": "Went back to step {0}.",
   "Desfaz o último passo executado (passo {0}) e volta para ele": "Undoes the last played step (step {0}) and goes back to it",
+  "Teste do combo": "Combo test",
+  "O deck do combo já está em Meus decks como \"{0}\".": "The combo deck is already in My decks as \"{0}\".",
+  "Deck temporário \"{0}\": não fica salvo, a menos que você o importe.": "Temporary deck \"{0}\": it is not saved unless you import it.",
+  "Voltar ao teste do combo": "Back to the combo test",
+  "Descartar": "Discard",
 };
