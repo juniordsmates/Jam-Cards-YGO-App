@@ -2329,4 +2329,7 @@ export const EN: Record<string, string> = {
   ", virando para cima": ", flipping it face-up",
   "Arraste para mudar a ordem (ou Alt + ↑/↓)": "Drag to change the order (or Alt + ↑/↓)",
   "Voltar para a ordem original": "Back to the original order",
+  "Retornar": "Rewind",
+  "Retornou ao passo {0}.": "Went back to step {0}.",
+  "Desfaz o último passo executado (passo {0}) e volta para ele": "Undoes the last played step (step {0}) and goes back to it",
 };

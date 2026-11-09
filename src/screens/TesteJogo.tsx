@@ -121,6 +121,10 @@ export default function TesteJogo({
   const [passo, setPasso] = useState<number | null>(null);
   // passos já aplicados pelo "Executar" (não se aplica o mesmo passo duas vezes)
   const [executados, setExecutados] = useState<Set<number>>(new Set());
+  // "Retornar": como tudo estava antes de cada Executar (o último no fim), para desfazer passo a passo
+  const [historico, setHistorico] = useState<
+    { passo: number; t: Tabuleiro; anotados: Passo[]; criados: Passo[]; usadas: Map<string, number>; indicacoes: EntradaIndicacao[] }[]
+  >([]);
   // efeito ativado pelo "Executar": as cartas aparecem em destaque no centro por um instante
   const [anuncio, setAnuncio] = useState<{ ids: number[]; n: number } | null>(null);
   useEffect(() => {
@@ -418,6 +422,7 @@ export default function TesteJogo({
     setFase("M1");
     setPasso(0);
     setExecutados(new Set());
+    setHistorico([]);
     setIndicacoes([]);
     zerarTurno();
     setLog([tr("Executar combo: mão inicial ({0}).", [combo.mao.map((id) => (byId.get(id) ? displayName(byId.get(id)!) : id)).join(" + ")])]);
@@ -472,6 +477,7 @@ export default function TesteJogo({
   const executarPassoAtual = () => {
     const g = passo !== null ? grupos[passo] : undefined;
     if (passo === null || !g) return;
+    const antes = { passo, t, anotados, criados, usadas: new Map(usadas.current), indicacoes };
     let tab = t;
     const aplicados: PassoAplicado[] = [];
     const falhas: Passo[] = [];
@@ -505,8 +511,28 @@ export default function TesteJogo({
       setAtivada(uid);
       setTimeout(() => setAtivada((a) => (a === uid ? null : a)), 1800);
     }
+    setHistorico((h) => [...h, antes]);
     setExecutados((e) => new Set(e).add(passo));
     if (passo < grupos.length - 1) setPasso(passo + 1);
+  };
+  /** Retornar: desfaz o último passo executado (tabuleiro, passos anotados e indicações) e volta para ele */
+  const retornarExecucao = () => {
+    const antes = historico[historico.length - 1];
+    if (!antes) return;
+    setHistorico((h) => h.slice(0, -1));
+    setT(antes.t);
+    setAnotados(antes.anotados);
+    setCriados(antes.criados);
+    usadas.current = antes.usadas;
+    setIndicacoes(antes.indicacoes);
+    setExecutados((e) => {
+      const novo = new Set(e);
+      novo.delete(antes.passo);
+      return novo;
+    });
+    setPasso(antes.passo);
+    setAnuncio(null);
+    registrar(tr("Retornou ao passo {0}.", [antes.passo + 1]));
   };
 
   // ---------------------------------------------------------------- oponente (Teste Avançado)
@@ -1137,6 +1163,7 @@ export default function TesteJogo({
               setSelecionada(null);
               setPasso(null);
               setExecutados(new Set());
+              setHistorico([]);
               setIndicacoes([]);
               zerarTurno();
               setLog(["Reiniciado: cartas recolhidas, Deck embaralhado, 5 cartas compradas."]);
@@ -1239,6 +1266,14 @@ export default function TesteJogo({
           <div className="tj-passo-nav">
             <button className="ghost-btn" disabled={passo === 0} onClick={() => setPasso(passo - 1)}>
               {tr("‹ Anterior")}</button>
+            {historico.length > 0 && (
+              <button
+                className="ghost-btn tj-retornar"
+                onClick={retornarExecucao}
+                title={tr("Desfaz o último passo executado (passo {0}) e volta para ele", [historico[historico.length - 1].passo + 1])}
+              >
+                ↶ {tr("Retornar")}</button>
+            )}
             {executados.has(passo) ? (
               <span className="tj-executado">✓ {tr("Executado")}</span>
             ) : (

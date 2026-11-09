@@ -372,6 +372,11 @@
   gap: 8px;
 }
 
+/* Anterior, Retornar, Executar e Próximo: quebram linha em telas estreitas */
+.tj-passo-nav {
+  flex-wrap: wrap;
+}
+
 /* clicar para mover: carta selecionada e zonas de destino */
 .tj-sel {
   outline: 3px solid var(--magenta);
