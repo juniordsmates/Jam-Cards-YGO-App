@@ -2326,4 +2326,5 @@ export const ES: Record<string, string> = {
   "@{0} não é mais administrador.": "@{0} ya no es administrador.",
   "Tornar administrador": "Hacer administrador",
   "Tirar administrador": "Quitar administrador",
+  ", virando para cima": ", volteándola boca arriba",
 };

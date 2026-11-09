@@ -400,7 +400,8 @@ function acharDoPasso(t: Tabuleiro, id: number, de: Zona | undefined): CartaJogo
  * - Invocação: as matérias saem do campo (ou da mão) para o Cemitério, ou ficam anexadas no Xyz;
  *   monstros do Extra Deck vão para a Zona de Monstros Extra se ela estiver livre.
  * - Ativação: Magia/Armadilha da mão ou baixada fica virada para cima no campo se permanece
- *   (Contínua, de Campo, de Equipamento); as outras resolvem e vão para o Cemitério.
+ *   (Contínua, de Campo, de Equipamento); as outras resolvem e vão para o Cemitério. Carta virada
+ *   para baixo no campo que ativa o efeito vira para cima.
  * `livre` diz se uma zona vazia pode ser usada (no Teste Avançado a Zona de Monstros Extra é dividida).
  */
 export function executarPasso(t: Tabuleiro, p: Passo, tipo: (id: number) => TipoCarta, livre: (z: ZonaId) => boolean = () => true): Execucao {
@@ -508,6 +509,9 @@ export function executarPasso(t: Tabuleiro, p: Passo, tipo: (id: number) => Tipo
       if (!para) return falha();
       novo = mover(novo, c.uid, para, { baixada: false });
     } else if (c.baixada) novo = alternar(t, c.uid, "baixada");
+  } else if (onde && !onde.dono && ZONAS_UNICAS.has(onde.zona) && c.baixada) {
+    // monstro virado para baixo que ativa o efeito: vira para cima
+    novo = alternar(t, c.uid, "baixada");
   }
   return { t: novo, aplicados: [{ p, carta: c, ativou: true }], falhas: [] };
 }

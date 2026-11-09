@@ -519,8 +519,11 @@ export default function TesteJogo({
   };
 
   const ativarOp = (c: CartaJogo, z: ZonaId) => {
+    // carta virada para baixo no campo: ativar vira para cima
+    const virada = ZONAS_UNICAS.has(z) && c.baixada;
+    if (virada) setOp((a) => alternar(a, c.uid, "baixada"));
     registrar(tr("Oponente ativou o efeito de {0}.", [nomeDe(c)]));
-    avaliar({ t: "ativa", c: c.id, de: zonaDoPasso(z) }, "op");
+    avaliar({ t: "ativa", c: c.id, de: zonaDoPasso(z) }, "op", { virada });
     setAtivada(c.uid);
     setTimeout(() => setAtivada((a) => (a === c.uid ? null : a)), 1200);
     setMenu(null);
@@ -653,8 +656,11 @@ export default function TesteJogo({
       label: tr("Ativar efeito"),
       fazer: () => {
         const onde = z === "mao" ? tr("da mão") : z === "cemiterio" ? tr("no Cemitério") : z === "banido" ? "banida" : z === "deck" ? tr("no Deck") : z === "extra" ? tr("no Extra Deck") : `em ${NOMES_ZONA[z]}`;
-        registrar(tr("Ativou o efeito de {0} ({1}{2}).", [n, onde, c.baixada ? tr(", virada para baixo") : c.defesa ? tr(", em defesa") : ""]));
-        anotar({ t: "ativa", c: c.id, de: zonaDoPasso(z) }, c);
+        // carta virada para baixo no campo: ativar vira para cima
+        const virada = noCampo && c.baixada;
+        if (virada) setT((a) => alternar(a, uid, "baixada"));
+        registrar(tr("Ativou o efeito de {0} ({1}{2}).", [n, onde, virada ? tr(", virando para cima") : c.defesa ? tr(", em defesa") : ""]));
+        anotar({ t: "ativa", c: c.id, de: zonaDoPasso(z) }, c, { virada });
         setAtivada(uid);
         setTimeout(() => setAtivada((a) => (a === uid ? null : a)), 1200);
         setMenu(null);
