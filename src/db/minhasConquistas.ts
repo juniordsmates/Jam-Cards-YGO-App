@@ -3,34 +3,39 @@ import { aoMudarConta, contaAtual } from "./conta";
 import { supabase } from "./supabase";
 import { conquistaPorId, type IdConquista } from "../data/conquistas";
 
-// Conquistas obtidas: guardadas neste dispositivo (dá para desbloquear sem login) e, com conta,
-// também na conta (tabela conquistas_obtidas). Ao entrar, as obtidas aqui sobem para a conta
-// (registrar_conquista) e as da conta descem para cá, sem aviso de desbloqueio.
+// Conquistas obtidas: são de cada usuário. Com conta, valem as da conta (tabela conquistas_obtidas),
+// com uma cópia neste aparelho por conta; abrir o app em outro aparelho traz as mesmas. Sem login dá
+// para desbloquear também: ao entrar, as obtidas sem conta passam para a conta que entrou (e saem do
+// aparelho, para não irem para outra conta depois); as da conta descem para cá, sem aviso de desbloqueio.
 // "Compartilhar" e "Meu Primeiro Deck" também são concedidas pelo próprio banco, quando o combo
 // compartilhado ou o deck chegam à conta; o app só registra aqui para mostrar o aviso na hora.
 
-const STORAGE = "cartas-conquistas";
+/** sem login; com conta, a chave leva o id dela */
+const STORAGE_VISITANTE = "cartas-conquistas";
+const chave = (contaId: string | null) => (contaId ? `${STORAGE_VISITANTE}:${contaId}` : STORAGE_VISITANTE);
 
 interface Estado {
   /** id da conquista → data em que foi obtida */
   obtidas: Record<string, string>;
 }
 
-function ler(): Estado {
+function ler(storage: string): Estado {
   try {
-    const e = JSON.parse(localStorage.getItem(STORAGE) ?? "") as Estado;
+    const e = JSON.parse(localStorage.getItem(storage) ?? "") as Estado;
     return e && typeof e.obtidas === "object" && e.obtidas ? e : { obtidas: {} };
   } catch {
     return { obtidas: {} };
   }
 }
 
-let estado: Estado = ler();
+/** conta dona do estado em memória (null: sem login) */
+let dono: string | null = null;
+let estado: Estado = ler(chave(dono));
 const listeners = new Set<() => void>();
 function gravar(novo: Estado) {
   estado = novo;
   try {
-    localStorage.setItem(STORAGE, JSON.stringify(novo));
+    localStorage.setItem(chave(dono), JSON.stringify(novo));
   } catch {
     // armazenamento indisponível: as conquistas valem só nesta sessão
   }
@@ -73,10 +78,13 @@ export function conquistar(id: IdConquista) {
 /** Junta as conquistas deste aparelho com as da conta */
 export async function juntarConquistasDaConta(): Promise<void> {
   const sb = supabase();
-  if (!sb || !contaAtual()) return;
+  const id = contaAtual()?.id;
+  if (!sb || !id) return;
   const { data, error } = await sb.from("conquistas_obtidas").select("conquista_id, obtida_em");
   // tabela ainda não criada (migração pendente) ou sem rede: ficam só no aparelho
   if (error || !data) return;
+  // trocou de conta enquanto a consulta ia e voltava: não mistura
+  if (dono !== id) return;
   const daConta = new Map(data.map((r) => [r.conquista_id as string, r.obtida_em as string]));
   for (const [id, quando] of Object.entries(estado.obtidas))
     if (!daConta.has(id) && PELO_APP.has(id as IdConquista)) void sb.rpc("registrar_conquista", { conquista: id, quando });
@@ -85,12 +93,25 @@ export async function juntarConquistasDaConta(): Promise<void> {
   gravar({ obtidas });
 }
 
-// ao entrar numa conta (ou trocar de conta), junta
-let contaJunta: string | null = null;
+// ao entrar, sair ou trocar de conta: passa a usar as conquistas dela (e junta com as da conta)
 aoMudarConta(() => {
   const id = contaAtual()?.id ?? null;
-  if (id && id !== contaJunta) void juntarConquistasDaConta();
-  contaJunta = id;
+  if (id === dono) return;
+  const visitante = dono === null ? estado : ler(chave(null));
+  dono = id;
+  let proprio = ler(chave(id));
+  if (id && Object.keys(visitante.obtidas).length) {
+    // o que foi obtido sem login vai para a conta que entrou e sai do aparelho
+    const obtidas = { ...visitante.obtidas, ...proprio.obtidas };
+    proprio = { obtidas };
+    try {
+      localStorage.removeItem(chave(null));
+    } catch {
+      // armazenamento indisponível
+    }
+  }
+  gravar(proprio);
+  if (id) void juntarConquistasDaConta();
 });
 
 /** Raridade de cada conquista (% dos duelistas com conta que já a obtiveram), como na Steam */

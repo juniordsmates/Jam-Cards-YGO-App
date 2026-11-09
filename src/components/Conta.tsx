@@ -12,6 +12,7 @@ import {
   cadastrar,
   contaAtual,
   criarUsuarioComoAdmin,
+  definirAdmin,
   definirNivel,
   definirNovaSenha,
   emRecuperacao,
@@ -366,6 +367,7 @@ function CadastroUsuarios() {
 
 /** Só o administrador: todas as contas, com o nível de cada uma (Padrão, Avançado ou Mentor) */
 function UsuariosCadastrados() {
+  const conta = useConta();
   const [lista, setLista] = useState<UsuarioCadastrado[] | null>(null);
   const [filtro, setFiltro] = useState("");
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
@@ -383,6 +385,22 @@ function UsuariosCadastrados() {
       await definirNivel(u.id, nivel);
       setLista((l) => l?.map((x) => (x.id === u.id ? { ...x, nivel } : x)) ?? l);
       setMsg({ tipo: "ok", texto: t("@{0} agora é {1}.", [u.usuario, NIVEIS.find((n) => n.id === nivel)!.label]) });
+    } catch (e) {
+      setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSalvando(null);
+    }
+  };
+
+  /** Só o dono: torna a conta administradora ou tira a administração */
+  const mudarAdmin = async (u: UsuarioCadastrado) => {
+    const admin = !u.admin;
+    setSalvando(u.id);
+    setMsg(null);
+    try {
+      await definirAdmin(u.id, admin);
+      setLista((l) => l?.map((x) => (x.id === u.id ? { ...x, admin } : x)) ?? l);
+      setMsg({ tipo: "ok", texto: admin ? t("@{0} agora é administrador.", [u.usuario]) : t("@{0} não é mais administrador.", [u.usuario]) });
     } catch (e) {
       setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -420,6 +438,11 @@ function UsuariosCadastrados() {
                   {t("{0} · desde {1} · último acesso {2}", [u.email, data(u.criado_em), data(u.ultimo_acesso)])}
                 </small>
               </span>
+              {conta?.dono && u.id !== conta.id && (
+                <button className="ghost-btn" disabled={salvando === u.id} onClick={() => void mudarAdmin(u)}>
+                  {u.admin ? t("Tirar administrador") : t("Tornar administrador")}
+                </button>
+              )}
               <select
                 value={u.nivel}
                 disabled={salvando === u.id}

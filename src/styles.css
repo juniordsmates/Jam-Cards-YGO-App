@@ -667,7 +667,10 @@ kbd {
 
 .conta-usuarios-lista li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* o nome ocupa o resto; cada controle (botão do dono, nível) ganha a própria coluna */
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: auto;
   gap: 10px;
   align-items: center;
   padding: 6px 8px;

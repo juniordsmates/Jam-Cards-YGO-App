@@ -2322,4 +2322,8 @@ export const ES: Record<string, string> = {
   "Importar Deck": "Importar Deck",
   "Salva o deck deste teste em Meus decks (Editor de Deck); sem isso, ele não fica salvo": "Guarda el deck de esta prueba en Mis decks (Editor de Deck); si no, no se guarda",
   "Deck importado em Meus decks como \"{0}\".": "Deck importado en Mis decks como \"{0}\".",
+  "@{0} agora é administrador.": "@{0} ahora es administrador.",
+  "@{0} não é mais administrador.": "@{0} ya no es administrador.",
+  "Tornar administrador": "Hacer administrador",
+  "Tirar administrador": "Quitar administrador",
 };

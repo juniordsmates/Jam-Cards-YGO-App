@@ -13,6 +13,8 @@ export interface Conta {
   usuario: string;
   /** pode pedir recálculos (tabela admins no banco) */
   admin: boolean;
+  /** dono do app: só ele torna outras contas administradoras (coluna admins.dono no banco) */
+  dono: boolean;
   /** nível definido pelo administrador (Padrão, Avançado ou Mentor) */
   nivel: Nivel;
 }
@@ -42,12 +44,14 @@ async function carregarPerfil(session: Session | null) {
     conta = null;
     return emit();
   }
-  const [{ data }, { data: admin }] = await Promise.all([
+  const [{ data }, { data: admin }, { data: dono }] = await Promise.all([
     // todas as colunas: funciona com ou sem a coluna "nivel" (migração dos níveis de usuário)
     sb.from("perfis").select("*").eq("id", session.user.id).maybeSingle(),
     sb.rpc("sou_admin"),
+    // sem a migração do dono, a função não existe: ninguém é dono
+    sb.rpc("sou_dono"),
   ]);
-  conta = { id: session.user.id, email: session.user.email ?? "", usuario: data?.usuario ?? "", admin: admin === true, nivel: (data?.nivel as Nivel | undefined) ?? "padrao" };
+  conta = { id: session.user.id, email: session.user.email ?? "", usuario: data?.usuario ?? "", admin: admin === true, dono: dono === true, nivel: (data?.nivel as Nivel | undefined) ?? "padrao" };
   emit();
   // IAs guardadas na conta: valem neste computador onde aqui ainda não houver configuração
   for (const cfg of await lerConfigsIANaConta()) if (!iaConfigurada(getConfigDe(cfg.provedor))) setConfigIA(cfg);
@@ -145,6 +149,12 @@ export async function listarUsuarios(): Promise<UsuarioCadastrado[]> {
   const { data, error } = await exigirCliente().rpc("admin_listar_usuarios");
   if (error) throw new Error(error.message);
   return (data ?? []) as UsuarioCadastrado[];
+}
+
+/** Torna uma conta administradora ou tira a administração (só o dono do app; o banco confere) */
+export async function definirAdmin(id: string, admin: boolean) {
+  const { error } = await exigirCliente().rpc("dono_definir_admin", { p_id: id, p_admin: admin });
+  if (error) throw new Error(error.message);
 }
 
 /** Define o nível de uma conta (só o administrador) */
