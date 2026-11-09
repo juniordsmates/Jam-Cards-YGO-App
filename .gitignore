@@ -5,3 +5,6 @@ src-tauri/gen
 .DS_Store
 *.tsbuildinfo
 scripts/i18n-chaves.json
+
+# pacote do motor para testar o Simulador sem o bucket (desenvolvimento)
+public/motor.json.gz

@@ -62,6 +62,7 @@ O app não tem assinatura digital. No Windows, na primeira execução pode apare
 
 ```
 src/
+  sim/                    Simulador: motor de regras (Worker), sessão de duelo e IA
   App.tsx                 navegação entre telas
   platform.ts             detecta web x desktop e fecha o app
   screens/MainMenu.tsx    menu principal (Buscar Carta, Editor de Deck, Sair)
@@ -161,6 +162,34 @@ Tabuleiro sem regras, como o Solo Mode do Duelingbook ([src/screens/TesteJogo.ts
 - **A partir de um combo:**
   - o app cria (ou atualiza) o deck temporário **"<arquétipo> Temporário"** com as cartas da linha: sem mínimo, com máximo de 60 e 15 e a banlist normal;
   - **Executar combo** monta a mão da linha e mostra no topo da tela o passo atual, com **‹ Anterior / Próximo ›**.
+
+## Simulador (duelo com regras contra a IA)
+
+Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-wasm](https://github.com/n1xx1/ocgcore-wasm)) com os dados (BabelCDB) e os scripts das cartas (CardScripts) do [Project Ignis](https://github.com/ProjectIgnis). Custos, condições, cadeias, "uma vez por turno" e procedimentos de Invocação valem como no jogo.
+
+- **Tela:** [src/screens/Simulador.tsx](src/screens/Simulador.tsx), no menu principal (**Simulador**, rota `#/simulador`). Você escolhe o seu deck, o deck da IA (um deck seu ou um decklist de torneio que o motor já jogou, da camada), o nível da IA e quem começa.
+- **Jogar:**
+  - cartas com ações ficam com contorno brilhante; o clique abre as ações (Invocar, Ativar, Baixar, Atacar…);
+  - as outras decisões do motor (alvos, matérias, zonas, posições, sim/não, declarar carta…) aparecem no painel da direita;
+  - por padrão, o simulador só pergunta "Encadear?" logo depois de uma jogada da IA; **Pausar em todas as janelas de resposta** liga as outras.
+- **Motor:** roda num Worker ([src/sim/worker.ts](src/sim/worker.ts)), para a IA pensar sem travar a tela.
+  - [src/sim/regras.ts](src/sim/regras.ts): abre o motor com o pacote e cria o duelo;
+  - [src/sim/sessao.ts](src/sim/sessao.ts): conduz o duelo, monta o estado e o registro;
+  - [src/sim/cliente.ts](src/sim/cliente.ts): baixa o pacote e conversa com o Worker.
+- **Pacote do motor:** `motor.json.gz` (~6 MB) no bucket privado `camada` do Supabase, publicado pelo pipeline (Database-Cards-Ygo, `npm run pacote-motor`), com `motor-versao.json` ao lado.
+  - O app baixa o pacote uma vez e guarda no IndexedDB; só baixa de novo quando a versão muda.
+  - O bucket precisa aceitar gzip: migração [20261109020000_motor_no_bucket.sql](supabase/migrations/20261109020000_motor_no_bucket.sql).
+  - Em desenvolvimento, sem pacote no bucket, o app usa `public/motor.json.gz` (fora do git): copie o `dist/motor.json.gz` do pipeline para lá.
+- **IA** ([src/sim/ia.ts](src/sim/ia.ts)):
+  - **planejamento:** na Main Phase 1, repete o duelo até o ponto atual (com a mesma semente e as mesmas respostas o motor refaz tudo igual) e joga o turno várias vezes com escolhas sorteadas, puxadas para as cartas das linhas de combo conhecidas do deck; executa a sequência que deixou o melhor campo. Se você responder diferente do previsto, ela planeja de novo;
+  - **batalha:** ataca quando destrói o alvo ou quando pode atacar direto;
+  - **respostas:** no seu turno, responde às suas jogadas com a chance do nível;
+  - **níveis:** Passiva (só passa: para treinar combos), Fácil (uma tentativa), Normal (1,5 s de planejamento) e Difícil (4 s, responde sempre que pode).
+- **Limites:**
+  - os textos dos efeitos nas escolhas vêm em inglês (os do Project Ignis);
+  - a ordem de cartas e de cadeia (SORT_CARD/SORT_CHAIN) usa a ordem proposta pelo motor;
+  - a IA vê o estado inteiro do duelo (mão e Deck do jogador): ela é para treino, não para jogo justo.
+- **Licença:** o `ocgcore` e os scripts do Project Ignis são AGPL-3.0, e por isso o app inteiro está sob a AGPL-3.0 ([LICENSE](LICENSE)). Quem recebe o app (instalador ou site) tem direito ao código-fonte: antes de distribuir uma versão com o Simulador, o código precisa estar disponível publicamente (por exemplo, com o repositório aberto e um link no app).
 
 ## Combo Search, contas e base de combos (Supabase)
 

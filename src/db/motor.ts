@@ -46,7 +46,14 @@ export interface LinhaCombo {
 export interface CombosCalculados {
   motor: { nome: string; ocgcore: string; scripts: string; base: string };
   geradoEm: string;
-  decks: { busca: string; nome: string; evento: string; url: string }[];
+  decks: {
+    busca: string;
+    nome: string;
+    evento: string;
+    url: string;
+    /** decklist usado no motor, com a banlist de cada formato (o Simulador joga com ele) */
+    listas?: { formatos: ("TCG" | "OCG")[]; main: number[]; extra: number[] }[];
+  }[];
   linhas: LinhaCombo[];
 }
 

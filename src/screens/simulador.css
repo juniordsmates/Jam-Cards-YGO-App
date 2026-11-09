@@ -1,0 +1,256 @@
+/* ---------- Simulador (usa a mesa do Teste de Jogo, teste-jogo.css) ---------- */
+
+.sim-config {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sim-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sim-campo select {
+  width: 100%;
+}
+
+.sim-niveis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sim-ativo,
+.sim-ativo:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  color: var(--accent);
+}
+
+.sim-duelar {
+  align-self: flex-start;
+  font-size: 1.05rem;
+  padding: 10px 28px;
+}
+
+.sim-licenca {
+  font-size: 0.72rem;
+}
+
+/* cartas e pilhas com ações: contorno pulsando */
+.sim .sim-acao {
+  cursor: pointer;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px #ffd34d, 0 0 14px 2px rgb(255 211 77 / 0.7);
+  animation: sim-pulso 1.4s ease-in-out infinite;
+}
+
+@keyframes sim-pulso {
+  50% {
+    box-shadow: 0 0 0 2px #ffd34d, 0 0 4px 0 rgb(255 211 77 / 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim .sim-acao {
+    animation: none;
+  }
+}
+
+.sim .tj-carta {
+  cursor: default;
+}
+
+/* carta sua virada para baixo: você vê, mas apagada */
+.sim-baixada img {
+  filter: brightness(0.55) saturate(0.6);
+}
+
+.sim-atk {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #fff;
+  background: rgb(0 0 0 / 0.75);
+  border-radius: 4px;
+}
+
+.tj-defesa .sim-atk {
+  transform: translateX(-50%) rotate(-90deg);
+}
+
+.sim-zona-livre {
+  cursor: pointer;
+  background: rgb(255 211 77 / 0.18);
+  box-shadow: inset 0 0 0 2px #ffd34d;
+}
+
+.sim-zona-marcada {
+  background: rgb(255 211 77 / 0.45);
+}
+
+.sim-centro {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  color: #fff;
+  font-family: var(--font-display);
+}
+
+.sim-centro small {
+  font-size: 0.66rem;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.sim-dir h3 {
+  font-size: 0.9rem;
+}
+
+.sim-pv {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sim-pv-lado {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sim-pv-lado strong {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.sim-vez {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.sim-fim {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.sim-fim strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.sim-pensando {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.sim-escolha {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sim-escolha h4 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.sim-escolha p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.sim-escolha input {
+  width: 100%;
+}
+
+.sim-opcao-carta {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 4px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sim-opcao-carta:hover {
+  border-color: var(--accent);
+}
+
+.sim-opcao-carta img,
+.sim-opcao-carta .tj-verso {
+  width: 40px;
+  aspect-ratio: 59 / 86;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+.sim-opcao-carta span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sim-opcao-carta small,
+.sim-opcao-carta em {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+}
+
+.sim-opcao {
+  text-align: left;
+}
+
+.sim-contador {
+  display: grid;
+  grid-template-columns: 1fr 64px;
+  gap: 6px;
+  align-items: center;
+}
+
+.sim-log {
+  max-height: 40vh;
+  overflow-y: auto;
+  padding-left: 0;
+  list-style: none;
+}
+
+.sim-log li + li {
+  border-top: 1px solid var(--line);
+}
+
+.sim-sair p {
+  margin: 0 0 10px;
+}
+
+.sim-janelas {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}

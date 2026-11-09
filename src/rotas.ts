@@ -13,6 +13,7 @@ import { isDesktop } from "./platform";
 //   #/eventos  #/eventos/compartilhar      Eventos (resultados de torneio) e o envio
 //   #/evento/<id>                           um resultado de evento
 //   #/desejos                               Lista de Desejos
+//   #/simulador                             Simulador (duelo contra a IA)
 // O "#" funciona no GitHub Pages sem configurar o servidor. No app de computador, o link copiado é
 // o do site (abre em qualquer navegador).
 
@@ -33,6 +34,7 @@ export type Rota =
   | { tela: "eventos"; resultado?: string; aba?: "compartilhar" | "analise" }
   | { tela: "desejos" }
   | { tela: "meuscombos" }
+  | { tela: "simulador" }
   | { tela: "comunidade"; arquetipo?: string };
 
 const NOMES: Record<string, Rota["tela"]> = {
@@ -52,6 +54,7 @@ const NOMES: Record<string, Rota["tela"]> = {
   evento: "eventos",
   desejos: "desejos",
   "meus-combos": "meuscombos",
+  simulador: "simulador",
   comunidade: "comunidade",
 };
 

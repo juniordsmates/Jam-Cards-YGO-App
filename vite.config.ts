@@ -21,6 +21,8 @@ export default defineConfig({
     __BUILD_COMMIT__: JSON.stringify(commit),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
   },
+  // o Worker do Simulador (src/sim/worker.ts) importa o ocgcore-wasm em pedaços
+  worker: { format: "es" },
   clearScreen: false,
   server: {
     port: 1420,

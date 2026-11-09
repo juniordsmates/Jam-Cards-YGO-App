@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import MainMenu from "./screens/MainMenu";
 import CardSearch from "./screens/CardSearch";
 import Combos from "./screens/Combos";
@@ -13,6 +13,8 @@ import ListaDesejos from "./screens/ListaDesejos";
 import MeusCombos from "./screens/MeusCombos";
 import Comunidade from "./screens/Comunidade";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
+// o Simulador (motor de regras e IA) só carrega quando é aberto
+const Simulador = lazy(() => import("./screens/Simulador"));
 import ExitDialog from "./components/ExitDialog";
 import AvisoConquista from "./components/AvisoConquista";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
@@ -25,7 +27,7 @@ import type { Card } from "./db/types";
 import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos" | "meuscombos";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos" | "meuscombos" | "simulador";
 
 /** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
 const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
@@ -141,6 +143,7 @@ export default function App() {
             setDeckFrom("menu");
             setScreen("deck");
           }}
+          onSimulador={() => setScreen("simulador")}
           onColecao={() => setScreen("colecao")}
           onDesejos={() => setScreen("desejos")}
           onMeusCombos={() => setScreen("meuscombos")}
@@ -227,6 +230,11 @@ export default function App() {
             setScreen("deck");
           }}
         />
+      )}
+      {screen === "simulador" && (
+        <Suspense fallback={<p className="tags-note">{t("Carregando o Simulador…")}</p>}>
+          <Simulador onBack={() => setScreen("menu")} />
+        </Suspense>
       )}
       {screen === "deck" && <DeckEditor key={JSON.stringify(deckInicial)} inicial={deckInicial} onBack={() => setScreen(deckFrom)} />}
 

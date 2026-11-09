@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, EventIcon, ExitIcon, HeartIcon, HelpIcon, PeopleIcon, SearchIcon, TargetIcon, TrophyIcon } from "../icons";
+import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, DuelIcon, EventIcon, ExitIcon, HeartIcon, HelpIcon, PeopleIcon, SearchIcon, TargetIcon, TrophyIcon } from "../icons";
 import { isDesktop } from "../platform";
 import { BUILD_LABEL, VERSION_LABEL } from "../version";
 import { useConta } from "../db/conta";
@@ -21,6 +21,8 @@ type Props = {
   onDeck: () => void;
   /** Teste de Jogo (Solo Mode) com o deck padrão */
   onTeste: () => void;
+  /** Simulador: duelo com regras contra a IA */
+  onSimulador: () => void;
   /** Minha Coleção: as cartas que o usuário possui */
   onColecao: () => void;
   /** Lista de Desejos: cartas que o jogador quer conseguir */
@@ -48,7 +50,7 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onColecao, onDesejos, onMeusCombos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onSimulador, onColecao, onDesejos, onMeusCombos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
   const conta = useConta();
   const tema = useTema();
   const B = (label: string, hint: string, icon: Item["icon"], accent: Item["accent"], action: () => void): Item => ({ label, hint, icon, accent, action });
@@ -68,6 +70,7 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
       itens: [
         B(t("Editor de Deck"), t("Monte e ajuste seus decks"), <DeckIcon />, "magenta", onDeck),
         B(t("Teste de Jogo"), t("Teste de mão e jogadas com o seu deck"), <DeckIcon />, "magenta", onTeste),
+        B(t("Simulador"), t("Duelo com as regras do jogo contra a IA"), <DuelIcon />, "magenta", onSimulador),
         B(t("Minha Coleção"), t("Cartas que você possui, raridades e valor"), <CollectionIcon />, "magenta", onColecao),
         B(t("Meus Combos"), t("Combos que você salvou, para abrir rápido"), <ComboIcon />, "magenta", onMeusCombos),
       ],

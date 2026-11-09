@@ -16,7 +16,7 @@ const SRC = resolve(RAIZ, "src");
 const conferir = process.argv.includes("--conferir");
 
 // arquivos sem textos de tela (ou com tradução própria)
-const IGNORAR = [/\/i18n(\/|\.ts)/, /\/data\/guias(Passos)?\.ts$/, /\/db\/ygoprodeck\.ts$/, /\/db\/supabase\.ts$/, /\/db\/idb\.ts$/, /\/version\.ts$/, /\/main\.tsx$/, /\/platform\.ts$/, /\.d\.ts$/];
+const IGNORAR = [/\/i18n(\/|\.ts)/, /\/data\/guias(Passos)?\.ts$/, /\/db\/ygoprodeck\.ts$/, /\/db\/supabase\.ts$/, /\/db\/idb\.ts$/, /\/version\.ts$/, /\/main\.tsx$/, /\/platform\.ts$/, /\.d\.ts$/, /\/sim\/(regras|sessao|ia|opcoes|worker)\.ts$/];
 // declarações (por arquivo) que não são texto de tela: prompts de IA, dicionários próprios, valores gravados
 const DECL_IGNORADAS = {
   "db/ia.ts": ["systemPrompt", "pedido", "infoCarta", "executar", "PEDIDO_VIDEO", "validarRegistro", "converter", "FERRAMENTAS", "TOOLS"],
@@ -26,6 +26,8 @@ const DECL_IGNORADAS = {
   "db/relations.ts": ["parseQuery", "buildRelations", "targetFollowUp", "descriptorAround", "relationType", "summonMethod", "archetypeNamesPt", "RACES", "ATTRIBUTES", "MONSTER_TYPES"],
   "db/tags.ts": ["applyTags"],
   "db/metaCall.ts": ["DO_MOTOR"],
+  "sim/cliente.ts": ["VERSAO_LOCAL"],
+  "screens/Simulador.tsx": ["opcoes"],
   "db/indicar.ts": ["CONTRA_MONSTRO", "CONTRA_MAGIA_ARMADILHA"],
   "db/search.ts": ["normalize", "descKey", "relatedKey", "archetypeKey", "searchCards"],
   "db/guiaDeck.ts": ["METODO", "ORIGEM", "movimento", "passoNoIdioma"],

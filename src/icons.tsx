@@ -50,6 +50,16 @@ export const TargetIcon = () => (
   </svg>
 );
 
+/** espadas cruzadas: Simulador (duelo contra a IA) */
+export const DuelIcon = () => (
+  <svg {...base}>
+    <path d="M4 4l9.5 9.5" />
+    <path d="M20 4l-9.5 9.5" />
+    <path d="M7.5 16.5l-3 3M5 14l5 5" />
+    <path d="M16.5 16.5l3 3M19 14l-5 5" />
+  </svg>
+);
+
 export const HelpIcon = () => (
   <svg {...base}>
     <circle cx="12" cy="12" r="9" />
