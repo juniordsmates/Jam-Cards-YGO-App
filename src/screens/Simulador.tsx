@@ -259,6 +259,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   // o que o duelo ensinou (fica só neste aparelho nesta etapa)
   const [aprendido, setAprendido] = useState<Aprendizado | null>(null);
   const pararSala = useRef<(() => void) | null>(null);
+  // maior posição do histórico já vista no banco (para buscar só as jogadas novas)
+  const ultimaN = useRef(-1);
   // jogadas do oponente que chegam antes de o duelo começar neste aparelho
   const remotasAntes = useRef<{ n: number; resp: OcgResponse }[] | null>(null);
   // envio das jogadas em ordem (o banco só aceita a próxima posição)
@@ -341,23 +343,50 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
 
   // ---------- partida 1x1 ----------
 
-  /** Acompanha a sala: entrada do oponente, fim ou desistência, e as jogadas dele */
+  /** Mudança na sala (pelo tempo real ou pela conferência periódica) */
+  function aoMudarSala(d: Duelo, novo: Duelo) {
+    setSala({ ...(salaRef.current ?? d), ...novo });
+    if (novo.estado === "em-andamento" && etapaRef.current === "sala") void comecarPvp(novo);
+    // o oponente desistiu ou saiu: o duelo acaba aqui também
+    if (novo.estado === "encerrado" && etapaRef.current === "duelo" && !quadroRef.current?.fim && !desistenciaRef.current) setDesistencia({ vencedor: novo.vencedor, quem: "oponente" });
+  }
+
+  /** Jogada gravada no banco (as deste aparelho e as repetidas não mudam nada) */
+  function aoReceberJogada(n: number, jogador: 0 | 1, resp: OcgResponse) {
+    ultimaN.current = Math.max(ultimaN.current, n);
+    if (jogador === euRef.current) return;
+    if (remotasAntes.current) remotasAntes.current.push({ n, resp });
+    else cliente.current?.remota(n, resp);
+  }
+
+  /**
+   * Acompanha a sala: entrada do oponente, fim ou desistência, e as jogadas dele. Pelo tempo real
+   * do Supabase e, se ele falhar ou atrasar, conferindo o banco a cada 2 segundos.
+   */
   function acompanhar(d: Duelo) {
     pararSala.current?.();
-    pararSala.current = assinarDuelo(d.id, {
-      duelo: (novo) => {
-        setSala({ ...(salaRef.current ?? d), ...novo });
-        if (novo.estado === "em-andamento" && etapaRef.current === "sala") void comecarPvp(novo);
-        // o oponente desistiu ou saiu: o duelo acaba aqui também
-        if (novo.estado === "encerrado" && etapaRef.current === "duelo" && !quadroRef.current?.fim && !desistenciaRef.current)
-          setDesistencia({ vencedor: novo.vencedor, quem: "oponente" });
-      },
-      resposta: (n, jogador, resp) => {
-        if (jogador === euRef.current) return;
-        if (remotasAntes.current) remotasAntes.current.push({ n, resp });
-        else cliente.current?.remota(n, resp);
-      },
-    });
+    const pararTempoReal = assinarDuelo(d.id, { duelo: (novo) => aoMudarSala(d, novo), resposta: aoReceberJogada });
+    let conferindo = false;
+    const conferir = async () => {
+      if (conferindo || salaRef.current?.id !== d.id) return;
+      conferindo = true;
+      try {
+        const novo = await obterDuelo(d.id);
+        if (novo && (novo.estado !== salaRef.current?.estado || etapaRef.current === "sala")) aoMudarSala(d, novo);
+        // jogadas novas do oponente (só quando o duelo espera por ele)
+        if (etapaRef.current === "duelo" && !remotasAntes.current && quadroRef.current?.aguardando)
+          for (const r of await respostasDoDuelo(d.id, ultimaN.current)) aoReceberJogada(r.n, r.jogador, r.resp);
+      } catch {
+        // sem rede agora: tenta de novo na próxima
+      } finally {
+        conferindo = false;
+      }
+    };
+    const timer = window.setInterval(() => void conferir(), 2000);
+    pararSala.current = () => {
+      pararTempoReal();
+      window.clearInterval(timer);
+    };
   }
 
   /** Começa (ou retoma, depois de cair) o duelo 1x1 com a sala já com os dois jogadores */
@@ -372,6 +401,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       if (versaoMotor.current !== d.versao_motor) throw new Error(t("O motor de regras deste aparelho é diferente do da sala. Abram o Simulador de novo para os dois baixarem o mais recente."));
       if (APP_VERSION !== d.versao_app) throw new Error(t("Versões diferentes do app (sala: {0}, sua: {1}). Atualizem para a mesma versão.", [d.versao_app, APP_VERSION]));
       const historico = await respostasDoDuelo(d.id);
+      ultimaN.current = historico.length ? historico[historico.length - 1].n : -1;
       const humano = meuJogador(d, conta.id);
       const outro = d.criador === conta.id ? d.convidado : d.criador;
       if (outro) void nomesDeUsuarios([outro]).then((n) => setNomeOp(n[outro] ?? null));
@@ -501,6 +531,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       for (const p of q.publicar)
         filaEnvio.current = filaEnvio.current
           .then(() => enviarResposta(d.id, p.n, euRef.current, p.resp))
+          .then(() => void (ultimaN.current = Math.max(ultimaN.current, p.n)))
           .catch((e) => setErro(t("Falha ao enviar a jogada: {0}", [e instanceof Error ? e.message : String(e)])));
     if (q.aprendizado) registrarAprendizado(q.aprendizado);
     if (d && q.fim && !fimEnviado.current) {
@@ -1106,7 +1137,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
           {aviso && <p className="tags-note">{aviso}</p>}
           {erro && (
             <p className="conta-erro" role="alert">
-              {t("O motor parou: {0}", [erro])}
+              {erro}
             </p>
           )}
           <h3>{t("Registro")}</h3>

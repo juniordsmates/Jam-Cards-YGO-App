@@ -98,9 +98,9 @@ export async function enviarResposta(id: string, n: number, jogador: 0 | 1, resp
   throw new Error(erro);
 }
 
-/** Todas as respostas do duelo, em ordem (para entrar ou voltar a um duelo em andamento) */
-export async function respostasDoDuelo(id: string): Promise<{ n: number; jogador: 0 | 1; resp: OcgResponse }[]> {
-  const { data, error } = await cliente().from("duelo_respostas").select("n, jogador, resposta").eq("duelo", id).order("n");
+/** Respostas do duelo depois da posição `depois`, em ordem (todas, para entrar ou voltar a um duelo) */
+export async function respostasDoDuelo(id: string, depois = -1): Promise<{ n: number; jogador: 0 | 1; resp: OcgResponse }[]> {
+  const { data, error } = await cliente().from("duelo_respostas").select("n, jogador, resposta").eq("duelo", id).gt("n", depois).order("n");
   if (error) throw falha(error);
   return (data ?? []).map((r) => ({ n: r.n as number, jogador: r.jogador as 0 | 1, resp: decodificar(r.resposta) }));
 }

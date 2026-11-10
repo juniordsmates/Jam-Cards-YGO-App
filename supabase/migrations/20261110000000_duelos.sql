@@ -54,6 +54,15 @@ drop policy if exists "duelo_respostas: participantes leem" on public.duelo_resp
 create policy "duelo_respostas: participantes leem" on public.duelo_respostas for select to authenticated
   using (exists (select 1 from public.duelos d where d.id = duelo_respostas.duelo and auth.uid() in (d.criador, d.convidado)));
 
+-- quantas respostas o duelo tem: lida fora das regras de acesso (security definer), porque uma
+-- política de duelo_respostas que lê a própria tabela dá "infinite recursion detected in policy"
+create or replace function public.duelo_total_respostas(p_duelo uuid) returns integer
+language sql stable security definer set search_path = '' as $$
+  select count(*)::integer from public.duelo_respostas where duelo = p_duelo;
+$$;
+revoke all on function public.duelo_total_respostas(uuid) from public, anon;
+grant execute on function public.duelo_total_respostas(uuid) to authenticated;
+
 -- cada um envia só as próprias respostas, num duelo em andamento, sem pular posição
 drop policy if exists "duelo_respostas: jogador envia a sua" on public.duelo_respostas;
 create policy "duelo_respostas: jogador envia a sua" on public.duelo_respostas for insert to authenticated
@@ -64,7 +73,7 @@ create policy "duelo_respostas: jogador envia a sua" on public.duelo_respostas f
         and d.estado = 'em-andamento'
         and ((auth.uid() = d.criador and jogador = d.criador_jogador) or (auth.uid() = d.convidado and jogador = 1 - d.criador_jogador))
     )
-    and n = (select count(*) from public.duelo_respostas r where r.duelo = duelo_respostas.duelo)
+    and n = public.duelo_total_respostas(duelo_respostas.duelo)
   );
 
 -- entrar numa sala: confere as versões e grava o convidado e o deck dele
