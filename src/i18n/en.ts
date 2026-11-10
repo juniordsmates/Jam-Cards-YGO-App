@@ -2600,4 +2600,5 @@ export const EN: Record<string, string> = {
   "@{0} não é mais Premium.": "@{0} is no longer Premium.",
   "Premium": "Premium",
   "Premium: recursos exclusivos, como o auxílio de jogadas no Simulador (em breve)": "Premium: exclusive features, such as play assistance in the Simulator (coming soon)",
+  "Falta aplicar a migração das salas (supabase/migrations/20261110000000_duelos.sql) no SQL Editor do Supabase.": "The rooms migration (supabase/migrations/20261110000000_duelos.sql) still needs to be applied in the Supabase SQL Editor.",
 };

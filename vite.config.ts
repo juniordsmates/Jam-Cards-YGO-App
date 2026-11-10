@@ -21,8 +21,18 @@ export default defineConfig({
     __BUILD_COMMIT__: JSON.stringify(commit),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
   },
-  // o Worker do Simulador (src/sim/worker.ts) importa o ocgcore-wasm em pedaços
-  worker: { format: "es" },
+  // o Worker do Simulador (src/sim/worker.ts) importa o ocgcore-wasm em pedaços. A base do ocgcore-wasm
+  // (index e chunk-*) vai num pedaço próprio: se ficasse no arquivo do Worker, os pedaços do motor o
+  // importariam de volta, e o navegador rodaria o Worker duas vezes (uma cópia carregava o motor e a
+  // outra recebia os pedidos: "motor ainda não carregado")
+  worker: {
+    format: "es",
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => (/node_modules\/ocgcore-wasm\/dist\/(index|chunk-[^/]+)\.js$/.test(id) ? "ocgcore-base" : undefined),
+      },
+    },
+  },
   clearScreen: false,
   server: {
     port: 1420,

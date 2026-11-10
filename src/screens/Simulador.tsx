@@ -10,7 +10,7 @@ import { displayName, type Card } from "../db/types";
 import { aleatorio } from "../db/testeJogo";
 import { useConta } from "../db/conta";
 import { openConta } from "../components/Conta";
-import { assinarDuelo, criarDuelo, decksDoDuelo, encerrarDuelo, entrarDuelo, enviarResposta, idDaSala, meuJogador, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
+import { assinarDuelo, partidasAtivas, criarDuelo, decksDoDuelo, encerrarDuelo, entrarDuelo, enviarResposta, idDaSala, meuJogador, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
 import { copiarLink, linkPara, type Rota } from "../rotas";
 import { APP_VERSION } from "../version";
 import { t } from "../i18n";
@@ -251,6 +251,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   const [nomeOp, setNomeOp] = useState<string | null>(null);
   const [convite, setConvite] = useState<{ duelo: Duelo; criador: string } | null>(null);
   const [codigo, setCodigo] = useState("");
+  // o servidor tem as partidas 1x1? (null = conferindo)
+  const [servidorPvp, setServidorPvp] = useState<boolean | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [desistencia, setDesistencia] = useState<{ vencedor: number | null; quem: "eu" | "oponente" } | null>(null);
   const [confirmarDesistir, setConfirmarDesistir] = useState(false);
@@ -449,6 +451,14 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       falhou(e);
     }
   }
+
+  // modo amigo com a conta aberta: confere uma vez se o servidor já tem as partidas
+  useEffect(() => {
+    if ((cfg.modo === "amigo" || dueloDaRota) && conta && servidorPvp === null)
+      void partidasAtivas()
+        .then(setServidorPvp)
+        .catch(() => setServidorPvp(true));
+  }, [cfg.modo, dueloDaRota, conta?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // link de sala aberto (#/duelo/<id>): espera a conta carregar
   useEffect(() => {
@@ -731,6 +741,11 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             </>
           ) : amigo ? (
             <>
+              {servidorPvp === false && (
+                <p className="conta-erro" role="alert">
+                  {t("As partidas com amigos ainda não foram ativadas no servidor do app.")} {conta?.admin ? t("Falta aplicar a migração das salas (supabase/migrations/20261110000000_duelos.sql) no SQL Editor do Supabase.") : ""}
+                </p>
+              )}
               <label className="sim-campo">
                 <span className="field-label">{t("Seu deck")}</span>
                 <select value={meu?.valor} onChange={(e) => setCfg({ ...cfg, meu: e.target.value })}>
@@ -741,9 +756,14 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
                   ))}
                 </select>
               </label>
-              <button className="ghost-btn sim-duelar" onClick={() => void criarSala()} disabled={carregando}>
+              <button className="ghost-btn sim-duelar" onClick={() => void criarSala()} disabled={carregando || servidorPvp === false}>
                 {carregando ? progresso || t("Preparando…") : t("Criar sala")}
               </button>
+              {erro && (
+                <p className="conta-erro" role="alert">
+                  {erro}
+                </p>
+              )}
               <small className="tags-note">{t("Você recebe um link para mandar ao seu oponente. Quem começa é sorteado.")}</small>
               <label className="sim-campo">
                 <span className="field-label">{t("Entrar numa sala (código ou link)")}</span>
@@ -812,7 +832,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               </button>
             </>
           )}
-          {erro && (
+          {erro && !(amigo && conta && !convite) && (
             <p className="conta-erro" role="alert">
               {erro}
             </p>

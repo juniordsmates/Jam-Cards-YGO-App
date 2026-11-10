@@ -48,6 +48,12 @@ export const decksDoDuelo = (d: Duelo): [DeckSim, DeckSim] => {
   return d.criador_jogador === 0 ? [d.deck_criador, outro] : [outro, d.deck_criador];
 };
 
+/** O servidor já tem as partidas 1x1 (a migração das salas foi aplicada) */
+export async function partidasAtivas(): Promise<boolean> {
+  const { error } = await cliente().from("duelos").select("id", { head: true, count: "exact" }).limit(1);
+  return !error || !["PGRST205", "42P01"].includes(error.code ?? "");
+}
+
 /** Cria a sala; o lugar de cada um e a semente são sorteados aqui */
 export async function criarDuelo(deck: DeckSim, versaoMotor: string, versaoApp: string): Promise<Duelo> {
   const semente = Array.from(crypto.getRandomValues(new Uint32Array(4)), String);
