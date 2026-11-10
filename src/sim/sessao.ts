@@ -270,8 +270,12 @@ export class Sessao {
         this.ia?.recusada();
       }
       this.decisao = d;
-      // janela de resposta sem jogada do oponente para responder: passa sozinha (a não ser que o jogador peça todas)
-      if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && this.cfg.janelas !== "todas" && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)) {
+      // janela vazia (sem corrente aberta e sem jogada do oponente para responder, como nas mudanças de
+      // fase): passa sozinha, a não ser que o jogador peça todas. Com corrente aberta, de qualquer
+      // jogador, sempre pergunta: dá para encadear até à própria ativação (ex.: Infinite Impermanence
+      // em cima da Mind Scan quando o oponente não responde)
+      const cadeiaAberta = d.type === T.SELECT_CHAIN && this.motor.core.duelQueryField(this.duel).chain.length > 0;
+      if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && this.cfg.janelas !== "todas" && !cadeiaAberta && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)) {
         this.aplicar({ type: R.SELECT_CHAIN, index: null }, this.cfg.humano);
         continue;
       }

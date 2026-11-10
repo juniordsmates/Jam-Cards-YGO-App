@@ -2376,7 +2376,6 @@ export const ES: Record<string, string> = {
   "Declare {0} Tipo(s)": "Declara {0} Tipo(s)",
   "Defesa": "Defensa",
   "Defesa, virada para baixo": "Defensa, boca abajo",
-  "Desligado: o simulador só pergunta se você quer encadear logo depois de uma jogada da IA.": "Desactivado: el simulador solo pregunta si quieres encadenar justo después de una jugada de la IA.",
   "Difícil": "Difícil",
   "Digite o nome (português ou inglês)": "Escribe el nombre (portugués o inglés)",
   "Duelar": "Duelar",
@@ -2685,4 +2684,5 @@ export const ES: Record<string, string> = {
   "Resolver": "Resolver",
   "Seus Pontos de Vida": "Tus Puntos de Vida",
   "{0} jogou um dado: {1}": "{0} lanzó un dado: {1}",
+  "Desligado: o simulador pergunta se você quer encadear quando há uma corrente aberta (de qualquer jogador) ou logo depois de uma jogada do oponente, e pula as janelas vazias, como as das mudanças de fase.": "Desactivado: el simulador pregunta si quieres encadenar cuando hay una cadena abierta (de cualquier jugador) o justo después de una jugada del oponente, y omite las ventanas vacías, como las de los cambios de fase.",
 };

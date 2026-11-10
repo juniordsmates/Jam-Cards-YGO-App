@@ -1490,7 +1490,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             <Escolha pedido={pedido} nomeDe={nomeDe} responder={responder} eu={eu} setPreview={setPreview} marcadas={marcadas} setMarcadas={setMarcadas} tocar={tocar} setFoco={setFoco} />
           )}
           {!revisao && (
-          <label className="sim-janelas" title={t("Desligado: o simulador só pergunta se você quer encadear logo depois de uma jogada da IA.")}>
+          <label className="sim-janelas" title={t("Desligado: o simulador pergunta se você quer encadear quando há uma corrente aberta (de qualquer jogador) ou logo depois de uma jogada do oponente, e pula as janelas vazias, como as das mudanças de fase.")}>
             <input
               type="checkbox"
               checked={!!cfg.todasJanelas}

@@ -171,7 +171,7 @@ Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-was
 - **Jogar:**
   - cartas com ações ficam com contorno brilhante; o clique abre as ações (Invocar, Ativar, Baixar, Atacar…);
   - as outras decisões do motor (alvos, matérias, zonas, posições, sim/não, declarar carta…) aparecem no painel da direita;
-  - por padrão, o simulador só pergunta "Encadear?" logo depois de uma jogada da IA; **Pausar em todas as janelas de resposta** liga as outras.
+  - por padrão, o simulador pergunta "Encadear?" sempre que há uma corrente aberta (de qualquer jogador: dá para encadear até à própria ativação) e logo depois de uma jogada do oponente; pula as janelas vazias (mudanças de fase). **Pausar em todas as janelas de resposta** liga todas.
 - **Partidas 1x1 (contra um amigo):** quem cria a sala recebe o link `#/duelo/<id>` (ou o código) para mandar ao oponente; o duelo começa quando ele entra com o deck dele. Precisa estar com a conta aberta.
   - Os dois aparelhos rodam o motor com a mesma semente e os mesmos decks e trocam só as respostas (o motor é determinístico). As salas ficam em `duelos` e as respostas, numeradas, em `duelo_respostas`, com Realtime: migração [20261110000000_duelos.sql](supabase/migrations/20261110000000_duelos.sql).
   - O banco só aceita a resposta de quem tem a vez e na ordem; entrar confere se os dois têm a mesma versão do app e do motor.
