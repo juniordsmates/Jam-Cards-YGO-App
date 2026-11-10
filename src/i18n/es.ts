@@ -2764,4 +2764,11 @@ export const ES: Record<string, string> = {
   "Combo calculado agora com todas as cartas da mão": "Combo calculado ahora con todas las cartas de la mano",
   "Jogado agora pelo App no primeiro turno, com o oponente passando, num deck com as cartas da mão e as engines delas. Cada cálculo pode achar uma linha diferente.": "Jugado ahora por la App en el primer turno, con el oponente pasando, en un deck con las cartas de la mano y sus engines. Cada cálculo puede encontrar una línea diferente.",
   "Calcular de novo": "Calcular de nuevo",
+  "Escolha a sua mão inicial e a da IA": "Elige tu mano inicial y la de la IA",
+  "Escolher Cartas na Mão: recurso Premium.": "Elegir Cartas en la Mano: función Premium.",
+  "Mãos: você {0} · IA {1}": "Manos: tú {0} · IA {1}",
+  "aleatória": "aleatoria",
+  "{0} carta(s) escolhida(s)": "{0} carta(s) elegida(s)",
+  "Mãos aleatórias.": "Manos aleatorias.",
+  "Usar mãos aleatórias": "Usar manos aleatorias",
 };

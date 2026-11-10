@@ -337,6 +337,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   // "Escolher Cartas na Mão" (Premium): contra a IA, as duas mãos (null = Aleatório); no 1x1, a sua
   const escolherMao = premium && !!cfg.escolherMao && !testeCombo;
   const [maos, setMaos] = useState<{ eu: number[] | null; ia: number[] | null }>({ eu: null, ia: null });
+  // janela "Escolher Cartas na Mão" (contra a IA) aberta
+  const [janelaMao, setJanelaMao] = useState(false);
   const [maoPvp, setMaoPvp] = useState<number[] | null>([]);
   const limiteReplays = premium ? REPLAYS_PREMIUM : REPLAYS_GRATIS;
   const [avisoReplay, setAvisoReplay] = useState<string | null>(null);
@@ -1224,26 +1226,45 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
             </>
           ) : (
             <>
-              <label className="sim-campo">
+              <div className="sim-campo">
                 <span className="field-label">{t("Seu deck")}</span>
-                <select
-                  value={meu?.valor}
-                  onChange={(e) => {
-                    setCfg({ ...cfg, meu: e.target.value });
-                    // a mão escolhida era do outro deck
-                    setMaos((m) => ({ ...m, eu: m.eu && [] }));
-                  }}
-                >
-                  {opcoes.map((o) => (
-                    <option key={o.valor} value={o.valor}>
-                      {o.valor.startsWith("meta:") ? `${t("Torneio")}: ${o.nome}` : o.nome}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <div className="sim-deck-linha">
+                  <select
+                    className="sim-select-deck"
+                    aria-label={t("Seu deck")}
+                    value={meu?.valor}
+                    onChange={(e) => {
+                      setCfg({ ...cfg, meu: e.target.value });
+                      // a mão escolhida era do outro deck
+                      setMaos((m) => ({ ...m, eu: m.eu && [] }));
+                    }}
+                  >
+                    {opcoes.map((o) => (
+                      <option key={o.valor} value={o.valor}>
+                        {o.valor.startsWith("meta:") ? `${t("Torneio")}: ${o.nome}` : o.nome}
+                      </option>
+                    ))}
+                  </select>
+                  {!testeCombo && (
+                    <button className="ghost-btn sim-btn-mao" disabled={!premium} onClick={() => setJanelaMao(true)} title={premium ? t("Escolha a sua mão inicial e a da IA") : t("Recurso Premium.")}>
+                      {t("Escolher Cartas na Mão")}
+                    </button>
+                  )}
+                </div>
+                {!testeCombo && (
+                  <small className="tags-note">
+                    {!premium
+                      ? t("Escolher Cartas na Mão: recurso Premium.")
+                      : escolherMao
+                        ? t("Mãos: você {0} · IA {1}", [maos.eu === null ? t("aleatória") : t("{0} carta(s) escolhida(s)", [maos.eu.length]), maos.ia === null ? t("aleatória") : t("{0} carta(s) escolhida(s)", [maos.ia.length])])
+                        : t("Mãos aleatórias.")}
+                  </small>
+                )}
+              </div>
               <label className="sim-campo">
                 <span className="field-label">{t("Deck da IA")}</span>
                 <select
+                  className="sim-select-deck"
                   value={doIA?.valor}
                   onChange={(e) => {
                     setCfg({ ...cfg, ia: e.target.value });
@@ -1258,12 +1279,37 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
                 </select>
                 {doIA && <small className="tags-note">{doIA.linhas.length ? t("A IA conhece {0} linha(s) de combo deste deck.", [doIA.linhas.length]) : t("Sem linhas de combo conhecidas: a IA monta as jogadas sozinha.")}</small>}
               </label>
-              {!testeCombo && opcaoEscolherMao(t("Escolha a sua mão e a da IA, ou deixe uma delas em Aleatório."))}
-              {escolherMao && meu && doIA && (
-                <>
-                  <EscolherMao titulo={conta?.usuario || t("Você")} main={meu.deck.main} byId={byId} mao={maos.eu} onChange={(eu) => setMaos((m) => ({ ...m, eu }))} />
-                  <EscolherMao titulo={t("IA")} main={doIA.deck.main} byId={byId} mao={maos.ia} onChange={(ia) => setMaos((m) => ({ ...m, ia }))} />
-                </>
+              {janelaMao && meu && doIA && (
+                <div className="sim-janela-fundo" onClick={() => setJanelaMao(false)}>
+                  <div className="sim-janela-mao" role="dialog" aria-label={t("Escolher Cartas na Mão")} onClick={(e) => e.stopPropagation()}>
+                    <h4>{t("Escolher Cartas na Mão")}</h4>
+                    <small className="tags-note">{t("Escolha a sua mão e a da IA, ou deixe uma delas em Aleatório.")}</small>
+                    <EscolherMao titulo={conta?.usuario || t("Você")} main={meu.deck.main} byId={byId} mao={maos.eu} onChange={(eu) => setMaos((m) => ({ ...m, eu }))} />
+                    <EscolherMao titulo={t("IA")} main={doIA.deck.main} byId={byId} mao={maos.ia} onChange={(ia) => setMaos((m) => ({ ...m, ia }))} />
+                    <div className="sim-niveis">
+                      <button
+                        className="ghost-btn"
+                        onClick={() => {
+                          setCfg({ ...cfg, escolherMao: maos.eu !== null || maos.ia !== null });
+                          setJanelaMao(false);
+                        }}
+                        autoFocus
+                      >
+                        {t("Confirmar")}
+                      </button>
+                      <button
+                        className="ghost-btn"
+                        onClick={() => {
+                          setMaos({ eu: null, ia: null });
+                          setCfg({ ...cfg, escolherMao: false });
+                          setJanelaMao(false);
+                        }}
+                      >
+                        {t("Usar mãos aleatórias")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
               <fieldset className="sim-campo">
                 <legend className="field-label">{t("Nível da IA")}</legend>
