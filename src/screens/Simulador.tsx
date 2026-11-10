@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode }
 import { OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgResponse, type SelectFieldPlace } from "ocgcore-wasm";
 import ScreenShell from "./ScreenShell";
 import Lateral from "../components/Lateral";
+import EscolherMao from "../components/EscolherMao";
 import { useCardDb } from "../db/cardStore";
 import { useDecks } from "../db/decks";
 import { cardImage } from "../db/images";
@@ -10,7 +11,7 @@ import { displayName, type Card } from "../db/types";
 import { aleatorio } from "../db/testeJogo";
 import { useConta } from "../db/conta";
 import { openConta } from "../components/Conta";
-import { assinarDuelo, meusDuelos, codigoDaSala, obterDueloPorCodigo, partidasAtivas, criarDuelo, decksDoDuelo, encerrarDuelo, entrarDuelo, enviarResposta, idDaSala, meuJogador, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
+import { assinarDuelo, meusDuelos, codigoDaSala, obterDueloPorCodigo, partidasAtivas, criarDuelo, definirMao, encerrarDuelo, entrarDuelo, enviarResposta, faltaMao, idDaSala, meuJogador, minhaMao, partidaDoDuelo, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
 import { copiarLink, linkPara, type Rota } from "../rotas";
 import { APP_VERSION } from "../version";
 import { LOCALE, t } from "../i18n";
@@ -163,6 +164,8 @@ interface Config {
   todasJanelas?: boolean;
   /** contra a IA ou contra outra pessoa (partida 1x1) */
   modo?: "ia" | "amigo";
+  /** "Escolher Cartas na Mão" antes do duelo (Premium) */
+  escolherMao?: boolean;
 }
 function lerConfig(): Partial<Config> {
   try {
@@ -267,12 +270,13 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
     nivel: salvo.nivel ?? "normal",
     primeiro: salvo.primeiro ?? "sorteio",
     todasJanelas: salvo.todasJanelas,
+    escolherMao: salvo.escolherMao,
     modo: salvo.modo ?? "ia",
   }));
   const meu = opcoes.find((o) => o.valor === cfg.meu) ?? (comboEu ? sugerido : undefined) ?? opcoes.find((o) => o.valor !== "combo") ?? opcoes[0];
   const doIA = opcoes.find((o) => o.valor === cfg.ia) ?? (comboIA ? sugerido : undefined) ?? opcoes.find((o) => o.valor.startsWith("meta:")) ?? opcoes[0];
 
-  const [etapa, setEtapaEstado] = useState<"config" | "carregando" | "sala" | "duelo">("config");
+  const [etapa, setEtapaEstado] = useState<"config" | "carregando" | "sala" | "mao" | "duelo">("config");
   const etapaRef = useRef(etapa);
   const setEtapa = (e: typeof etapa) => {
     etapaRef.current = e;
@@ -330,6 +334,10 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   // nomes e decks da partida em andamento, para a lista de replays
   const rotulosRef = useRef<RotulosReplay | undefined>(undefined);
   const premium = temPremium(conta);
+  // "Escolher Cartas na Mão" (Premium): contra a IA, as duas mãos (null = Aleatório); no 1x1, a sua
+  const escolherMao = premium && !!cfg.escolherMao && !testeCombo;
+  const [maos, setMaos] = useState<{ eu: number[] | null; ia: number[] | null }>({ eu: null, ia: null });
+  const [maoPvp, setMaoPvp] = useState<number[] | null>([]);
   const limiteReplays = premium ? REPLAYS_PREMIUM : REPLAYS_GRATIS;
   const [avisoReplay, setAvisoReplay] = useState<string | null>(null);
   // revisão: a partida refeita, os momentos (um por resposta) e o momento mostrado
@@ -430,7 +438,10 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
       // o motor sempre dá o primeiro turno ao jogador 0
       const par: [DeckSim, DeckSim] = humano === 0 ? [meu.deck, doIA.deck] : [doIA.deck, meu.deck];
       const semente = Array.from(crypto.getRandomValues(new Uint32Array(4)), String) as [string, string, string, string];
-      const partida: Partida = { decks: par, semente, ...(testeCombo ? { maos: [maoCombo, testeCombo.quem === "ambos" ? maoCombo : []] as [number[], number[]] } : {}) };
+      // mãos fixas: a do combo (teste de combo) ou as escolhidas (Aleatório = sem mão fixa)
+      const mao = { eu: comboEu ? maoCombo : escolherMao ? (maos.eu ?? []) : [], ia: comboIA ? maoCombo : escolherMao ? (maos.ia ?? []) : [] };
+      const fixas = mao.eu.length > 0 || mao.ia.length > 0;
+      const partida: Partida = { decks: par, semente, ...(fixas ? { maos: (humano === 0 ? [mao.eu, mao.ia] : [mao.ia, mao.eu]) as [number[], number[]] } : {}) };
       setEu(humano);
       limparDuelo();
       setPensando(true);
@@ -449,6 +460,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   function aoMudarSala(d: Duelo, novo: Duelo) {
     setSala({ ...(salaRef.current ?? d), ...novo });
     if (novo.estado === "em-andamento" && etapaRef.current === "sala") void comecarPvp(novo);
+    // escolha das mãos: o duelo começa quando os dois deram "Pronto"
+    if (etapaRef.current === "mao" && !faltaMao(novo)) void comecarPvp(novo);
     // o oponente desistiu ou saiu: o duelo acaba aqui também
     if (novo.estado === "encerrado" && etapaRef.current === "duelo" && !quadroRef.current?.fim && !desistenciaRef.current) setDesistencia({ vencedor: novo.vencedor, quem: "oponente" });
   }
@@ -474,7 +487,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
       conferindo = true;
       try {
         const novo = await obterDuelo(d.id);
-        if (novo && (novo.estado !== salaRef.current?.estado || etapaRef.current === "sala")) aoMudarSala(d, novo);
+        if (novo && (novo.estado !== salaRef.current?.estado || etapaRef.current === "sala" || etapaRef.current === "mao")) aoMudarSala(d, novo);
         // jogadas novas do oponente (só quando o duelo espera por ele)
         if (etapaRef.current === "duelo" && !remotasAntes.current && quadroRef.current?.aguardando)
           for (const r of await respostasDoDuelo(d.id, ultimaN.current)) aoReceberJogada(r.n, r.jogador, r.resp);
@@ -494,6 +507,16 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   /** Começa (ou retoma, depois de cair) o duelo 1x1 com a sala já com os dois jogadores */
   async function comecarPvp(d: Duelo) {
     if (!conta) return;
+    // "Escolher Cartas na Mão": antes do duelo, cada um escolhe a própria mão e dá "Pronto"
+    if (faltaMao(d)) {
+      setSala(d);
+      setConvite(null);
+      setErro(null);
+      acompanhar(d);
+      setMaoPvp([]);
+      setEtapa("mao");
+      return;
+    }
     setEtapa("carregando");
     setErro(null);
     try {
@@ -513,10 +536,10 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
       limparDuelo();
       setPensando(true);
       setEtapa("duelo");
-      partidaRef.current = { decks: decksDoDuelo(d), semente: d.semente };
+      partidaRef.current = partidaDoDuelo(d);
       rotulosRef.current = { eu: conta.usuario || t("Você"), oponente: t("Oponente"), meuDeck: meu?.nome ?? t("seu deck"), deckOponente: t("deck do oponente") };
       if (outro) void nomesDeUsuarios([outro]).then((n) => rotulosRef.current && n[outro] && (rotulosRef.current = { ...rotulosRef.current, oponente: n[outro], deckOponente: t("deck de {0}", [n[outro]]) }));
-      c.iniciar({ partida: { decks: decksDoDuelo(d), semente: d.semente }, humano, nivel: "normal", remoto: true, historico: historico.map((h) => h.resp), janelas: cfg.todasJanelas ? "todas" : "acao" });
+      c.iniciar({ partida: partidaDoDuelo(d), humano, nivel: "normal", remoto: true, historico: historico.map((h) => h.resp), janelas: cfg.todasJanelas ? "todas" : "acao" });
       // jogadas que chegaram enquanto o duelo era montado (as repetidas o motor ignora)
       for (const r of remotasAntes.current ?? []) c.remota(r.n, r.resp);
       remotasAntes.current = null;
@@ -534,7 +557,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
     setErro(null);
     try {
       await prepararMotor(meu.deck);
-      const d = await criarDuelo(meu.deck, versaoMotor.current, APP_VERSION);
+      const d = await criarDuelo(meu.deck, versaoMotor.current, APP_VERSION, escolherMao);
       setSala(d);
       acompanhar(d);
       setCopiado(false);
@@ -542,6 +565,18 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
       onRota?.({ tela: "simulador", duelo: d.id });
     } catch (e) {
       falhou(e);
+    }
+  }
+
+  /** "Pronto" da escolha das mãos (sala 1x1): grava a mão; com as duas, o duelo começa */
+  async function prontoPvp() {
+    const d = salaRef.current;
+    if (!d) return;
+    setErro(null);
+    try {
+      aoMudarSala(d, await definirMao(d.id, maoPvp ?? []));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -770,7 +805,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
       const historico = (await respostasDoDuelo(d.id)).map((r) => r.resp);
       const outro = d.criador === conta.id ? d.convidado : d.criador;
       const nomes = outro ? await nomesDeUsuarios([outro]) : {};
-      await abrirRevisao({ partida: { decks: decksDoDuelo(d), semente: d.semente }, humano: meuJogador(d, conta.id), nivel: "normal", historico }, (outro && nomes[outro]) || t("Oponente"));
+      await abrirRevisao({ partida: partidaDoDuelo(d), humano: meuJogador(d, conta.id), nivel: "normal", historico }, (outro && nomes[outro]) || t("Oponente"));
     } catch (e) {
       falhou(e);
     }
@@ -1000,6 +1035,46 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   };
   const carregando = etapa === "carregando";
 
+  /** Opção "Escolher Cartas na Mão" (só Premium liga) */
+  const opcaoEscolherMao = (dica: string) => (
+    <label className="sim-campo sim-opcao-premium">
+      <span>
+        <input type="checkbox" checked={escolherMao} disabled={!premium} onChange={(e) => setCfg({ ...cfg, escolherMao: e.target.checked })} /> {t("Escolher Cartas na Mão")}
+      </span>
+      <small className="tags-note">{premium ? dica : t("Recurso Premium.")}</small>
+    </label>
+  );
+
+  if (etapa === "mao" && sala && conta) {
+    const jaDei = minhaMao(sala, conta.id) !== null;
+    const meuDeck = sala.criador === conta.id ? sala.deck_criador : sala.deck_convidado;
+    return (
+      <ScreenShell title={t("Simulador")} accent="magenta" onBack={onBack}>
+        <div className="sim-config">
+          <h3>{t("Escolher Cartas na Mão")}</h3>
+          {!jaDei ? (
+            <>
+              <p>{t("Escolha as cartas da sua mão inicial (ou Aleatório) e clique em Pronto. O duelo começa quando os dois derem Pronto.")}</p>
+              <EscolherMao titulo={conta.usuario || t("Você")} main={meuDeck?.main ?? []} byId={byId} mao={maoPvp} onChange={setMaoPvp} />
+              <button className="ghost-btn sim-duelar" onClick={() => void prontoPvp()}>
+                {t("Pronto")}
+              </button>
+            </>
+          ) : (
+            <p className="sim-pensando" role="status">
+              {t("Aguardando o oponente dar Pronto…")}
+            </p>
+          )}
+          {erro && (
+            <p className="conta-erro" role="alert">
+              {erro}
+            </p>
+          )}
+        </div>
+      </ScreenShell>
+    );
+  }
+
   if (etapa === "sala" && sala) {
     const link = linkPara({ tela: "simulador", duelo: sala.id });
     return (
@@ -1123,6 +1198,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
                   ))}
                 </select>
               </label>
+              {opcaoEscolherMao(t("Antes do duelo, cada um escolhe as cartas da própria mão e clica em Pronto."))}
               <button className="ghost-btn sim-duelar" onClick={() => void criarSala()} disabled={carregando || servidorPvp === false}>
                 {carregando ? progresso || t("Preparando…") : t("Criar sala")}
               </button>
@@ -1150,7 +1226,14 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
             <>
               <label className="sim-campo">
                 <span className="field-label">{t("Seu deck")}</span>
-                <select value={meu?.valor} onChange={(e) => setCfg({ ...cfg, meu: e.target.value })}>
+                <select
+                  value={meu?.valor}
+                  onChange={(e) => {
+                    setCfg({ ...cfg, meu: e.target.value });
+                    // a mão escolhida era do outro deck
+                    setMaos((m) => ({ ...m, eu: m.eu && [] }));
+                  }}
+                >
                   {opcoes.map((o) => (
                     <option key={o.valor} value={o.valor}>
                       {o.valor.startsWith("meta:") ? `${t("Torneio")}: ${o.nome}` : o.nome}
@@ -1160,7 +1243,13 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
               </label>
               <label className="sim-campo">
                 <span className="field-label">{t("Deck da IA")}</span>
-                <select value={doIA?.valor} onChange={(e) => setCfg({ ...cfg, ia: e.target.value })}>
+                <select
+                  value={doIA?.valor}
+                  onChange={(e) => {
+                    setCfg({ ...cfg, ia: e.target.value });
+                    setMaos((m) => ({ ...m, ia: m.ia && [] }));
+                  }}
+                >
                   {opcoes.map((o) => (
                     <option key={o.valor} value={o.valor}>
                       {o.valor.startsWith("meta:") ? `${t("Torneio")}: ${o.nome}` : o.nome}
@@ -1169,6 +1258,13 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
                 </select>
                 {doIA && <small className="tags-note">{doIA.linhas.length ? t("A IA conhece {0} linha(s) de combo deste deck.", [doIA.linhas.length]) : t("Sem linhas de combo conhecidas: a IA monta as jogadas sozinha.")}</small>}
               </label>
+              {!testeCombo && opcaoEscolherMao(t("Escolha a sua mão e a da IA, ou deixe uma delas em Aleatório."))}
+              {escolherMao && meu && doIA && (
+                <>
+                  <EscolherMao titulo={conta?.usuario || t("Você")} main={meu.deck.main} byId={byId} mao={maos.eu} onChange={(eu) => setMaos((m) => ({ ...m, eu }))} />
+                  <EscolherMao titulo={t("IA")} main={doIA.deck.main} byId={byId} mao={maos.ia} onChange={(ia) => setMaos((m) => ({ ...m, ia }))} />
+                </>
+              )}
               <fieldset className="sim-campo">
                 <legend className="field-label">{t("Nível da IA")}</legend>
                 <div className="sim-niveis">

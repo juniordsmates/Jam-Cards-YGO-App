@@ -22,6 +22,32 @@
   width: 100%;
 }
 
+/* "Escolher Cartas na Mão": a mão de cada lado (ou Aleatório) */
+.escolher-mao-titulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.escolher-mao-titulo label {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+}
+
+.escolher-mao-cartas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.escolher-mao-na-mao {
+  border-color: var(--magenta);
+}
+
 /* teste de combo vindo do "Testar" de um combo */
 .sim-teste-combo {
   display: flex;
