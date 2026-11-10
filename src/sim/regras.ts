@@ -100,6 +100,11 @@ export interface Motor {
   texto(desc: bigint | number): string | undefined;
   /** constantes do Lua (ex.: HINTMSG_DESTROY → 502), lidas do constant.lua do pacote */
   constante(valor: number, prefixo: string): string | undefined;
+  /**
+   * Interrupção de mão ("hand trap"): monstro do Main Deck com Efeito Rápido ativado da mão (Ash
+   * Blossom, Maxx "C", Droll & Lock Bird...), conforme o script da carta (ou o da carta original)
+   */
+  interrompeDaMao(code: number): boolean;
   /** acrescenta uma carta inventada (Ficha criada pelo jogador) */
   registrar(code: number, dados: DadosCarta, nome: string): void;
   /** cria o duelo; o motor só tem as cartas que existem no pacote (as outras ficam de fora) */
@@ -145,6 +150,20 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
   }
 
   const scriptReader = (nome: string) => pacote.arquivos[nome.replace(/^.*[\\/]/, "")] ?? null;
+
+  const daMao = new Map<number, boolean>();
+  function interrompeDaMao(code: number): boolean {
+    if (daMao.has(code)) return daMao.get(code)!;
+    const d = dados(code);
+    let sim = false;
+    if (d && d.type & TIPO.MONSTRO && !(d.type & TIPOS_EXTRA)) {
+      const script = pacote.arquivos[`c${code}.lua`] ?? (d.alias ? pacote.arquivos[`c${d.alias}.lua`] : undefined) ?? "";
+      // cada efeito começa em Effect.CreateEffect: algum deles é Rápido (QUICK_O) e ativado da mão
+      sim = script.split(/(?=\bEffect\.CreateEffect\()/).some((e) => e.includes("EFFECT_TYPE_QUICK_O") && /SetRange\([^)]*LOCATION_HAND/.test(e));
+    }
+    daMao.set(code, sim);
+    return sim;
+  }
 
   const constantes = new Map<string, string>();
   for (const m of (pacote.arquivos["constant.lua"] ?? "").matchAll(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(0x[0-9a-fA-F]+|\d+)\b/gm)) {
@@ -205,6 +224,7 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
       return pacote.textos[code]?.[Number(d & 0xfffffn)] || undefined;
     },
     constante: (valor, prefixo) => constantes.get(`${prefixo}_:${valor}`),
+    interrompeDaMao,
     registrar(code, d, nome) {
       pacote.cartas[code] = d;
       pacote.nomes[code] = nome;

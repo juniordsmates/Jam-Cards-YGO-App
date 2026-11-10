@@ -18,6 +18,12 @@ const TEMPO: Record<NivelIA, number> = { passiva: 0, facil: 0, normal: 2000, dif
 /** chance de responder a uma jogada do oponente com o que tiver (interrupções de mão, armadilhas) */
 const RESPONDE: Record<NivelIA, number> = { passiva: 0, facil: 0.15, normal: 0.6, dificil: 1 };
 const MAX_TENTATIVAS = 400;
+/**
+ * Valor extra de uma interrupção de mão guardada na mão (além do 0,7 de qualquer carta na mão):
+ * Invocá-la como corpo quase nunca compensa; só vale se o campo melhorar mais do que isso (ex.: virar
+ * matéria de S:P Little Knight e banir uma carta importante do oponente).
+ */
+const VALOR_INTERRUPCAO = 1.5;
 
 // código, posição, ATK, DEF e matérias
 const QUERY = (1 | 2 | 256 | 512 | 65536) as never;
@@ -295,12 +301,15 @@ export class IA {
     const linha = this.cartasDasLinhas(s).passos;
     const hostil = HOSTIS.has(dica);
     const custo = CUSTOS.has(dica);
+    // tirar da mão para o campo (Invocar, baixar): poupa as interrupções de mão
+    const paraOCampo = dica === "SPSUMMON" || dica === "SUMMON" || dica === "SET";
     const nota = (o: Opcao) =>
       o.escolha!.reduce((n, c) => {
         const v = this.valor(s.motor, c, linha);
-        if (hostil) return n + (c.controller !== this.eu ? v : -v);
-        if (custo) return n - v;
-        return n + (c.controller === this.eu ? v : -v);
+        const guardada = c.controller === this.eu && c.location & L.HAND && this.guardar(s.motor, c.code, linha) ? VALOR_INTERRUPCAO : 0;
+        if (hostil) return n + (c.controller !== this.eu ? v : -v - guardada);
+        if (custo) return n - v - guardada;
+        return n + (c.controller === this.eu ? v - (paraOCampo ? 2 * guardada : 0) : -v);
       }, 0) - (custo ? 0.01 * o.escolha!.length : 0);
     return comEscolha.reduce((a, b) => (nota(b) > nota(a) ? b : a)).resp;
   }
@@ -337,20 +346,31 @@ export class IA {
     return { passos, campo };
   }
 
-  /** Nota do campo da IA: monstros (do Extra valem mais), interrupções baixadas, mão, campo do oponente e PV */
-  private nota(motor: Motor, duel: OcgDuelHandle, alvo: Set<number>) {
+  /**
+   * Interrupção de mão que a IA prefere guardar: fora das cartas das linhas de combo do deck (essas
+   * são peças do combo, mesmo com Efeito Rápido da mão)
+   */
+  private guardar(motor: Motor, code: number, linha: Set<number>) {
+    return motor.interrompeDaMao(code) && !linha.has(this.canonico(motor, code));
+  }
+
+  /** Nota do campo da IA: monstros (do Extra valem mais), interrupções baixadas, mão (interrupções de mão valem mais), campo do oponente e PV */
+  private nota(motor: Motor, duel: OcgDuelHandle, alvo: Set<number>, linha: Set<number>) {
     const op = 1 - this.eu;
     const q = (p: number, location: number) => this.campo(motor, duel, p, location).filter(Boolean) as NonNullable<ReturnType<IA["campo"]>[number]>[];
     let n = 0;
     for (const m of q(this.eu, L.MZONE)) {
-      n += (motor.tipo(m.code) & TIPOS_EXTRA ? 3 : 1.5) + (0.6 * m.atk) / 1000;
+      // interrupção de mão em campo é só um corpo: o ATK dela (ex.: Nibiru) não compensa tirá-la da mão
+      n += motor.tipo(m.code) & TIPOS_EXTRA ? 3 + (0.6 * m.atk) / 1000 : 1.5 + (this.guardar(motor, m.code, linha) ? 0 : (0.6 * m.atk) / 1000);
       if (alvo.has(this.canonico(motor, m.code))) n += 2;
     }
     for (const c of q(this.eu, L.SZONE)) {
       n += c.pos & 0xa ? 2 : 1;
       if (alvo.has(this.canonico(motor, c.code))) n += 2;
     }
-    n += 0.7 * motor.core.duelQueryCount(duel, this.eu, L.HAND);
+    const mao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND });
+    n += 0.7 * mao.length;
+    for (const c of mao) if (c?.code && this.guardar(motor, c.code as number, linha)) n += VALOR_INTERRUPCAO;
     if (this.exigidas.length) {
       const exigidas = new Set(this.exigidas.map((c) => this.canonico(motor, c)));
       const naMao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND }).filter((c) => c?.code && exigidas.has(this.canonico(motor, c.code as number)));
@@ -375,6 +395,8 @@ export class IA {
     let p = base[o.acao!.k] ?? 1;
     if (o.acao!.k === "especial" && code && motor.tipo(code) & TIPOS_EXTRA) p *= 2.5;
     if (code && linha.has(this.canonico(motor, code))) p *= 4;
+    // Invocar ou baixar uma interrupção de mão: raro nas tentativas (a nota decide se compensou)
+    if (code && (o.acao!.k === "normal" || o.acao!.k === "baixa-monstro" || o.acao!.k === "especial") && this.guardar(motor, code, linha)) p *= 0.1;
     return p;
   }
 
@@ -419,7 +441,7 @@ export class IA {
         if (r.log.some((m) => m.type === T.NEW_TURN)) break;
         d = r.decisao;
       }
-      return { resps, nota: this.nota(motor, duel, alvo) };
+      return { resps, nota: this.nota(motor, duel, alvo, linha) };
     } finally {
       motor.core.destroyDuel(duel);
     }
@@ -430,7 +452,7 @@ export class IA {
 
   private planejar(s: Sessao) {
     const { passos, campo } = this.cartasDasLinhas(s);
-    const base = this.nota(s.motor, s.duel, campo);
+    const base = this.nota(s.motor, s.duel, campo, passos);
     const inicio = performance.now();
     const turno = s.momento().turno;
     const tempo = turno === this.turnoPlanejado ? TEMPO[this.nivel] / 2 : TEMPO[this.nivel];
