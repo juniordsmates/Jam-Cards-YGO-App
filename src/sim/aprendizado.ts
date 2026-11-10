@@ -50,3 +50,20 @@ export async function importarReplay(texto: string, limite: number): Promise<Due
   await idbSetMany({ [CHAVE]: lista.slice(-limite) });
   return novo;
 }
+
+// Valor aprendido das cartas: a análise de cada duelo (src/sim/analise.ts) aponta Invocações que a IA
+// deveria ter feito; cada uma soma pontos à carta, e a IA usa esse valor ao avaliar o campo nos
+// próximos duelos. Fica neste aparelho.
+const VALORES = "ia-valores-aprendidos-v1";
+/** teto do valor aprendido de uma carta (um monstro do Extra Deck vale 4,5 em campo) */
+const TETO_VALOR = 3;
+
+export const lerValoresAprendidos = async () => (await idbGet<Record<number, number>>(VALORES)) ?? {};
+
+/** Soma os pontos da análise ao valor aprendido de cada carta */
+export async function aprenderValores(pontos: Record<number, number>) {
+  const atual = await lerValoresAprendidos();
+  for (const [c, v] of Object.entries(pontos)) atual[Number(c)] = Math.min(TETO_VALOR, (atual[Number(c)] ?? 0) + v);
+  await idbSetMany({ [VALORES]: atual });
+  return atual;
+}

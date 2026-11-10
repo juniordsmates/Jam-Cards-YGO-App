@@ -193,6 +193,14 @@ export interface ConfigSessao {
   roteiro?: PassoCombo[];
   /** cálculo de combo da mão: cartas que a linha da IA precisa usar */
   exigidas?: number[];
+  /** valor extra de cartas em campo aprendido nas análises dos duelos da IA (id → pontos) */
+  aprendidos?: Record<number, number>;
+  /** análise do duelo: uma IA joga também pelo jogador (com o deck dele) */
+  iaNoHumano?: { nivel: NivelIA; linhas?: LinhaIA[]; aprendidos?: Record<number, number> };
+  /** análise do duelo: para de jogar quando o duelo passa deste turno */
+  ateTurno?: number;
+  /** a IA prefere a Posição de Defesa ao Invocar (análise: jogar mais seguro) */
+  iaEmDefesa?: boolean;
   /** janelas de resposta do jogador: "acao" só pergunta logo depois de uma jogada da IA; "todas" pergunta sempre */
   janelas?: "acao" | "todas";
   /** o oponente é outra pessoa (partida 1x1): sem IA; as decisões dele chegam por `receberRemota` */
@@ -215,6 +223,8 @@ export class Sessao {
   /** última dica de seleção de cada jogador */
   private dica: [bigint | null, bigint | null] = [null, null];
   private ia: IA | null;
+  /** análise do duelo: a IA que joga pelo jogador */
+  private iaHumano: IA | null;
   /** respostas conhecidas ainda não aplicadas (histórico salvo ou jogadas do oponente), em ordem */
   private pendentes: Jogada[] = [];
   /** jogadas do oponente que chegaram fora de ordem (posição → resposta) */
@@ -244,7 +254,8 @@ export class Sessao {
     readonly motor: Motor,
     readonly cfg: ConfigSessao,
   ) {
-    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, cfg.roteiro, cfg.exigidas);
+    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, { roteiro: cfg.roteiro, exigidas: cfg.exigidas, aprendidos: cfg.aprendidos, emDefesa: cfg.iaEmDefesa });
+    this.iaHumano = cfg.iaNoHumano ? new IA(cfg.iaNoHumano.nivel, cfg.humano, cfg.iaNoHumano.linhas ?? [], motor, { aprendidos: cfg.iaNoHumano.aprendidos }) : null;
     this.pendentes = [...(cfg.historico ?? [])];
     this.duel = motor.novoDuelo(cfg.partida);
   }
@@ -255,7 +266,8 @@ export class Sessao {
       const r = this.motor.ate(this.duel);
       this.lerLog(r.log);
       this.ia?.ler(r.log);
-      if (this.fim || !r.decisao) {
+      this.iaHumano?.ler(r.log);
+      if (this.fim || !r.decisao || (this.cfg.ateTurno && this.turno > this.cfg.ateTurno)) {
         this.decisao = null;
         return this.quadro();
       }
@@ -269,12 +281,13 @@ export class Sessao {
       if (repetida) {
         // a última resposta não valia: quem respondeu escolhe de novo
         const ultimo = this.ultimoPedido;
-        if (ultimo && dono(ultimo) === this.cfg.humano) {
+        if (ultimo && dono(ultimo) === this.cfg.humano && !this.iaHumano) {
           this.decisao = ultimo;
           return this.quadro(true);
         }
         d = ultimo ?? d;
-        this.ia?.recusada();
+        if (dono(d) === this.cfg.humano) this.iaHumano?.recusada();
+        else this.ia?.recusada();
       }
       this.decisao = d;
       // janela vazia (sem corrente aberta e sem jogada do oponente para responder, como nas mudanças de
@@ -291,6 +304,10 @@ export class Sessao {
         continue;
       }
       if (dono(d) === this.cfg.humano) {
+        if (this.iaHumano) {
+          this.aplicar(this.iaHumano.decidir(d, this, repetida), this.cfg.humano);
+          continue;
+        }
         if (d.type === T.SELECT_CHAIN && !d.forced && d.selects.length) this.abrirJanela(d.selects.map((c) => c.code));
         return this.quadro();
       }
@@ -379,6 +396,7 @@ export class Sessao {
   private aplicar(resp: Jogada, jogador: number, publicar = true) {
     this.historico.push(resp);
     this.ia?.observar(resp, jogador);
+    this.iaHumano?.observar(resp, jogador);
     if (publicar && this.cfg.remoto && jogador === this.cfg.humano) this.saida.push({ n: this.historico.length - 1, resp });
     if (ehComando(resp)) executarComando(this.motor, this.duel, resp);
     else this.motor.core.duelSetResponse(this.duel, resp);

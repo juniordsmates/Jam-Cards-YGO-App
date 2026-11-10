@@ -74,7 +74,11 @@ export class Roteiro {
     /** mesma carta (artes alternativas contam como a mesma) */
     private readonly mesma: (a: number, b: number) => boolean,
     private readonly tipo: (code: number) => number,
-  ) {}
+    /** o turno já está em andamento (tentativa do planejamento da IA, que começa no meio dele) */
+    jaComecou = false,
+  ) {
+    this.comecou = jaComecou;
+  }
 
   get ativo() {
     return !this.acabou && this.k < this.passos.length;

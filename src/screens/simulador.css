@@ -965,3 +965,21 @@
   align-self: flex-start;
   cursor: pointer;
 }
+
+/* "Análise da IA": o que decidiu o duelo e as escolhas melhores */
+.sim-analise {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  text-align: left;
+}
+
+.sim-analise h4 {
+  margin: 6px 0 0;
+}
+
+.sim-analise ul {
+  margin: 0;
+  padding-left: 18px;
+}

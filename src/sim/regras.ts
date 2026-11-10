@@ -105,6 +105,17 @@ export interface Motor {
    * Blossom, Maxx "C", Droll & Lock Bird...), conforme o script da carta (ou o da carta original)
    */
   interrompeDaMao(code: number): boolean;
+  /**
+   * Valor do que a carta faz enquanto está em campo, lido do script: interrupção (Efeito Rápido que
+   * nega, bane, destrói ou devolve), remoção que ela ativa e proteção (imune, não pode ser destruída
+   * ou ser alvo). 0 para quem só é corpo.
+   */
+  valorEmCampo(code: number): number;
+  /**
+   * O efeito (descrição do EDOPro) só tira cartas do campo (bane, destrói, devolve, toma o controle),
+   * sem Invocar, buscar nem comprar: com o campo do oponente vazio, ativá-lo tiraria uma carta própria
+   */
+  soRemove(desc: bigint | number): boolean;
   /** acrescenta uma carta inventada (Ficha criada pelo jogador) */
   registrar(code: number, dados: DadosCarta, nome: string): void;
   /** cria o duelo; o motor só tem as cartas que existem no pacote (as outras ficam de fora) */
@@ -163,6 +174,44 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     }
     daMao.set(code, sim);
     return sim;
+  }
+
+  const valores = new Map<number, number>();
+  function valorEmCampo(code: number): number {
+    if (valores.has(code)) return valores.get(code)!;
+    const d = dados(code);
+    const script = (d && (pacote.arquivos[`c${code}.lua`] ?? (d.alias ? pacote.arquivos[`c${d.alias}.lua`] : undefined))) ?? "";
+    let interrompe = false;
+    let remove = false;
+    let protege = false;
+    // a zona onde a carta fica: monstro na Zona de Monstros; Magia/Armadilha na de Magias (ou de Campo)
+    const zona = d && d.type & TIPO.MONSTRO ? /LOCATION_(MZONE|ONFIELD)/ : /LOCATION_(SZONE|FZONE|ONFIELD)/;
+    for (const bloco of script.split(/(?=\bEffect\.CreateEffect\()/)) {
+      // só as linhas que montam o efeito (as funções do script, depois, citam outras categorias)
+      const e = bloco.split("\n").filter((l) => /:Set(Category|Type|Range|Code)\(/.test(l)).join("\n");
+      // efeito que vale com a carta em campo: na zona dela, ou contínuo dela mesma
+      const emCampo = new RegExp(`SetRange\\([^)]*${zona.source}`).test(e) || (/EFFECT_TYPE_SINGLE/.test(e) && !/EFFECT_TYPE_TRIGGER|SetRange/.test(e));
+      if (!emCampo) continue;
+      const tira = /CATEGORY_(NEGATE|DISABLE|REMOVE|DESTROY|TODECK|CONTROL)|CATEGORY_TOHAND(?![^)]*SEARCH)/.test(e);
+      if (tira && /EFFECT_TYPE_QUICK_[OF]/.test(e)) interrompe = true;
+      else if (tira) remove = true;
+      if (/EFFECT_INDESTRUCTABLE|EFFECT_IMMUNE_EFFECT|EFFECT_CANNOT_BE_EFFECT_TARGET|EFFECT_CANNOT_BE_BATTLE_TARGET/.test(e)) protege = true;
+    }
+    const v = (interrompe ? 2 : 0) + (remove ? 1 : 0) + (protege ? 1 : 0);
+    valores.set(code, v);
+    return v;
+  }
+
+  function soRemove(desc: bigint | number): boolean {
+    const d = BigInt(desc);
+    const code = Number(d >> 20n);
+    const n = Number(d & 0xfffffn);
+    const c = dados(code);
+    const script = (c && (pacote.arquivos[`c${code}.lua`] ?? (c.alias ? pacote.arquivos[`c${c.alias}.lua`] : undefined))) ?? "";
+    // o bloco do efeito é o que usa esta descrição (aux.Stringid(id, n))
+    const bloco = script.split(/(?=\bEffect\.CreateEffect\()/).find((b) => new RegExp(`SetDescription\\(aux\\.Stringid\\(id,\\s*${n}\\)`).test(b));
+    const cat = (bloco ?? "").split("\n").filter((l) => /:SetCategory\(/.test(l)).join(" ");
+    return /CATEGORY_(REMOVE|DESTROY|TODECK|CONTROL)/.test(cat) && !/CATEGORY_(SPECIAL_SUMMON|SEARCH|DRAW|RECOVER|TOGRAVE|DECKDES)/.test(cat);
   }
 
   const constantes = new Map<string, string>();
@@ -225,6 +274,8 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     },
     constante: (valor, prefixo) => constantes.get(`${prefixo}_:${valor}`),
     interrompeDaMao,
+    valorEmCampo,
+    soRemove,
     registrar(code, d, nome) {
       pacote.cartas[code] = d;
       pacote.nomes[code] = nome;

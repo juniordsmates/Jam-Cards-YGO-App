@@ -19,7 +19,8 @@ import { ClienteSim, obterPacote } from "../sim/cliente";
 import { zonasLivres } from "../sim/opcoes";
 import type { LinhaIA, NivelIA } from "../sim/ia";
 import type { Aprendizado, CartaSim, ConfigSessao, EventoSim, Momento, PedidoSim, Quadro } from "../sim/sessao";
-import { exportarReplay, guardarAprendizado, importarReplay, listarAprendizado, REPLAYS_GRATIS, REPLAYS_PREMIUM, type DueloGuardado, type RotulosReplay } from "../sim/aprendizado";
+import { aprenderValores, exportarReplay, guardarAprendizado, importarReplay, lerValoresAprendidos, listarAprendizado, REPLAYS_GRATIS, REPLAYS_PREMIUM, type DueloGuardado, type RotulosReplay } from "../sim/aprendizado";
+import type { AnaliseDuelo, FatoDuelo } from "../sim/analise";
 import { temPremium } from "../db/conta";
 import { isDesktop } from "../platform";
 import { explicarPorque, type Explicacao } from "../sim/porque";
@@ -329,6 +330,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   const [confirmarDesistir, setConfirmarDesistir] = useState(false);
   // o que o duelo ensinou (fica só neste aparelho nesta etapa)
   const [aprendido, setAprendido] = useState<Aprendizado | null>(null);
+  // "Análise da IA" de um duelo (chave: "fim" ou a data do replay)
+  const [analise, setAnalise] = useState<{ chave: string; status: "analisando" | "ok" | "erro"; dados?: AnaliseDuelo; erro?: string } | null>(null);
   // partida em andamento (decks e semente), para o "?" listar as cartas de cada um
   const partidaRef = useRef<ConfigSessao["partida"] | null>(null);
   // nomes e decks da partida em andamento, para a lista de replays
@@ -450,7 +453,9 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
       setEtapa("duelo");
       partidaRef.current = partida;
       rotulosRef.current = { eu: conta?.usuario || t("Você"), oponente: t("IA"), meuDeck: meu.nome, deckOponente: doIA.nome };
-      c.iniciar({ partida, humano, nivel: cfg.nivel, linhas: doIA.linhas, roteiro: comboIA ? testeCombo!.combo.passos : undefined, janelas: cfg.todasJanelas ? "todas" : "acao" });
+      // o que as análises dos duelos anteriores ensinaram sobre o valor das cartas
+      const aprendidos = await lerValoresAprendidos().catch(() => ({}));
+      c.iniciar({ partida, humano, nivel: cfg.nivel, linhas: doIA.linhas, aprendidos, roteiro: comboIA ? testeCombo!.combo.passos : undefined, janelas: cfg.todasJanelas ? "todas" : "acao" });
     } catch (e) {
       falhou(e);
     }
@@ -665,6 +670,24 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   // ---------- revisão e "?" ----------
 
   /** Abre a revisão de uma partida (refeita no motor a partir das respostas) */
+  /**
+   * "Análise da IA" (fim do duelo ou replay contra a IA): ela refaz a partida, aponta o que decidiu o
+   * duelo e testa as escolhas melhores; os ganhos viram valor aprendido para os próximos duelos
+   */
+  async function analisar(d: Pick<ConfigSessao, "partida" | "humano"> & { historico: Jogada[] }, chave: string) {
+    setAnalise({ chave, status: "analisando" });
+    try {
+      const c = cliente.current && versaoMotor.current ? cliente.current : await prepararMotor();
+      const ids = new Set(d.partida.decks[1 - d.humano].main);
+      const linhas = (db.extras?.combos?.linhas ?? []).filter((l) => l.mao.every((x) => ids.has(x)));
+      const dados = await c.analisar({ partida: d.partida, humano: d.humano, historico: d.historico, linhas, aprendidos: await lerValoresAprendidos().catch(() => ({})) });
+      await aprenderValores(dados.aprender).catch(() => {});
+      setAnalise({ chave, status: "ok", dados });
+    } catch (e) {
+      setAnalise({ chave, status: "erro", erro: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   async function abrirRevisao(cfg: ConfigSessao, oponente: string) {
     setErro(null);
     setEtapa("carregando");
@@ -1379,12 +1402,18 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
                       <button className="ghost-btn" disabled={carregando} onClick={() => void abrirRevisao({ partida: d.partida, humano: d.humano, nivel: "normal", historico: d.historico }, d.rotulos?.oponente ?? (d.remoto ? t("Oponente") : t("IA")))}>
                         {t("Revisar")}
                       </button>
+                      {!d.remoto && (
+                        <button className="ghost-btn" disabled={analise?.status === "analisando"} onClick={() => void analisar(d, d.quando)}>
+                          {t("Análise da IA")}
+                        </button>
+                      )}
                       {premium && (
                         <button className="ghost-btn" onClick={() => void exportar(d)}>
                           {t("Exportar")}
                         </button>
                       )}
                     </span>
+                    {analise?.chave === d.quando && <AnaliseIA analise={analise} nomeDe={nomeDe} quem={(j) => (j === d.humano ? d.rotulos?.eu ?? t("Você") : t("IA"))} />}
                   </li>
                 ))}
               </ul>
@@ -1910,7 +1939,13 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
                     {t("Revisar a partida")}
                   </button>
                 )}
+                {aprendido && !sala && (
+                  <button className="ghost-btn" disabled={analise?.status === "analisando"} onClick={() => void analisar(aprendido, "fim")}>
+                    {t("Análise da IA")}
+                  </button>
+                )}
               </div>
+              {analise?.chave === "fim" && <AnaliseIA analise={analise} nomeDe={nomeDe} quem={(j) => (j === eu ? conta?.usuario || t("Você") : rotuloOp)} />}
               {aprendido && <Aprendido a={aprendido} nomeDe={nomeDe} oponente={rotuloOp} />}
             </div>
           ) : pensando || !pedido ? (
@@ -2065,6 +2100,60 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
 }
 
 /** O que o duelo ensinou: turnos de combo e respostas do jogador (fica só neste aparelho) */
+/** Relatório da "Análise da IA": o que decidiu o duelo e as escolhas melhores que ela encontrou */
+function AnaliseIA({ analise, nomeDe, quem }: { analise: { status: "analisando" | "ok" | "erro"; dados?: AnaliseDuelo; erro?: string }; nomeDe: (c: number) => string; quem: (jogador: number) => string }) {
+  if (analise.status === "analisando")
+    return (
+      <p className="tags-note sim-analise" role="status">
+        {t("A IA está refazendo a partida e testando outras escolhas (leva de 2 a 3 minutos)…")}
+      </p>
+    );
+  if (analise.status === "erro" || !analise.dados) return <p className="conta-erro sim-analise">{t("Não foi possível analisar: {0}", [analise.erro ?? ""])}</p>;
+  const { fatos, achados } = analise.dados;
+  const fato = (f: FatoDuelo) =>
+    f.t === "negado"
+      ? f.por
+        ? t("Turno {0}: {1} ({2}) foi negado por {3}", [f.turno, nomeDe(f.carta), quem(f.jogador), nomeDe(f.por)])
+        : t("Turno {0}: {1} ({2}) foi negado", [f.turno, nomeDe(f.carta), quem(f.jogador)])
+      : f.t === "pv"
+        ? t("Turno {0}: {1} perdeu {2} PV", [f.turno, quem(f.jogador), f.perdeu])
+        : f.vencedor === null
+          ? t("Turno {0}: empate", [f.turno])
+          : t("Turno {0}: vitória de {1}", [f.turno, quem(f.vencedor)]);
+  return (
+    <section className="sim-analise">
+      <h4>{t("O que decidiu o duelo")}</h4>
+      {fatos.length ? (
+        <ul>
+          {fatos.map((f, i) => (
+            <li key={i}>{fato(f)}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="tags-note">{t("Nenhuma negação nem perda grande de PV.")}</p>
+      )}
+      <h4>{t("O que a IA poderia ter feito melhor")}</h4>
+      {achados.length ? (
+        <>
+          <ul>
+            {achados.map((a, i) => (
+              <li key={i}>
+                {t("Turno {0}: Invocar {1} {2} em vez de passar a vez (+{3} na avaliação do campo no começo do turno seguinte dela)", [a.turno, nomeDe(a.carta), a.defesa ? t("em Posição de Defesa") : t("em Posição de Ataque"), a.ganho])}
+              </li>
+            ))}
+          </ul>
+          <small className="tags-note">
+            {t("A IA guardou isso: {0} passam a valer mais quando ela avaliar o campo nos próximos duelos.", [[...new Set(achados.map((a) => nomeDe(a.carta)))].join(", ")])}
+          </small>
+        </>
+      ) : (
+        <p className="tags-note">{t("Nos momentos em que a IA passou a vez, as Invocações testadas não deixaram o campo melhor.")}</p>
+      )}
+      <small className="tags-note">{t("Em cada momento, a IA joga pelos dois lados até o começo do turno seguinte dela, com e sem a escolha, e compara a nota do campo.")}</small>
+    </section>
+  );
+}
+
 function Aprendido({ a, nomeDe, oponente }: { a: Aprendizado; nomeDe: (c: number) => string; oponente: string }) {
   const nomes = (ids: number[]) => ids.map((c) => (c ? nomeDe(c) : t("Ficha"))).join(", ") || "—";
   const evento = (r: Aprendizado["respostas"][number]) => {

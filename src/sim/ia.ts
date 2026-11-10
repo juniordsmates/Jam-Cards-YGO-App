@@ -13,17 +13,34 @@ import type { Sessao } from "./sessao";
 export type NivelIA = "passiva" | "facil" | "normal" | "dificil";
 export type LinhaIA = Pick<LinhaCombo, "mao" | "passos" | "campo" | "pontos">;
 
+export interface OpcoesIA {
+  /** teste de combo: passos que a IA tenta repetir no primeiro turno */
+  roteiro?: Passo[];
+  /** cálculo de combo da mão: cartas que a linha precisa usar */
+  exigidas?: number[];
+  /** valor extra de cartas em campo aprendido nas análises dos duelos (id → pontos) */
+  aprendidos?: Record<number, number>;
+  /** prefere a Posição de Defesa ao Invocar (análise do duelo: jogar mais seguro) */
+  emDefesa?: boolean;
+}
+
 /** tempo de planejamento do turno (ms); a Fácil joga uma tentativa só */
 const TEMPO: Record<NivelIA, number> = { passiva: 0, facil: 0, normal: 2000, dificil: 5000 };
 /** chance de responder a uma jogada do oponente com o que tiver (interrupções de mão, armadilhas) */
 const RESPONDE: Record<NivelIA, number> = { passiva: 0, facil: 0.15, normal: 0.6, dificil: 1 };
 const MAX_TENTATIVAS = 400;
+/** linhas conhecidas testadas inteiras (pelo roteiro) a cada planejamento */
+const MAX_LINHAS_GUIADAS = 12;
 /**
  * Valor extra de uma interrupção de mão guardada na mão (além do 0,7 de qualquer carta na mão):
  * Invocá-la como corpo quase nunca compensa; só vale se o campo melhorar mais do que isso (ex.: virar
  * matéria de S:P Little Knight e banir uma carta importante do oponente).
  */
 const VALOR_INTERRUPCAO = 1.5;
+/** monstro do Extra Deck em campo (antes do ATK e dos efeitos); um do Main Deck vale 1,5 */
+const EXTRA = 4.5;
+/** cada ponto de Motor.valorEmCampo (interrupção vale 2, remoção 1, proteção 1) */
+const VALOR_EFEITO = 0.8;
 
 // código, posição, ATK, DEF e matérias
 const QUERY = (1 | 2 | 256 | 512 | 65536) as never;
@@ -90,16 +107,30 @@ export class IA {
   /** teste de combo: passos que a IA tenta repetir no primeiro turno */
   private roteiro: Roteiro | null;
 
+  /** cálculo de combo da mão: cartas que a linha precisa usar (cada uma que fica na mão pesa contra) */
+  private readonly exigidas: number[];
+  /** valor extra de cartas em campo, aprendido nas análises dos duelos (id → pontos) */
+  private readonly aprendidos: Record<number, number>;
+
   constructor(
     readonly nivel: NivelIA,
     readonly eu: 0 | 1,
     readonly linhas: LinhaIA[],
     motor: Motor,
-    roteiro?: Passo[],
-    /** cálculo de combo da mão: cartas que a linha precisa usar (cada uma que fica na mão pesa contra) */
-    private readonly exigidas: number[] = [],
+    opcoes: OpcoesIA = {},
   ) {
+    const { roteiro } = opcoes;
     this.roteiro = roteiro?.length ? new Roteiro(roteiro, eu, (a, b) => this.canonico(motor, a) === this.canonico(motor, b), motor.tipo) : null;
+    this.exigidas = opcoes.exigidas ?? [];
+    this.aprendidos = opcoes.aprendidos ?? {};
+    this.emDefesa = !!opcoes.emDefesa;
+  }
+
+  private readonly emDefesa: boolean;
+
+  /** Nota do campo deste jogador agora (análise do duelo: compara o que aconteceu com as alternativas) */
+  avaliar(motor: Motor, duel: OcgDuelHandle) {
+    return this.nota(motor, duel, new Set(), new Set());
   }
 
   /** Mensagens do motor (o roteiro acompanha o que a IA já fez do combo) */
@@ -165,7 +196,8 @@ export class IA {
         return this.batalha(d, s, ops) ?? fallback;
       case T.SELECT_CHAIN: {
         if (!d.selects.length) return fallback;
-        const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa");
+        // efeito que só tiraria uma carta própria (o campo do oponente está vazio) fica de fora
+        const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa" && !this.semAlvo(s, o));
         if (!ativar || d.forced) return ativar?.resp ?? fallback;
         // interrupções de mão com momento certo (o que os jogadores costumam fazer para ganhar vantagem)
         const momento = this.momentoCerto(d, s);
@@ -173,13 +205,19 @@ export class IA {
         const ultima = s.ultimaAcao;
         // responde às jogadas do oponente com a chance do nível; no próprio turno, ativa os gatilhos
         if (ultima && ultima.p !== this.eu) return Math.random() < RESPONDE[this.nivel] ? ativar.resp : { type: R.SELECT_CHAIN, index: null };
-        if (s.jogadorDaVez === this.eu && this.nivel !== "facil") return ativar.resp;
+        // no próprio turno, os gatilhos sim; na Draw e na Standby, cartas de corrente livre ficam para o plano da Main Phase
+        const comecoDoTurno = s.faseAtual === OcgPhase.DRAW || s.faseAtual === OcgPhase.STANDBY;
+        if (s.jogadorDaVez === this.eu && this.nivel !== "facil" && (!comecoDoTurno || d.spe_count)) return ativar.resp;
         return { type: R.SELECT_CHAIN, index: null };
       }
       case T.SELECT_EFFECTYN:
-        return { type: R.SELECT_EFFECTYN, yes: true };
+        return { type: R.SELECT_EFFECTYN, yes: !this.semAlvo(s, ops[0]) };
       case T.SELECT_YESNO:
         return { type: R.SELECT_YESNO, yes: true };
+      case T.SELECT_POSITION: {
+        const defesa = this.emDefesa ? ops.find((o) => (o.resp as { position?: number }).position === 4) : undefined;
+        return defesa?.resp ?? fallback;
+      }
       case T.SELECT_CARD:
       case T.SELECT_TRIBUTE:
       case T.SELECT_UNSELECT_CARD:
@@ -187,6 +225,16 @@ export class IA {
       default:
         return fallback;
     }
+  }
+
+  /**
+   * Ativar a opção só tiraria uma carta própria: o efeito apenas bane, destrói ou devolve (Motor.soRemove)
+   * e o oponente não tem cartas em campo (ex.: o banir da Chaos Angel no primeiro turno)
+   */
+  private semAlvo(s: Sessao, o: Opcao | undefined, duel = s.duel) {
+    if (!o || o.recusa || !o.acao?.desc || !/^d+$/.test(o.acao.desc) || !s.motor.soRemove(BigInt(o.acao.desc))) return false;
+    const op = 1 - this.eu;
+    return s.motor.core.duelQueryCount(duel, op as 0, L.ONFIELD) === 0;
   }
 
   // ---------- momento certo das interrupções de mão ----------
@@ -360,12 +408,15 @@ export class IA {
     const q = (p: number, location: number) => this.campo(motor, duel, p, location).filter(Boolean) as NonNullable<ReturnType<IA["campo"]>[number]>[];
     let n = 0;
     for (const m of q(this.eu, L.MZONE)) {
+      // um monstro do Extra Deck (o "chefe" de um combo) vale mais que os corpos que viraram matéria dele;
       // interrupção de mão em campo é só um corpo: o ATK dela (ex.: Nibiru) não compensa tirá-la da mão
-      n += motor.tipo(m.code) & TIPOS_EXTRA ? 3 + (0.6 * m.atk) / 1000 : 1.5 + (this.guardar(motor, m.code, linha) ? 0 : (0.6 * m.atk) / 1000);
+      n += motor.tipo(m.code) & TIPOS_EXTRA ? EXTRA + (0.6 * m.atk) / 1000 : 1.5 + (this.guardar(motor, m.code, linha) ? 0 : (0.6 * m.atk) / 1000);
+      // o que ela faz em campo (lido do script: interrupção, remoção, proteção) e o que os duelos ensinaram
+      if (!(m.pos & 0xa)) n += VALOR_EFEITO * motor.valorEmCampo(m.code) + (this.aprendidos[this.canonico(motor, m.code)] ?? 0);
       if (alvo.has(this.canonico(motor, m.code))) n += 2;
     }
     for (const c of q(this.eu, L.SZONE)) {
-      n += c.pos & 0xa ? 2 : 1;
+      n += c.pos & 0xa ? 2 : 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
       if (alvo.has(this.canonico(motor, c.code))) n += 2;
     }
     const mao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND });
@@ -405,9 +456,11 @@ export class IA {
    * "óbvia", sempre avaliada); senão, sorteada pelos pesos. Para quando não há jogada ou ao acaso
    * (a fase não entra no plano: quando ele acaba, a IA olha o campo e planeja a continuação).
    */
-  private tentar(s: Sessao, linha: Set<number>, alvo: Set<number>, guloso = false): { resps: OcgResponse[]; nota: number } | null {
+  private tentar(s: Sessao, linha: Set<number>, alvo: Set<number>, guloso = false, guia?: Passo[]): { resps: OcgResponse[]; nota: number } | null {
     const motor = s.motor;
     const { duel, decisao } = reproduzir(motor, s.partida, s.historico);
+    // tentativa guiada por uma linha conhecida: o roteiro escolhe enquanto a linha tem o que fazer
+    const roteiro = guia ? new Roteiro(guia, this.eu, (a, b) => this.canonico(motor, a) === this.canonico(motor, b), motor.tipo, true) : null;
     try {
       const resps: OcgResponse[] = [];
       let d = decisao;
@@ -419,7 +472,14 @@ export class IA {
         else if (d.type === T.SELECT_BATTLECMD) break;
         else {
           const ops = opcoesDe(d, motor.tipo);
-          if (d.type === T.SELECT_IDLECMD) {
+          const doRoteiro = roteiro?.decidir(d, ops);
+          if (doRoteiro) {
+            resp = doRoteiro;
+            if (d.type === T.SELECT_IDLECMD) acoes++;
+          } else if (roteiro && d.type === T.SELECT_IDLECMD) {
+            // a linha acabou (ou não tem mais o que fazer): a tentativa vale pelo campo dela, sem estender
+            break;
+          } else if (d.type === T.SELECT_IDLECMD) {
             acoes++;
             const jogadas = ops.filter((o) => o.acao && o.acao.k !== "fase" && o.acao.k !== "posicao");
             if (!jogadas.length || acoes > 30 || (!guloso && Math.random() < 0.03 * acoes)) break;
@@ -427,7 +487,7 @@ export class IA {
           } else if (ops.length) {
             const pesoEscolha = (o: Opcao) => {
               if (o.recusa) return 0.6;
-              if (d!.type === T.SELECT_EFFECTYN || d!.type === T.SELECT_CHAIN) return 3;
+              if (d!.type === T.SELECT_EFFECTYN || d!.type === T.SELECT_CHAIN) return this.semAlvo(s, o, duel) ? 0 : 3;
               return o.escolha?.some((c) => linha.has(this.canonico(motor, c.code))) ? 3 : 1;
             };
             resp = (guloso ? ops.reduce((a, b) => (pesoEscolha(b) > pesoEscolha(a) ? b : a)) : sortear(ops, pesoEscolha)).resp;
@@ -437,6 +497,7 @@ export class IA {
         resps.push(resp);
         motor.core.duelSetResponse(duel, resp);
         const r = motor.ate(duel);
+        roteiro?.ler(r.log);
         if (r.log.some((m) => m.type === T.WIN)) return { resps, nota: r.log.some((m) => m.type === T.WIN && m.player === this.eu) ? 1e6 : -1e6 };
         if (r.log.some((m) => m.type === T.NEW_TURN)) break;
         d = r.decisao;
@@ -445,6 +506,22 @@ export class IA {
     } finally {
       motor.core.destroyDuel(duel);
     }
+  }
+
+  /**
+   * Linhas conhecidas (calculadas e combos salvos do deck) que a IA pode seguir agora: alguma das
+   * primeiras jogadas usa uma carta que ela tem na mão, no campo ou no Cemitério. As de mais pontos primeiro.
+   */
+  private linhasPossiveis(s: Sessao): LinhaIA[] {
+    const motor = s.motor;
+    const tem = new Set<number>();
+    for (const loc of [L.HAND, L.MZONE, L.SZONE, L.GRAVE])
+      for (const c of motor.core.duelQueryLocation(s.duel, { flags: 1 as never, controller: this.eu, location: loc })) if (c?.code) tem.add(this.canonico(motor, c.code as number));
+    const jogadas = (l: LinhaIA) => l.passos.filter((p) => p.t === "normal" || p.t === "ativa" || p.t === "baixa" || (p.t === "invoca" && !p.por)).slice(0, 6);
+    return this.linhas
+      .filter((l) => jogadas(l).some((p) => tem.has(this.canonico(motor, (p as { c: number }).c))))
+      .sort((a, b) => b.pontos - a.pontos)
+      .slice(0, MAX_LINHAS_GUIADAS);
   }
 
   /** turno do último planejamento (o primeiro do turno usa o tempo todo; as continuações, metade) */
@@ -458,6 +535,11 @@ export class IA {
     const tempo = turno === this.turnoPlanejado ? TEMPO[this.nivel] / 2 : TEMPO[this.nivel];
     this.turnoPlanejado = turno;
     let melhor: { resps: OcgResponse[]; nota: number } | null = null;
+    // linhas inteiras primeiro: cada linha conhecida que passa pelas cartas que a IA tem, seguida pelo roteiro
+    for (const l of this.linhasPossiveis(s)) {
+      const r = this.tentar(s, passos, campo, true, l.passos);
+      if (r && (!melhor || r.nota > melhor.nota)) melhor = r;
+    }
     for (let n = 0; n < MAX_TENTATIVAS; n++) {
       // a primeira tentativa é a gulosa: a linha de maior peso sempre é avaliada
       const r = this.tentar(s, passos, campo, n === 0);
