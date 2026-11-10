@@ -14,6 +14,7 @@ import {
   criarUsuarioComoAdmin,
   definirAdmin,
   definirNivel,
+  definirPremium,
   definirNovaSenha,
   emRecuperacao,
   entrar,
@@ -392,6 +393,22 @@ function UsuariosCadastrados() {
     }
   };
 
+  /** Marca ou desmarca a conta como Premium */
+  const mudarPremium = async (u: UsuarioCadastrado) => {
+    const premium = !u.premium;
+    setSalvando(u.id);
+    setMsg(null);
+    try {
+      await definirPremium(u.id, premium);
+      setLista((l) => l?.map((x) => (x.id === u.id ? { ...x, premium } : x)) ?? l);
+      setMsg({ tipo: "ok", texto: premium ? t("@{0} agora é Premium.", [u.usuario]) : t("@{0} não é mais Premium.", [u.usuario]) });
+    } catch (e) {
+      setMsg({ tipo: "erro", texto: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSalvando(null);
+    }
+  };
+
   /** Só o dono: torna a conta administradora ou tira a administração */
   const mudarAdmin = async (u: UsuarioCadastrado) => {
     const admin = !u.admin;
@@ -434,6 +451,7 @@ function UsuariosCadastrados() {
               <span>
                 <strong>@{u.usuario}</strong>
                 {u.admin && <span className="vc-badge"> {" "}{t("administrador")}</span>}
+                {u.premium && <span className="vc-badge conta-premium"> {" "}{t("Premium")}</span>}
                 <small>
                   {t("{0} · desde {1} · último acesso {2}", [u.email, data(u.criado_em), data(u.ultimo_acesso)])}
                 </small>
@@ -443,6 +461,10 @@ function UsuariosCadastrados() {
                   {u.admin ? t("Tirar administrador") : t("Tornar administrador")}
                 </button>
               )}
+              <label className="conta-premium-opcao" title={t("Premium: recursos exclusivos, como o auxílio de jogadas no Simulador (em breve)")}>
+                <input type="checkbox" checked={!!u.premium} disabled={salvando === u.id || u.premium === undefined} onChange={() => void mudarPremium(u)} />
+                {t("Premium")}
+              </label>
               <select
                 value={u.nivel}
                 disabled={salvando === u.id}
@@ -724,6 +746,7 @@ function MinhaConta({ docs }: { docs: ReactNode }) {
         </div>
         <span className="conta-quem">
           <strong>@{conta.usuario}</strong> <small className="conta-nivel">{nivel.label}</small>
+          {conta.premium && <small className="conta-nivel conta-premium">{t("Premium")}</small>}
         </span>
         <button className="ghost-btn" onClick={() => void sair()}>
           {t("Sair")}

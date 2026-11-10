@@ -849,7 +849,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     return (
       <div
         key={k}
-        className={`tj-carta ${monstro && c.pos & 0xc ? "tj-defesa" : ""} ${ac && !idx ? "sim-acao" : ""} ${idx ? "sim-escolhivel" : ""} ${marcada ? "sim-marcada" : ""} ${foco === k ? "sim-foco" : ""} ${elo ? "sim-ativando" : ""} ${!oculta && virada(c.pos) ? "sim-baixada" : ""}`}
+        className={`tj-carta ${monstro && c.pos & 0xc ? "tj-defesa" : ""} ${ac && !idx ? "sim-acao" : ""} ${idx ? (k.startsWith(`${eu}:`) ? "sim-escolhivel" : "sim-escolhivel sim-escolhivel-op") : ""} ${marcada ? "sim-marcada" : ""} ${foco === k ? "sim-foco" : ""} ${elo ? "sim-ativando" : ""} ${!oculta && virada(c.pos) ? "sim-baixada" : ""}`}
         onMouseEnter={() => !verso && setPreview(c.code)}
         onClick={(e) => {
           if (idx) {
@@ -1298,11 +1298,11 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
   const texto = (desc: bigint | number) => pedido.textos[String(desc)];
   const aviso = pedido.repetir ? <p className="conta-erro">{t("Essa escolha não vale aqui. Escolha de novo.")}</p> : null;
   const lugar = (c: { controller: number; location: number }) =>
-    `${c.controller === eu ? "" : t("do oponente, ")}${c.location & L.HAND ? t("mão") : c.location & L.DECK ? t("Deck") : c.location & L.GRAVE ? t("Cemitério") : c.location & L.REMOVED ? t("banida") : c.location & L.EXTRA ? t("Extra Deck") : c.location & L.OVERLAY ? t("matéria") : t("campo")}`;
+    `${c.location & L.HAND ? t("mão") : c.location & L.DECK ? t("Deck") : c.location & L.GRAVE ? t("Cemitério") : c.location & L.REMOVED ? t("banida") : c.location & L.EXTRA ? t("Extra Deck") : c.location & L.OVERLAY ? t("matéria") : t("campo")}`;
   const cartaBotao = (c: { code: number; controller: number; location: number; sequence?: number }, i: number, ativo: boolean, onClick: () => void, sufixo?: ReactNode) => (
     <button
       key={i}
-      className={`sim-opcao-carta ${ativo ? "sim-ativo" : ""}`}
+      className={`sim-opcao-carta ${c.controller === eu ? "sim-opcao-minha" : "sim-opcao-op"} ${ativo ? "sim-ativo" : ""}`}
       onClick={onClick}
       onMouseEnter={() => {
         if (c.code) setPreview(c.code);
@@ -1314,11 +1314,28 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
       {c.code ? <img src={cardImage(c.code, "small")} alt="" onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} /> : <div className="tj-verso" />}
       <span>
         <strong>{c.code ? nomeDe(c.code) : t("Carta virada para baixo")}</strong>
-        <small>{lugar(c)}</small>
+        <small>
+          <b className={`sim-dono ${c.controller === eu ? "sim-dono-meu" : "sim-dono-op"}`}>{c.controller === eu ? t("Sua") : t("Oponente")}</b> {lugar(c)}
+        </small>
         {sufixo}
       </span>
     </button>
   );
+
+  /** Opções de cartas separadas por dono (com título só quando a escolha mistura os dois lados) */
+  const porDono = <C extends { controller: number }>(cartas: C[], desenhar: (c: C, i: number) => ReactNode, inicio = 0) => {
+    const minhas = cartas.map((c, i) => [c, i + inicio] as const).filter(([c]) => c.controller === eu);
+    const dele = cartas.map((c, i) => [c, i + inicio] as const).filter(([c]) => c.controller !== eu);
+    if (!minhas.length || !dele.length) return cartas.map((c, i) => desenhar(c, i + inicio));
+    return (
+      <>
+        <h5 className="sim-grupo sim-dono-meu">{t("Suas cartas")}</h5>
+        {minhas.map(([c, i]) => desenhar(c, i))}
+        <h5 className="sim-grupo sim-dono-op">{t("Cartas do oponente")}</h5>
+        {dele.map(([c, i]) => desenhar(c, i))}
+      </>
+    );
+  };
 
   // Main Phase / Battle Phase: as ações ficam nas cartas; aqui, as fases
   if (d.type === T.SELECT_IDLECMD || d.type === T.SELECT_BATTLECMD) {
@@ -1395,7 +1412,7 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
           <>
             <h4>{titulo}</h4>
             <small className="tags-note">{d.min === d.max ? t("Escolha {0}.", [d.min]) : t("Escolha de {0} a {1}.", [d.min, d.max])}</small>
-            {d.selects.map((c, i) => cartaBotao(c, i, marcadas.includes(i), () => tocar(i)))}
+            {porDono(d.selects as { code: number; controller: number; location: number; sequence: number }[], (c, i) => cartaBotao(c, i, marcadas.includes(i), () => tocar(i)))}
             <div className="sim-niveis">
               {!(d.max === 1 && d.min === 1) && (
                 <button className="ghost-btn" disabled={!ok} onClick={() => responder(d.type === T.SELECT_CARD ? { type: R.SELECT_CARD, indicies: marcadas } : { type: R.SELECT_TRIBUTE, indicies: marcadas })}>
@@ -1416,8 +1433,8 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
           <>
             <h4>{titulo}</h4>
             {/* as já escolhidas vêm depois das disponíveis na resposta */}
-            {d.select_cards.map((c, i) => cartaBotao(c, i, false, () => tocar(i)))}
-            {d.unselect_cards.map((c, i) => cartaBotao(c, d.select_cards.length + i, true, () => tocar(d.select_cards.length + i)))}
+            {porDono(d.select_cards, (c, i) => cartaBotao(c, i, false, () => tocar(i)))}
+            {porDono(d.unselect_cards, (c, i) => cartaBotao(c, i, true, () => tocar(i)), d.select_cards.length)}
             {(d.can_finish || d.can_cancel) && (
               <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_UNSELECT_CARD, index: null })}>
                 {d.can_finish ? t("Concluir") : t("Cancelar")}
@@ -1433,7 +1450,7 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
             <h4>{titulo}</h4>
             <small className="tags-note">{t("Some {0} (agora: {1}).", [d.amount, soma])}</small>
             {d.selects_must.map((c, i) => cartaBotao(c, 1000 + i, true, () => {}, <small>{t("obrigatória")}</small>))}
-            {d.selects.map((c, i) => cartaBotao(c, i, marcadas.includes(i), () => tocar(i), <small>{valor(c.amount)}</small>))}
+            {porDono(d.selects, (c, i) => cartaBotao(c, i, marcadas.includes(i), () => tocar(i), <small>{valor(c.amount)}</small>))}
             <button className="ghost-btn" disabled={!marcadas.length && !d.selects_must.length} onClick={() => responder({ type: R.SELECT_SUM, indicies: marcadas })}>
               {t("Confirmar")}
             </button>

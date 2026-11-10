@@ -200,6 +200,8 @@ Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-was
 
 ## Combo Search, contas e base de combos (Supabase)
 
+- **Usuário Premium:** assinatura que libera recursos exclusivos; o primeiro previsto é o auxílio de jogadas no Simulador (indicar possibilidades). É separado do nível (Padrão, Avançado, Mentor). Só o administrador marca, em Minha conta → Usuários cadastrados; no app, `temPremium(conta)` ([src/db/conta.ts](src/db/conta.ts)); no banco, `public.sou_premium()` (migração [20261110010000_usuario_premium.sql](supabase/migrations/20261110010000_usuario_premium.sql)).
+
 Na aba Combos, **Combo Search** recebe 0 ou mais cartas iniciais (starters) e/ou 1 ou mais cartas finais, e procura em três lugares:
 
 1. **Calculados pelo App:** as linhas da camada pública em que as iniciais estão na mão e as finais aparecem na linha.

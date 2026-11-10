@@ -687,6 +687,23 @@ kbd {
   color: var(--text-dim);
 }
 
+/* selo Premium (assinatura): dourado */
+.conta-premium {
+  padding: 0 6px;
+  color: #8a5a00;
+  background: #ffe7a3;
+  border: 1px solid #e8b93c;
+  border-radius: 6px;
+}
+
+.conta-premium-opcao {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
 .conta-nivel-dica {
   display: block;
 }

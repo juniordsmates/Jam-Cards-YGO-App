@@ -84,6 +84,18 @@
   }
 }
 
+/* do oponente: vermelho, para não confundir com as suas */
+.sim .sim-escolhivel-op {
+  box-shadow: 0 0 0 2px #ff5470, 0 0 14px 2px rgb(255 84 112 / 0.75);
+  animation-name: sim-pulso-escolha-op;
+}
+
+@keyframes sim-pulso-escolha-op {
+  50% {
+    box-shadow: 0 0 0 2px #ff5470, 0 0 4px 0 rgb(255 84 112 / 0.4);
+  }
+}
+
 /* carta já marcada na escolha */
 .sim .sim-marcada {
   animation: none;
@@ -454,4 +466,45 @@
 
 .sim-aprendido li + li {
   margin-top: 4px;
+}
+
+/* dono de cada carta nas escolhas */
+.sim-opcao-minha {
+  border-left: 4px solid #35d6ff;
+}
+
+.sim-opcao-op {
+  border-left: 4px solid #ff5470;
+}
+
+.sim-dono {
+  padding: 0 5px;
+  margin-right: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  border-radius: 4px;
+}
+
+.sim-dono-meu {
+  color: #0b6f86;
+}
+
+.sim-dono-op {
+  color: #c2183c;
+}
+
+.sim-dono.sim-dono-meu {
+  background: rgb(53 214 255 / 0.18);
+}
+
+.sim-dono.sim-dono-op {
+  background: rgb(255 84 112 / 0.18);
+}
+
+.sim-grupo {
+  margin: 6px 0 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }

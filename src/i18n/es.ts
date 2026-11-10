@@ -2594,4 +2594,10 @@ export const ES: Record<string, string> = {
   "sem jogada antes": "sin jugada antes",
   "você": "tú",
   "{0} passos": "{0} pasos",
+  "Sua": "Tuya",
+  "Suas cartas": "Tus cartas",
+  "@{0} agora é Premium.": "@{0} ahora es Premium.",
+  "@{0} não é mais Premium.": "@{0} ya no es Premium.",
+  "Premium": "Premium",
+  "Premium: recursos exclusivos, como o auxílio de jogadas no Simulador (em breve)": "Premium: funciones exclusivas, como la ayuda de jugadas en el Simulador (próximamente)",
 };

@@ -17,6 +17,8 @@ export interface Conta {
   dono: boolean;
   /** nível definido pelo administrador (Padrão, Avançado ou Mentor) */
   nivel: Nivel;
+  /** assinatura Premium (recursos exclusivos, como o auxílio de jogadas no Simulador); só o administrador marca */
+  premium: boolean;
 }
 
 export type Nivel = "padrao" | "avancado" | "mentor";
@@ -26,6 +28,9 @@ export const NIVEIS: { id: Nivel; label: string; hint: string }[] = [
   { id: "avancado", label: t("Usuário Avançado"), hint: t("Todos os recursos") },
   { id: "mentor", label: t("Usuário Mentor"), hint: t("Todos os recursos") },
 ];
+
+/** Recursos exclusivos de quem é Premium (o administrador também tem); o banco confere com sou_premium() */
+export const temPremium = (c: Conta | null) => !!c && (c.admin || c.premium);
 
 /** Avançado e Mentor (e o administrador) têm todos os recursos: Teste Avançado e combos na base */
 export const temRecursosAvancados = (c: Conta | null) =>
@@ -51,7 +56,7 @@ async function carregarPerfil(session: Session | null) {
     // sem a migração do dono, a função não existe: ninguém é dono
     sb.rpc("sou_dono"),
   ]);
-  conta = { id: session.user.id, email: session.user.email ?? "", usuario: data?.usuario ?? "", admin: admin === true, dono: dono === true, nivel: (data?.nivel as Nivel | undefined) ?? "padrao" };
+  conta = { id: session.user.id, email: session.user.email ?? "", usuario: data?.usuario ?? "", admin: admin === true, dono: dono === true, nivel: (data?.nivel as Nivel | undefined) ?? "padrao", premium: data?.premium === true };
   emit();
   // IAs guardadas na conta: valem neste computador onde aqui ainda não houver configuração
   for (const cfg of await lerConfigsIANaConta()) if (!iaConfigurada(getConfigDe(cfg.provedor))) setConfigIA(cfg);
@@ -139,6 +144,8 @@ export interface UsuarioCadastrado {
   usuario: string;
   email: string;
   nivel: Nivel;
+  /** ausente antes da migração do Premium */
+  premium?: boolean;
   admin: boolean;
   criado_em: string;
   ultimo_acesso: string | null;
@@ -155,6 +162,16 @@ export async function listarUsuarios(): Promise<UsuarioCadastrado[]> {
 export async function definirAdmin(id: string, admin: boolean) {
   const { error } = await exigirCliente().rpc("dono_definir_admin", { p_id: id, p_admin: admin });
   if (error) throw new Error(error.message);
+}
+
+/** Marca ou desmarca uma conta como Premium (só o administrador; o banco confere) */
+export async function definirPremium(id: string, premium: boolean) {
+  const { error } = await exigirCliente().rpc("admin_definir_premium", { p_id: id, p_premium: premium });
+  if (error) throw new Error(error.message);
+  if (conta?.id === id) {
+    conta = { ...conta, premium };
+    emit();
+  }
 }
 
 /** Define o nível de uma conta (só o administrador) */
