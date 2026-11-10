@@ -5,7 +5,7 @@ import { cardMatchesOpcode, OcgHintType, OcgLocation as L, OcgMessageType as T, 
 import { ehComando, executarComando, TIPO, TIPOS_EXTRA, type ComandoFicha, type Historico, type Jogada, type Motor, type Partida } from "./regras";
 import { IA, type LinhaIA, type NivelIA } from "./ia";
 import { passosDoLog, type Passo } from "./passos";
-import type { CampoFinal } from "../db/motor";
+import type { CampoFinal, Passo as PassoCombo } from "../db/motor";
 
 export interface CartaSim {
   code: number;
@@ -189,6 +189,8 @@ export interface ConfigSessao {
   nivel: NivelIA;
   /** linhas de combo conhecidas do deck da IA (camada: combos calculados no motor) */
   linhas?: LinhaIA[];
+  /** teste de combo: passos que a IA tenta repetir no primeiro turno (a mão do combo vem em `partida.maos`) */
+  roteiro?: PassoCombo[];
   /** janelas de resposta do jogador: "acao" só pergunta logo depois de uma jogada da IA; "todas" pergunta sempre */
   janelas?: "acao" | "todas";
   /** o oponente é outra pessoa (partida 1x1): sem IA; as decisões dele chegam por `receberRemota` */
@@ -240,7 +242,7 @@ export class Sessao {
     readonly motor: Motor,
     readonly cfg: ConfigSessao,
   ) {
-    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? []);
+    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, cfg.roteiro);
     this.pendentes = [...(cfg.historico ?? [])];
     this.duel = motor.novoDuelo(cfg.partida);
   }
@@ -250,6 +252,7 @@ export class Sessao {
     for (let guarda = 0; guarda < 5000; guarda++) {
       const r = this.motor.ate(this.duel);
       this.lerLog(r.log);
+      this.ia?.ler(r.log);
       if (this.fim || !r.decisao) {
         this.decisao = null;
         return this.quadro();

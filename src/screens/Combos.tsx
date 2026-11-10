@@ -238,13 +238,13 @@ export default function Combos({
   const testar = onTestar
     ? (l: LinhaCombo) => {
         const linha = semCartaDoCalculo(l);
-        onTestar(deckDoCombo(linha, byId, format), { mao: linha.mao, passos: linha.passos, qualquer: linha.qualquer });
+        onTestar(deckDoCombo(linha, byId, format), { mao: linha.mao, passos: linha.passos, campo: linha.campo, qualquer: linha.qualquer });
       }
     : undefined;
   // o mesmo para um Combo da Comunidade
   const testarDaComunidade = onTestar
     ? (c: ComboBase) => {
-        onTestar(deckDoCombo({ mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo }, byId, format), { mao: c.iniciais, passos: c.dados.passos });
+        onTestar(deckDoCombo({ mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo }, byId, format), { mao: c.iniciais, passos: c.dados.passos, campo: c.dados.campo });
       }
     : undefined;
   // "Editar e Importar" (combo lido de vídeo): Teste de Jogo já no combo, para refazer os passos e

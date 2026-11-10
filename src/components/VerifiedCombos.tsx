@@ -210,9 +210,9 @@ export default function VerifiedCombos({ title = tr("Combos calculados"), lines,
                       e.stopPropagation();
                       onTestar(l);
                     }}
-                    title={tr("Cria um deck temporário com as cartas desta linha e abre o Teste de Jogo com o Executar combo")}
+                    title={tr("Teste manual (Teste de Jogo) ou contra a IA, com as cartas desta linha")}
                   >
-                    {tr("▶ Teste de Jogo")}</button>
+                    {tr("▶ Testar")}</button>
                 )}
               </span>
             </summary>

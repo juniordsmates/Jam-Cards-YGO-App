@@ -37,7 +37,7 @@ import {
   type ZonaId,
 } from "../db/testeJogo";
 import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
-import { CARTA_QUALQUER, passoEmTexto, semCartaDoCalculo, type Passo } from "../db/motor";
+import { CARTA_QUALQUER, passoEmTexto, semCartaDoCalculo, type CampoFinal, type Passo } from "../db/motor";
 import { groupSteps } from "../components/VerifiedCombos";
 import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
 import { contarPapeis } from "../db/classificacao";
@@ -80,6 +80,8 @@ const MENU_TOKEN = "token";
 export interface ComboTeste {
   mao: number[];
   passos: Passo[];
+  /** campo final: a mão que sobra no fim entra na mão inicial do teste contra a IA */
+  campo?: CampoFinal;
   /** cartas quaisquer da mão (para descarte), que o deck temporário não traz */
   qualquer?: number;
   /** "Editar e Importar" (combo lido de vídeo): título e fontes vão para o Criar combo */

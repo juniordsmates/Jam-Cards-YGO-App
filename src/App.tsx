@@ -15,7 +15,11 @@ import Comunidade from "./screens/Comunidade";
 import DeckEditor, { type EditorInicial } from "./screens/DeckEditor";
 // o Simulador (motor de regras e IA) só carrega quando é aberto
 const Simulador = lazy(() => import("./screens/Simulador"));
+import type { TesteCombo } from "./screens/Simulador";
+import type { ComboTeste } from "./screens/TesteJogo";
+import type { DeckTemporario } from "./db/decks";
 import ExitDialog from "./components/ExitDialog";
+import TestarDialog, { type ModoTeste } from "./components/TestarDialog";
 import AvisoConquista from "./components/AvisoConquista";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
 import { ContaDialog, isContaOpen, openConta } from "./components/Conta";
@@ -43,6 +47,9 @@ export default function App() {
   const [deckFrom, setDeckFrom] = useState<Screen>("menu");
   // Guia de Deck aberto pela Comunidade: o voltar retorna para ela
   const [guiaFrom, setGuiaFrom] = useState<Screen>("menu");
+  // "Testar" de um combo: o pop-up das formas de teste e, contra a IA, o teste levado ao Simulador
+  const [testando, setTestando] = useState<{ deck: DeckTemporario; combo: ComboTeste; from: Screen } | null>(null);
+  const [testeCombo, setTesteCombo] = useState<{ teste: TesteCombo; from: Screen } | null>(null);
   const [confirmingExit, setConfirmingExit] = useState(false);
   const [exited, setExited] = useState(false);
 
@@ -94,16 +101,35 @@ export default function App() {
   // Esc volta ao menu a partir de qualquer tela (painéis abertos tratam antes)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || confirmingExit || e.defaultPrevented || isFontesOpen() || isContaOpen() || isRespostasOpen()) return;
+      if (e.key !== "Escape" || confirmingExit || testando || e.defaultPrevented || isFontesOpen() || isContaOpen() || isRespostasOpen()) return;
       if (screen !== "menu") setScreen("menu");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [screen, confirmingExit]);
+  }, [screen, confirmingExit, testando]);
 
   const handleExit = async () => {
     setConfirmingExit(false);
     if (!(await exitApp())) setExited(true);
+  };
+
+  /** "Testar" de um combo: abre o pop-up das formas de teste ("Editar e Importar" vai direto ao Teste de Jogo) */
+  const testar = (from: Screen) => (deck: DeckTemporario, combo: ComboTeste) => {
+    if (combo.iniciar) testarManual(from, deck, combo);
+    else setTestando({ deck, combo, from });
+  };
+  const testarManual = (from: Screen, deck: DeckTemporario, combo: ComboTeste) => {
+    setDeckInicial({ temporario: deck, testar: true, combo });
+    setDeckFrom(from);
+    setScreen("deck");
+  };
+  const escolherTeste = (modo: ModoTeste) => {
+    if (!testando) return;
+    const { deck, combo, from } = testando;
+    setTestando(null);
+    if (modo === "manual") return testarManual(from, deck, combo);
+    setTesteCombo({ teste: { deck, combo, quem: modo }, from });
+    setScreen("simulador");
   };
 
   if (exited) {
@@ -176,11 +202,7 @@ export default function App() {
           comboId={rota.tela === "combos" ? rota.combo : undefined}
           maoIds={rota.tela === "combos" ? rota.mao : undefined}
           onRota={aoRota}
-          onTestar={(deck, combo) => {
-            setDeckInicial({ temporario: deck, testar: true, combo });
-            setDeckFrom("combos");
-            setScreen("deck");
-          }}
+          onTestar={testar("combos")}
         />
       )}
 
@@ -191,11 +213,7 @@ export default function App() {
       {screen === "meuscombos" && (
         <MeusCombos
           onBack={() => setScreen("menu")}
-          onTestar={(deck, combo) => {
-            setDeckInicial({ temporario: deck, testar: true, combo });
-            setDeckFrom("meuscombos");
-            setScreen("deck");
-          }}
+          onTestar={testar("meuscombos")}
         />
       )}
       {screen === "rank" && <Rank onBack={() => setScreen("menu")} onComunidade={() => setScreen("comunidade")} onConquistas={() => setScreen("conquistas")} />}
@@ -224,16 +242,20 @@ export default function App() {
             setScreen(guiaFrom);
             setGuiaFrom("menu");
           }}
-          onTestar={(deck, combo) => {
-            setDeckInicial({ temporario: deck, testar: true, combo });
-            setDeckFrom("guia");
-            setScreen("deck");
-          }}
+          onTestar={testar("guia")}
         />
       )}
       {screen === "simulador" && (
         <Suspense fallback={<p className="tags-note">{t("Carregando o Simulador…")}</p>}>
-          <Simulador onBack={() => setScreen("menu")} duelo={rota.tela === "simulador" ? rota.duelo : undefined} onRota={aoRota} />
+          <Simulador
+            onBack={() => {
+              setScreen(testeCombo?.from ?? "menu");
+              setTesteCombo(null);
+            }}
+            duelo={rota.tela === "simulador" ? rota.duelo : undefined}
+            onRota={aoRota}
+            testeCombo={testeCombo?.teste}
+          />
         </Suspense>
       )}
       {screen === "deck" && <DeckEditor key={JSON.stringify(deckInicial)} inicial={deckInicial} onBack={() => setScreen(deckFrom)} />}
@@ -241,6 +263,8 @@ export default function App() {
       <FontesDialog />
       <ContaDialog />
       <RespostasDialog />
+
+      {testando && <TestarDialog onEscolher={escolherTeste} onCancel={() => setTestando(null)} />}
 
       {confirmingExit && (
         <ExitDialog

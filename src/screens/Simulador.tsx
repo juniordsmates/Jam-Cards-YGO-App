@@ -22,7 +22,11 @@ import { exportarReplay, guardarAprendizado, importarReplay, listarAprendizado, 
 import { temPremium } from "../db/conta";
 import { isDesktop } from "../platform";
 import { explicarPorque, type Explicacao } from "../sim/porque";
-import type { DeckSim, Jogada } from "../sim/regras";
+import type { DeckSim, Jogada, Partida } from "../sim/regras";
+import { maoDoRoteiro } from "../sim/roteiro";
+import type { DeckTemporario } from "../db/decks";
+import type { ComboTeste } from "./TesteJogo";
+import type { QuemTemOCombo } from "../components/TestarDialog";
 import "./teste-jogo.css";
 import "./simulador.css";
 
@@ -182,7 +186,37 @@ interface DeckOpcao {
   linhas: LinhaIA[];
 }
 
-export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBack: () => void; duelo?: string; onRota?: (r: Rota) => void }) {
+/** "Testar" de um combo contra a IA: quem começa com a mão do combo e o deck temporário dele */
+export interface TesteCombo {
+  deck: DeckTemporario;
+  combo: ComboTeste;
+  quem: QuemTemOCombo;
+}
+
+const ROTULO_TESTE: Record<QuemTemOCombo, string> = {
+  eu: t("Teste Contra a IA (Eu Tenho o Combo)"),
+  ia: t("Teste Contra a IA (A IA Tem o Combo)"),
+  ambos: t("Teste Contra a IA (Ambos Temos o Combo)"),
+};
+
+/** Mão inicial do teste: as cartas que os passos pedem da mão (no máximo 5); o resto da mão sai do Deck ao acaso */
+function maoDoTeste(combo: ComboTeste): number[] {
+  const necessarias = maoDoRoteiro(combo.passos, combo.campo ?? { mao: [] });
+  return (necessarias.length ? necessarias : combo.mao).slice(0, 5);
+}
+
+/** Cartas da mão que faltam no Deck principal (contando cópias) */
+function faltando(main: number[], mao: number[]): number[] {
+  const resto = [...main];
+  return mao.filter((c) => {
+    const i = resto.indexOf(c);
+    if (i < 0) return true;
+    resto.splice(i, 1);
+    return false;
+  });
+}
+
+export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCombo }: { onBack: () => void; duelo?: string; onRota?: (r: Rota) => void; testeCombo?: TesteCombo }) {
   const conta = useConta();
   const db = useCardDb();
   const { decks } = useDecks();
@@ -207,20 +241,36 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       if (!lista) return [];
       return [{ valor: `meta:${i}`, nome: `${d.nome}${d.evento ? ` · ${d.evento}` : ""}`, deck: { main: lista.main, extra: lista.extra }, linhas: linhas.filter((l) => l.deck === i) }];
     });
-    return [...meus, ...meta];
-  }, [decks, db.extras?.combos]);
+    // teste de combo: o deck temporário do combo, com as cópias que a mão do teste pede
+    const doCombo = testeCombo
+      ? [{ valor: "combo", nome: testeCombo.deck.nome, deck: { main: [...testeCombo.deck.main, ...faltando(testeCombo.deck.main, maoDoTeste(testeCombo.combo))], extra: testeCombo.deck.extra }, linhas: [] }]
+      : [];
+    return [...doCombo, ...meus, ...meta];
+  }, [decks, db.extras?.combos, testeCombo]);
+
+  // teste de combo: mão do combo e o deck sugerido para quem a tem (o que tem a mão toda e mais cartas do combo)
+  const maoCombo = useMemo(() => (testeCombo ? maoDoTeste(testeCombo.combo) : []), [testeCombo]);
+  const comboEu = !!testeCombo && testeCombo.quem !== "ia";
+  const comboIA = !!testeCombo && testeCombo.quem !== "eu";
+  const sugerido = useMemo(() => {
+    if (!testeCombo) return undefined;
+    const doCombo = new Set(testeCombo.combo.passos.flatMap((p) => (p.t === "compra" || p.t === "texto" ? p.c : [p.c])));
+    const comMao = opcoes.filter((o) => o.valor !== "combo" && !faltando(o.deck.main, maoCombo).length);
+    const nota = (o: DeckOpcao) => new Set([...o.deck.main, ...o.deck.extra].filter((c) => doCombo.has(c))).size;
+    return comMao.sort((a, b) => nota(b) - nota(a))[0] ?? opcoes[0];
+  }, [opcoes, testeCombo, maoCombo]);
 
   const salvo = useMemo(lerConfig, []);
   const [cfg, setCfg] = useState<Config>(() => ({
-    meu: salvo.meu ?? "",
-    ia: salvo.ia ?? "",
+    meu: comboEu ? "" : (salvo.meu ?? ""),
+    ia: comboIA ? "" : (salvo.ia ?? ""),
     nivel: salvo.nivel ?? "normal",
     primeiro: salvo.primeiro ?? "sorteio",
     todasJanelas: salvo.todasJanelas,
     modo: salvo.modo ?? "ia",
   }));
-  const meu = opcoes.find((o) => o.valor === cfg.meu) ?? opcoes[0];
-  const doIA = opcoes.find((o) => o.valor === cfg.ia) ?? opcoes.find((o) => o.valor.startsWith("meta:")) ?? opcoes[0];
+  const meu = opcoes.find((o) => o.valor === cfg.meu) ?? (comboEu ? sugerido : undefined) ?? opcoes.find((o) => o.valor !== "combo") ?? opcoes[0];
+  const doIA = opcoes.find((o) => o.valor === cfg.ia) ?? (comboIA ? sugerido : undefined) ?? opcoes.find((o) => o.valor.startsWith("meta:")) ?? opcoes[0];
 
   const [etapa, setEtapaEstado] = useState<"config" | "carregando" | "sala" | "duelo">("config");
   const etapaRef = useRef(etapa);
@@ -368,18 +418,26 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     pararSala.current?.();
     setSala(null);
     try {
+      // teste de combo: o deck de quem tem o combo precisa ter as cartas da mão dele
+      const nome = (id: number) => (byId.get(id) ? displayName(byId.get(id)!) : `#${id}`);
+      for (const [tem, o] of [[comboEu, meu], [comboIA, doIA]] as const) {
+        const falta = tem ? faltando(o.deck.main, maoCombo) : [];
+        if (falta.length) throw new Error(t("O deck {0} não tem estas cartas da mão do combo: {1}", [o.nome, falta.map(nome).join(", ")]));
+      }
       const c = await prepararMotor(meu.deck);
-      const humano = cfg.primeiro === "eu" ? 0 : cfg.primeiro === "ia" ? 1 : (aleatorio(2) as 0 | 1);
+      // no teste de combo, quem tem o combo começa (com os dois, a IA)
+      const humano = testeCombo ? (testeCombo.quem === "eu" ? 0 : 1) : cfg.primeiro === "eu" ? 0 : cfg.primeiro === "ia" ? 1 : (aleatorio(2) as 0 | 1);
       // o motor sempre dá o primeiro turno ao jogador 0
       const par: [DeckSim, DeckSim] = humano === 0 ? [meu.deck, doIA.deck] : [doIA.deck, meu.deck];
       const semente = Array.from(crypto.getRandomValues(new Uint32Array(4)), String) as [string, string, string, string];
+      const partida: Partida = { decks: par, semente, ...(testeCombo ? { maos: [maoCombo, testeCombo.quem === "ambos" ? maoCombo : []] as [number[], number[]] } : {}) };
       setEu(humano);
       limparDuelo();
       setPensando(true);
       setEtapa("duelo");
-      partidaRef.current = { decks: par, semente };
+      partidaRef.current = partida;
       rotulosRef.current = { eu: conta?.usuario || t("Você"), oponente: t("IA"), meuDeck: meu.nome, deckOponente: doIA.nome };
-      c.iniciar({ partida: { decks: par, semente }, humano, nivel: cfg.nivel, linhas: doIA.linhas, janelas: cfg.todasJanelas ? "todas" : "acao" });
+      c.iniciar({ partida, humano, nivel: cfg.nivel, linhas: doIA.linhas, roteiro: comboIA ? testeCombo!.combo.passos : undefined, janelas: cfg.todasJanelas ? "todas" : "acao" });
     } catch (e) {
       falhou(e);
     }
@@ -933,7 +991,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     else setZonas(novas);
   };
 
-  const amigo = cfg.modo === "amigo" || !!convite;
+  // o teste de combo é sempre contra a IA
+  const amigo = !testeCombo && (cfg.modo === "amigo" || !!convite);
   const trocarModo = (modo: Config["modo"]) => {
     const novo = { ...cfg, modo };
     setCfg(novo);
@@ -993,7 +1052,18 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
           <p className="tags-note">
             {t("Duelo com as regras do jogo contra a IA. O motor é o do EDOPro (Project Ignis): custos, condições, cadeias e “uma vez por turno” valem como no jogo.")}
           </p>
-          {!convite && (
+          {testeCombo && (
+            <div className="sim-teste-combo" role="note">
+              <strong>{ROTULO_TESTE[testeCombo.quem]}</strong>
+              <span>
+                {t("Mão do combo:")} {maoCombo.map((id) => (byId.get(id) ? displayName(byId.get(id)!) : `#${id}`)).join(", ")}
+                {maoCombo.length < 5 ? ` ${t("+ {0} carta(s) do Deck ao acaso", [5 - maoCombo.length])}` : ""}
+              </span>
+              <small className="tags-note">
+                {testeCombo.quem === "eu" ? t("Você começa o duelo.") : t("A IA começa o duelo e tenta repetir os passos do combo.")}</small>
+            </div>
+          )}
+          {!convite && !testeCombo && (
             <div className="sim-niveis" role="group" aria-label={t("Modo")}>
               <button className={`ghost-btn ${!amigo ? "sim-ativo" : ""}`} onClick={() => trocarModo("ia")} aria-pressed={!amigo}>
                 {t("Contra a IA")}
@@ -1110,7 +1180,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
                 </div>
                 <small className="tags-note">{NIVEIS.find((n) => n.id === cfg.nivel)?.hint}</small>
               </fieldset>
-              <fieldset className="sim-campo">
+              {!testeCombo && <fieldset className="sim-campo">
                 <legend className="field-label">{t("Quem começa")}</legend>
                 <div className="sim-niveis">
                   {QUEM_COMECA.map(({ id, label }) => (
@@ -1119,7 +1189,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
                     </button>
                   ))}
                 </div>
-              </fieldset>
+              </fieldset>}
               <button className="ghost-btn sim-duelar" onClick={iniciar} disabled={etapa === "carregando"}>
                 {etapa === "carregando" ? progresso || t("Preparando…") : t("Duelar")}
               </button>

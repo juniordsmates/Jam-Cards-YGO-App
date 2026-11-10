@@ -68,7 +68,7 @@ const T = {
     adicionando: "adicionando",
     campoFinal: "Campo final",
     podeResponder: "Pode ser respondido por",
-    testar: "▶ Teste de Jogo",
+    testar: "▶ Testar",
     mais: (n: number) => `Mostrar mais ${n}`,
     comunidade: "Combos da Comunidade",
     semComunidade: "Nenhum Combo da Comunidade deste deck ainda. Crie um no Teste de Jogo (Criar combo) e marque Compartilhar.",
@@ -140,7 +140,7 @@ const T = {
     adicionando: "adding",
     campoFinal: "End board",
     podeResponder: "Can be answered by",
-    testar: "▶ Test Hand",
+    testar: "▶ Test",
     mais: (n: number) => `Show ${n} more`,
     comunidade: "Community Combos",
     semComunidade: "No Community Combos for this deck yet. Create one in the Test Hand screen (Create combo) and tick Share.",
@@ -212,7 +212,7 @@ const T = {
     adicionando: "añadiendo",
     campoFinal: "Campo final",
     podeResponder: "Puede ser respondido por",
-    testar: "▶ Prueba de Juego",
+    testar: "▶ Probar",
     mais: (n: number) => `Mostrar ${n} más`,
     comunidade: "Combos de la Comunidad",
     semComunidade: "Aún no hay Combos de la Comunidad de este deck. Crea uno en la Prueba de Juego (Crear combo) y marca Compartir.",
@@ -355,7 +355,7 @@ export default function GuiaDeck({
   const testar = (l: LinhaCombo) => {
     if (!onTestar) return;
     const linha = semCartaDoCalculo(l);
-    onTestar(deckDoCombo(linha, byId, "TCG"), { mao: linha.mao, passos: linha.passos, qualquer: linha.qualquer });
+    onTestar(deckDoCombo(linha, byId, "TCG"), { mao: linha.mao, passos: linha.passos, campo: linha.campo, qualquer: linha.qualquer });
   };
 
   // ---------------------------------------------------------------- partes

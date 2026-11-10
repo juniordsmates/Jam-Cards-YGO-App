@@ -22,6 +22,17 @@
   width: 100%;
 }
 
+/* teste de combo vindo do "Testar" de um combo */
+.sim-teste-combo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--magenta);
+  border-radius: var(--radius);
+}
+
 .sim-niveis {
   display: flex;
   flex-wrap: wrap;

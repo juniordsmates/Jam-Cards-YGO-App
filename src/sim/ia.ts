@@ -4,9 +4,10 @@
 // Se o jogador responder diferente do que o plano previa, ela planeja de novo. Batalha, respostas
 // no turno do oponente e escolhas fora do plano seguem regras simples.
 import { OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
-import type { LinhaCombo } from "../db/motor";
+import type { LinhaCombo, Passo } from "../db/motor";
 import { reproduzir, TIPO, TIPOS_EXTRA, type Jogada, type Motor } from "./regras";
 import { opcoesDe, type Opcao, type RefCarta } from "./opcoes";
+import { Roteiro } from "./roteiro";
 import type { Sessao } from "./sessao";
 
 export type NivelIA = "passiva" | "facil" | "normal" | "dificil";
@@ -80,11 +81,23 @@ export class IA {
   /** alvo escolhido para o ataque em andamento */
   private alvo: RefCarta | null = null;
 
+  /** teste de combo: passos que a IA tenta repetir no primeiro turno */
+  private roteiro: Roteiro | null;
+
   constructor(
     readonly nivel: NivelIA,
     readonly eu: 0 | 1,
     readonly linhas: LinhaIA[],
-  ) {}
+    motor: Motor,
+    roteiro?: Passo[],
+  ) {
+    this.roteiro = roteiro?.length ? new Roteiro(roteiro, eu, (a, b) => this.canonico(motor, a) === this.canonico(motor, b), motor.tipo) : null;
+  }
+
+  /** Mensagens do motor (o roteiro acompanha o que a IA já fez do combo) */
+  ler(log: OcgMessage[]) {
+    this.roteiro?.ler(log);
+  }
 
   /** A última resposta da IA não valia (RETRY): a próxima tentativa usa outra opção */
   recusada() {
@@ -102,7 +115,7 @@ export class IA {
 
   /** A decisão vai fazer a IA planejar (a tela mostra "pensando") */
   vaiPensar(d: OcgMessage, s: Sessao) {
-    return this.nivel !== "passiva" && TEMPO[this.nivel] > 0 && !this.plano && d.type === T.SELECT_IDLECMD && s.faseAtual === OcgPhase.MAIN1;
+    return this.nivel !== "passiva" && TEMPO[this.nivel] > 0 && !this.plano && !this.roteiro?.ativo && d.type === T.SELECT_IDLECMD && s.faseAtual === OcgPhase.MAIN1;
   }
 
   decidir(d: OcgMessage, s: Sessao, repetida = false): OcgResponse {
@@ -122,6 +135,9 @@ export class IA {
       }
       this.plano = null;
     }
+    // teste de combo: o próximo passo do combo vem antes do planejamento (vale em qualquer nível)
+    const doRoteiro = "player" in d && d.player === this.eu ? this.roteiro?.decidir(d, ops) : undefined;
+    if (doRoteiro) return doRoteiro;
     if (this.nivel === "passiva") return passivo(d, motor) ?? fallback;
 
     switch (d.type) {

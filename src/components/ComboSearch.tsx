@@ -75,7 +75,7 @@ export function ComboCard({
   highlight,
   format,
   onTestar,
-  rotuloTestar = t("▶ Teste de Jogo"),
+  rotuloTestar = t("▶ Testar"),
 }: {
   combo: ComboBase;
   byId: Map<number, Card>;
@@ -83,7 +83,7 @@ export function ComboCard({
   highlight: Set<number>;
   format?: GameFormat;
   onTestar?: (combo: ComboBase) => void;
-  /** texto do botão de onTestar (padrão "▶ Teste de Jogo") */
+  /** texto do botão de onTestar (padrão "▶ Testar") */
   rotuloTestar?: string;
 }) {
   const conta = useConta();

@@ -86,6 +86,8 @@ export interface Partida {
   decks: [DeckSim, DeckSim];
   /** semente do embaralhamento: a mesma semente com as mesmas respostas repete o duelo inteiro */
   semente: [string, string, string, string];
+  /** mão inicial fixa de cada jogador (teste de combo): essas cartas vão para o topo do Deck depois de embaralhar */
+  maos?: [number[], number[]];
 }
 
 export interface Motor {
@@ -150,7 +152,7 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     if (!constantes.has(chave)) constantes.set(chave, m[1]);
   }
 
-  function novoDuelo({ decks, semente }: Partida): OcgDuelHandle {
+  function novoDuelo({ decks, semente, maos }: Partida): OcgDuelHandle {
     // o motor não embaralha o Deck no início (no EDOPro quem embaralha é o servidor): embaralha aqui,
     // com a semente do duelo, para a mesma partida repetir a mesma ordem (a IA depende disso)
     const time = { startingLP: 8000, startingDrawCount: 5, drawCountPerTurn: 1 };
@@ -168,7 +170,8 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     decks.forEach((deck, team) => {
       const add = (code: number, location: L) =>
         core.duelNewCard(duel, { team: team as 0 | 1, duelist: 0, code, controller: team as 0 | 1, location, sequence: 0, position: OcgPosition.FACEDOWN_DEFENSE });
-      embaralhar(deck.main.filter((c) => pacote.cartas[c]), `${semente.join(":")}:${team}`).forEach((c) => add(c, L.DECK));
+      const main = embaralhar(deck.main.filter((c) => pacote.cartas[c]), `${semente.join(":")}:${team}`);
+      comMaoNoTopo(main, maos?.[team] ?? []).forEach((c) => add(c, L.DECK));
       deck.extra.filter((c) => pacote.cartas[c]).forEach((c) => add(c, L.EXTRA));
     });
     core.startDuel(duel);
@@ -228,6 +231,22 @@ export function embaralhar<T>(lista: T[], semente: string): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/**
+ * Deck (já embaralhado) com as cartas da mão no fim da lista: cada carta adicionada ao Deck vai para
+ * o topo, então as últimas são as compradas na mão inicial. Carta da mão que não está no Deck fica de fora.
+ */
+export function comMaoNoTopo(deck: number[], mao: number[]): number[] {
+  const resto = [...deck];
+  const topo: number[] = [];
+  for (const c of mao) {
+    const i = resto.indexOf(c);
+    if (i < 0) continue;
+    resto.splice(i, 1);
+    topo.push(c);
+  }
+  return [...resto, ...topo];
 }
 
 /** Ficha criada pelo jogador (botão "Criar Token"): um monstro Ficha Normal com os dados escolhidos */

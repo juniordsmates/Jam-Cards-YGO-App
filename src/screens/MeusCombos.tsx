@@ -51,6 +51,7 @@ export default function MeusCombos({ onBack, onTestar }: { onBack: () => void; o
     onTestar(deckDoCombo({ mao: combo.iniciais, passos: combo.dados.passos, campo: combo.dados.campo }, byId, formato), {
       mao: combo.iniciais,
       passos: combo.dados.passos,
+      campo: combo.dados.campo,
       qualquer: combo.dados.qualquer,
     });
 
