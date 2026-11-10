@@ -519,3 +519,71 @@
   font-size: 1.6rem;
   letter-spacing: 0.08em;
 }
+
+/* revisão da partida e "?" */
+.sim-revisao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-revisao p {
+  margin: 0;
+}
+
+.sim-revisao input[type="range"] {
+  width: 100%;
+}
+
+.sim-pergunta {
+  max-width: 560px;
+}
+
+.sim-pergunta select {
+  width: 100%;
+}
+
+.sim-resposta {
+  padding: 8px 10px;
+  border-left: 4px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.sim-resposta p {
+  margin: 0 0 6px;
+}
+
+.sim-resposta ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.sim-resposta li + li {
+  margin-top: 4px;
+}
+
+.sim-pergunta-btn {
+  font-weight: 700;
+}
+
+.sim-recentes h4 {
+  margin: 8px 0 4px;
+}
+
+.sim-recentes ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sim-recentes li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}

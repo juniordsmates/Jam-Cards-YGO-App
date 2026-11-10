@@ -3,7 +3,7 @@ import type { OcgResponse } from "ocgcore-wasm";
 import { idbGet, idbSetMany } from "../db/idb";
 import { supabase } from "../db/supabase";
 import { t } from "../i18n";
-import type { Aprendizado, ConfigSessao, Quadro } from "./sessao";
+import type { Aprendizado, ConfigSessao, FatosCarta, Momento, Quadro } from "./sessao";
 import type { DoWorker, ParaWorker } from "./worker";
 
 // O pacote (dados das cartas e scripts do Project Ignis, ~6 MB) fica no bucket privado "camada",
@@ -59,6 +59,9 @@ export async function obterPacote(aoProgresso?: (msg: string) => void): Promise<
 export class ClienteSim {
   private worker: Worker;
   private esperaAprendizado: ((a: Aprendizado | null) => void) | null = null;
+  /** pedidos da revisão e do "?", pelo número */
+  private pedidos = new Map<number, { ok: (d: unknown) => void; erro: (e: Error) => void }>();
+  private proximoPedido = 1;
   private esperaPronto: { ok: (r: { nomes: Record<string, string>; versao: string }) => void; erro: (e: Error) => void } | null = null;
 
   constructor(
@@ -71,6 +74,11 @@ export class ClienteSim {
       if (m.tipo === "pronto") {
         this.esperaPronto?.ok({ nomes: m.nomes, versao: m.versao });
         this.esperaPronto = null;
+      } else if (m.tipo === "resultado" || (m.tipo === "erro" && m.id)) {
+        const p = this.pedidos.get(m.id!);
+        this.pedidos.delete(m.id!);
+        if (m.tipo === "resultado") p?.ok(m.dados);
+        else p?.erro(new Error(m.erro));
       } else if (m.tipo === "quadro") this.aoQuadro(m.quadro);
       else if (m.tipo === "aprendizado") {
         this.esperaAprendizado?.(m.dados);
@@ -109,6 +117,29 @@ export class ClienteSim {
 
   responder(resp: OcgResponse) {
     this.enviar({ tipo: "responder", resp });
+  }
+
+  private pedir<T>(m: Record<string, unknown>): Promise<T> {
+    const id = this.proximoPedido++;
+    return new Promise<T>((ok, erro) => {
+      this.pedidos.set(id, { ok: ok as (d: unknown) => void, erro });
+      this.enviar({ ...m, id } as ParaWorker);
+    });
+  }
+
+  /** Revisão: quem decide em cada posição do histórico */
+  linhaDoTempo(cfg: ConfigSessao) {
+    return this.pedir<Momento[]>({ tipo: "linha-do-tempo", cfg });
+  }
+
+  /** Revisão: o duelo refeito até a posição k */
+  momento(cfg: ConfigSessao, k: number) {
+    return this.pedir<{ quadro: Quadro; momento: Momento }>({ tipo: "momento", cfg, k });
+  }
+
+  /** "?": fatos do motor sobre uma carta (no duelo em andamento, sem cfg, ou na posição k) */
+  fatos(code: number, jogador: number, cfg?: ConfigSessao, k?: number) {
+    return this.pedir<FatosCarta>({ tipo: "fatos", code, jogador, cfg, k });
   }
 
   /** O que o duelo ensinou até agora */

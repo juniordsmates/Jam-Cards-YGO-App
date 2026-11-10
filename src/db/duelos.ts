@@ -76,6 +76,13 @@ export async function obterDuelo(id: string): Promise<Duelo | null> {
   return (data as Duelo | null) ?? null;
 }
 
+/** Partidas 1x1 recentes de que a conta participou (as salas valem por 4 horas) */
+export async function meusDuelos(contaId: string): Promise<Duelo[]> {
+  const { data, error } = await cliente().from("duelos").select(COLUNAS).or(`criador.eq.${contaId},convidado.eq.${contaId}`).neq("estado", "aguardando").order("criado_em", { ascending: false }).limit(10);
+  if (error) throw falha(error);
+  return (data ?? []) as Duelo[];
+}
+
 /** Sala aguardando oponente pelo código de 6 dígitos */
 export async function obterDueloPorCodigo(codigo: string): Promise<Duelo | null> {
   const { data, error } = await cliente().from("duelos").select(COLUNAS).eq("codigo", codigo).eq("estado", "aguardando").maybeSingle();

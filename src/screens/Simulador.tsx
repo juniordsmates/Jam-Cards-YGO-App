@@ -10,15 +10,16 @@ import { displayName, type Card } from "../db/types";
 import { aleatorio } from "../db/testeJogo";
 import { useConta } from "../db/conta";
 import { openConta } from "../components/Conta";
-import { assinarDuelo, codigoDaSala, obterDueloPorCodigo, partidasAtivas, criarDuelo, decksDoDuelo, encerrarDuelo, entrarDuelo, enviarResposta, idDaSala, meuJogador, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
+import { assinarDuelo, meusDuelos, codigoDaSala, obterDueloPorCodigo, partidasAtivas, criarDuelo, decksDoDuelo, encerrarDuelo, entrarDuelo, enviarResposta, idDaSala, meuJogador, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
 import { copiarLink, linkPara, type Rota } from "../rotas";
 import { APP_VERSION } from "../version";
-import { t } from "../i18n";
+import { LOCALE, t } from "../i18n";
 import { ClienteSim, obterPacote } from "../sim/cliente";
 import { zonasLivres } from "../sim/opcoes";
 import type { LinhaIA, NivelIA } from "../sim/ia";
-import type { Aprendizado, CartaSim, EventoSim, PedidoSim, Quadro } from "../sim/sessao";
-import { guardarAprendizado } from "../sim/aprendizado";
+import type { Aprendizado, CartaSim, ConfigSessao, EventoSim, Momento, PedidoSim, Quadro } from "../sim/sessao";
+import { guardarAprendizado, listarAprendizado, type DueloGuardado } from "../sim/aprendizado";
+import { explicarPorque, type Explicacao } from "../sim/porque";
 import type { DeckSim } from "../sim/regras";
 import "./teste-jogo.css";
 import "./simulador.css";
@@ -258,6 +259,16 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   const [confirmarDesistir, setConfirmarDesistir] = useState(false);
   // o que o duelo ensinou (fica só neste aparelho nesta etapa)
   const [aprendido, setAprendido] = useState<Aprendizado | null>(null);
+  // partida em andamento (decks e semente), para o "?" listar as cartas de cada um
+  const partidaRef = useRef<ConfigSessao["partida"] | null>(null);
+  // revisão: a partida refeita, os momentos (um por resposta) e o momento mostrado
+  const [revisao, setRevisao] = useState<{ cfg: ConfigSessao; momentos: Momento[]; k: number; oponente: string } | null>(null);
+  const revisaoRef = useRef(revisao);
+  revisaoRef.current = revisao;
+  // "?": pergunta aberta (de quem é a carta, qual carta) e a resposta
+  const [pergunta, setPergunta] = useState<{ jogador: number; code: number | null; resposta: Explicacao | null; carregando: boolean } | null>(null);
+  // partidas para revisar: guardadas neste aparelho e 1x1 do servidor
+  const [recentes, setRecentes] = useState<{ locais: DueloGuardado[]; servidor: Duelo[] }>({ locais: [], servidor: [] });
   const pararSala = useRef<(() => void) | null>(null);
   // maior posição do histórico já vista no banco (para buscar só as jogadas novas)
   const ultimaN = useRef(-1);
@@ -335,6 +346,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       limparDuelo();
       setPensando(true);
       setEtapa("duelo");
+      partidaRef.current = { decks: par, semente };
       c.iniciar({ partida: { decks: par, semente }, humano, nivel: cfg.nivel, linhas: doIA.linhas, janelas: cfg.todasJanelas ? "todas" : "acao" });
     } catch (e) {
       falhou(e);
@@ -411,6 +423,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       limparDuelo();
       setPensando(true);
       setEtapa("duelo");
+      partidaRef.current = { decks: decksDoDuelo(d), semente: d.semente };
       c.iniciar({ partida: { decks: decksDoDuelo(d), semente: d.semente }, humano, nivel: "normal", remoto: true, historico: historico.map((h) => h.resp), janelas: cfg.todasJanelas ? "todas" : "acao" });
       // jogadas que chegaram enquanto o duelo era montado (as repetidas o motor ignora)
       for (const r of remotasAntes.current ?? []) c.remota(r.n, r.resp);
@@ -520,6 +533,96 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     void guardarAprendizado(a, versaoMotor.current, APP_VERSION).catch(() => {});
   }
 
+  // ---------- revisão e "?" ----------
+
+  /** Abre a revisão de uma partida (refeita no motor a partir das respostas) */
+  async function abrirRevisao(cfg: ConfigSessao, oponente: string) {
+    setErro(null);
+    setEtapa("carregando");
+    try {
+      const c = cliente.current && versaoMotor.current ? cliente.current : await prepararMotor();
+      const momentos = await c.linhaDoTempo(cfg);
+      setEu(cfg.humano);
+      partidaRef.current = cfg.partida;
+      setPergunta(null);
+      setRevisao({ cfg, momentos, k: momentos.length - 1, oponente });
+      await irPara(momentos.length - 1, cfg);
+      setEtapa("duelo");
+    } catch (e) {
+      falhou(e);
+    }
+  }
+
+  /** Mostra o momento k da revisão */
+  async function irPara(k: number, cfg = revisaoRef.current?.cfg) {
+    if (!cfg || !cliente.current) return;
+    const { quadro: q } = await cliente.current.momento(cfg, k);
+    setRevisao((r) => (r ? { ...r, k } : r));
+    setQuadro(q);
+    quadroRef.current = q;
+    setRegistro(q.eventos.slice(-400));
+    setAtivacoes({ itens: [], aberta: false });
+    setPensando(false);
+  }
+
+  function sairRevisao() {
+    setRevisao(null);
+    setPergunta(null);
+    setQuadro(null);
+    setEtapa("config");
+  }
+
+  /** "?": pergunta ao motor por que o jogador não pôde usar a carta (no duelo ou no momento da revisão) */
+  async function perguntar(jogador: number, code: number) {
+    const c = cliente.current;
+    if (!c) return;
+    setPergunta({ jogador, code, resposta: null, carregando: true });
+    try {
+      const r = revisaoRef.current;
+      let k = r?.k;
+      if (r) {
+        // a Main Phase do jogador no mesmo turno (antes do momento, ou logo depois) é quando ele poderia agir
+        const turno = r.momentos[r.k]?.turno;
+        const main = (m: Momento) => m.turno === turno && m.decisao?.jogador === jogador && m.decisao.tipo === T.SELECT_IDLECMD;
+        let j = r.k;
+        while (j >= 0 && !main(r.momentos[j])) j--;
+        if (j < 0) {
+          j = r.k;
+          while (j < r.momentos.length && !main(r.momentos[j])) j++;
+        }
+        if (j >= 0 && j < r.momentos.length) k = j;
+      }
+      const fatos = await c.fatos(code, jogador, r?.cfg, k);
+      const nomeJ = jogador === euRef.current ? t("Você") : (r ? r.oponente : salaRef.current ? (nomeOp ?? t("Oponente")) : t("IA"));
+      const nomeO = jogador === euRef.current ? (r ? r.oponente : salaRef.current ? (nomeOp ?? t("Oponente")) : t("IA")) : t("você");
+      const resposta = explicarPorque(fatos, { carta: byId.get(code), code, nomeDe, cartaDe: (x) => byId.get(x), jogador: nomeJ, outro: nomeO, numeroJogador: jogador });
+      if (r && k !== r.k) resposta.itens.unshift(t("Analisado no momento em que {0} tinha a ação neste turno (Main Phase).", [nomeJ]));
+      setPergunta({ jogador, code, resposta, carregando: false });
+    } catch (e) {
+      setPergunta({ jogador, code, resposta: { conclusao: e instanceof Error ? e.message : String(e), itens: [] }, carregando: false });
+    }
+  }
+
+  // partidas para revisar (na tela de configuração)
+  useEffect(() => {
+    if (etapa !== "config") return;
+    void listarAprendizado().then((locais) => setRecentes((r) => ({ ...r, locais: locais.slice(-5).reverse() })));
+    if (conta) void meusDuelos(conta.id).then((servidor) => setRecentes((r) => ({ ...r, servidor }))).catch(() => {});
+  }, [etapa, conta?.id]);
+
+  /** Revisa uma partida 1x1 do servidor */
+  async function revisarDoServidor(d: Duelo) {
+    if (!conta) return;
+    try {
+      const historico = (await respostasDoDuelo(d.id)).map((r) => r.resp);
+      const outro = d.criador === conta.id ? d.convidado : d.criador;
+      const nomes = outro ? await nomesDeUsuarios([outro]) : {};
+      await abrirRevisao({ partida: { decks: decksDoDuelo(d), semente: d.semente }, humano: meuJogador(d, conta.id), nivel: "normal", historico }, (outro && nomes[outro]) || t("Oponente"));
+    } catch (e) {
+      falhou(e);
+    }
+  }
+
   /** Desiste: na partida 1x1, o oponente vence; contra a IA, o duelo só termina */
   function desistir() {
     void cliente.current?.aprendizado().then((a) => a && registrarAprendizado(a));
@@ -584,10 +687,14 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (menu || lista) {
+      if (menu || lista || pergunta) {
         e.preventDefault();
         setMenu(null);
         setLista(null);
+        setPergunta(null);
+      } else if (revisaoRef.current) {
+        e.preventDefault();
+        sairRevisao();
       } else if (etapa === "duelo" && !quadro?.fim && !sair) {
         e.preventDefault();
         setSair(true);
@@ -595,7 +702,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [menu, lista, etapa, quadro?.fim, sair]);
+  }, [menu, lista, pergunta, etapa, quadro?.fim, sair]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pedido = quadro?.pedido ?? null;
   const d = pedido?.msg;
@@ -888,6 +995,31 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               {erro}
             </p>
           )}
+          {(recentes.locais.length > 0 || recentes.servidor.length > 0) && !convite && (
+            <section className="sim-recentes">
+              <h4>{t("Revisar partidas")}</h4>
+              <ul>
+                {recentes.servidor.map((d) => (
+                  <li key={d.id}>
+                    <span>{t("Partida 1x1 · sala {0}", [d.codigo ?? d.id.slice(0, 8)])}</span>
+                    <button className="ghost-btn" disabled={carregando} onClick={() => void revisarDoServidor(d)}>
+                      {t("Revisar")}
+                    </button>
+                  </li>
+                ))}
+                {recentes.locais.map((d) => (
+                  <li key={d.quando}>
+                    <span>
+                      {new Date(d.quando).toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" })} · {d.remoto ? t("1x1") : t("contra a IA")}
+                    </span>
+                    <button className="ghost-btn" disabled={carregando} onClick={() => void abrirRevisao({ partida: d.partida, humano: d.humano, nivel: "normal", historico: d.historico }, d.remoto ? t("Oponente") : t("IA"))}>
+                      {t("Revisar")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <p className="tags-note sim-licenca">
             {t("Motor de regras: ocgcore e scripts das cartas do Project Ignis (EDOPro), licença AGPL-3.0. Os textos dos efeitos nas escolhas vêm em inglês, como nos scripts.")}
           </p>
@@ -969,7 +1101,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         onClick={() => livre && !marcada && escolherZona(livre)}
         data-zona={k}
       >
-        {c && carta(c, k, p === op && virada(c.pos) && !c.pub, location === L.MZONE)}
+        {c && carta(c, k, !revisao && p === op && virada(c.pos) && !c.pub, location === L.MZONE)}
       </div>
     );
   };
@@ -984,7 +1116,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     const temEscolha = cartas.some((_, i) => escolhiveis.has(chave(p, location, i)));
     const titulo = `${p === op ? t("Oponente — ") : ""}${tipo === "deck" ? t("Deck") : tipo === "extra" ? t("Extra Deck") : tipo === "cemiterio" ? t("Cemitério") : t("Banidas")}`;
     // Extra Deck do oponente: só as cartas com a face para cima (Pêndulos) ficam visíveis
-    const oculta = (c: CartaSim) => p === op && !c.pub && ((tipo === "extra" && !(c.pos & 1)) || (tipo === "banido" && virada(c.pos)));
+    const oculta = (c: CartaSim) => !revisao && p === op && !c.pub && ((tipo === "extra" && !(c.pos & 1)) || (tipo === "banido" && virada(c.pos)));
     const topo = tipo === "extra" ? null : cartas[cartas.length - 1];
     return (
       <div
@@ -1013,6 +1145,44 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     return zonaCampo(eu, L.MZONE, 5 + lado, "tj-em", minha);
   };
 
+  // painel da revisão: momento, navegação lance a lance e por turno, "?" e saída
+  const painelRevisao = (r: NonNullable<typeof revisao>) => {
+    const ultimo = r.momentos.length - 1;
+    const m = r.momentos[r.k];
+    const turnoDe = (turno: number) => r.momentos.findIndex((x) => x.turno === turno);
+    const quem = (j: number) => (j === eu ? t("Você") : r.oponente);
+    const ir = (k: number) => void irPara(Math.max(0, Math.min(ultimo, k)));
+    return (
+      <div className="sim-revisao">
+        <p>
+          <strong>{t("Momento {0} de {1}", [r.k, ultimo])}</strong>
+          <br />
+          <small>
+            {t("Turno {0}", [m?.turno ?? 0])} · {siglaFase(m?.fase ?? 0)} · {m?.decisao ? t("decisão de {0}", [quem(m.decisao.jogador)]) : t("fim do duelo")}
+          </small>
+        </p>
+        <input type="range" min={0} max={ultimo} value={r.k} onChange={(e) => ir(Number(e.target.value))} aria-label={t("Momento da partida")} />
+        <div className="sim-niveis">
+          <button className="ghost-btn" onClick={() => ir(0)} title={t("Início")}>⏮</button>
+          <button className="ghost-btn" onClick={() => ir(turnoDe((m?.turno ?? 1) - 1))} title={t("Turno anterior")}>⏪</button>
+          <button className="ghost-btn" onClick={() => ir(r.k - 1)} title={t("Lance anterior")}>◀</button>
+          <button className="ghost-btn" onClick={() => ir(r.k + 1)} title={t("Próximo lance")}>▶</button>
+          <button className="ghost-btn" onClick={() => { const i = turnoDe((m?.turno ?? 0) + 1); ir(i < 0 ? ultimo : i); }} title={t("Próximo turno")}>⏩</button>
+          <button className="ghost-btn" onClick={() => ir(ultimo)} title={t("Fim")}>⏭</button>
+        </div>
+        <small className="tags-note">{t("Na revisão, as cartas escondidas dos dois lados ficam visíveis.")}</small>
+        <div className="sim-niveis">
+          <button className="ghost-btn sim-pergunta-btn" onClick={() => setPergunta({ jogador: op, code: null, resposta: null, carregando: false })}>
+            ? {t("Por que não pôde?")}
+          </button>
+          <button className="ghost-btn" onClick={sairRevisao}>
+            {t("Sair da revisão")}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const preCard = preview !== null ? byId.get(preview) : undefined;
   const vencedorFim = quadro.fim?.vencedor ?? desistencia?.vencedor;
   const fimTexto =
@@ -1022,7 +1192,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       : null;
 
   return (
-    <ScreenShell title={t("Simulador")} accent="magenta" onBack={() => (fimTexto ? onBack() : setSair(true))} plain>
+    <ScreenShell title={revisao ? t("Revisão da partida") : t("Simulador")} accent="magenta" onBack={() => (revisao ? sairRevisao() : fimTexto ? onBack() : setSair(true))} plain>
       <div className="teste-jogo sim">
         <Lateral className="tj-esq" titulo={t("Carta")}>
           {preview !== null ? (
@@ -1041,7 +1211,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
           <div className="tj-mao tj-mao-op" aria-label={t("Mão do oponente")}>
             {lado2.mao.map((c, i) => (
               <div key={i} className="tj-mao-carta">
-                {carta(c, chave(op, L.HAND, i), !c.pub)}
+                {carta(c, chave(op, L.HAND, i), !revisao && !c.pub)}
               </div>
             ))}
           </div>
@@ -1121,12 +1291,21 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               </ol>
             </div>
           )}
-          {fimTexto ? (
+          {revisao ? (
+            painelRevisao(revisao)
+          ) : fimTexto ? (
             <div className="sim-fim" role="status">
               <strong>{fimTexto}</strong>
-              <button className="ghost-btn" onClick={novaPartida}>
-                {t("Nova partida")}
-              </button>
+              <div className="sim-niveis">
+                <button className="ghost-btn" onClick={novaPartida}>
+                  {t("Nova partida")}
+                </button>
+                {aprendido && (
+                  <button className="ghost-btn" onClick={() => void abrirRevisao({ partida: aprendido.partida, humano: aprendido.humano, nivel: "normal", historico: aprendido.historico }, rotuloOp)}>
+                    {t("Revisar a partida")}
+                  </button>
+                )}
+              </div>
               {aprendido && <Aprendido a={aprendido} nomeDe={nomeDe} oponente={rotuloOp} />}
             </div>
           ) : pensando || !pedido ? (
@@ -1136,6 +1315,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
           ) : (
             <Escolha pedido={pedido} nomeDe={nomeDe} responder={responder} eu={eu} setPreview={setPreview} marcadas={marcadas} setMarcadas={setMarcadas} tocar={tocar} setFoco={setFoco} />
           )}
+          {!revisao && (
           <label className="sim-janelas" title={t("Desligado: o simulador só pergunta se você quer encadear logo depois de uma jogada da IA.")}>
             <input
               type="checkbox"
@@ -1149,10 +1329,18 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             />
             {t("Pausar em todas as janelas de resposta")}
           </label>
-          {!fimTexto && (
-            <button className="danger-btn sim-desistir" onClick={() => setConfirmarDesistir(true)}>
-              {t("Desistir")}
-            </button>
+          )}
+          {!revisao && (
+            <div className="sim-niveis">
+              <button className="ghost-btn sim-pergunta-btn" onClick={() => setPergunta({ jogador: op, code: null, resposta: null, carregando: false })} title={t("Por que uma carta não pôde ser usada?")}>
+                ? {t("Por que não pôde?")}
+              </button>
+              {!fimTexto && (
+                <button className="danger-btn sim-desistir" onClick={() => setConfirmarDesistir(true)}>
+                  {t("Desistir")}
+                </button>
+              )}
+            </div>
           )}
           {aviso && <p className="tags-note">{aviso}</p>}
           {erro && (
@@ -1219,6 +1407,58 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               </div>
               <small className="tags-note">{revelacao.every((c) => c.controller === op) ? t("Cartas do oponente") : t("Cartas mostradas")}</small>
               <button className="ghost-btn" onClick={() => setRevelacao(null)} autoFocus>
+                {t("Fechar")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {pergunta && (
+          <div className="tj-menu-fundo" onClick={() => setPergunta(null)}>
+            <div className="tj-lista sim-pergunta" role="dialog" aria-label={t("Por que não pôde?")} onClick={(e) => e.stopPropagation()}>
+              <h4>? {t("Por que não pôde?")}</h4>
+              <p className="tags-note">{revisao ? t("Pergunta sobre o momento mostrado na revisão.") : t("Pergunta sobre este momento do duelo.")}</p>
+              <label className="sim-campo">
+                <span className="field-label">{t("De quem")}</span>
+                <select value={pergunta.jogador} onChange={(e) => setPergunta({ jogador: Number(e.target.value), code: null, resposta: null, carregando: false })}>
+                  <option value={op}>{revisao ? revisao.oponente : rotuloOp}</option>
+                  <option value={eu}>{t("Você")}</option>
+                </select>
+              </label>
+              <label className="sim-campo">
+                <span className="field-label">{t("Carta")}</span>
+                <select value={pergunta.code ?? ""} onChange={(e) => setPergunta({ ...pergunta, code: Number(e.target.value) || null, resposta: null })}>
+                  <option value="">{t("Escolha a carta")}</option>
+                  {(["extra", "main"] as const).map((parte) => {
+                    const ids = [...new Set(partidaRef.current?.decks[pergunta.jogador]?.[parte] ?? [])].sort((a, b) => nomeDe(a).localeCompare(nomeDe(b)));
+                    return ids.length ? (
+                      <optgroup key={parte} label={parte === "extra" ? t("Extra Deck") : t("Deck")}>
+                        {ids.map((id) => (
+                          <option key={id} value={id}>
+                            {nomeDe(id)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null;
+                  })}
+                </select>
+              </label>
+              <button className="ghost-btn" disabled={!pergunta.code || pergunta.carregando} onClick={() => pergunta.code && void perguntar(pergunta.jogador, pergunta.code)}>
+                {pergunta.carregando ? t("Consultando o motor…") : t("Perguntar")}
+              </button>
+              {pergunta.resposta && (
+                <div className="sim-resposta" role="status">
+                  <p>
+                    <strong>{pergunta.resposta.conclusao}</strong>
+                  </p>
+                  <ul>
+                    {pergunta.resposta.itens.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <button className="ghost-btn" onClick={() => setPergunta(null)}>
                 {t("Fechar")}
               </button>
             </div>

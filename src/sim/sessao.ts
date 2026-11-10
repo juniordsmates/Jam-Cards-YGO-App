@@ -130,6 +130,38 @@ export interface Aprendizado {
   respostas: RespostaAprendida[];
 }
 
+/** Um momento da partida (antes da resposta de posição n): quem decide, em que turno e fase */
+export interface Momento {
+  n: number;
+  turno: number;
+  fase: number;
+  vez: number;
+  /** tipo da decisão (OcgMessageType) e jogador; null no fim do duelo */
+  decisao: { tipo: number; jogador: number } | null;
+}
+
+/** Fatos do motor sobre uma carta de um jogador num momento (para o "?": por que não pôde) */
+export interface FatosCarta {
+  turno: number;
+  fase: number;
+  vez: number;
+  decisao: { tipo: number; jogador: number } | null;
+  /** onde o jogador tem a carta agora */
+  locais: ("mao" | "deck" | "extra" | "cemiterio" | "banido" | "campo")[];
+  /** a decisão era do jogador na Main/Battle Phase: o que o motor oferecia com a carta */
+  oferecida: { normal: boolean; especial: boolean; ativar: boolean; baixar: boolean } | null;
+  /** monstros do jogador no campo */
+  monstros: { code: number; faceUp: boolean; tipo: number; nivel: number; extra: boolean }[];
+  /** o jogador já tem monstro numa Zona de Monstros Extra; quantas estão livres; tem monstro Link no campo */
+  emz: { minha: boolean; livres: number; temLink: boolean };
+  zonasPrincipaisLivres: number;
+  /** cartas ativadas no turno (dono) e cartas com a face para cima no campo (dono) */
+  ativadasNoTurno: { code: number; p: number }[];
+  faceParaCima: { code: number; p: number }[];
+  /** quantas vezes a carta foi invocada neste turno pelo jogador */
+  invocadaNoTurno: number;
+}
+
 export interface Quadro {
   estado: EstadoSim;
   pedido: PedidoSim | null;
@@ -192,6 +224,9 @@ export class Sessao {
   private respostas: RespostaAprendida[] = [];
   private janela: Omit<RespostaAprendida, "escolha"> & { indices: number[] } | null = null;
   private ultimoEvento: { tipo: EventoJanela["tipo"]; p: number; code?: number; fase?: number } | null = null;
+  /** ativações e invocações do turno atual (para o "?") */
+  private ativacoesTurno: { code: number; p: number }[] = [];
+  private invocacoesTurno: { code: number; p: number }[] = [];
   /** jogador e carta da última ativação (para a IA responder às do oponente) */
   ultimaAcao: { p: number; code: number; tipo: "ativa" | "invoca" | "ataque" } | null = null;
 
@@ -307,6 +342,8 @@ export class Sessao {
           // fim do turno do jogador: vira linha de combo se foi um combo
           if (this.logTurno && this.vez === humano) this.fecharTurno();
           this.logTurno = null;
+          this.ativacoesTurno = [];
+          this.invocacoesTurno = [];
           this.turno++;
           this.vez = m.player as 0 | 1;
           ev.push({ t: "turno", p: m.player, n: this.turno });
@@ -328,11 +365,13 @@ export class Sessao {
         case T.SUMMONING:
           ev.push({ t: "invoca", p: m.controller, code: m.code, como: "normal" });
           this.ultimoEvento = { tipo: "invocacao", p: m.controller, code: m.code };
+          this.invocacoesTurno.push({ code: this.canonico(m.code), p: m.controller });
           this.ultimaAcao = { p: m.controller, code: m.code, tipo: "invoca" };
           break;
         case T.SPSUMMONING:
           ev.push({ t: "invoca", p: m.controller, code: m.code, como: "especial" });
           this.ultimoEvento = { tipo: "invocacao", p: m.controller, code: m.code };
+          this.invocacoesTurno.push({ code: this.canonico(m.code), p: m.controller });
           this.ultimaAcao = { p: m.controller, code: m.code, tipo: "invoca" };
           break;
         case T.FLIPSUMMONING:
@@ -345,6 +384,7 @@ export class Sessao {
           this.cadeia[m.chain_size - 1] = m.code;
           ev.push({ t: "ativa", p: m.controller, code: m.code, texto: this.motor.texto(m.description), elo: m.chain_size, location: m.triggering_location, sequence: m.triggering_sequence });
           this.ultimoEvento = { tipo: "ativacao", p: m.controller, code: m.code };
+          this.ativacoesTurno.push({ code: this.canonico(m.code), p: m.controller });
           this.ultimaAcao = { p: m.controller, code: m.code, tipo: "ativa" };
           break;
         case T.CHAIN_SOLVING:
@@ -488,6 +528,85 @@ export class Sessao {
       minhaVez: this.vez === humano,
       evento: e ? { tipo: e.tipo, doOponente: e.p !== humano, ...(e.code ? { code: this.canonico(e.code) } : {}), ...(e.fase ? { fase: e.fase } : {}) } : null,
       cadeia,
+    };
+  }
+
+  /** Decisão em aberto (de qualquer jogador) */
+  decisaoPendente(): { tipo: number; jogador: number } | null {
+    const d = this.decisao;
+    if (!d || this.fim) return null;
+    return { tipo: d.type, jogador: "player" in d ? d.player : this.cfg.humano };
+  }
+
+  /** Momento atual: posição no histórico, turno, fase, de quem é a vez e a decisão em aberto */
+  momento(): Momento {
+    return { n: this.historico.length + this.pendentes.length, turno: this.turno, fase: this.fase, vez: this.vez, decisao: this.decisaoPendente() };
+  }
+
+  /** Aplica uma resposta do histórico (de qualquer jogador) e avança até a próxima decisão */
+  passo(resp: OcgResponse) {
+    this.pendentes.push(resp);
+    if (!this.decisao) return this.avancar();
+    this.aplicar(this.pendentes.shift()!, this.decisaoPendente()?.jogador ?? this.cfg.humano, false);
+    return this.avancar();
+  }
+
+  /** Libera o duelo no motor (revisões criam sessões temporárias) */
+  encerrar() {
+    this.motor.core.destroyDuel(this.duel);
+  }
+
+  /** Fatos do motor sobre a carta `code` do jogador agora (o "?": por que não pôde usar) */
+  fatos(code: number, jogador: number): FatosCarta {
+    const core = this.motor.core;
+    const alvo = this.canonico(code);
+    const q = (p: number, location: number) => core.duelQueryLocation(this.duel, { flags: (1 | 2) as never, controller: p as 0, location: location as L });
+    const tem = (p: number, location: number) => q(p, location).some((c) => c?.code && this.canonico(c.code as number) === alvo);
+    const locais: FatosCarta["locais"] = [];
+    if (tem(jogador, L.HAND)) locais.push("mao");
+    if (tem(jogador, L.DECK)) locais.push("deck");
+    if (tem(jogador, L.EXTRA)) locais.push("extra");
+    if (tem(jogador, L.GRAVE)) locais.push("cemiterio");
+    if (tem(jogador, L.REMOVED)) locais.push("banido");
+    if (tem(jogador, L.MZONE) || tem(jogador, L.SZONE) || tem(jogador, L.FZONE)) locais.push("campo");
+    const d = this.decisao;
+    let oferecida: FatosCarta["oferecida"] = null;
+    if (d && !this.fim && "player" in d && d.player === jogador && (d.type === T.SELECT_IDLECMD || d.type === T.SELECT_BATTLECMD)) {
+      const e = (lista: { code: number }[]) => lista.some((c) => this.canonico(c.code) === alvo);
+      oferecida =
+        d.type === T.SELECT_IDLECMD
+          ? { normal: e(d.summons) || e(d.monster_sets), especial: e(d.special_summons), ativar: e(d.activates), baixar: e(d.spell_sets) }
+          : { normal: false, especial: false, ativar: e(d.chains), baixar: false };
+    }
+    const mz = q(jogador, L.MZONE);
+    const mzOp = q(1 - jogador, L.MZONE);
+    const monstros = mz
+      .filter((c): c is NonNullable<typeof c> => !!c?.code)
+      .map((c) => {
+        const dados = this.motor.dados(c.code as number);
+        const tipo = (dados?.type as number) ?? 0;
+        return { code: this.canonico(c.code as number), faceUp: (((c.position as number) ?? 0) & 5) !== 0, tipo, nivel: dados?.level ?? 0, extra: (tipo & TIPOS_EXTRA) !== 0 };
+      });
+    // Zonas de Monstros Extra: 5 e 6 de cada lado (a esquerda de um é a direita do outro)
+    const minha = !!mz[5]?.code || !!mz[6]?.code;
+    const livres = (mz[5]?.code || mzOp[6]?.code ? 0 : 1) + (mz[6]?.code || mzOp[5]?.code ? 0 : 1);
+    const faceParaCima: FatosCarta["faceParaCima"] = [];
+    for (const p of [0, 1])
+      for (const loc of [L.MZONE, L.SZONE, L.FZONE])
+        for (const c of q(p, loc)) if (c?.code && ((c.position as number) ?? 0) & 5) faceParaCima.push({ code: this.canonico(c.code as number), p });
+    return {
+      turno: this.turno,
+      fase: this.fase,
+      vez: this.vez,
+      decisao: this.decisaoPendente(),
+      locais,
+      oferecida,
+      monstros,
+      emz: { minha, livres: minha ? 0 : livres, temLink: monstros.some((m) => m.tipo & TIPO.LINK) },
+      zonasPrincipaisLivres: [0, 1, 2, 3, 4].filter((i) => !mz[i]?.code).length,
+      ativadasNoTurno: [...this.ativacoesTurno],
+      faceParaCima,
+      invocadaNoTurno: this.invocacoesTurno.filter((x) => x.p === jogador && x.code === alvo).length,
     };
   }
 

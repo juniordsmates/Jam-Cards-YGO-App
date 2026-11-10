@@ -13,13 +13,20 @@ export type ParaWorker =
   /** partida 1x1: jogada do oponente na posição n do histórico */
   | { tipo: "remota"; n: number; resp: OcgResponse }
   /** o que o duelo ensinou até agora (para quem desiste antes do fim) */
-  | { tipo: "aprendizado" };
+  | { tipo: "aprendizado" }
+  /** revisão: momentos da partida (quem decide em cada posição do histórico) */
+  | { tipo: "linha-do-tempo"; id: number; cfg: ConfigSessao }
+  /** revisão: o duelo refeito até a posição k */
+  | { tipo: "momento"; id: number; cfg: ConfigSessao; k: number }
+  /** "?": fatos do motor sobre uma carta, no duelo em andamento (cfg ausente) ou na posição k */
+  | { tipo: "fatos"; id: number; cfg?: ConfigSessao; k?: number; code: number; jogador: number };
 
 export type DoWorker =
   | { tipo: "pronto"; versao: string; nomes: Record<string, string> }
   | { tipo: "quadro"; quadro: Quadro }
   | { tipo: "aprendizado"; dados: Aprendizado | null }
-  | { tipo: "erro"; erro: string };
+  | { tipo: "resultado"; id: number; dados: unknown }
+  | { tipo: "erro"; erro: string; id?: number };
 
 let motor: Motor | null = null;
 let sessao: Sessao | null = null;
@@ -37,9 +44,49 @@ async function lerPacote(dados: ArrayBuffer): Promise<PacoteMotor> {
   return p;
 }
 
+/** Sessão temporária com o duelo refeito até a posição k (sem IA, sem passar janelas sozinha) */
+function refazer(cfg: ConfigSessao, k?: number): Sessao {
+  if (!motor) throw new Error("motor ainda não carregado");
+  const historico = cfg.historico ?? [];
+  const s = new Sessao(motor, { ...cfg, remoto: true, janelas: "todas", historico: historico.slice(0, k ?? historico.length) });
+  s.avancar();
+  return s;
+}
+
 onmessage = async (e: MessageEvent<ParaWorker>) => {
   const m = e.data;
   try {
+    if (m.tipo === "linha-do-tempo" || m.tipo === "momento" || m.tipo === "fatos") {
+      try {
+        let dados: unknown;
+        if (m.tipo === "linha-do-tempo") {
+          // um passo por resposta: o momento antes de cada uma (e o do fim)
+          const s = refazer({ ...m.cfg, historico: [] });
+          const momentos = [s.momento()];
+          for (const r of m.cfg.historico ?? []) {
+            s.passo(r);
+            momentos.push(s.momento());
+          }
+          s.encerrar();
+          dados = momentos;
+        } else if (m.tipo === "momento") {
+          const s = refazer(m.cfg, m.k);
+          dados = { quadro: { ...s.quadro(), pedido: null }, momento: s.momento() };
+          s.encerrar();
+        } else if (m.cfg) {
+          const s = refazer(m.cfg, m.k);
+          dados = s.fatos(m.code, m.jogador);
+          s.encerrar();
+        } else {
+          if (!sessao) throw new Error("nenhum duelo em andamento");
+          dados = sessao.fatos(m.code, m.jogador);
+        }
+        enviar({ tipo: "resultado", id: m.id, dados });
+      } catch (err) {
+        enviar({ tipo: "erro", id: m.id, erro: err instanceof Error ? err.message : String(err) });
+      }
+      return;
+    }
     if (m.tipo === "pacote") {
       const pacote = await lerPacote(m.dados);
       motor = await abrirMotor(pacote, { url: wasmUrl });
