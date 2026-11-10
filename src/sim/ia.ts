@@ -5,7 +5,7 @@
 // no turno do oponente e escolhas fora do plano seguem regras simples.
 import { OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
 import type { LinhaCombo } from "../db/motor";
-import { reproduzir, TIPO, TIPOS_EXTRA, type Motor } from "./regras";
+import { reproduzir, TIPO, TIPOS_EXTRA, type Jogada, type Motor } from "./regras";
 import { opcoesDe, type Opcao, type RefCarta } from "./opcoes";
 import type { Sessao } from "./sessao";
 
@@ -26,7 +26,7 @@ const HOSTIS = new Set(["DESTROY", "REMOVE", "TOGRAVE", "RTOHAND", "TODECK", "CO
 // dicas de custo: gastar as cartas que valem menos
 const CUSTOS = new Set(["RELEASE", "DISCARD", "XMATERIAL", "SMATERIAL", "LMATERIAL", "FMATERIAL", "REMOVEXYZ", "TRIBUTE"]);
 
-const igual = (a: OcgResponse, b: OcgResponse) => JSON.stringify(a, (_, v) => (typeof v === "bigint" ? String(v) : v)) === JSON.stringify(b, (_, v) => (typeof v === "bigint" ? String(v) : v));
+const igual = (a: Jogada, b: Jogada) => JSON.stringify(a, (_, v) => (typeof v === "bigint" ? String(v) : v)) === JSON.stringify(b, (_, v) => (typeof v === "bigint" ? String(v) : v));
 
 /** tipo de resposta que cada decisão aceita (para conferir o plano) */
 const RESPOSTA_DE: Partial<Record<number, number>> = {
@@ -93,7 +93,7 @@ export class IA {
   }
 
   /** Respostas dadas no duelo: as do jogador conferem o plano (se ele fez outra coisa, o plano cai) */
-  observar(resp: OcgResponse, jogador: number) {
+  observar(resp: Jogada, jogador: number) {
     if (!this.plano || jogador === this.eu) return;
     const esperado = this.plano.resps[this.plano.i];
     if (esperado && igual(esperado, resp)) this.plano.i++;

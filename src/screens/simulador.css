@@ -535,13 +535,6 @@
   width: 100%;
 }
 
-.sim-pergunta {
-  max-width: 560px;
-}
-
-.sim-pergunta select {
-  width: 100%;
-}
 
 .sim-resposta {
   padding: 8px 10px;
@@ -586,4 +579,104 @@
   gap: 8px;
   align-items: center;
   justify-content: space-between;
+}
+
+/* PV junto da fase e do turno, no centro do campo: o de quem tem a vez em destaque */
+.sim-lp {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: rgb(255 255 255 / 0.75);
+}
+
+.sim-lp-vez {
+  color: #ffd34d;
+  text-shadow: 0 0 8px rgb(255 211 77 / 0.6);
+}
+
+/* nome do jogador à esquerda da mão: espaço fixo de 15 caracteres */
+.sim-mao-linha {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.sim-nome {
+  flex: 0 0 15ch;
+  width: 15ch;
+  align-self: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: #fff;
+}
+
+/* a mão guarda a altura de uma carta mesmo vazia */
+.sim .sim-mao-linha .tj-mao {
+  flex: 1;
+  min-height: calc(clamp(48px, 4.4vw, 92px) * 86 / 59 + 12px);
+}
+
+.sim-topo {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* perguntas e Criar Token: no alto da coluna da direita, ocupando a altura dela */
+.sim-pergunta-painel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 70vh;
+}
+
+.sim-pergunta-painel ~ * {
+  display: none !important;
+}
+
+.sim-pergunta-painel select,
+.sim-pergunta-painel input {
+  width: 100%;
+}
+
+.sim-ficha-numeros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* dado: 2 s girando, depois o resultado */
+.sim-dado {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
+  font-family: var(--font-display);
+  font-size: 3rem;
+  color: #1b1b2a;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+}
+
+.sim-dado-rolando {
+  animation: sim-dado-gira 0.4s linear infinite;
+}
+
+@keyframes sim-dado-gira {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(0.9); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-dado-rolando {
+    animation: none;
+  }
 }

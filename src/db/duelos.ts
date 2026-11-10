@@ -1,10 +1,9 @@
 // Partidas 1x1 do Simulador (supabase/migrations/20261110000000_duelos.sql). A sala guarda os decks,
 // a semente e as versões; cada resposta dada no duelo vira uma linha numerada em duelo_respostas.
 // Os dois aparelhos rodam o motor com a mesma semente e aplicam as mesmas respostas, na mesma ordem.
-import type { OcgResponse } from "ocgcore-wasm";
 import { supabase } from "./supabase";
 import { t } from "../i18n";
-import type { DeckSim } from "../sim/regras";
+import type { DeckSim, Jogada } from "../sim/regras";
 
 export interface Duelo {
   id: string;
@@ -39,8 +38,8 @@ function cliente() {
 }
 
 // as respostas do motor têm bigint (ex.: Tipos declarados), que o JSON não guarda
-const codificar = (r: OcgResponse) => JSON.parse(JSON.stringify(r, (_, v) => (typeof v === "bigint" ? { $big: String(v) } : v))) as object;
-const decodificar = (j: unknown): OcgResponse => JSON.parse(JSON.stringify(j), (_, v) => (v && typeof v === "object" && "$big" in v ? BigInt(v.$big) : v)) as OcgResponse;
+const codificar = (r: Jogada) => JSON.parse(JSON.stringify(r, (_, v) => (typeof v === "bigint" ? { $big: String(v) } : v))) as object;
+const decodificar = (j: unknown): Jogada => JSON.parse(JSON.stringify(j), (_, v) => (v && typeof v === "object" && "$big" in v ? BigInt(v.$big) : v)) as Jogada;
 
 /** Lugar de quem está jogando neste aparelho (0 ou 1) */
 export const meuJogador = (d: Duelo, contaId: string): 0 | 1 => (d.criador === contaId ? d.criador_jogador : ((1 - d.criador_jogador) as 0 | 1));
@@ -104,7 +103,7 @@ export async function encerrarDuelo(id: string, vencedor: 0 | 1 | null) {
 }
 
 /** Envia uma resposta deste aparelho (tenta de novo se a rede falhar; a repetida já gravada vale) */
-export async function enviarResposta(id: string, n: number, jogador: 0 | 1, resp: OcgResponse) {
+export async function enviarResposta(id: string, n: number, jogador: 0 | 1, resp: Jogada) {
   let erro = "";
   for (let tentativa = 0; tentativa < 4; tentativa++) {
     const { error } = await cliente().from("duelo_respostas").insert({ duelo: id, n, jogador, resposta: codificar(resp) });
@@ -116,7 +115,7 @@ export async function enviarResposta(id: string, n: number, jogador: 0 | 1, resp
 }
 
 /** Respostas do duelo depois da posição `depois`, em ordem (todas, para entrar ou voltar a um duelo) */
-export async function respostasDoDuelo(id: string, depois = -1): Promise<{ n: number; jogador: 0 | 1; resp: OcgResponse }[]> {
+export async function respostasDoDuelo(id: string, depois = -1): Promise<{ n: number; jogador: 0 | 1; resp: Jogada }[]> {
   const { data, error } = await cliente().from("duelo_respostas").select("n, jogador, resposta").eq("duelo", id).gt("n", depois).order("n");
   if (error) throw falha(error);
   return (data ?? []).map((r) => ({ n: r.n as number, jogador: r.jogador as 0 | 1, resp: decodificar(r.resposta) }));
@@ -130,7 +129,7 @@ export async function nomesDeUsuarios(ids: string[]): Promise<Record<string, str
 }
 
 /** Acompanha a sala e as respostas em tempo real; devolve a função que para de acompanhar */
-export function assinarDuelo(id: string, ao: { duelo?: (d: Duelo) => void; resposta?: (n: number, jogador: 0 | 1, resp: OcgResponse) => void }): () => void {
+export function assinarDuelo(id: string, ao: { duelo?: (d: Duelo) => void; resposta?: (n: number, jogador: 0 | 1, resp: Jogada) => void }): () => void {
   const sb = cliente();
   const canal = sb
     .channel(`duelo-${id}`)

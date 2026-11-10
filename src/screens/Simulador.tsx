@@ -20,7 +20,7 @@ import type { LinhaIA, NivelIA } from "../sim/ia";
 import type { Aprendizado, CartaSim, ConfigSessao, EventoSim, Momento, PedidoSim, Quadro } from "../sim/sessao";
 import { guardarAprendizado, listarAprendizado, type DueloGuardado } from "../sim/aprendizado";
 import { explicarPorque, type Explicacao } from "../sim/porque";
-import type { DeckSim } from "../sim/regras";
+import type { DeckSim, Jogada } from "../sim/regras";
 import "./teste-jogo.css";
 import "./simulador.css";
 
@@ -267,13 +267,17 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   revisaoRef.current = revisao;
   // "?": pergunta aberta (de quem é a carta, qual carta) e a resposta
   const [pergunta, setPergunta] = useState<{ jogador: number; code: number | null; resposta: Explicacao | null; carregando: boolean } | null>(null);
+  // "Criar Token": painel aberto e os dados da Ficha
+  const [ficha, setFicha] = useState<{ nivel: number; atributo: number; raca: number; atk: number; def: number } | null>(null);
+  // dado: valor mostrado (rolando por 2 s antes do resultado)
+  const [dado, setDado] = useState<{ valor: number; rolando: boolean } | null>(null);
   // partidas para revisar: guardadas neste aparelho e 1x1 do servidor
   const [recentes, setRecentes] = useState<{ locais: DueloGuardado[]; servidor: Duelo[] }>({ locais: [], servidor: [] });
   const pararSala = useRef<(() => void) | null>(null);
   // maior posição do histórico já vista no banco (para buscar só as jogadas novas)
   const ultimaN = useRef(-1);
   // jogadas do oponente que chegam antes de o duelo começar neste aparelho
-  const remotasAntes = useRef<{ n: number; resp: OcgResponse }[] | null>(null);
+  const remotasAntes = useRef<{ n: number; resp: Jogada }[] | null>(null);
   // envio das jogadas em ordem (o banco só aceita a próxima posição)
   const filaEnvio = useRef<Promise<void>>(Promise.resolve());
   const fimEnviado = useRef(false);
@@ -364,7 +368,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   }
 
   /** Jogada gravada no banco (as deste aparelho e as repetidas não mudam nada) */
-  function aoReceberJogada(n: number, jogador: 0 | 1, resp: OcgResponse) {
+  function aoReceberJogada(n: number, jogador: 0 | 1, resp: Jogada) {
     ultimaN.current = Math.max(ultimaN.current, n);
     if (jogador === euRef.current) return;
     if (remotasAntes.current) remotasAntes.current.push({ n, resp });
@@ -601,6 +605,30 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     } catch (e) {
       setPergunta({ jogador, code, resposta: { conclusao: e instanceof Error ? e.message : String(e), itens: [] }, carregando: false });
     }
+  }
+
+  /** Joga um dado: 2 s de animação e o resultado vai para o registro */
+  function jogarDado() {
+    if (dado?.rolando) return;
+    const sorteio = () => 1 + aleatorio(6);
+    setDado({ valor: sorteio(), rolando: true });
+    const giro = window.setInterval(() => setDado((d) => (d?.rolando ? { ...d, valor: sorteio() } : d)), 100);
+    window.setTimeout(() => {
+      window.clearInterval(giro);
+      const valor = sorteio();
+      setDado({ valor, rolando: false });
+      setRegistro((r) => [...r, { t: "dado", p: euRef.current, v: valor } as EventoSim].slice(-400));
+      window.setTimeout(() => setDado((d) => (d && !d.rolando ? null : d)), 1500);
+    }, 2000);
+  }
+
+  /** "Criar Token": Ficha com os dados escolhidos na primeira Zona de Monstros livre */
+  function criarFicha() {
+    if (!ficha) return;
+    setFicha(null);
+    setPensando(true);
+    setQuadro((q) => (q ? { ...q, pedido: null } : q));
+    cliente.current?.criarFicha({ nome: "Token", ...ficha });
   }
 
   // partidas para revisar (na tela de configuração)
@@ -1030,6 +1058,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
 
   const op = (1 - eu) as 0 | 1;
   const rotuloOp = sala ? (nomeOp ?? t("Oponente")) : t("IA");
+  const nomeOponente = revisao ? revisao.oponente : rotuloOp;
+  const meuNome = conta?.usuario || t("Você");
   const est = quadro.estado;
   const meuLado = est.lados[eu];
   const lado2 = est.lados[op];
@@ -1064,7 +1094,21 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         title={verso ? t("Carta virada para baixo") : nomeDe(c.code)}
         data-card-id={verso ? undefined : c.code}
       >
-        {verso ? <div className="tj-verso" /> : <img src={cardImage(c.code, "small")} alt={nomeDe(c.code)} draggable={false} onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />}
+        {verso ? (
+          <div className="tj-verso" />
+        ) : c.ficha ? (
+          <div className="tj-token">
+            <strong>{c.ficha.nome}</strong>
+            <span>{t("Nível {0}", [c.ficha.nivel])}</span>
+            {c.atk !== undefined && (
+              <span>
+                {c.atk} / {c.def}
+              </span>
+            )}
+          </div>
+        ) : (
+          <img src={cardImage(c.code, "small")} alt={nomeDe(c.code)} draggable={false} onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")} />
+        )}
         {c.mat && c.mat.length > 0 && (
           <span className="tj-materiais" title={t("Matérias Xyz")}>
             {c.mat.length}
@@ -1080,7 +1124,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             {elo}
           </span>
         )}
-        {monstro && !verso && c.atk !== undefined && c.pos & 5 ? (
+        {monstro && !verso && !c.ficha && c.atk !== undefined && c.pos & 5 ? (
           <span className="sim-atk">
             {c.atk}/{c.def}
           </span>
@@ -1172,9 +1216,6 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         </div>
         <small className="tags-note">{t("Na revisão, as cartas escondidas dos dois lados ficam visíveis.")}</small>
         <div className="sim-niveis">
-          <button className="ghost-btn sim-pergunta-btn" onClick={() => setPergunta({ jogador: op, code: null, resposta: null, carregando: false })}>
-            ? {t("Por que não pôde?")}
-          </button>
           <button className="ghost-btn" onClick={sairRevisao}>
             {t("Sair da revisão")}
           </button>
@@ -1182,6 +1223,108 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       </div>
     );
   };
+
+  // painel de perguntas: no alto da coluna da direita (nunca sobre o campo)
+  const painelPergunta = pergunta && (
+            <div className="sim-pergunta-painel" role="dialog" aria-label={t("Perguntas / Dúvidas sobre o duelo")}>
+              <h4>{t("Perguntas / Dúvidas sobre o duelo")}</h4>
+              <p className="tags-note">{t("Por que uma carta não pôde ser usada? Escolha de quem é a carta e qual carta.")}</p>
+              <p className="tags-note">{revisao ? t("Pergunta sobre o momento mostrado na revisão.") : t("Pergunta sobre este momento do duelo.")}</p>
+              <label className="sim-campo">
+                <span className="field-label">{t("De quem")}</span>
+                <select value={pergunta.jogador} onChange={(e) => setPergunta({ jogador: Number(e.target.value), code: null, resposta: null, carregando: false })}>
+                  <option value={op}>{revisao ? revisao.oponente : rotuloOp}</option>
+                  <option value={eu}>{t("Você")}</option>
+                </select>
+              </label>
+              <label className="sim-campo">
+                <span className="field-label">{t("Carta")}</span>
+                <select value={pergunta.code ?? ""} onChange={(e) => setPergunta({ ...pergunta, code: Number(e.target.value) || null, resposta: null })}>
+                  <option value="">{t("Escolha a carta")}</option>
+                  {(["extra", "main"] as const).map((parte) => {
+                    const ids = [...new Set(partidaRef.current?.decks[pergunta.jogador]?.[parte] ?? [])].sort((a, b) => nomeDe(a).localeCompare(nomeDe(b)));
+                    return ids.length ? (
+                      <optgroup key={parte} label={parte === "extra" ? t("Extra Deck") : t("Deck")}>
+                        {ids.map((id) => (
+                          <option key={id} value={id}>
+                            {nomeDe(id)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null;
+                  })}
+                </select>
+              </label>
+              <button className="ghost-btn" disabled={!pergunta.code || pergunta.carregando} onClick={() => pergunta.code && void perguntar(pergunta.jogador, pergunta.code)}>
+                {pergunta.carregando ? t("Consultando o motor…") : t("Perguntar")}
+              </button>
+              {pergunta.resposta && (
+                <div className="sim-resposta" role="status">
+                  <p>
+                    <strong>{pergunta.resposta.conclusao}</strong>
+                  </p>
+                  <ul>
+                    {pergunta.resposta.itens.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <button className="ghost-btn" onClick={() => setPergunta(null)}>
+                {t("Fechar")}
+              </button>
+            </div>
+  );
+
+  // "Criar Token": dados da Ficha (padrão: Token, Nível 1, TREVAS, Besta, 0/0)
+  const painelFicha = ficha && (
+    <div className="sim-pergunta-painel" role="dialog" aria-label={t("Criar Token")}>
+      <h4>{t("Criar Token")}</h4>
+      <p className="tags-note">{t("A Ficha vai para a primeira Zona de Monstros livre, em Posição de Ataque. Fichas criadas por efeitos de cartas (como Nibiru) já vêm com os dados certos.")}</p>
+      <label className="sim-campo">
+        <span className="field-label">{t("Tipo")}</span>
+        <select value={ficha.raca} onChange={(e) => setFicha({ ...ficha, raca: Number(e.target.value) })}>
+          {TIPOS_MONSTRO.map((n, i) => (
+            <option key={i} value={1 << i}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="sim-campo">
+        <span className="field-label">{t("Atributo")}</span>
+        <select value={ficha.atributo} onChange={(e) => setFicha({ ...ficha, atributo: Number(e.target.value) })}>
+          {ATRIBUTOS.map(([b, n]) => (
+            <option key={b} value={b}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="sim-ficha-numeros">
+        <label className="sim-campo">
+          <span className="field-label">{t("Nível")}</span>
+          <input type="number" min={1} max={12} value={ficha.nivel} onChange={(e) => setFicha({ ...ficha, nivel: Math.max(1, Math.min(12, Number(e.target.value) || 1)) })} />
+        </label>
+        <label className="sim-campo">
+          <span className="field-label">ATK</span>
+          <input type="number" min={0} max={9999} step={100} value={ficha.atk} onChange={(e) => setFicha({ ...ficha, atk: Math.max(0, Math.min(9999, Number(e.target.value) || 0)) })} />
+        </label>
+        <label className="sim-campo">
+          <span className="field-label">DEF</span>
+          <input type="number" min={0} max={9999} step={100} value={ficha.def} onChange={(e) => setFicha({ ...ficha, def: Math.max(0, Math.min(9999, Number(e.target.value) || 0)) })} />
+        </label>
+      </div>
+      <div className="sim-niveis">
+        <button className="ghost-btn" onClick={criarFicha}>
+          {t("Criar")}
+        </button>
+        <button className="ghost-btn" onClick={() => setFicha(null)}>
+          {t("Cancelar")}
+        </button>
+      </div>
+    </div>
+  );
 
   const preCard = preview !== null ? byId.get(preview) : undefined;
   const vencedorFim = quadro.fim?.vencedor ?? desistencia?.vencedor;
@@ -1192,7 +1335,24 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       : null;
 
   return (
-    <ScreenShell title={revisao ? t("Revisão da partida") : t("Simulador")} accent="magenta" onBack={() => (revisao ? sairRevisao() : fimTexto ? onBack() : setSair(true))} plain>
+    <ScreenShell
+      title={revisao ? t("Revisão da partida") : t("Simulador")}
+      accent="magenta"
+      onBack={() => (revisao ? sairRevisao() : fimTexto ? onBack() : setSair(true))}
+      plain
+      actions={
+        <div className="sim-topo">
+          <button className="ghost-btn sim-pergunta-btn" onClick={() => { setFicha(null); setPergunta({ jogador: op, code: null, resposta: null, carregando: false }); }} title={t("Por que uma carta não pôde ser usada?")}>
+            {t("Perguntas / Dúvidas sobre o duelo")}
+          </button>
+          {!revisao && !fimTexto && (
+            <button className="danger-btn" onClick={() => setConfirmarDesistir(true)}>
+              {t("Desistir")}
+            </button>
+          )}
+        </div>
+      }
+    >
       <div className="teste-jogo sim">
         <Lateral className="tj-esq" titulo={t("Carta")}>
           {preview !== null ? (
@@ -1208,12 +1368,17 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         </Lateral>
 
         <section className="tj-mesa tj-mesa-avancada" onClick={() => setMenu(null)}>
-          <div className="tj-mao tj-mao-op" aria-label={t("Mão do oponente")}>
-            {lado2.mao.map((c, i) => (
-              <div key={i} className="tj-mao-carta">
-                {carta(c, chave(op, L.HAND, i), !revisao && !c.pub)}
-              </div>
-            ))}
+          <div className="sim-mao-linha">
+            <span className="sim-nome" title={nomeOponente}>
+              {nomeOponente.slice(0, 15)}
+            </span>
+            <div className="tj-mao tj-mao-op" aria-label={t("Mão do oponente")}>
+              {lado2.mao.map((c, i) => (
+                <div key={i} className="tj-mao-carta">
+                  {carta(c, chave(op, L.HAND, i), !revisao && !c.pub)}
+                </div>
+              ))}
+            </div>
           </div>
           <div className="tj-campo">
             <div className="tj-l3 tj-linha-op">
@@ -1231,8 +1396,14 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               <span />
               {emz(0)}
               <span className="sim-centro">
+                <b className={`sim-lp ${!minhaVez ? "sim-lp-vez" : ""}`} title={t("Pontos de Vida de {0}", [nomeOponente])}>
+                  {lado2.lp}
+                </b>
                 <strong>{siglaFase(est.fase)}</strong>
                 <small>{t("Turno {0}", [est.turno])}</small>
+                <b className={`sim-lp ${minhaVez ? "sim-lp-vez" : ""}`} title={t("Seus Pontos de Vida")}>
+                  {meuLado.lp}
+                </b>
               </span>
               {emz(1)}
               <span />
@@ -1249,20 +1420,23 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               {pilha(eu, "deck")}
             </div>
           </div>
-          <div className="tj-mao" aria-label={t("Sua mão")}>
-            {meuLado.mao.map((c, i) => (
-              <div key={i} className="tj-mao-carta">
-                {carta(c, chave(eu, L.HAND, i), false)}
-              </div>
-            ))}
+          <div className="sim-mao-linha">
+            <span className="sim-nome" title={meuNome}>
+              {meuNome.slice(0, 15)}
+            </span>
+            <div className="tj-mao" aria-label={t("Sua mão")}>
+              {meuLado.mao.map((c, i) => (
+                <div key={i} className="tj-mao-carta">
+                  {carta(c, chave(eu, L.HAND, i), false)}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         <Lateral lado="dir" className="tj-dir sim-dir" titulo={t("Duelo")} abrirCom={pedido && pedido.msg.type !== T.SELECT_IDLECMD && pedido.msg.type !== T.SELECT_BATTLECMD ? pedido : undefined}>
-          <div className="sim-pv">
-            <Pv rotulo={rotuloOp} lp={lado2.lp} vez={!minhaVez} />
-            <Pv rotulo={t("Você")} lp={meuLado.lp} vez={minhaVez} />
-          </div>
+          {pergunta && painelPergunta}
+          {ficha && painelFicha}
           {ativacoes.itens.length > 0 && (
             <div className={`sim-cadeia ${ativacoes.aberta ? "sim-cadeia-aberta" : ""}`} aria-live="polite">
               <h4>{ativacoes.aberta ? t("Em ativação") : t("Última ativação")}</h4>
@@ -1330,16 +1504,16 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             {t("Pausar em todas as janelas de resposta")}
           </label>
           )}
-          {!revisao && (
+          {!revisao && !fimTexto && (
             <div className="sim-niveis">
-              <button className="ghost-btn sim-pergunta-btn" onClick={() => setPergunta({ jogador: op, code: null, resposta: null, carregando: false })} title={t("Por que uma carta não pôde ser usada?")}>
-                ? {t("Por que não pôde?")}
-              </button>
-              {!fimTexto && (
-                <button className="danger-btn sim-desistir" onClick={() => setConfirmarDesistir(true)}>
-                  {t("Desistir")}
+              {pedido?.msg.type === T.SELECT_IDLECMD && (
+                <button className="ghost-btn" onClick={() => { setPergunta(null); setFicha({ nivel: 1, atributo: 0x20, raca: 0x4000, atk: 0, def: 0 }); }} title={t("Cria uma Ficha na primeira Zona de Monstros livre")}>
+                  {t("Criar Token")}
                 </button>
               )}
+              <button className="ghost-btn" onClick={jogarDado} disabled={!!dado?.rolando}>
+                {t("Jogar dado")}
+              </button>
             </div>
           )}
           {aviso && <p className="tags-note">{aviso}</p>}
@@ -1413,55 +1587,9 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
           </div>
         )}
 
-        {pergunta && (
-          <div className="tj-menu-fundo" onClick={() => setPergunta(null)}>
-            <div className="tj-lista sim-pergunta" role="dialog" aria-label={t("Por que não pôde?")} onClick={(e) => e.stopPropagation()}>
-              <h4>? {t("Por que não pôde?")}</h4>
-              <p className="tags-note">{revisao ? t("Pergunta sobre o momento mostrado na revisão.") : t("Pergunta sobre este momento do duelo.")}</p>
-              <label className="sim-campo">
-                <span className="field-label">{t("De quem")}</span>
-                <select value={pergunta.jogador} onChange={(e) => setPergunta({ jogador: Number(e.target.value), code: null, resposta: null, carregando: false })}>
-                  <option value={op}>{revisao ? revisao.oponente : rotuloOp}</option>
-                  <option value={eu}>{t("Você")}</option>
-                </select>
-              </label>
-              <label className="sim-campo">
-                <span className="field-label">{t("Carta")}</span>
-                <select value={pergunta.code ?? ""} onChange={(e) => setPergunta({ ...pergunta, code: Number(e.target.value) || null, resposta: null })}>
-                  <option value="">{t("Escolha a carta")}</option>
-                  {(["extra", "main"] as const).map((parte) => {
-                    const ids = [...new Set(partidaRef.current?.decks[pergunta.jogador]?.[parte] ?? [])].sort((a, b) => nomeDe(a).localeCompare(nomeDe(b)));
-                    return ids.length ? (
-                      <optgroup key={parte} label={parte === "extra" ? t("Extra Deck") : t("Deck")}>
-                        {ids.map((id) => (
-                          <option key={id} value={id}>
-                            {nomeDe(id)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null;
-                  })}
-                </select>
-              </label>
-              <button className="ghost-btn" disabled={!pergunta.code || pergunta.carregando} onClick={() => pergunta.code && void perguntar(pergunta.jogador, pergunta.code)}>
-                {pergunta.carregando ? t("Consultando o motor…") : t("Perguntar")}
-              </button>
-              {pergunta.resposta && (
-                <div className="sim-resposta" role="status">
-                  <p>
-                    <strong>{pergunta.resposta.conclusao}</strong>
-                  </p>
-                  <ul>
-                    {pergunta.resposta.itens.map((x, i) => (
-                      <li key={i}>{x}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <button className="ghost-btn" onClick={() => setPergunta(null)}>
-                {t("Fechar")}
-              </button>
-            </div>
+        {dado && (
+          <div className={`sim-dado ${dado.rolando ? "sim-dado-rolando" : ""}`} role="status" aria-live="polite" aria-label={dado.rolando ? t("Jogando o dado…") : t("Dado: {0}", [dado.valor])}>
+            <span>{dado.valor}</span>
           </div>
         )}
 
@@ -1564,18 +1692,6 @@ function Aprendido({ a, nomeDe, oponente }: { a: Aprendizado; nomeDe: (c: number
       {!a.linhas.length && !a.respostas.length && <p className="tags-note">{t("Nenhum turno de combo nem resposta sua neste duelo.")}</p>}
       <small className="tags-note">{t("Fica só neste aparelho. Enviar para a IA aprender virá numa próxima etapa, só com a sua autorização.")}</small>
     </details>
-  );
-}
-
-function Pv({ rotulo, lp, vez }: { rotulo: string; lp: number; vez: boolean }) {
-  return (
-    <div className={`sim-pv-lado ${vez ? "sim-vez" : ""}`}>
-      <small>
-        {rotulo}
-        {vez ? ` · ${t("vez")}` : ""}
-      </small>
-      <strong>{lp}</strong>
-    </div>
   );
 }
 
@@ -1684,7 +1800,7 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
             {d.selects.map((c, i) => cartaBotao(c, i, false, () => tocar(i), texto(c.description) && <em>{texto(c.description)}</em>))}
             {!d.forced && (
               <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_CHAIN, index: null })} autoFocus>
-                {t("Não encadear")}
+                {t("Resolver")}
               </button>
             )}
           </>
@@ -1943,6 +2059,8 @@ function textoEvento(e: EventoSim, eu: number, nomeDe: (c: number) => string, op
     case "resolve":
     case "cadeia-fim":
       return "";
+    case "dado":
+      return t("{0} jogou um dado: {1}", [quem(e.p), e.v]);
     case "embaralha":
       return e.p === eu ? t("Seu Deck foi embaralhado") : t("O Deck de {0} foi embaralhado", [oponente]);
     case "move": {

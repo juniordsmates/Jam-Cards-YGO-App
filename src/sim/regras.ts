@@ -98,6 +98,8 @@ export interface Motor {
   texto(desc: bigint | number): string | undefined;
   /** constantes do Lua (ex.: HINTMSG_DESTROY → 502), lidas do constant.lua do pacote */
   constante(valor: number, prefixo: string): string | undefined;
+  /** acrescenta uma carta inventada (Ficha criada pelo jogador) */
+  registrar(code: number, dados: DadosCarta, nome: string): void;
   /** cria o duelo; o motor só tem as cartas que existem no pacote (as outras ficam de fora) */
   novoDuelo(p: Partida): OcgDuelHandle;
   /** processa até a próxima decisão (ou o fim do duelo) */
@@ -200,6 +202,11 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
       return pacote.textos[code]?.[Number(d & 0xfffffn)] || undefined;
     },
     constante: (valor, prefixo) => constantes.get(`${prefixo}_:${valor}`),
+    registrar(code, d, nome) {
+      pacote.cartas[code] = d;
+      pacote.nomes[code] = nome;
+      cache.delete(code);
+    },
     novoDuelo,
     ate,
   };
@@ -223,16 +230,48 @@ export function embaralhar<T>(lista: T[], semente: string): T[] {
   return a;
 }
 
-/** A resposta repetida em outro duelo igual (para a IA testar jogadas) é a mesma: o motor é determinístico */
-export type Historico = OcgResponse[];
+/** Ficha criada pelo jogador (botão "Criar Token"): um monstro Ficha Normal com os dados escolhidos */
+export interface ComandoFicha {
+  type: "ficha";
+  /** código da carta inventada para esta Ficha (único na partida) */
+  code: number;
+  jogador: number;
+  /** Zona de Monstros (0 a 4) */
+  sequencia: number;
+  nome: string;
+  nivel: number;
+  /** OcgAttribute e OcgRace (bits) */
+  atributo: number;
+  raca: number;
+  atk: number;
+  def: number;
+}
 
-/** Recria o duelo e reaplica as respostas dadas até aqui (o motor não copia estado) */
+/** Item do histórico: resposta a uma decisão do motor ou comando do jogador (não consome decisão) */
+export type Jogada = OcgResponse | ComandoFicha;
+export const ehComando = (j: Jogada): j is ComandoFicha => (j as ComandoFicha).type === "ficha";
+
+/** As mesmas jogadas na mesma partida refazem o mesmo duelo (o motor é determinístico) */
+export type Historico = Jogada[];
+
+/** Executa um comando do jogador no duelo (Ficha: registra a carta e a põe na zona) */
+export function executarComando(motor: Motor, duel: OcgDuelHandle, c: ComandoFicha) {
+  motor.registrar(c.code, [0, [], TIPO.MONSTRO | TIPO.NORMAL | TIPO.FICHA, c.nivel, c.atributo, c.raca, c.atk, c.def], c.nome);
+  motor.core.loadScript(duel, `ficha_${c.code}.lua`, `Debug.AddCard(${c.code},${c.jogador},${c.jogador},LOCATION_MZONE,${c.sequencia},POS_FACEUP_ATTACK)`);
+}
+
+/** Recria o duelo e reaplica as jogadas dadas até aqui (o motor não copia estado) */
 export function reproduzir(motor: Motor, partida: Partida, historico: Historico) {
   const duel = motor.novoDuelo(partida);
   let r = motor.ate(duel);
-  for (const resp of historico) {
+  for (const j of historico) {
     if (!r.decisao) break;
-    motor.core.duelSetResponse(duel, resp);
+    // comando não consome a decisão: o motor continua esperando a resposta seguinte
+    if (ehComando(j)) {
+      executarComando(motor, duel, j);
+      continue;
+    }
+    motor.core.duelSetResponse(duel, j);
     r = motor.ate(duel);
   }
   return { duel, decisao: r.decisao };

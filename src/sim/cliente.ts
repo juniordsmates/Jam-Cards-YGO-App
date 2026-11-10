@@ -4,6 +4,7 @@ import { idbGet, idbSetMany } from "../db/idb";
 import { supabase } from "../db/supabase";
 import { t } from "../i18n";
 import type { Aprendizado, ConfigSessao, FatosCarta, Momento, Quadro } from "./sessao";
+import type { ComandoFicha, Jogada } from "./regras";
 import type { DoWorker, ParaWorker } from "./worker";
 
 // O pacote (dados das cartas e scripts do Project Ignis, ~6 MB) fica no bucket privado "camada",
@@ -150,8 +151,13 @@ export class ClienteSim {
     });
   }
 
+  /** "Criar Token": Ficha com os dados escolhidos (na Main Phase do jogador) */
+  criarFicha(dados: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def">) {
+    this.enviar({ tipo: "ficha", dados });
+  }
+
   /** Partida 1x1: jogada do oponente */
-  remota(n: number, resp: OcgResponse) {
+  remota(n: number, resp: Jogada) {
     this.enviar({ tipo: "remota", n, resp });
   }
 

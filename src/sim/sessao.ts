@@ -2,7 +2,7 @@
 // as respostas dadas (o histórico): com a mesma semente, repetir o histórico refaz o duelo, e é
 // assim que a IA testa jogadas (src/sim/ia.ts). Roda no Worker; a tela recebe só Quadros.
 import { cardMatchesOpcode, OcgHintType, OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
-import { TIPO, TIPOS_EXTRA, type Historico, type Motor, type Partida } from "./regras";
+import { ehComando, executarComando, TIPO, TIPOS_EXTRA, type ComandoFicha, type Historico, type Jogada, type Motor, type Partida } from "./regras";
 import { IA, type LinhaIA, type NivelIA } from "./ia";
 import { passosDoLog, type Passo } from "./passos";
 import type { CampoFinal } from "../db/motor";
@@ -19,6 +19,8 @@ export interface CartaSim {
   marc?: Record<string, number>;
   /** carta da mão revelada a todos (o oponente também vê) */
   pub?: boolean;
+  /** Ficha (Token): nome e Nível, para desenhar sem imagem */
+  ficha?: { nome: string; nivel: number };
 }
 
 export interface LadoSim {
@@ -58,6 +60,8 @@ export type EventoSim =
   | { t: "cadeia-fim" }
   | { t: "nega"; code?: number }
   | { t: "embaralha"; p: number }
+  /** dado jogado pelo jogador (só no registro da tela) */
+  | { t: "dado"; p: number; v: number }
   /** cartas mostradas ao jogador p (ex.: a mão do oponente, o topo do Deck) */
   | { t: "revela"; p: number; cartas: { code: number; controller: number; location: number }[] }
   | { t: "move"; code: number; de: number; para: number; p: number }
@@ -125,7 +129,7 @@ export interface Aprendizado {
   partida: Partida;
   humano: 0 | 1;
   remoto: boolean;
-  historico: OcgResponse[];
+  historico: Jogada[];
   linhas: LinhaAprendida[];
   respostas: RespostaAprendida[];
 }
@@ -172,7 +176,7 @@ export interface Quadro {
   /** duelo contra outra pessoa: é a vez do oponente decidir */
   aguardando?: boolean;
   /** duelo contra outra pessoa: respostas deste aparelho a enviar ao oponente (posição no histórico) */
-  publicar?: { n: number; resp: OcgResponse }[];
+  publicar?: { n: number; resp: Jogada }[];
   /** no fim do duelo: o que ele ensinou */
   aprendizado?: Aprendizado;
 }
@@ -188,7 +192,7 @@ export interface ConfigSessao {
   /** o oponente é outra pessoa (partida 1x1): sem IA; as decisões dele chegam por `receberRemota` */
   remoto?: boolean;
   /** respostas já dadas no duelo (para voltar a uma partida 1x1 depois de cair) */
-  historico?: OcgResponse[];
+  historico?: Jogada[];
 }
 
 // código, posição, ATK, DEF, matérias, marcadores e se a carta é pública
@@ -206,11 +210,11 @@ export class Sessao {
   private dica: [bigint | null, bigint | null] = [null, null];
   private ia: IA | null;
   /** respostas conhecidas ainda não aplicadas (histórico salvo ou jogadas do oponente), em ordem */
-  private pendentes: OcgResponse[] = [];
+  private pendentes: Jogada[] = [];
   /** jogadas do oponente que chegaram fora de ordem (posição → resposta) */
-  private adiantadas = new Map<number, OcgResponse>();
+  private adiantadas = new Map<number, Jogada>();
   /** respostas deste aparelho que ainda não foram entregues à tela para envio */
-  private saida: { n: number; resp: OcgResponse }[] = [];
+  private saida: { n: number; resp: Jogada }[] = [];
   private eventos: EventoSim[] = [];
   /** pedido do jogador antes de uma resposta recusada (RETRY) */
   private ultimoPedido: OcgMessage | null = null;
@@ -253,10 +257,8 @@ export class Sessao {
       if (!repetida) this.ultimoPedido = d;
       const dono = (m: OcgMessage | null) => (m && "player" in m ? m.player : this.cfg.humano);
       // respostas já conhecidas (histórico salvo ou jogadas do oponente) vêm antes de perguntar
-      if (this.pendentes.length) {
-        this.aplicar(this.pendentes.shift()!, dono(this.ultimoPedido), false);
-        continue;
-      }
+      // (comandos, como a Ficha criada, não consomem a decisão: sem resposta, segue para perguntá-la)
+      if (this.pendentes.length && this.aplicarPendentes(dono(this.ultimoPedido))) continue;
       if (repetida) {
         // a última resposta não valia: quem respondeu escolhe de novo
         const ultimo = this.ultimoPedido;
@@ -306,7 +308,7 @@ export class Sessao {
    * Partida 1x1: jogada do oponente na posição n do histórico. Repetidas são ignoradas e as que
    * chegam antes da hora esperam a vez. Devolve o quadro novo quando o duelo andou.
    */
-  receberRemota(n: number, resp: OcgResponse): Quadro | null {
+  receberRemota(n: number, resp: Jogada): Quadro | null {
     const proxima = () => this.historico.length + this.pendentes.length;
     if (n < proxima()) return null;
     this.adiantadas.set(n, resp);
@@ -320,16 +322,46 @@ export class Sessao {
     // só anda se o duelo estava esperando o oponente (a decisão em aberto não é deste aparelho)
     if (!chegou || this.fim || !this.decisao || ("player" in this.decisao && this.decisao.player === this.cfg.humano)) return null;
     // a resposta vai antes de o motor processar de novo: processar sem resposta conta como "não ativar"
-    this.aplicar(this.pendentes.shift()!, "player" in this.decisao ? this.decisao.player : 1 - this.cfg.humano, false);
-    return this.avancar();
+    return this.aplicarPendentes("player" in this.decisao ? this.decisao.player : 1 - this.cfg.humano) ? this.avancar() : this.quadro();
   }
 
-  /** `publicar`: resposta deste aparelho, que numa partida 1x1 vai para o oponente */
-  private aplicar(resp: OcgResponse, jogador: number, publicar = true) {
+  /** Aplica as jogadas conhecidas até a primeira resposta; devolve se alguma resposta foi dada ao motor */
+  private aplicarPendentes(jogador: number): boolean {
+    while (this.pendentes.length) {
+      const j = this.pendentes.shift()!;
+      this.aplicar(j, ehComando(j) ? j.jogador : jogador, false);
+      if (!ehComando(j)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * "Criar Token": Ficha com os dados escolhidos na primeira Zona de Monstros livre do jogador, na
+   * Main Phase dele. Em seguida, embaralha a mão (não muda o jogo) para o motor refazer a lista de
+   * ações já com a Ficha. Fica no histórico: a revisão e o oponente (1x1) refazem a mesma Ficha.
+   */
+  criarFicha(f: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def">): Quadro {
+    const humano = this.cfg.humano;
+    const d = this.decisao;
+    if (!d || this.fim || d.type !== T.SELECT_IDLECMD || d.player !== humano) throw new Error("Só dá para criar uma Ficha na sua Main Phase, quando você tem a ação.");
+    const mz = this.motor.core.duelQueryLocation(this.duel, { flags: 1 as never, controller: humano, location: L.MZONE });
+    const sequencia = [0, 1, 2, 3, 4].find((i) => !mz[i]?.code);
+    if (sequencia === undefined) throw new Error("Não há Zona de Monstros livre para a Ficha.");
+    this.aplicar({ type: "ficha", code: 990000000 + this.historico.length, jogador: humano, sequencia, ...f }, humano);
+    if (d.shuffle) {
+      this.aplicar({ type: R.SELECT_IDLECMD, action: 8, index: null }, humano);
+      return this.avancar();
+    }
+    return this.quadro();
+  }
+
+  /** `publicar`: jogada deste aparelho, que numa partida 1x1 vai para o oponente */
+  private aplicar(resp: Jogada, jogador: number, publicar = true) {
     this.historico.push(resp);
     this.ia?.observar(resp, jogador);
     if (publicar && this.cfg.remoto && jogador === this.cfg.humano) this.saida.push({ n: this.historico.length - 1, resp });
-    this.motor.core.duelSetResponse(this.duel, resp);
+    if (ehComando(resp)) executarComando(this.motor, this.duel, resp);
+    else this.motor.core.duelSetResponse(this.duel, resp);
   }
 
   private lerLog(log: OcgMessage[]) {
@@ -544,11 +576,10 @@ export class Sessao {
   }
 
   /** Aplica uma resposta do histórico (de qualquer jogador) e avança até a próxima decisão */
-  passo(resp: OcgResponse) {
+  passo(resp: Jogada) {
     this.pendentes.push(resp);
     if (!this.decisao) return this.avancar();
-    this.aplicar(this.pendentes.shift()!, this.decisaoPendente()?.jogador ?? this.cfg.humano, false);
-    return this.avancar();
+    return this.aplicarPendentes(this.decisaoPendente()?.jogador ?? this.cfg.humano) ? this.avancar() : this.quadro();
   }
 
   /** Libera o duelo no motor (revisões criam sessões temporárias) */
@@ -634,6 +665,7 @@ export class Sessao {
             ...(mat.length ? { mat } : {}),
             ...(Object.keys(marc).length ? { marc } : {}),
             ...(r.isPublic ? { pub: true } : {}),
+            ...(this.motor.tipo(r.code as number) & TIPO.FICHA ? { ficha: { nome: this.motor.nome(r.code as number), nivel: this.motor.dados(r.code as number)?.level ?? 0 } } : {}),
           };
         });
       const cheias = (location: number) => q(location).filter((c): c is CartaSim => !!c);

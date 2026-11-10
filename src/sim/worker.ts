@@ -2,7 +2,7 @@
 // segundos) não travar o app. Mensagens: src/sim/cliente.ts.
 import wasmUrl from "ocgcore-wasm/lib/ocgcore.sync.wasm?url";
 import type { OcgResponse } from "ocgcore-wasm";
-import { abrirMotor, type Motor, type PacoteMotor } from "./regras";
+import { abrirMotor, type ComandoFicha, type Jogada, type Motor, type PacoteMotor } from "./regras";
 import { Sessao, type Aprendizado, type ConfigSessao, type Quadro } from "./sessao";
 
 export type ParaWorker =
@@ -11,9 +11,11 @@ export type ParaWorker =
   | { tipo: "responder"; resp: OcgResponse }
   | { tipo: "janelas"; janelas: "acao" | "todas" }
   /** partida 1x1: jogada do oponente na posição n do histórico */
-  | { tipo: "remota"; n: number; resp: OcgResponse }
+  | { tipo: "remota"; n: number; resp: Jogada }
   /** o que o duelo ensinou até agora (para quem desiste antes do fim) */
   | { tipo: "aprendizado" }
+  /** "Criar Token": Ficha com os dados escolhidos */
+  | { tipo: "ficha"; dados: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def"> }
   /** revisão: momentos da partida (quem decide em cada posição do histórico) */
   | { tipo: "linha-do-tempo"; id: number; cfg: ConfigSessao }
   /** revisão: o duelo refeito até a posição k */
@@ -98,6 +100,9 @@ onmessage = async (e: MessageEvent<ParaWorker>) => {
     } else if (m.tipo === "responder") {
       if (!sessao) throw new Error("nenhum duelo em andamento");
       quadro(sessao.responder(m.resp, quadro));
+    } else if (m.tipo === "ficha") {
+      if (!sessao) throw new Error("nenhum duelo em andamento");
+      quadro(sessao.criarFicha(m.dados));
     } else if (m.tipo === "aprendizado") {
       enviar({ tipo: "aprendizado", dados: sessao?.aprendizado() ?? null });
     } else if (m.tipo === "remota") {
