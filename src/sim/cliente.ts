@@ -3,7 +3,7 @@ import type { OcgResponse } from "ocgcore-wasm";
 import { idbGet, idbSetMany } from "../db/idb";
 import { supabase } from "../db/supabase";
 import { t } from "../i18n";
-import type { ConfigSessao, Quadro } from "./sessao";
+import type { Aprendizado, ConfigSessao, Quadro } from "./sessao";
 import type { DoWorker, ParaWorker } from "./worker";
 
 // O pacote (dados das cartas e scripts do Project Ignis, ~6 MB) fica no bucket privado "camada",
@@ -58,6 +58,7 @@ export async function obterPacote(aoProgresso?: (msg: string) => void): Promise<
 /** Conversa com o Worker do motor */
 export class ClienteSim {
   private worker: Worker;
+  private esperaAprendizado: ((a: Aprendizado | null) => void) | null = null;
   private esperaPronto: { ok: (r: { nomes: Record<string, string>; versao: string }) => void; erro: (e: Error) => void } | null = null;
 
   constructor(
@@ -71,6 +72,10 @@ export class ClienteSim {
         this.esperaPronto?.ok({ nomes: m.nomes, versao: m.versao });
         this.esperaPronto = null;
       } else if (m.tipo === "quadro") this.aoQuadro(m.quadro);
+      else if (m.tipo === "aprendizado") {
+        this.esperaAprendizado?.(m.dados);
+        this.esperaAprendizado = null;
+      }
       else if (this.esperaPronto) {
         this.esperaPronto.erro(new Error(m.erro));
         this.esperaPronto = null;
@@ -104,6 +109,14 @@ export class ClienteSim {
 
   responder(resp: OcgResponse) {
     this.enviar({ tipo: "responder", resp });
+  }
+
+  /** O que o duelo ensinou até agora */
+  aprendizado(): Promise<Aprendizado | null> {
+    return new Promise((ok) => {
+      this.esperaAprendizado = ok;
+      this.enviar({ tipo: "aprendizado" });
+    });
   }
 
   /** Partida 1x1: jogada do oponente */

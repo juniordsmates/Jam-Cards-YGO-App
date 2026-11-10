@@ -432,3 +432,26 @@
 .sim-config input {
   width: 100%;
 }
+
+.sim-aprendido {
+  font-size: 0.75rem;
+}
+
+.sim-aprendido summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sim-aprendido h5 {
+  margin: 8px 0 4px;
+  font-size: 0.75rem;
+}
+
+.sim-aprendido ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.sim-aprendido li + li {
+  margin-top: 4px;
+}

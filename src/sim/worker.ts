@@ -3,7 +3,7 @@
 import wasmUrl from "ocgcore-wasm/lib/ocgcore.sync.wasm?url";
 import type { OcgResponse } from "ocgcore-wasm";
 import { abrirMotor, type Motor, type PacoteMotor } from "./regras";
-import { Sessao, type ConfigSessao, type Quadro } from "./sessao";
+import { Sessao, type Aprendizado, type ConfigSessao, type Quadro } from "./sessao";
 
 export type ParaWorker =
   | { tipo: "pacote"; dados: ArrayBuffer }
@@ -11,11 +11,14 @@ export type ParaWorker =
   | { tipo: "responder"; resp: OcgResponse }
   | { tipo: "janelas"; janelas: "acao" | "todas" }
   /** partida 1x1: jogada do oponente na posição n do histórico */
-  | { tipo: "remota"; n: number; resp: OcgResponse };
+  | { tipo: "remota"; n: number; resp: OcgResponse }
+  /** o que o duelo ensinou até agora (para quem desiste antes do fim) */
+  | { tipo: "aprendizado" };
 
 export type DoWorker =
   | { tipo: "pronto"; versao: string; nomes: Record<string, string> }
   | { tipo: "quadro"; quadro: Quadro }
+  | { tipo: "aprendizado"; dados: Aprendizado | null }
   | { tipo: "erro"; erro: string };
 
 let motor: Motor | null = null;
@@ -48,6 +51,8 @@ onmessage = async (e: MessageEvent<ParaWorker>) => {
     } else if (m.tipo === "responder") {
       if (!sessao) throw new Error("nenhum duelo em andamento");
       quadro(sessao.responder(m.resp, quadro));
+    } else if (m.tipo === "aprendizado") {
+      enviar({ tipo: "aprendizado", dados: sessao?.aprendizado() ?? null });
     } else if (m.tipo === "remota") {
       const q = sessao?.receberRemota(m.n, m.resp);
       if (q) quadro(q);

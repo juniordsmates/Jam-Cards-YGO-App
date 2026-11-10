@@ -1,9 +1,11 @@
 // Sessão do Simulador: um duelo com regras (motor do EDOPro) entre o jogador e a IA. Guarda todas
 // as respostas dadas (o histórico): com a mesma semente, repetir o histórico refaz o duelo, e é
 // assim que a IA testa jogadas (src/sim/ia.ts). Roda no Worker; a tela recebe só Quadros.
-import { cardMatchesOpcode, OcgHintType, OcgLocation as L, OcgMessageType as T, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
-import { type Historico, type Motor, type Partida } from "./regras";
+import { cardMatchesOpcode, OcgHintType, OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
+import { TIPO, TIPOS_EXTRA, type Historico, type Motor, type Partida } from "./regras";
 import { IA, type LinhaIA, type NivelIA } from "./ia";
+import { passosDoLog, type Passo } from "./passos";
+import type { CampoFinal } from "../db/motor";
 
 export interface CartaSim {
   code: number;
@@ -82,6 +84,52 @@ export interface PedidoSim {
   repetir?: boolean;
 }
 
+/** O que provocou uma janela de resposta (o último acontecimento antes dela) */
+export interface EventoJanela {
+  tipo: "busca" | "invocacao" | "ativacao" | "ataque" | "compra" | "fase";
+  /** foi o oponente de quem responde */
+  doOponente: boolean;
+  /** carta envolvida (a buscada, a invocada, a ativada, a que atacou) ou a fase */
+  code?: number;
+  fase?: number;
+}
+
+/** Janela de resposta que o jogador viu: o que podia ativar, o que fez e em que contexto */
+export interface RespostaAprendida {
+  /** posição da resposta no histórico (prova para refazer no motor) */
+  n: number;
+  turno: number;
+  opcoes: number[];
+  /** carta ativada; null = deixou passar */
+  escolha: number | null;
+  fase: number;
+  minhaVez: boolean;
+  evento: EventoJanela | null;
+  /** cadeia aberta na hora (elo 1 primeiro) */
+  cadeia: { code: number; minha: boolean }[];
+}
+
+/** Turno de combo do jogador: mão no início da Main Phase 1, passos e campo final */
+export interface LinhaAprendida {
+  /** tamanho do histórico no fim do turno (prova para refazer no motor) */
+  n: number;
+  turno: number;
+  mao: number[];
+  passos: Passo[];
+  campo: CampoFinal;
+  pontos: number;
+}
+
+/** O que um duelo ensina (só turnos e janelas do jogador deste aparelho), com a prova para conferir */
+export interface Aprendizado {
+  partida: Partida;
+  humano: 0 | 1;
+  remoto: boolean;
+  historico: OcgResponse[];
+  linhas: LinhaAprendida[];
+  respostas: RespostaAprendida[];
+}
+
 export interface Quadro {
   estado: EstadoSim;
   pedido: PedidoSim | null;
@@ -93,6 +141,8 @@ export interface Quadro {
   aguardando?: boolean;
   /** duelo contra outra pessoa: respostas deste aparelho a enviar ao oponente (posição no histórico) */
   publicar?: { n: number; resp: OcgResponse }[];
+  /** no fim do duelo: o que ele ensinou */
+  aprendizado?: Aprendizado;
 }
 
 export interface ConfigSessao {
@@ -135,6 +185,13 @@ export class Sessao {
   /** cartas da cadeia (pelo elo) e a que está resolvendo agora */
   private cadeia: number[] = [];
   private resolvendo: number | null = null;
+  // aprendizado: registro do turno do jogador (desde a Main Phase 1), mão no começo dele, linhas e respostas
+  private logTurno: OcgMessage[] | null = null;
+  private maoInicio: number[] = [];
+  private linhas: LinhaAprendida[] = [];
+  private respostas: RespostaAprendida[] = [];
+  private janela: Omit<RespostaAprendida, "escolha"> & { indices: number[] } | null = null;
+  private ultimoEvento: { tipo: EventoJanela["tipo"]; p: number; code?: number; fase?: number } | null = null;
   /** jogador e carta da última ativação (para a IA responder às do oponente) */
   ultimaAcao: { p: number; code: number; tipo: "ativa" | "invoca" | "ataque" } | null = null;
 
@@ -181,7 +238,10 @@ export class Sessao {
         this.aplicar({ type: R.SELECT_CHAIN, index: null }, this.cfg.humano);
         continue;
       }
-      if (dono(d) === this.cfg.humano) return this.quadro();
+      if (dono(d) === this.cfg.humano) {
+        if (d.type === T.SELECT_CHAIN && !d.forced && d.selects.length) this.abrirJanela(d.selects.map((c) => c.code));
+        return this.quadro();
+      }
       // partida 1x1: a decisão é do oponente, que responde do aparelho dele
       if (!this.ia) return { ...this.quadro(), aguardando: true };
       if (aoPensar && this.ia.vaiPensar(d, this)) aoPensar({ ...this.quadro(), pedido: null, pensando: true });
@@ -198,6 +258,11 @@ export class Sessao {
   /** Resposta do jogador à decisão em aberto */
   responder(resp: OcgResponse, aoPensar?: (q: Quadro) => void): Quadro {
     if (!this.decisao || this.fim) return this.quadro();
+    if (this.janela && resp.type === R.SELECT_CHAIN) {
+      const { indices, ...j } = this.janela;
+      this.respostas.push({ ...j, escolha: resp.index === null ? null : (indices[resp.index] ?? null) });
+    }
+    this.janela = null;
     this.aplicar(resp, this.cfg.humano);
     return this.avancar(aoPensar);
   }
@@ -234,26 +299,40 @@ export class Sessao {
 
   private lerLog(log: OcgMessage[]) {
     const ev = this.eventos;
+    const humano = this.cfg.humano;
     for (const m of log) {
+      this.logTurno?.push(m);
       switch (m.type) {
         case T.NEW_TURN:
+          // fim do turno do jogador: vira linha de combo se foi um combo
+          if (this.logTurno && this.vez === humano) this.fecharTurno();
+          this.logTurno = null;
           this.turno++;
           this.vez = m.player as 0 | 1;
           ev.push({ t: "turno", p: m.player, n: this.turno });
           break;
         case T.NEW_PHASE:
           this.fase = m.phase;
+          this.ultimoEvento = { tipo: "fase", p: this.vez, fase: m.phase };
+          // Main Phase 1 do jogador: começa a registrar o turno (a mão é a de agora)
+          if (m.phase === OcgPhase.MAIN1 && this.vez === humano) {
+            this.logTurno = [];
+            this.maoInicio = this.codigos(humano, L.HAND);
+          }
           ev.push({ t: "fase", fase: m.phase });
           break;
         case T.DRAW:
           ev.push({ t: "compra", p: m.player, codes: m.drawn.map((c) => c.code) });
+          this.ultimoEvento = { tipo: "compra", p: m.player };
           break;
         case T.SUMMONING:
           ev.push({ t: "invoca", p: m.controller, code: m.code, como: "normal" });
+          this.ultimoEvento = { tipo: "invocacao", p: m.controller, code: m.code };
           this.ultimaAcao = { p: m.controller, code: m.code, tipo: "invoca" };
           break;
         case T.SPSUMMONING:
           ev.push({ t: "invoca", p: m.controller, code: m.code, como: "especial" });
+          this.ultimoEvento = { tipo: "invocacao", p: m.controller, code: m.code };
           this.ultimaAcao = { p: m.controller, code: m.code, tipo: "invoca" };
           break;
         case T.FLIPSUMMONING:
@@ -265,6 +344,7 @@ export class Sessao {
         case T.CHAINING:
           this.cadeia[m.chain_size - 1] = m.code;
           ev.push({ t: "ativa", p: m.controller, code: m.code, texto: this.motor.texto(m.description), elo: m.chain_size, location: m.triggering_location, sequence: m.triggering_sequence });
+          this.ultimoEvento = { tipo: "ativacao", p: m.controller, code: m.code };
           this.ultimaAcao = { p: m.controller, code: m.code, tipo: "ativa" };
           break;
         case T.CHAIN_SOLVING:
@@ -294,6 +374,8 @@ export class Sessao {
           // só o que interessa ao jogador: cartas que saem do campo ou da mão, ou voltam a ela
           const de = m.from.location;
           const para = m.to.location;
+          // carta do Deck para a mão fora da compra: busca (o que, por exemplo, ativa Droll & Lock Bird)
+          if (de === L.DECK && para === L.HAND) this.ultimoEvento = { tipo: "busca", p: m.to.controller, code: m.card };
           if (de !== para && m.card && !(de === L.DECK && para === L.HAND) && (para & (L.GRAVE | L.REMOVED | L.HAND | L.DECK | L.EXTRA) || de & L.ONFIELD))
             ev.push({ t: "move", code: m.card, de, para, p: m.to.controller });
           break;
@@ -302,6 +384,7 @@ export class Sessao {
           const a = this.cartaEm(m.card.controller, m.card.location, m.card.sequence);
           const alvo = m.target ? this.cartaEm(m.target.controller, m.target.location, m.target.sequence) : undefined;
           ev.push({ t: "ataque", p: m.card.controller, code: a ?? 0, alvo });
+          this.ultimoEvento = { tipo: "ataque", p: m.card.controller, code: a };
           this.ultimaAcao = { p: m.card.controller, code: a ?? 0, tipo: "ataque" };
           break;
         }
@@ -319,6 +402,8 @@ export class Sessao {
           break;
         case T.WIN:
           if (!this.fim) {
+            if (this.logTurno && this.vez === humano) this.fecharTurno();
+            this.logTurno = null;
             this.fim = { vencedor: m.player, motivo: m.reason };
             ev.push({ t: "fim", vencedor: m.player, motivo: m.reason });
           }
@@ -341,6 +426,76 @@ export class Sessao {
     // dicas acima de 0xFFFF são descrições de efeito (id da carta × 16 + número)
     if (v > 0xffff) return { texto: this.motor.texto(h), valor: v };
     return { nome: this.motor.constante(v, "HINTMSG"), valor: v };
+  }
+
+  /** Ids (arte original) das cartas de um jogador num local */
+  private codigos(p: number, location: number): number[] {
+    return this.motor.core
+      .duelQueryLocation(this.duel, { flags: 1 as never, controller: p as 0, location: location as L })
+      .map((c) => (c?.code as number | undefined) ?? 0)
+      .filter(Boolean)
+      .map((c) => this.canonico(c));
+  }
+
+  private canonico(code: number) {
+    const alias = this.motor.dados(code)?.alias ?? 0;
+    return alias && Math.abs(alias - code) < 20 ? alias : code;
+  }
+
+  /** Fecha o turno do jogador: guarda a linha se foi um combo */
+  private fecharTurno() {
+    const linha = this.linhaDoTurno();
+    if (linha) this.linhas.push(linha);
+  }
+
+  /** Linha do turno do jogador registrado até agora, se foi um combo (Invocação do Extra Deck ou 3+ Invocações) */
+  private linhaDoTurno(): LinhaAprendida | null {
+    const humano = this.cfg.humano;
+    const tipo = this.motor.tipo;
+    const passos = passosDoLog(this.logTurno ?? [], tipo, humano);
+    const invocacoes = passos.filter((p) => p.t === "invoca" || p.t === "normal");
+    const doExtra = passos.some((p) => p.t === "invoca" && p.de === "extra");
+    if (!doExtra && invocacoes.length < 3) return null;
+    const q = (location: number) =>
+      this.motor.core.duelQueryLocation(this.duel, { flags: (1 | 2) as never, controller: humano, location: location as L }).filter((c): c is NonNullable<typeof c> => !!c?.code);
+    const monstros = q(L.MZONE).map((c) => (tipo(c.code as number) & TIPO.FICHA ? 0 : this.canonico(c.code as number)));
+    const magias = [...q(L.SZONE), ...q(L.FZONE)].map((c) => [this.canonico(c.code as number), (((c.position as number) ?? 0) & 0xa) !== 0] as [number, boolean]);
+    const mao = this.codigos(humano, L.HAND);
+    // mesma pontuação de campo das linhas do pipeline: monstros do Extra valem mais, baixadas são interrupções
+    const pontos = monstros.reduce((n, c) => n + (c && tipo(c) & TIPOS_EXTRA ? 3 : 1.5), 0) + magias.reduce((n, [, baixada]) => n + (baixada ? 2 : 1), 0) + mao.length;
+    const ficha = (c: number) => (tipo(c) & TIPO.FICHA ? 0 : this.canonico(c));
+    return {
+      n: this.historico.length,
+      turno: this.turno,
+      mao: this.maoInicio,
+      passos: passos.map((p) => (p.t === "compra" ? p : ({ ...p, c: p.c && ficha(p.c), ...("mat" in p && p.mat ? { mat: p.mat.map(ficha) } : {}), ...("por" in p && p.por ? { por: ficha(p.por) } : {}) } as Passo))),
+      campo: { monstros, magias, mao },
+      pontos,
+    };
+  }
+
+  /** Janela de resposta que o jogador vai ver: guarda o contexto até ele responder */
+  private abrirJanela(indices: number[]) {
+    const humano = this.cfg.humano;
+    const e = this.ultimoEvento;
+    const cadeia = this.motor.core.duelQueryField(this.duel).chain.map((c) => ({ code: this.canonico(c.code), minha: c.triggering_controller === humano }));
+    this.janela = {
+      n: this.historico.length,
+      turno: this.turno,
+      indices: indices.map((c) => this.canonico(c)),
+      opcoes: [...new Set(indices.map((c) => this.canonico(c)))],
+      fase: this.fase,
+      minhaVez: this.vez === humano,
+      evento: e ? { tipo: e.tipo, doOponente: e.p !== humano, ...(e.code ? { code: this.canonico(e.code) } : {}), ...(e.fase ? { fase: e.fase } : {}) } : null,
+      cadeia,
+    };
+  }
+
+  /** O que o duelo ensinou até agora (turnos e janelas só do jogador deste aparelho) */
+  aprendizado(): Aprendizado {
+    // turno do jogador ainda aberto (desistiu no meio dele): entra se já é um combo
+    const aberta = this.logTurno && this.vez === this.cfg.humano ? this.linhaDoTurno() : null;
+    return { partida: this.cfg.partida, humano: this.cfg.humano, remoto: !!this.cfg.remoto, historico: [...this.historico], linhas: aberta ? [...this.linhas, aberta] : this.linhas, respostas: this.respostas };
   }
 
   estado(): EstadoSim {
@@ -421,7 +576,7 @@ export class Sessao {
     this.eventos = [];
     const publicar = this.saida;
     this.saida = [];
-    return { estado: this.estado(), pedido: this.pedido(repetir), eventos, ...(this.fim ? { fim: this.fim } : {}), ...(publicar.length ? { publicar } : {}) };
+    return { estado: this.estado(), pedido: this.pedido(repetir), eventos, ...(this.fim ? { fim: this.fim, aprendizado: this.aprendizado() } : {}), ...(publicar.length ? { publicar } : {}) };
   }
 
   /** Dados que a IA precisa da partida (sem expor o resto) */

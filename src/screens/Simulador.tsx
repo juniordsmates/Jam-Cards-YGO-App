@@ -17,7 +17,8 @@ import { t } from "../i18n";
 import { ClienteSim, obterPacote } from "../sim/cliente";
 import { zonasLivres } from "../sim/opcoes";
 import type { LinhaIA, NivelIA } from "../sim/ia";
-import type { CartaSim, EventoSim, PedidoSim, Quadro } from "../sim/sessao";
+import type { Aprendizado, CartaSim, EventoSim, PedidoSim, Quadro } from "../sim/sessao";
+import { guardarAprendizado } from "../sim/aprendizado";
 import type { DeckSim } from "../sim/regras";
 import "./teste-jogo.css";
 import "./simulador.css";
@@ -253,6 +254,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   const [copiado, setCopiado] = useState(false);
   const [desistencia, setDesistencia] = useState<{ vencedor: number | null; quem: "eu" | "oponente" } | null>(null);
   const [confirmarDesistir, setConfirmarDesistir] = useState(false);
+  // o que o duelo ensinou (fica só neste aparelho nesta etapa)
+  const [aprendido, setAprendido] = useState<Aprendizado | null>(null);
   const pararSala = useRef<(() => void) | null>(null);
   // jogadas do oponente que chegam antes de o duelo começar neste aparelho
   const remotasAntes = useRef<{ n: number; resp: OcgResponse }[] | null>(null);
@@ -302,6 +305,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     setRevelacao(null);
     setQuadro(null);
     setDesistencia(null);
+    setAprendido(null);
     fimEnviado.current = false;
   }
 
@@ -451,8 +455,15 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     if (dueloDaRota && etapaRef.current !== "duelo" && salaRef.current?.id !== dueloDaRota) void abrirSala(dueloDaRota);
   }, [dueloDaRota, conta?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Guarda neste aparelho o que o duelo ensinou e mostra no fim */
+  function registrarAprendizado(a: Aprendizado) {
+    setAprendido(a);
+    void guardarAprendizado(a, versaoMotor.current, APP_VERSION).catch(() => {});
+  }
+
   /** Desiste: na partida 1x1, o oponente vence; contra a IA, o duelo só termina */
   function desistir() {
+    void cliente.current?.aprendizado().then((a) => a && registrarAprendizado(a));
     setConfirmarDesistir(false);
     const vencedor = 1 - euRef.current;
     setDesistencia({ vencedor, quem: "eu" });
@@ -481,6 +492,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         filaEnvio.current = filaEnvio.current
           .then(() => enviarResposta(d.id, p.n, euRef.current, p.resp))
           .catch((e) => setErro(t("Falha ao enviar a jogada: {0}", [e instanceof Error ? e.message : String(e)])));
+    if (q.aprendizado) registrarAprendizado(q.aprendizado);
     if (d && q.fim && !fimEnviado.current) {
       fimEnviado.current = true;
       const v = q.fim.vencedor;
@@ -1044,6 +1056,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               <button className="ghost-btn" onClick={novaPartida}>
                 {t("Nova partida")}
               </button>
+              {aprendido && <Aprendido a={aprendido} nomeDe={nomeDe} oponente={rotuloOp} />}
             </div>
           ) : pensando || !pedido ? (
             <p className="sim-pensando" role="status">
@@ -1183,6 +1196,63 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         )}
       </div>
     </ScreenShell>
+  );
+}
+
+/** O que o duelo ensinou: turnos de combo e respostas do jogador (fica só neste aparelho) */
+function Aprendido({ a, nomeDe, oponente }: { a: Aprendizado; nomeDe: (c: number) => string; oponente: string }) {
+  const nomes = (ids: number[]) => ids.map((c) => (c ? nomeDe(c) : t("Ficha"))).join(", ") || "—";
+  const evento = (r: Aprendizado["respostas"][number]) => {
+    const e = r.evento;
+    if (!e) return t("sem jogada antes");
+    const quem = e.doOponente ? oponente : t("você");
+    const carta = e.code ? nomeDe(e.code) : "";
+    switch (e.tipo) {
+      case "busca":
+        return t("depois de {0} buscar {1}", [quem, carta]);
+      case "invocacao":
+        return t("depois de {0} invocar {1}", [quem, carta]);
+      case "ativacao":
+        return t("depois de {0} ativar {1}", [quem, carta]);
+      case "ataque":
+        return t("no ataque de {0}", [carta]);
+      case "compra":
+        return t("depois da compra de {0}", [quem]);
+      case "fase":
+        return t("na mudança de fase");
+    }
+  };
+  return (
+    <details className="sim-aprendido" open>
+      <summary>{t("O que este duelo ensinou")}</summary>
+      {a.linhas.length > 0 && (
+        <>
+          <h5>{t("Seus turnos de combo")}</h5>
+          <ul>
+            {a.linhas.map((l) => (
+              <li key={l.n}>
+                {t("Turno {0}: mão {1} → campo {2}", [l.turno, nomes(l.mao), nomes([...l.campo.monstros, ...l.campo.magias.map(([c]) => c)])])}
+                <small> ({t("{0} passos", [l.passos.length])})</small>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {a.respostas.length > 0 && (
+        <>
+          <h5>{t("Suas respostas")}</h5>
+          <ul>
+            {a.respostas.map((r) => (
+              <li key={r.n}>
+                {r.escolha ? t("Ativou {0}", [nomeDe(r.escolha)]) : t("Deixou passar ({0})", [nomes(r.opcoes)])} — {evento(r)}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {!a.linhas.length && !a.respostas.length && <p className="tags-note">{t("Nenhum turno de combo nem resposta sua neste duelo.")}</p>}
+      <small className="tags-note">{t("Fica só neste aparelho. Enviar para a IA aprender virá numa próxima etapa, só com a sua autorização.")}</small>
+    </details>
   );
 }
 

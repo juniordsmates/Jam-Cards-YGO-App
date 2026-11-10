@@ -186,6 +186,7 @@ Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-was
   - O app baixa o pacote uma vez e guarda no IndexedDB; só baixa de novo quando a versão muda.
   - O bucket precisa aceitar gzip: migração [20261109020000_motor_no_bucket.sql](supabase/migrations/20261109020000_motor_no_bucket.sql).
   - Em desenvolvimento, sem pacote no bucket, o app usa `public/motor.json.gz` (fora do git): copie o `dist/motor.json.gz` do pipeline para lá.
+- **Aprendizado (etapa 1, só no aparelho):** em cada duelo, a sessão guarda os turnos de combo do jogador (mão no início da Main Phase 1, passos pelo conversor do pipeline em [src/sim/passos.ts](src/sim/passos.ts), campo final) e as janelas de resposta que ele viu (o que podia ativar, o que fez e o contexto: busca, Invocação, ativação, ataque, fase, cadeia). Tudo fica no IndexedDB com a prova (decks, semente, respostas) em [src/sim/aprendizado.ts](src/sim/aprendizado.ts) e aparece no fim do duelo em "O que este duelo ensinou". O envio para a IA aprender, com autorização (desligada por padrão), vem na etapa 2.
 - **IA** ([src/sim/ia.ts](src/sim/ia.ts)):
   - **planejamento:** na Main Phase 1, repete o duelo até o ponto atual (com a mesma semente e as mesmas respostas o motor refaz tudo igual) e joga o turno várias vezes com escolhas sorteadas, puxadas para as cartas das linhas de combo conhecidas do deck; executa a sequência que deixou o melhor campo. Se você responder diferente do previsto, ela planeja de novo;
   - **batalha:** ataca quando destrói o alvo ou quando pode atacar direto;
