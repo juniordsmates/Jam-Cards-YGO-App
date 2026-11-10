@@ -8,6 +8,8 @@ import type { DeckSim } from "../sim/regras";
 
 export interface Duelo {
   id: string;
+  /** código de 6 dígitos para entrar sem o link (ausente antes da migração do código) */
+  codigo?: string;
   criador: string;
   convidado: string | null;
   /** lugar do criador no motor (o jogador 0 começa) */
@@ -21,7 +23,8 @@ export interface Duelo {
   vencedor: 0 | 1 | null;
 }
 
-const COLUNAS = "id, criador, convidado, criador_jogador, semente, deck_criador, deck_convidado, versao_motor, versao_app, estado, vencedor";
+// todas as colunas: funciona com ou sem a coluna "codigo" (migração 20261110020000)
+const COLUNAS = "*";
 
 /** Erro do banco em texto para o jogador (sem a migração das partidas, as tabelas não existem) */
 function falha(error: { message: string; code?: string }): Error {
@@ -69,6 +72,13 @@ export async function criarDuelo(deck: DeckSim, versaoMotor: string, versaoApp: 
 
 export async function obterDuelo(id: string): Promise<Duelo | null> {
   const { data, error } = await cliente().from("duelos").select(COLUNAS).eq("id", id).maybeSingle();
+  if (error) throw falha(error);
+  return (data as Duelo | null) ?? null;
+}
+
+/** Sala aguardando oponente pelo código de 6 dígitos */
+export async function obterDueloPorCodigo(codigo: string): Promise<Duelo | null> {
+  const { data, error } = await cliente().from("duelos").select(COLUNAS).eq("codigo", codigo).eq("estado", "aguardando").maybeSingle();
   if (error) throw falha(error);
   return (data as Duelo | null) ?? null;
 }
@@ -126,5 +136,8 @@ export function assinarDuelo(id: string, ao: { duelo?: (d: Duelo) => void; respo
   return () => void sb.removeChannel(canal);
 }
 
-/** Id da sala num link ou código colado */
+/** Código de 6 dígitos digitado (com ou sem espaços) */
+export const codigoDaSala = (texto: string) => (/^\s*\d{3}\s?\d{3}\s*$/.test(texto) ? texto.replace(/\s/g, "") : null);
+
+/** Id da sala num link colado */
 export const idDaSala = (texto: string) => texto.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0]?.toLowerCase() ?? null;

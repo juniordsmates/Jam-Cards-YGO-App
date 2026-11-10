@@ -10,7 +10,7 @@ import { displayName, type Card } from "../db/types";
 import { aleatorio } from "../db/testeJogo";
 import { useConta } from "../db/conta";
 import { openConta } from "../components/Conta";
-import { assinarDuelo, partidasAtivas, criarDuelo, decksDoDuelo, encerrarDuelo, entrarDuelo, enviarResposta, idDaSala, meuJogador, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
+import { assinarDuelo, codigoDaSala, obterDueloPorCodigo, partidasAtivas, criarDuelo, decksDoDuelo, encerrarDuelo, entrarDuelo, enviarResposta, idDaSala, meuJogador, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
 import { copiarLink, linkPara, type Rota } from "../rotas";
 import { APP_VERSION } from "../version";
 import { t } from "../i18n";
@@ -490,6 +490,25 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         .catch(() => setServidorPvp(true));
   }, [cfg.modo, dueloDaRota, conta?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Abre a sala digitada: código de 6 dígitos (busca a sala aguardando) ou link */
+  async function abrirPorCodigo() {
+    setErro(null);
+    try {
+      let id = idDaSala(codigo);
+      const numero = codigoDaSala(codigo);
+      if (!id && numero) {
+        const d = await obterDueloPorCodigo(numero);
+        if (!d) throw new Error(t("Nenhuma sala aguardando oponente com esse código (as salas valem por 4 horas)."));
+        id = d.id;
+      }
+      if (!id) return;
+      onRota?.({ tela: "simulador", duelo: id });
+      await abrirSala(id);
+    } catch (e) {
+      falhou(e);
+    }
+  }
+
   // link de sala aberto (#/duelo/<id>): espera a conta carregar
   useEffect(() => {
     if (dueloDaRota && etapaRef.current !== "duelo" && salaRef.current?.id !== dueloDaRota) void abrirSala(dueloDaRota);
@@ -686,12 +705,17 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       <ScreenShell title={t("Simulador")} accent="magenta" onBack={onBack}>
         <div className="sim-config">
           <h3>{t("Sala criada")}</h3>
-          <p>{t("Mande este link para o seu oponente. O duelo começa assim que ele entrar com o deck dele.")}</p>
+          <p>{t("Mande o link ou o código para o seu oponente. O duelo começa assim que ele entrar com o deck dele.")}</p>
           <label className="sim-campo">
             <span className="field-label">{t("Link da sala")}</span>
             <input readOnly value={link} onFocus={(e) => e.target.select()} />
           </label>
-          <small className="tags-note">{t("Código da sala: {0}", [sala.id])}</small>
+          {sala.codigo && (
+            <p className="sim-codigo-sala">
+              {t("Código da sala")}: <strong>{`${sala.codigo.slice(0, 3)} ${sala.codigo.slice(3)}`}</strong>
+            </p>
+          )}
+          <small className="tags-note">{t("O oponente entra pelo link ou digitando o código em “Entrar numa sala”. A sala vale por 4 horas.")}</small>
           <div className="sim-niveis">
             <button className="ghost-btn" onClick={() => void copiarLink({ tela: "simulador", duelo: sala.id }).then(setCopiado)}>
               {copiado ? t("Link copiado") : t("Copiar link")}
@@ -797,17 +821,13 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               )}
               <small className="tags-note">{t("Você recebe um link para mandar ao seu oponente. Quem começa é sorteado.")}</small>
               <label className="sim-campo">
-                <span className="field-label">{t("Entrar numa sala (código ou link)")}</span>
+                <span className="field-label">{t("Entrar numa sala (código de 6 dígitos ou link)")}</span>
                 <div className="sim-niveis">
-                  <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder={t("Cole aqui o link que recebeu")} />
+                  <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder={t("Ex.: 123 456, ou cole o link")} inputMode="text" />
                   <button
                     className="ghost-btn"
-                    disabled={!idDaSala(codigo) || carregando}
-                    onClick={() => {
-                      const id = idDaSala(codigo)!;
-                      onRota?.({ tela: "simulador", duelo: id });
-                      void abrirSala(id);
-                    }}
+                    disabled={(!idDaSala(codigo) && !codigoDaSala(codigo)) || carregando}
+                    onClick={() => void abrirPorCodigo()}
                   >
                     {t("Abrir")}
                   </button>

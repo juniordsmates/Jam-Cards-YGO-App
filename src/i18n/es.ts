@@ -2601,4 +2601,10 @@ export const ES: Record<string, string> = {
   "Premium": "Premium",
   "Premium: recursos exclusivos, como o auxílio de jogadas no Simulador (em breve)": "Premium: funciones exclusivas, como la ayuda de jugadas en el Simulador (próximamente)",
   "Falta aplicar a migração das salas (supabase/migrations/20261110000000_duelos.sql) no SQL Editor do Supabase.": "Falta aplicar la migración de las salas (supabase/migrations/20261110000000_duelos.sql) en el SQL Editor de Supabase.",
+  "Código da sala": "Código de la sala",
+  "O oponente entra pelo link ou digitando o código em “Entrar numa sala”. A sala vale por 4 horas.": "El oponente entra con el enlace o escribiendo el código en “Entrar a una sala”. La sala dura 4 horas.",
+  "Mande o link ou o código para o seu oponente. O duelo começa assim que ele entrar com o deck dele.": "Envía el enlace o el código a tu oponente. El duelo empieza en cuanto entre con su deck.",
+  "Entrar numa sala (código de 6 dígitos ou link)": "Entrar a una sala (código de 6 dígitos o enlace)",
+  "Ex.: 123 456, ou cole o link": "Ej.: 123 456, o pega el enlace",
+  "Nenhuma sala aguardando oponente com esse código (as salas valem por 4 horas).": "Ninguna sala esperando oponente con ese código (las salas duran 4 horas).",
 };

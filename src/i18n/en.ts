@@ -2601,4 +2601,10 @@ export const EN: Record<string, string> = {
   "Premium": "Premium",
   "Premium: recursos exclusivos, como o auxílio de jogadas no Simulador (em breve)": "Premium: exclusive features, such as play assistance in the Simulator (coming soon)",
   "Falta aplicar a migração das salas (supabase/migrations/20261110000000_duelos.sql) no SQL Editor do Supabase.": "The rooms migration (supabase/migrations/20261110000000_duelos.sql) still needs to be applied in the Supabase SQL Editor.",
+  "Código da sala": "Room code",
+  "O oponente entra pelo link ou digitando o código em “Entrar numa sala”. A sala vale por 4 horas.": "Your opponent joins through the link or by typing the code in “Join a room”. The room lasts 4 hours.",
+  "Mande o link ou o código para o seu oponente. O duelo começa assim que ele entrar com o deck dele.": "Send the link or the code to your opponent. The duel starts as soon as they join with their deck.",
+  "Entrar numa sala (código de 6 dígitos ou link)": "Join a room (6-digit code or link)",
+  "Ex.: 123 456, ou cole o link": "E.g.: 123 456, or paste the link",
+  "Nenhuma sala aguardando oponente com esse código (as salas valem por 4 horas).": "No room waiting for an opponent with that code (rooms last 4 hours).",
 };
