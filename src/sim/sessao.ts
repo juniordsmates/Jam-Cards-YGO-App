@@ -277,7 +277,9 @@ export class Sessao {
       // spe_count > 0: o motor marca opções que não são de corrente livre (ex.: gatilhos que acabaram de
       // acontecer): também pergunta, para não pular um gatilho opcional do jogador
       const cadeiaAberta = d.type === T.SELECT_CHAIN && this.motor.core.duelQueryField(this.duel).chain.length > 0;
-      if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && !d.spe_count && this.cfg.janelas !== "todas" && !cadeiaAberta && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)) {
+      // no turno do jogador, a Draw e a Standby esperam ele passar de fase (barra de fases da tela)
+      const faseManual = this.vez === this.cfg.humano && (this.fase === OcgPhase.DRAW || this.fase === OcgPhase.STANDBY);
+      if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && !d.spe_count && !faseManual && this.cfg.janelas !== "todas" && !cadeiaAberta && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)) {
         this.aplicar({ type: R.SELECT_CHAIN, index: null }, this.cfg.humano);
         continue;
       }

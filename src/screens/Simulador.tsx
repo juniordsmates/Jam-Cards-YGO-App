@@ -43,6 +43,15 @@ const FASES: [number, string][] = [
   [OcgPhase.MAIN2, "M2"],
   [OcgPhase.END, "EP"],
 ];
+/** Fases da barra do topo: sigla, nome e o valor do motor (Battle Phase reúne as etapas da batalha) */
+const BARRA_FASES: { id: string; nome: string; fase: number }[] = [
+  { id: "DP", nome: t("Draw Phase"), fase: OcgPhase.DRAW },
+  { id: "SP", nome: t("Standby Phase"), fase: OcgPhase.STANDBY },
+  { id: "M1", nome: t("Main Phase 1"), fase: OcgPhase.MAIN1 },
+  { id: "BP", nome: t("Battle Phase"), fase: OcgPhase.BATTLE_START },
+  { id: "M2", nome: t("Main Phase 2"), fase: OcgPhase.MAIN2 },
+  { id: "EP", nome: t("End Phase"), fase: OcgPhase.END },
+];
 const siglaFase = (f: number) => (f & (OcgPhase.BATTLE_START | OcgPhase.BATTLE_STEP | OcgPhase.DAMAGE | OcgPhase.DAMAGE_CAL | OcgPhase.BATTLE) ? "BP" : FASES.find(([v]) => v === f)?.[1] ?? "");
 
 // títulos das escolhas, pela dica do motor (HINTMSG_* do constant.lua do Project Ignis)
@@ -269,6 +278,9 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   const [pergunta, setPergunta] = useState<{ jogador: number; code: number | null; resposta: Explicacao | null; carregando: boolean } | null>(null);
   // "Criar Token": painel aberto e os dados da Ficha
   const [ficha, setFicha] = useState<{ nivel: number; atributo: number; raca: number; atk: number; def: number } | null>(null);
+  // compra animada: quantas cartas cada jogador acabou de comprar (as últimas da mão)
+  const [comprando, setComprando] = useState<[number, number]>([0, 0]);
+  const timerCompra = useRef<number[]>([]);
   // dado: valor mostrado (rolando por 2 s antes do resultado)
   const [dado, setDado] = useState<{ valor: number; rolando: boolean } | null>(null);
   // partidas para revisar: guardadas neste aparelho e 1x1 do servidor
@@ -695,6 +707,13 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       if (e.t === "resolve") setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, resolvida: true } : x)) }));
       if (e.t === "cadeia-fim") setAtivacoes((a) => ({ itens: a.itens.map((x) => ({ ...x, resolvida: true })), aberta: false }));
       if (e.t === "revela" && e.p === euRef.current) setRevelacao(e.cartas);
+      if (e.t === "compra" && !revisaoRef.current) {
+        const p = e.p as 0 | 1;
+        const n = e.codes.length;
+        setComprando((v) => (p === 0 ? [n, v[1]] : [v[0], n]));
+        window.clearTimeout(timerCompra.current[p]);
+        timerCompra.current[p] = window.setTimeout(() => setComprando((v) => (p === 0 ? [0, v[1]] : [v[0], 0])), 600 + n * 150);
+      }
       if (e.t !== "embaralha") continue;
       const p = e.p as 0 | 1;
       setEmbaralhando((v) => (p === 0 ? [true, v[1]] : [v[0], true]));
@@ -1189,6 +1208,27 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     return zonaCampo(eu, L.MZONE, 5 + lado, "tj-em", minha);
   };
 
+  /** Resposta que leva à fase `id` agora (null: não dá para ir para ela neste momento) */
+  const passarPara = (id: string): OcgResponse | null => {
+    const d = pedido?.msg;
+    if (!d || !minhaVez || pensando) return null;
+    const agora = siglaFase(est.fase);
+    const cadeiaVazia = !est.cadeia.length;
+    if (d.type === T.SELECT_CHAIN && !d.forced && cadeiaVazia) {
+      // Draw → Standby → Main Phase 1: passar a janela da fase atual
+      if ((agora === "DP" && id === "SP") || (agora === "SP" && id === "M1")) return { type: R.SELECT_CHAIN, index: null };
+    }
+    if (d.type === T.SELECT_IDLECMD) {
+      if (agora === "M1" && id === "BP" && d.to_bp) return { type: R.SELECT_IDLECMD, action: 6, index: null };
+      if (id === "EP" && d.to_ep) return { type: R.SELECT_IDLECMD, action: 7, index: null };
+    }
+    if (d.type === T.SELECT_BATTLECMD) {
+      if (id === "M2" && d.to_m2) return { type: R.SELECT_BATTLECMD, action: 2, index: null };
+      if (id === "EP" && d.to_ep) return { type: R.SELECT_BATTLECMD, action: 3, index: null };
+    }
+    return null;
+  };
+
   // painel da revisão: momento, navegação lance a lance e por turno, "?" e saída
   const painelRevisao = (r: NonNullable<typeof revisao>) => {
     const ultimo = r.momentos.length - 1;
@@ -1342,6 +1382,25 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       plain
       actions={
         <div className="sim-topo">
+          <nav className="sim-fases" aria-label={t("Fases do turno")}>
+            {BARRA_FASES.map((f) => {
+              const atual = siglaFase(est.fase) === f.id;
+              const ir = revisao ? null : passarPara(f.id);
+              return (
+                <button
+                  key={f.id}
+                  className={`sim-fase ${atual ? "sim-fase-atual" : ""} ${ir ? "sim-fase-pode" : ""}`}
+                  disabled={!ir}
+                  onClick={() => ir && responder(ir)}
+                  title={atual ? t("{0} (fase atual)", [f.nome]) : ir ? t("Ir para a {0}", [f.nome]) : f.nome}
+                  aria-current={atual ? "step" : undefined}
+                >
+                  {f.id}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="sim-topo-botoes">
           <button className="ghost-btn sim-pergunta-btn" onClick={() => { setFicha(null); setPergunta({ jogador: op, code: null, resposta: null, carregando: false }); }} title={t("Por que uma carta não pôde ser usada?")}>
             {t("Perguntas / Dúvidas sobre o duelo")}
           </button>
@@ -1350,6 +1409,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               {t("Desistir")}
             </button>
           )}
+          </div>
         </div>
       }
     >
@@ -1374,7 +1434,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             </span>
             <div className="tj-mao tj-mao-op" aria-label={t("Mão do oponente")}>
               {lado2.mao.map((c, i) => (
-                <div key={i} className="tj-mao-carta">
+                <div key={i} className={`tj-mao-carta ${i >= lado2.mao.length - comprando[op] ? "sim-comprada sim-comprada-op" : ""}`} style={{ animationDelay: `${Math.max(0, i - (lado2.mao.length - comprando[op])) * 150}ms` }}>
                   {carta(c, chave(op, L.HAND, i), !revisao && !c.pub)}
                 </div>
               ))}
@@ -1426,7 +1486,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             </span>
             <div className="tj-mao" aria-label={t("Sua mão")}>
               {meuLado.mao.map((c, i) => (
-                <div key={i} className="tj-mao-carta">
+                <div key={i} className={`tj-mao-carta ${i >= meuLado.mao.length - comprando[eu] ? "sim-comprada" : ""}`} style={{ animationDelay: `${Math.max(0, i - (meuLado.mao.length - comprando[eu])) * 150}ms` }}>
                   {carta(c, chave(eu, L.HAND, i), false)}
                 </div>
               ))}
@@ -1487,7 +1547,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               {sala ? t("Vez de {0}…", [rotuloOp]) : t("A IA está pensando…")}
             </p>
           ) : (
-            <Escolha pedido={pedido} nomeDe={nomeDe} responder={responder} eu={eu} setPreview={setPreview} marcadas={marcadas} setMarcadas={setMarcadas} tocar={tocar} setFoco={setFoco} />
+            <Escolha pedido={pedido} nomeDe={nomeDe} responder={responder} eu={eu} setPreview={setPreview} marcadas={marcadas} setMarcadas={setMarcadas} tocar={tocar} setFoco={setFoco} fase={minhaVez && !est.cadeia.length ? siglaFase(est.fase) : ""} />
           )}
           {!revisao && (
           <label className="sim-janelas" title={t("Desligado: o simulador pergunta se você quer encadear quando há uma corrente aberta (de qualquer jogador) ou logo depois de uma jogada do oponente, e pula as janelas vazias, como as das mudanças de fase.")}>
@@ -1709,9 +1769,11 @@ interface PropsEscolha {
   tocar: (i: number) => void;
   /** acende no tabuleiro a carta da opção sob o mouse */
   setFoco: (k: string | null) => void;
+  /** fase do turno do jogador sem corrente aberta ("DP", "SP"…); vazio fora disso */
+  fase: string;
 }
 
-function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarcadas, tocar, setFoco }: PropsEscolha) {
+function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarcadas, tocar, setFoco, fase }: PropsEscolha) {
   const d = pedido.msg;
   const [busca, setBusca] = useState("");
   const [contadores, setContadores] = useState<number[]>([]);
@@ -1769,24 +1831,7 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
     return (
       <div className="sim-escolha">
         {aviso}
-        <p className="tags-note">{t("Sua vez: clique numa carta com contorno para agir.")}</p>
-        <div className="sim-niveis">
-          {d.type === T.SELECT_IDLECMD && d.to_bp && (
-            <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_IDLECMD, action: 6, index: null })}>
-              {t("Battle Phase")}
-            </button>
-          )}
-          {d.type === T.SELECT_BATTLECMD && d.to_m2 && (
-            <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_BATTLECMD, action: 2, index: null })}>
-              {t("Main Phase 2")}
-            </button>
-          )}
-          {d.to_ep && (
-            <button className="ghost-btn" onClick={() => responder(d.type === T.SELECT_IDLECMD ? { type: R.SELECT_IDLECMD, action: 7, index: null } : { type: R.SELECT_BATTLECMD, action: 3, index: null })}>
-              {t("Encerrar o turno")}
-            </button>
-          )}
-        </div>
+        <p className="tags-note">{t("Sua vez: clique numa carta com contorno para agir. Para mudar de fase, use a barra de fases no topo.")}</p>
       </div>
     );
   }
@@ -1794,6 +1839,20 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
   const corpo = (): ReactNode => {
     switch (d.type) {
       case T.SELECT_CHAIN:
+        if (!d.forced && (fase === "DP" || fase === "SP"))
+          return (
+            <>
+              <h4>{fase === "DP" ? t("Draw Phase") : t("Standby Phase")}</h4>
+              <small className="tags-note">
+                {d.selects.length ? t("Cartas que você pode ativar nesta fase:") : t("Nenhuma carta sua pode ser ativada nesta fase.")}
+              </small>
+              {d.selects.map((c, i) => cartaBotao(c, i, false, () => tocar(i), texto(c.description) && <em>{texto(c.description)}</em>))}
+              <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_CHAIN, index: null })} autoFocus>
+                {fase === "DP" ? t("Ir para a Standby Phase") : t("Ir para a Main Phase 1")}
+              </button>
+              {fase === "DP" && <small className="tags-note">{t("Na Standby Phase o motor só para se houver carta que possa ser ativada; sem nenhuma, segue para a Main Phase 1.")}</small>}
+            </>
+          );
         return (
           <>
             <h4>{d.forced ? t("Ative um efeito obrigatório") : t("Encadear um efeito?")}</h4>

@@ -618,9 +618,70 @@
 }
 
 .sim-topo {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sim-topo-botoes {
   display: flex;
   gap: 8px;
   margin-left: auto;
+}
+
+/* barra de fases no centro do topo: atual em destaque, as possíveis clicáveis, as outras apagadas */
+.sim-fases {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+}
+
+/* a barra fica no centro da tela, independente do título e dos botões */
+.screen-header:has(.sim-fases) {
+  position: relative;
+}
+
+@media (max-width: 1100px) {
+  .sim-fases {
+    position: static;
+    transform: none;
+    margin: 0 auto;
+  }
+}
+
+.sim-fase {
+  min-width: 42px;
+  padding: 6px 8px;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  opacity: 0.55;
+  cursor: default;
+}
+
+.sim-fase-pode {
+  opacity: 1;
+  color: var(--text);
+  border-color: var(--accent);
+  cursor: pointer;
+}
+
+.sim-fase-pode:hover {
+  background: color-mix(in srgb, var(--accent) 15%, var(--panel));
+}
+
+.sim-fase-atual {
+  opacity: 1;
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 /* perguntas e Criar Token: no alto da coluna da direita, ocupando a altura dela */
@@ -684,4 +745,29 @@
 .sim-ordem {
   color: var(--accent);
   font-weight: 800;
+}
+
+/* compra: as cartas novas entram na mão vindas do Deck */
+.sim-comprada {
+  animation: sim-compra 0.45s ease-out both;
+}
+
+.sim-comprada-op {
+  animation-name: sim-compra-op;
+}
+
+@keyframes sim-compra {
+  from { transform: translate(120px, -60px) scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes sim-compra-op {
+  from { transform: translate(-120px, 60px) scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-comprada {
+    animation: none;
+  }
 }

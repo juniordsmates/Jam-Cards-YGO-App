@@ -2692,4 +2692,13 @@ export const EN: Record<string, string> = {
   "Confirmar ordem": "Confirm order",
   "Usar a ordem proposta": "Use the suggested order",
   "Efeitos que acontecem ao mesmo tempo: pela regra, você escolhe a ordem. O que você escolher agora entra como o próximo elo da corrente (e resolve depois dos que vierem em cima dele).": "Effects happening at the same time: by the rules, you choose the order. The one you pick now becomes the next chain link (and resolves after the ones added on top of it).",
+  "Fases do turno": "Turn phases",
+  "{0} (fase atual)": "{0} (current phase)",
+  "Ir para a {0}": "Go to the {0}",
+  "Sua vez: clique numa carta com contorno para agir. Para mudar de fase, use a barra de fases no topo.": "Your turn: click a highlighted card to act. To change phase, use the phase bar at the top.",
+  "Cartas que você pode ativar nesta fase:": "Cards you can activate in this phase:",
+  "Nenhuma carta sua pode ser ativada nesta fase.": "None of your cards can be activated in this phase.",
+  "Ir para a Standby Phase": "Go to the Standby Phase",
+  "Ir para a Main Phase 1": "Go to Main Phase 1",
+  "Na Standby Phase o motor só para se houver carta que possa ser ativada; sem nenhuma, segue para a Main Phase 1.": "In the Standby Phase the engine only stops if a card can be activated; otherwise it moves on to Main Phase 1.",
 };
