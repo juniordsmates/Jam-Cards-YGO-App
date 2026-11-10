@@ -152,7 +152,7 @@ export class ClienteSim {
   }
 
   /** "Criar Token": Ficha com os dados escolhidos (na Main Phase do jogador) */
-  criarFicha(dados: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def">) {
+  criarFicha(dados: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def" | "posicao"> & { sequencia?: number }) {
     this.enviar({ tipo: "ficha", dados });
   }
 

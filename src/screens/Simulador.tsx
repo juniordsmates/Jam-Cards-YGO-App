@@ -124,6 +124,11 @@ const QUEM_COMECA: { id: Config["primeiro"]; label: string }[] = [
   { id: "sorteio", label: t("Sorteio") },
 ];
 
+/** Artes das Fichas criadas pelo jogador: um dos 4 Sheep Token de Scapegoat */
+const OVELHAS = [73915052, 73915053, 73915054, 73915055];
+const nomeAtributo = (bits: number) => ATRIBUTOS.find(([b]) => b === bits)?.[1] ?? "";
+const nomeTipo = (bits: number) => TIPOS_MONSTRO[Math.round(Math.log2(bits || 1))] ?? "";
+
 const POSICOES: [number, string][] = [
   [1, t("Ataque")],
   [4, t("Defesa")],
@@ -277,7 +282,10 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   // "?": pergunta aberta (de quem é a carta, qual carta) e a resposta
   const [pergunta, setPergunta] = useState<{ jogador: number; code: number | null; resposta: Explicacao | null; carregando: boolean } | null>(null);
   // "Criar Token": painel aberto e os dados da Ficha
-  const [ficha, setFicha] = useState<{ nivel: number; atributo: number; raca: number; atk: number; def: number } | null>(null);
+  const [ficha, setFicha] = useState<{ nivel: number; atributo: number; raca: number; atk: number; def: number; posicao: 1 | 4; sequencia: number } | null>(null);
+  // cartas mudando de lugar (0,3 s): de onde para onde na tela
+  const [voos, setVoos] = useState<{ id: number; code: number; oculta: boolean; de: { x: number; y: number }; para: { x: number; y: number } }[]>([]);
+  const idVoo = useRef(0);
   // compra animada: quantas cartas cada jogador acabou de comprar (as últimas da mão)
   const [comprando, setComprando] = useState<[number, number]>([0, 0]);
   const timerCompra = useRef<number[]>([]);
@@ -619,19 +627,19 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     }
   }
 
-  /** Joga um dado: 2 s de animação e o resultado vai para o registro */
+  /** Joga um dado: 0,5 s de animação e o resultado vai para o registro */
   function jogarDado() {
     if (dado?.rolando) return;
     const sorteio = () => 1 + aleatorio(6);
     setDado({ valor: sorteio(), rolando: true });
-    const giro = window.setInterval(() => setDado((d) => (d?.rolando ? { ...d, valor: sorteio() } : d)), 100);
+    const giro = window.setInterval(() => setDado((d) => (d?.rolando ? { ...d, valor: sorteio() } : d)), 60);
     window.setTimeout(() => {
       window.clearInterval(giro);
       const valor = sorteio();
       setDado({ valor, rolando: false });
       setRegistro((r) => [...r, { t: "dado", p: euRef.current, v: valor } as EventoSim].slice(-400));
       window.setTimeout(() => setDado((d) => (d && !d.rolando ? null : d)), 1500);
-    }, 2000);
+    }, 500);
   }
 
   /** "Criar Token": Ficha com os dados escolhidos na primeira Zona de Monstros livre */
@@ -641,6 +649,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     setPensando(true);
     setQuadro((q) => (q ? { ...q, pedido: null } : q));
     cliente.current?.criarFicha({ nome: "Token", ...ficha });
+
   }
 
   // partidas para revisar (na tela de configuração)
@@ -684,7 +693,40 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     if (dueloDaRota) onRota?.({ tela: "simulador" });
   }
 
+  /** Retângulo na tela do lugar de uma carta (mão, pilha ou zona do campo) */
+  function lugarNaTela(p: number, local: number, seq: number): DOMRect | null {
+    let el: Element | null | undefined = null;
+    if (local === L.HAND) {
+      const mao = document.querySelector(`[data-mao="${p}"]`);
+      el = mao?.children[seq] ?? mao;
+    } else if (local & (L.DECK | L.EXTRA | L.GRAVE | L.REMOVED)) el = document.querySelector(`[data-pilha="${p}:${local & (L.DECK | L.EXTRA | L.GRAVE | L.REMOVED)}"]`);
+    else if (local === L.FZONE) el = document.querySelector(`[data-zona="${chave(p, L.SZONE, 5)}"]`);
+    else if (local & L.OVERLAY) el = document.querySelector(`[data-zona="${chave(p, L.MZONE, seq)}"]`);
+    else if (local & (L.MZONE | L.SZONE)) el = document.querySelector(`[data-zona="${chave(p, local & (L.MZONE | L.SZONE), seq)}"]`);
+    return el?.getBoundingClientRect() ?? null;
+  }
+
+  /** Animação de 0,3 s das cartas que mudaram de lugar (revela a do oponente que sai da mão, salvo se vai baixada) */
+  function animarVoos(q: Quadro) {
+    if (revisaoRef.current) return;
+    const novos: typeof voos = [];
+    for (const e of q.eventos) {
+      if (e.t !== "voo" || novos.length >= 6) continue;
+      const a = lugarNaTela(e.de.p, e.de.local, e.de.seq);
+      const b = lugarNaTela(e.para.p, e.para.local, e.para.seq);
+      if (!a || !b) continue;
+      const oculta = e.para.baixada && e.para.p !== euRef.current;
+      const centro = (r: DOMRect) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      novos.push({ id: ++idVoo.current, code: e.code, oculta, de: centro(a), para: centro(b) });
+    }
+    if (!novos.length) return;
+    setVoos((v) => [...v, ...novos]);
+    const ids = new Set(novos.map((v) => v.id));
+    window.setTimeout(() => setVoos((v) => v.filter((x) => !ids.has(x.id))), 360);
+  }
+
   function receber(q: Quadro) {
+    animarVoos(q);
     setPensando(!!q.pensando);
     setQuadro(q);
     quadroRef.current = q;
@@ -1116,12 +1158,22 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         {verso ? (
           <div className="tj-verso" />
         ) : c.ficha ? (
-          <div className="tj-token">
-            <strong>{c.ficha.nome}</strong>
-            <span>{t("Nível {0}", [c.ficha.nivel])}</span>
+          <div className="sim-ficha-carta" title={`${c.ficha.nome} · ${t("Nível {0}", [c.ficha.nivel])} · ${nomeAtributo(c.ficha.atributo)} · ${nomeTipo(c.ficha.raca)}${c.atk !== undefined ? ` · ${c.atk}/${c.def}` : ""}`}>
+            <span className="sim-ficha-nome">{c.ficha.nome}</span>
+            <span className="sim-ficha-estrelas">{"★".repeat(Math.min(12, Math.max(0, c.ficha.nivel)))}</span>
+            <img
+              className="sim-ficha-arte"
+              src={cardImage(c.code >= 990000000 ? OVELHAS[c.code % OVELHAS.length] : c.code, "cropped")}
+              alt=""
+              draggable={false}
+              onError={(e) => ((e.target as HTMLImageElement).src = cardImage(OVELHAS[c.code % OVELHAS.length], "cropped"))}
+            />
+            <span className="sim-ficha-tipo">
+              {nomeAtributo(c.ficha.atributo)} · {nomeTipo(c.ficha.raca)}
+            </span>
             {c.atk !== undefined && (
-              <span>
-                {c.atk} / {c.def}
+              <span className="sim-ficha-atk">
+                ATK {c.atk} / DEF {c.def}
               </span>
             )}
           </div>
@@ -1184,6 +1236,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     return (
       <div
         key={`p-${p}-${tipo}`}
+        data-pilha={`${p}:${location}`}
         className={`tj-zona tj-${tipo} ${p === op ? "tj-zona-op" : ""} ${temAcao && !temEscolha ? "sim-acao" : ""} ${temEscolha ? "sim-escolhivel" : ""}`}
         onClick={() => cartas.length && setLista({ titulo, cartas: cartas.map((c, i) => ({ c, k: chave(p, location, i), oculta: oculta(c) })) })}
         title={titulo}
@@ -1206,6 +1259,13 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
     const dele = lado2.monstros[6 - lado];
     if (dele) return zonaCampo(op, L.MZONE, 6 - lado, "tj-em", dele);
     return zonaCampo(eu, L.MZONE, 5 + lado, "tj-em", minha);
+  };
+
+  /** Abre "Criar Token" com a primeira Zona de Monstros livre e Posição de Ataque */
+  const abrirFicha = () => {
+    const livre = [0, 1, 2, 3, 4].find((i) => !meuLado.monstros[i]) ?? 0;
+    setPergunta(null);
+    setFicha({ nivel: 1, atributo: 0x20, raca: 0x4000, atk: 0, def: 0, posicao: 1, sequencia: livre });
   };
 
   /** Resposta que leva à fase `id` agora (null: não dá para ir para ela neste momento) */
@@ -1320,7 +1380,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   const painelFicha = ficha && (
     <div className="sim-pergunta-painel" role="dialog" aria-label={t("Criar Token")}>
       <h4>{t("Criar Token")}</h4>
-      <p className="tags-note">{t("A Ficha vai para a primeira Zona de Monstros livre, em Posição de Ataque. Fichas criadas por efeitos de cartas (como Nibiru) já vêm com os dados certos.")}</p>
+      <p className="tags-note">{t("Escolha a posição, a zona e os dados da Ficha. Fichas criadas por efeitos de cartas (como Nibiru) já vêm com os dados certos.")}</p>
       <label className="sim-campo">
         <span className="field-label">{t("Tipo")}</span>
         <select value={ficha.raca} onChange={(e) => setFicha({ ...ficha, raca: Number(e.target.value) })}>
@@ -1339,6 +1399,25 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               {n}
             </option>
           ))}
+        </select>
+      </label>
+      <label className="sim-campo">
+        <span className="field-label">{t("Posição de batalha")}</span>
+        <select value={ficha.posicao} onChange={(e) => setFicha({ ...ficha, posicao: Number(e.target.value) as 1 | 4 })}>
+          <option value={1}>{t("Ataque")}</option>
+          <option value={4}>{t("Defesa")}</option>
+        </select>
+      </label>
+      <label className="sim-campo">
+        <span className="field-label">{t("Zona no campo")}</span>
+        <select value={ficha.sequencia} onChange={(e) => setFicha({ ...ficha, sequencia: Number(e.target.value) })}>
+          {[0, 1, 2, 3, 4]
+            .filter((i) => !meuLado.monstros[i])
+            .map((i) => (
+              <option key={i} value={i}>
+                {t("Zona de Monstros {0}", [i + 1])}
+              </option>
+            ))}
         </select>
       </label>
       <div className="sim-ficha-numeros">
@@ -1432,7 +1511,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             <span className="sim-nome" title={nomeOponente}>
               {nomeOponente.slice(0, 15)}
             </span>
-            <div className="tj-mao tj-mao-op" aria-label={t("Mão do oponente")}>
+            <div className="tj-mao tj-mao-op" aria-label={t("Mão do oponente")} data-mao={op}>
               {lado2.mao.map((c, i) => (
                 <div key={i} className={`tj-mao-carta ${i >= lado2.mao.length - comprando[op] ? "sim-comprada sim-comprada-op" : ""}`} style={{ animationDelay: `${Math.max(0, i - (lado2.mao.length - comprando[op])) * 150}ms` }}>
                   {carta(c, chave(op, L.HAND, i), !revisao && !c.pub)}
@@ -1453,7 +1532,18 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             </div>
             <div className="tj-l1">
               {pilha(op, "banido")}
-              <span />
+              <div className="sim-acoes-campo">
+                {!revisao && !fimTexto && pedido?.msg.type === T.SELECT_IDLECMD && (
+                  <button className="ghost-btn" onClick={abrirFicha} title={t("Cria uma Ficha numa Zona de Monstros livre")}>
+                    {t("Criar Token")}
+                  </button>
+                )}
+                {!revisao && !fimTexto && (
+                  <button className="ghost-btn" onClick={jogarDado} disabled={!!dado?.rolando}>
+                    {t("Jogar dado")}
+                  </button>
+                )}
+              </div>
               {emz(0)}
               <span className="sim-centro">
                 <b className={`sim-lp ${!minhaVez ? "sim-lp-vez" : ""}`} title={t("Pontos de Vida de {0}", [nomeOponente])}>
@@ -1484,7 +1574,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             <span className="sim-nome" title={meuNome}>
               {meuNome.slice(0, 15)}
             </span>
-            <div className="tj-mao" aria-label={t("Sua mão")}>
+            <div className="tj-mao" aria-label={t("Sua mão")} data-mao={eu}>
               {meuLado.mao.map((c, i) => (
                 <div key={i} className={`tj-mao-carta ${i >= meuLado.mao.length - comprando[eu] ? "sim-comprada" : ""}`} style={{ animationDelay: `${Math.max(0, i - (meuLado.mao.length - comprando[eu])) * 150}ms` }}>
                   {carta(c, chave(eu, L.HAND, i), false)}
@@ -1564,18 +1654,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             {t("Pausar em todas as janelas de resposta")}
           </label>
           )}
-          {!revisao && !fimTexto && (
-            <div className="sim-niveis">
-              {pedido?.msg.type === T.SELECT_IDLECMD && (
-                <button className="ghost-btn" onClick={() => { setPergunta(null); setFicha({ nivel: 1, atributo: 0x20, raca: 0x4000, atk: 0, def: 0 }); }} title={t("Cria uma Ficha na primeira Zona de Monstros livre")}>
-                  {t("Criar Token")}
-                </button>
-              )}
-              <button className="ghost-btn" onClick={jogarDado} disabled={!!dado?.rolando}>
-                {t("Jogar dado")}
-              </button>
-            </div>
-          )}
+
           {aviso && <p className="tags-note">{aviso}</p>}
           {erro && (
             <p className="conta-erro" role="alert">
@@ -1587,7 +1666,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             {[...registro]
               .reverse()
               .map((e, i) => [e, registro.length - i] as const)
-              .filter(([e]) => e.t !== "resolve" && e.t !== "cadeia-fim")
+              .filter(([e]) => e.t !== "resolve" && e.t !== "cadeia-fim" && e.t !== "voo")
               .map(([e, k]) => (
                 <li key={k}>{textoEvento(e, eu, nomeDe, rotuloOp)}</li>
               ))}
@@ -1646,6 +1725,12 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
             </div>
           </div>
         )}
+
+        {voos.map((v) => (
+          <div key={v.id} className="sim-voo" style={{ left: v.de.x, top: v.de.y, ["--dx" as string]: `${v.para.x - v.de.x}px`, ["--dy" as string]: `${v.para.y - v.de.y}px` }} aria-hidden>
+            {v.oculta || !v.code ? <div className="tj-verso" /> : <img src={cardImage(v.code, "small")} alt="" />}
+          </div>
+        ))}
 
         {dado && (
           <div className={`sim-dado ${dado.rolando ? "sim-dado-rolando" : ""}`} role="status" aria-live="polite" aria-label={dado.rolando ? t("Jogando o dado…") : t("Dado: {0}", [dado.valor])}>
@@ -2141,6 +2226,8 @@ function textoEvento(e: EventoSim, eu: number, nomeDe: (c: number) => string, op
       return e.p === eu ? t("Cartas mostradas a você: {0}", [e.cartas.map((c) => nomeDe(c.code)).join(", ")]) : t("{0} viu {1} carta(s)", [oponente, e.cartas.length]);
     case "resolve":
     case "cadeia-fim":
+      return "";
+    case "voo":
       return "";
     case "dado":
       return t("{0} jogou um dado: {1}", [quem(e.p), e.v]);

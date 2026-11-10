@@ -238,6 +238,8 @@ export interface ComandoFicha {
   jogador: number;
   /** Zona de Monstros (0 a 4) */
   sequencia: number;
+  /** posição de batalha: 1 Ataque, 4 Defesa (Fichas ficam sempre com a face para cima) */
+  posicao: 1 | 4;
   nome: string;
   nivel: number;
   /** OcgAttribute e OcgRace (bits) */
@@ -257,7 +259,7 @@ export type Historico = Jogada[];
 /** Executa um comando do jogador no duelo (Ficha: registra a carta e a põe na zona) */
 export function executarComando(motor: Motor, duel: OcgDuelHandle, c: ComandoFicha) {
   motor.registrar(c.code, [0, [], TIPO.MONSTRO | TIPO.NORMAL | TIPO.FICHA, c.nivel, c.atributo, c.raca, c.atk, c.def], c.nome);
-  motor.core.loadScript(duel, `ficha_${c.code}.lua`, `Debug.AddCard(${c.code},${c.jogador},${c.jogador},LOCATION_MZONE,${c.sequencia},POS_FACEUP_ATTACK)`);
+  motor.core.loadScript(duel, `ficha_${c.code}.lua`, `Debug.AddCard(${c.code},${c.jogador},${c.jogador},LOCATION_MZONE,${c.sequencia},${c.posicao === 4 ? "POS_FACEUP_DEFENSE" : "POS_FACEUP_ATTACK"})`);
 }
 
 /** Recria o duelo e reaplica as jogadas dadas até aqui (o motor não copia estado) */

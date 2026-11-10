@@ -2701,4 +2701,10 @@ export const EN: Record<string, string> = {
   "Ir para a Standby Phase": "Go to the Standby Phase",
   "Ir para a Main Phase 1": "Go to Main Phase 1",
   "Na Standby Phase o motor só para se houver carta que possa ser ativada; sem nenhuma, segue para a Main Phase 1.": "In the Standby Phase the engine only stops if a card can be activated; otherwise it moves on to Main Phase 1.",
+  "Cria uma Ficha numa Zona de Monstros livre": "Creates a Token in a free Monster Zone",
+  "Posição de batalha": "Battle position",
+  "Zona no campo": "Zone on the field",
+  "Zona de Monstros {0}": "Monster Zone {0}",
+  "Escolha a posição, a zona e os dados da Ficha. Fichas criadas por efeitos de cartas (como Nibiru) já vêm com os dados certos.": "Choose the Token's position, zone and stats. Tokens created by card effects (like Nibiru) already come with the right stats.",
+  "ATK {0} / DEF": "ATK {0} / DEF",
 };

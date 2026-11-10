@@ -19,8 +19,8 @@ export interface CartaSim {
   marc?: Record<string, number>;
   /** carta da mão revelada a todos (o oponente também vê) */
   pub?: boolean;
-  /** Ficha (Token): nome e Nível, para desenhar sem imagem */
-  ficha?: { nome: string; nivel: number };
+  /** Ficha (Token): dados para desenhar a carta (as criadas pelo jogador não têm imagem) */
+  ficha?: { nome: string; nivel: number; atributo: number; raca: number };
 }
 
 export interface LadoSim {
@@ -60,6 +60,8 @@ export type EventoSim =
   | { t: "cadeia-fim" }
   | { t: "nega"; code?: number }
   | { t: "embaralha"; p: number }
+  /** carta mudando de lugar (para a animação; não entra no registro) */
+  | { t: "voo"; code: number; de: { p: number; local: number; seq: number }; para: { p: number; local: number; seq: number; baixada: boolean } }
   /** dado jogado pelo jogador (só no registro da tela) */
   | { t: "dado"; p: number; v: number }
   /** cartas mostradas ao jogador p (ex.: a mão do oponente, o topo do Deck) */
@@ -348,14 +350,14 @@ export class Sessao {
    * Main Phase dele. Em seguida, embaralha a mão (não muda o jogo) para o motor refazer a lista de
    * ações já com a Ficha. Fica no histórico: a revisão e o oponente (1x1) refazem a mesma Ficha.
    */
-  criarFicha(f: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def">): Quadro {
+  criarFicha(f: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def" | "posicao"> & { sequencia?: number }): Quadro {
     const humano = this.cfg.humano;
     const d = this.decisao;
     if (!d || this.fim || d.type !== T.SELECT_IDLECMD || d.player !== humano) throw new Error("Só dá para criar uma Ficha na sua Main Phase, quando você tem a ação.");
     const mz = this.motor.core.duelQueryLocation(this.duel, { flags: 1 as never, controller: humano, location: L.MZONE });
-    const sequencia = [0, 1, 2, 3, 4].find((i) => !mz[i]?.code);
+    const sequencia = f.sequencia !== undefined && f.sequencia >= 0 && f.sequencia <= 4 && !mz[f.sequencia]?.code ? f.sequencia : [0, 1, 2, 3, 4].find((i) => !mz[i]?.code);
     if (sequencia === undefined) throw new Error("Não há Zona de Monstros livre para a Ficha.");
-    this.aplicar({ type: "ficha", code: 990000000 + this.historico.length, jogador: humano, sequencia, ...f }, humano);
+    this.aplicar({ type: "ficha", code: 990000000 + this.historico.length, jogador: humano, ...f, sequencia }, humano);
     if (d.shuffle) {
       this.aplicar({ type: R.SELECT_IDLECMD, action: 8, index: null }, humano);
       return this.avancar();
@@ -456,6 +458,13 @@ export class Sessao {
           const para = m.to.location;
           // carta do Deck para a mão fora da compra: busca (o que, por exemplo, ativa Droll & Lock Bird)
           if (de === L.DECK && para === L.HAND) this.ultimoEvento = { tipo: "busca", p: m.to.controller, code: m.card };
+          if (de !== para || m.from.controller !== m.to.controller)
+            ev.push({
+              t: "voo",
+              code: m.card,
+              de: { p: m.from.controller, local: de, seq: m.from.sequence },
+              para: { p: m.to.controller, local: para, seq: m.to.sequence, baixada: (((m.to as { position?: number }).position ?? 0) & 0xa) !== 0 },
+            });
           if (de !== para && m.card && !(de === L.DECK && para === L.HAND) && (para & (L.GRAVE | L.REMOVED | L.HAND | L.DECK | L.EXTRA) || de & L.ONFIELD))
             ev.push({ t: "move", code: m.card, de, para, p: m.to.controller });
           break;
@@ -571,6 +580,16 @@ export class Sessao {
     };
   }
 
+  /** Cartas ativadas neste turno (id e jogador) */
+  get ativadasNoTurno() {
+    return this.ativacoesTurno;
+  }
+
+  /** Último acontecimento do duelo (busca, Invocação, ativação, ataque, compra, fase) e de quem foi */
+  get eventoRecente() {
+    return this.ultimoEvento;
+  }
+
   /** Decisão em aberto (de qualquer jogador) */
   decisaoPendente(): { tipo: number; jogador: number } | null {
     const d = this.decisao;
@@ -673,7 +692,12 @@ export class Sessao {
             ...(mat.length ? { mat } : {}),
             ...(Object.keys(marc).length ? { marc } : {}),
             ...(r.isPublic ? { pub: true } : {}),
-            ...(this.motor.tipo(r.code as number) & TIPO.FICHA ? { ficha: { nome: this.motor.nome(r.code as number), nivel: this.motor.dados(r.code as number)?.level ?? 0 } } : {}),
+            ...(this.motor.tipo(r.code as number) & TIPO.FICHA
+              ? (() => {
+                  const dd = this.motor.dados(r.code as number);
+                  return { ficha: { nome: this.motor.nome(r.code as number), nivel: dd?.level ?? 0, atributo: (dd?.attribute as number) ?? 0, raca: Number(dd?.race ?? 0) } };
+                })()
+              : {}),
           };
         });
       const cheias = (location: number) => q(location).filter((c): c is CartaSim => !!c);

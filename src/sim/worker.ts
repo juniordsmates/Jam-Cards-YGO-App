@@ -15,7 +15,7 @@ export type ParaWorker =
   /** o que o duelo ensinou até agora (para quem desiste antes do fim) */
   | { tipo: "aprendizado" }
   /** "Criar Token": Ficha com os dados escolhidos */
-  | { tipo: "ficha"; dados: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def"> }
+  | { tipo: "ficha"; dados: Pick<ComandoFicha, "nome" | "nivel" | "atributo" | "raca" | "atk" | "def" | "posicao"> & { sequencia?: number } }
   /** revisão: momentos da partida (quem decide em cada posição do histórico) */
   | { tipo: "linha-do-tempo"; id: number; cfg: ConfigSessao }
   /** revisão: o duelo refeito até a posição k */

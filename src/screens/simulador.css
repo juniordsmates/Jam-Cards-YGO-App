@@ -593,17 +593,18 @@
   text-shadow: 0 0 8px rgb(255 211 77 / 0.6);
 }
 
-/* nome do jogador à esquerda da mão: espaço fixo de 15 caracteres */
+/* nome do jogador à esquerda da mão (espaço fixo de 15 caracteres); a mão fica centrada na tela */
 .sim-mao-linha {
-  display: flex;
-  gap: 10px;
-  align-items: stretch;
+  position: relative;
 }
 
 .sim-nome {
-  flex: 0 0 15ch;
-  width: 15ch;
-  align-self: center;
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  z-index: 1;
+  width: 9.5rem;
+  transform: translateY(-50%);
   overflow: hidden;
   white-space: nowrap;
   font-family: var(--font-display);
@@ -611,10 +612,10 @@
   color: #fff;
 }
 
-/* a mão guarda a altura de uma carta mesmo vazia */
+/* a mão guarda a altura de uma carta mesmo vazia; o mesmo recuo dos dois lados a mantém no meio */
 .sim .sim-mao-linha .tj-mao {
-  flex: 1;
   min-height: calc(clamp(48px, 4.4vw, 92px) * 86 / 59 + 12px);
+  padding-inline: 10.5rem;
 }
 
 .sim-topo {
@@ -707,7 +708,7 @@
   gap: 6px;
 }
 
-/* dado: 2 s girando, depois o resultado */
+/* dado: 0,5 s girando, depois o resultado */
 .sim-dado {
   position: fixed;
   top: 40%;
@@ -769,5 +770,93 @@
 @media (prefers-reduced-motion: reduce) {
   .sim-comprada {
     animation: none;
+  }
+}
+
+/* Criar Token e Jogar dado: no campo, entre as banidas do oponente e a Zona Extra da esquerda */
+.sim-acoes-campo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sim-acoes-campo .ghost-btn {
+  padding: 4px 6px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+/* Ficha: carta cinza, como as Fichas oficiais */
+.sim-ficha-carta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  padding: 3px;
+  overflow: hidden;
+  color: #1d1d24;
+  background: linear-gradient(160deg, #c9ccd3, #9a9ea8);
+  border: 2px solid #6d717a;
+  border-radius: 4px;
+  font-size: 0.45rem;
+  line-height: 1.1;
+}
+
+.sim-ficha-nome {
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sim-ficha-estrelas {
+  color: #d9480f;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sim-ficha-arte {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid #555a63;
+}
+
+.sim-ficha-tipo,
+.sim-ficha-atk {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* carta indo de um lugar a outro (0,3 s) */
+.sim-voo {
+  position: fixed;
+  z-index: 1350;
+  width: 56px;
+  margin: -41px 0 0 -28px;
+  pointer-events: none;
+  animation: sim-voo 0.3s ease-out forwards;
+}
+
+.sim-voo img,
+.sim-voo .tj-verso {
+  display: block;
+  width: 100%;
+  aspect-ratio: 59 / 86;
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.5);
+}
+
+@keyframes sim-voo {
+  from { transform: translate(0, 0) scale(1.15); opacity: 1; }
+  to { transform: translate(var(--dx), var(--dy)) scale(0.9); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-voo {
+    display: none;
   }
 }

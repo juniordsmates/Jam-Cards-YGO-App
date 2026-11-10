@@ -195,6 +195,7 @@ Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-was
   - **planejamento:** na Main Phase 1, repete o duelo até o ponto atual (com a mesma semente e as mesmas respostas o motor refaz tudo igual) e joga o turno várias vezes com escolhas sorteadas, puxadas para as cartas das linhas de combo conhecidas do deck; executa a sequência que deixou o melhor campo. Se você responder diferente do previsto, ela planeja de novo;
   - **batalha:** ataca quando destrói o alvo ou quando pode atacar direto;
   - **respostas:** no seu turno, responde às suas jogadas com a chance do nível;
+  - **momento certo:** Mulcharmy (Purulia, Fuwalos, Meowls) e Maxx "C" saem logo no começo do turno do oponente (Draw/Standby ou antes da primeira jogada), uma por turno; Droll & Lock Bird sai logo depois da primeira busca do oponente; fora disso, ficam guardadas;
   - **níveis:** Passiva (só passa: para treinar combos), Fácil (uma tentativa), Normal (1,5 s de planejamento) e Difícil (4 s, responde sempre que pode).
 - **Limites:**
   - os textos dos efeitos nas escolhas vêm em inglês (os do Project Ignis);

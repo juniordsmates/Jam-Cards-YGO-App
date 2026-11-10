@@ -143,6 +143,9 @@ export class IA {
         if (!d.selects.length) return fallback;
         const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa");
         if (!ativar || d.forced) return ativar?.resp ?? fallback;
+        // interrupções de mão com momento certo (o que os jogadores costumam fazer para ganhar vantagem)
+        const momento = this.momentoCerto(d, s);
+        if (momento) return momento;
         const ultima = s.ultimaAcao;
         // responde às jogadas do oponente com a chance do nível; no próprio turno, ativa os gatilhos
         if (ultima && ultima.p !== this.eu) return Math.random() < RESPONDE[this.nivel] ? ativar.resp : { type: R.SELECT_CHAIN, index: null };
@@ -160,6 +163,47 @@ export class IA {
       default:
         return fallback;
     }
+  }
+
+  // ---------- momento certo das interrupções de mão ----------
+
+  /**
+   * Cartas cujo valor depende do momento, como os jogadores fazem:
+   * - "Mulcharmy" (Purulia, Fuwalos, Meowls) e Maxx "C": logo no começo do turno do oponente (Draw,
+   *   Standby ou antes da primeira jogada da Main Phase 1). Se ele Invocar ao menos uma vez, a carta
+   *   já se pagou (troca 1 por 1).
+   * - Droll & Lock Bird: logo depois da primeira carta que o oponente adicionar do Deck à mão (fora
+   *   da Draw Phase), ainda na resolução, para travar as buscas seguintes.
+   * Nas outras janelas, essas cartas ficam guardadas (não são gastas por sorteio).
+   */
+  private momentoCerto(d: Extract<OcgMessage, { type: T.SELECT_CHAIN }>, s: Sessao): OcgResponse | null {
+    if (d.forced) return null;
+    const nome = (code: number) => s.motor.nome(code);
+    const cedo = (code: number) => /^Mulcharmy /.test(nome(code)) || nome(code) === 'Maxx "C"';
+    const droll = (code: number) => nome(code) === "Droll & Lock Bird";
+    const turnoDele = s.jogadorDaVez !== this.eu;
+    const fase = s.faseAtual;
+    const ev = s.eventoRecente;
+    const comecoDoTurno = fase === OcgPhase.DRAW || fase === OcgPhase.STANDBY || (fase === OcgPhase.MAIN1 && (!ev || ev.tipo === "fase" || ev.tipo === "compra"));
+    // a chance do nível vale aqui também (a Fácil quase nunca faz a jogada)
+    const sorte = () => Math.random() < Math.max(RESPONDE[this.nivel], this.nivel === "facil" ? 0.3 : 0.9);
+    let guardar = false;
+    for (let i = 0; i < d.selects.length; i++) {
+      const code = d.selects[i].code;
+      // uma de cada por turno: a segunda cópia não traz vantagem nova
+      const jaUsou = s.ativadasNoTurno.some((x) => x.p === this.eu && nome(x.code) === nome(code));
+      if (cedo(code)) {
+        if (turnoDele && comecoDoTurno && !jaUsou) return sorte() ? { type: R.SELECT_CHAIN, index: i } : null;
+        guardar = true;
+      }
+      if (droll(code)) {
+        if (turnoDele && !jaUsou && ev?.tipo === "busca" && ev.p !== this.eu && fase !== OcgPhase.DRAW) return sorte() ? { type: R.SELECT_CHAIN, index: i } : null;
+        guardar = true;
+      }
+    }
+    // só tem cartas de momento e não é o momento delas: passa (sem gastar por sorteio)
+    if (guardar && d.selects.every((c) => cedo(c.code) || droll(c.code))) return { type: R.SELECT_CHAIN, index: null };
+    return null;
   }
 
   // ---------- batalha ----------
