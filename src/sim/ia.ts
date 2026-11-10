@@ -13,7 +13,7 @@ export type NivelIA = "passiva" | "facil" | "normal" | "dificil";
 export type LinhaIA = Pick<LinhaCombo, "mao" | "passos" | "campo" | "pontos">;
 
 /** tempo de planejamento do turno (ms); a Fácil joga uma tentativa só */
-const TEMPO: Record<NivelIA, number> = { passiva: 0, facil: 0, normal: 1500, dificil: 4000 };
+const TEMPO: Record<NivelIA, number> = { passiva: 0, facil: 0, normal: 2000, dificil: 5000 };
 /** chance de responder a uma jogada do oponente com o que tiver (interrupções de mão, armadilhas) */
 const RESPONDE: Record<NivelIA, number> = { passiva: 0, facil: 0.15, normal: 0.6, dificil: 1 };
 const MAX_TENTATIVAS = 400;
@@ -342,7 +342,25 @@ export class IA {
   }
 
   /** Uma tentativa do turno: escolhas sorteadas até a IA passar de fase */
-  private tentar(s: Sessao, linha: Set<number>, alvo: Set<number>): { resps: OcgResponse[]; nota: number } | null {
+  /**
+   * Peso de uma jogada da Main Phase: Invocações do Extra Deck (Sincro, Xyz, Link, Fusão) costumam
+   * continuar o combo e pesam mais; cartas das linhas conhecidas do deck também.
+   */
+  private peso(motor: Motor, o: Opcao, linha: Set<number>) {
+    const base: Record<string, number> = { ativa: 3, especial: 3, normal: 2, baixa: 1, "baixa-monstro": 0.4 };
+    const code = o.acao?.code;
+    let p = base[o.acao!.k] ?? 1;
+    if (o.acao!.k === "especial" && code && motor.tipo(code) & TIPOS_EXTRA) p *= 2.5;
+    if (code && linha.has(this.canonico(motor, code))) p *= 4;
+    return p;
+  }
+
+  /**
+   * Uma tentativa do turno a partir do ponto atual. `guloso`: sempre a jogada de maior peso (a linha
+   * "óbvia", sempre avaliada); senão, sorteada pelos pesos. Para quando não há jogada ou ao acaso
+   * (a fase não entra no plano: quando ele acaba, a IA olha o campo e planeja a continuação).
+   */
+  private tentar(s: Sessao, linha: Set<number>, alvo: Set<number>, guloso = false): { resps: OcgResponse[]; nota: number } | null {
     const motor = s.motor;
     const { duel, decisao } = reproduzir(motor, s.partida, s.historico);
     try {
@@ -352,34 +370,27 @@ export class IA {
       for (let passo = 0; d && passo < 400; passo++) {
         if (d.type === T.RETRY) return null;
         let resp: OcgResponse | undefined;
-        let parar = false;
         if (!("player" in d) || d.player !== this.eu) resp = passivo(d, motor);
         else if (d.type === T.SELECT_BATTLECMD) break;
         else {
           const ops = opcoesDe(d, motor.tipo);
           if (d.type === T.SELECT_IDLECMD) {
             acoes++;
-            const fases = ops.filter((o) => o.acao?.k === "fase");
             const jogadas = ops.filter((o) => o.acao && o.acao.k !== "fase" && o.acao.k !== "posicao");
-            if (!jogadas.length || acoes > 30 || Math.random() < 0.03 * acoes) {
-              resp = (fases.find((o) => o.acao!.desc === "bp") ?? fases.find((o) => o.acao!.desc === "ep") ?? ops[0])?.resp;
-              parar = true;
-            } else {
-              const base: Record<string, number> = { ativa: 3, especial: 3, normal: 2, baixa: 1, "baixa-monstro": 0.4 };
-              resp = sortear(jogadas, (o) => (base[o.acao!.k] ?? 1) * (o.acao!.code && linha.has(this.canonico(motor, o.acao!.code)) ? 4 : 1)).resp;
-            }
+            if (!jogadas.length || acoes > 30 || (!guloso && Math.random() < 0.03 * acoes)) break;
+            resp = (guloso ? jogadas.reduce((a, b) => (this.peso(motor, b, linha) > this.peso(motor, a, linha) ? b : a)) : sortear(jogadas, (o) => this.peso(motor, o, linha))).resp;
           } else if (ops.length) {
-            resp = sortear(ops, (o) => {
+            const pesoEscolha = (o: Opcao) => {
               if (o.recusa) return 0.6;
               if (d!.type === T.SELECT_EFFECTYN || d!.type === T.SELECT_CHAIN) return 3;
               return o.escolha?.some((c) => linha.has(this.canonico(motor, c.code))) ? 3 : 1;
-            }).resp;
+            };
+            resp = (guloso ? ops.reduce((a, b) => (pesoEscolha(b) > pesoEscolha(a) ? b : a)) : sortear(ops, pesoEscolha)).resp;
           }
         }
         if (!resp) return null;
         resps.push(resp);
         motor.core.duelSetResponse(duel, resp);
-        if (parar) break;
         const r = motor.ate(duel);
         if (r.log.some((m) => m.type === T.WIN)) return { resps, nota: r.log.some((m) => m.type === T.WIN && m.player === this.eu) ? 1e6 : -1e6 };
         if (r.log.some((m) => m.type === T.NEW_TURN)) break;
@@ -391,15 +402,22 @@ export class IA {
     }
   }
 
+  /** turno do último planejamento (o primeiro do turno usa o tempo todo; as continuações, metade) */
+  private turnoPlanejado = -1;
+
   private planejar(s: Sessao) {
     const { passos, campo } = this.cartasDasLinhas(s);
     const base = this.nota(s.motor, s.duel, campo);
     const inicio = performance.now();
+    const turno = s.momento().turno;
+    const tempo = turno === this.turnoPlanejado ? TEMPO[this.nivel] / 2 : TEMPO[this.nivel];
+    this.turnoPlanejado = turno;
     let melhor: { resps: OcgResponse[]; nota: number } | null = null;
     for (let n = 0; n < MAX_TENTATIVAS; n++) {
-      const r = this.tentar(s, passos, campo);
+      // a primeira tentativa é a gulosa: a linha de maior peso sempre é avaliada
+      const r = this.tentar(s, passos, campo, n === 0);
       if (r && (!melhor || r.nota > melhor.nota)) melhor = r;
-      if (performance.now() - inicio >= TEMPO[this.nivel]) break;
+      if (performance.now() - inicio >= tempo) break;
     }
     // só joga se a sequência deixa o campo melhor do que passar a vez
     this.plano = melhor && melhor.nota > base && melhor.resps.length ? { resps: melhor.resps, i: 0 } : null;

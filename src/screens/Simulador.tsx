@@ -18,7 +18,9 @@ import { ClienteSim, obterPacote } from "../sim/cliente";
 import { zonasLivres } from "../sim/opcoes";
 import type { LinhaIA, NivelIA } from "../sim/ia";
 import type { Aprendizado, CartaSim, ConfigSessao, EventoSim, Momento, PedidoSim, Quadro } from "../sim/sessao";
-import { guardarAprendizado, listarAprendizado, type DueloGuardado } from "../sim/aprendizado";
+import { exportarReplay, guardarAprendizado, importarReplay, listarAprendizado, REPLAYS_GRATIS, REPLAYS_PREMIUM, type DueloGuardado, type RotulosReplay } from "../sim/aprendizado";
+import { temPremium } from "../db/conta";
+import { isDesktop } from "../platform";
 import { explicarPorque, type Explicacao } from "../sim/porque";
 import type { DeckSim, Jogada } from "../sim/regras";
 import "./teste-jogo.css";
@@ -275,6 +277,11 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   const [aprendido, setAprendido] = useState<Aprendizado | null>(null);
   // partida em andamento (decks e semente), para o "?" listar as cartas de cada um
   const partidaRef = useRef<ConfigSessao["partida"] | null>(null);
+  // nomes e decks da partida em andamento, para a lista de replays
+  const rotulosRef = useRef<RotulosReplay | undefined>(undefined);
+  const premium = temPremium(conta);
+  const limiteReplays = premium ? REPLAYS_PREMIUM : REPLAYS_GRATIS;
+  const [avisoReplay, setAvisoReplay] = useState<string | null>(null);
   // revisão: a partida refeita, os momentos (um por resposta) e o momento mostrado
   const [revisao, setRevisao] = useState<{ cfg: ConfigSessao; momentos: Momento[]; k: number; oponente: string } | null>(null);
   const revisaoRef = useRef(revisao);
@@ -371,6 +378,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       setPensando(true);
       setEtapa("duelo");
       partidaRef.current = { decks: par, semente };
+      rotulosRef.current = { eu: conta?.usuario || t("Você"), oponente: t("IA"), meuDeck: meu.nome, deckOponente: doIA.nome };
       c.iniciar({ partida: { decks: par, semente }, humano, nivel: cfg.nivel, linhas: doIA.linhas, janelas: cfg.todasJanelas ? "todas" : "acao" });
     } catch (e) {
       falhou(e);
@@ -448,6 +456,8 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
       setPensando(true);
       setEtapa("duelo");
       partidaRef.current = { decks: decksDoDuelo(d), semente: d.semente };
+      rotulosRef.current = { eu: conta.usuario || t("Você"), oponente: t("Oponente"), meuDeck: meu?.nome ?? t("seu deck"), deckOponente: t("deck do oponente") };
+      if (outro) void nomesDeUsuarios([outro]).then((n) => rotulosRef.current && n[outro] && (rotulosRef.current = { ...rotulosRef.current, oponente: n[outro], deckOponente: t("deck de {0}", [n[outro]]) }));
       c.iniciar({ partida: { decks: decksDoDuelo(d), semente: d.semente }, humano, nivel: "normal", remoto: true, historico: historico.map((h) => h.resp), janelas: cfg.todasJanelas ? "todas" : "acao" });
       // jogadas que chegaram enquanto o duelo era montado (as repetidas o motor ignora)
       for (const r of remotasAntes.current ?? []) c.remota(r.n, r.resp);
@@ -554,7 +564,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   /** Guarda neste aparelho o que o duelo ensinou e mostra no fim */
   function registrarAprendizado(a: Aprendizado) {
     setAprendido(a);
-    void guardarAprendizado(a, versaoMotor.current, APP_VERSION).catch(() => {});
+    void guardarAprendizado(a, versaoMotor.current, APP_VERSION, limiteReplays, rotulosRef.current).catch(() => {});
   }
 
   // ---------- revisão e "?" ----------
@@ -608,11 +618,12 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
         // a Main Phase do jogador no mesmo turno (antes do momento, ou logo depois) é quando ele poderia agir
         const turno = r.momentos[r.k]?.turno;
         const main = (m: Momento) => m.turno === turno && m.decisao?.jogador === jogador && m.decisao.tipo === T.SELECT_IDLECMD;
+        // primeiro a próxima Main Phase dele (o campo como você está vendo, depois do que estiver resolvendo); sem ela, a anterior
         let j = r.k;
-        while (j >= 0 && !main(r.momentos[j])) j--;
-        if (j < 0) {
+        while (j < r.momentos.length && !main(r.momentos[j])) j++;
+        if (j >= r.momentos.length) {
           j = r.k;
-          while (j < r.momentos.length && !main(r.momentos[j])) j++;
+          while (j >= 0 && !main(r.momentos[j])) j--;
         }
         if (j >= 0 && j < r.momentos.length) k = j;
       }
@@ -655,9 +666,44 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
   // partidas para revisar (na tela de configuração)
   useEffect(() => {
     if (etapa !== "config") return;
-    void listarAprendizado().then((locais) => setRecentes((r) => ({ ...r, locais: locais.slice(-5).reverse() })));
+    void listarAprendizado().then((locais) => setRecentes((r) => ({ ...r, locais: locais.slice(-limiteReplays).reverse() })));
     if (conta) void meusDuelos(conta.id).then((servidor) => setRecentes((r) => ({ ...r, servidor }))).catch(() => {});
-  }, [etapa, conta?.id]);
+  }, [etapa, conta?.id, limiteReplays]);
+
+  /** Exporta o replay (Premium): arquivo .json no site; no app de computador, copia o texto */
+  async function exportar(d: DueloGuardado) {
+    const texto = exportarReplay(d);
+    const nome = `jam-cards-replay-${d.quando.slice(0, 16).replace(/[-:T]/g, "")}.json`;
+    try {
+      if (isDesktop) {
+        await navigator.clipboard.writeText(texto);
+        setAvisoReplay(t("Replay copiado. Cole num arquivo .json para guardar ou enviar."));
+        return;
+      }
+      const url = URL.createObjectURL(new Blob([texto], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nome;
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setAvisoReplay(t("Replay exportado: {0}", [nome]));
+    } catch (e) {
+      setAvisoReplay(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /** Importa um replay de arquivo .json (Premium) */
+  async function importar(arquivo: File | undefined) {
+    if (!arquivo) return;
+    try {
+      await importarReplay(await arquivo.text(), limiteReplays);
+      const locais = await listarAprendizado();
+      setRecentes((r) => ({ ...r, locais: locais.slice(-limiteReplays).reverse() }));
+      setAvisoReplay(t("Replay importado."));
+    } catch (e) {
+      setAvisoReplay(e instanceof Error ? t(e.message) : String(e));
+    }
+  }
 
   /** Revisa uma partida 1x1 do servidor */
   async function revisarDoServidor(d: Duelo) {
@@ -1084,9 +1130,20 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
               {erro}
             </p>
           )}
-          {(recentes.locais.length > 0 || recentes.servidor.length > 0) && !convite && (
+          {!convite && (
             <section className="sim-recentes">
-              <h4>{t("Revisar partidas")}</h4>
+              <h4>{t("Replays (últimos {0})", [limiteReplays])}</h4>
+              <small className="tags-note">
+                {premium ? t("Premium: até 10 replays, com exportar e importar.") : t("Grátis: os últimos 5 replays ficam salvos neste aparelho. Premium: até 10, com exportar e importar.")}
+              </small>
+              {premium && (
+                <label className="ghost-btn sim-importar">
+                  {t("Importar replay (.json)")}
+                  <input type="file" accept=".json,application/json" onChange={(e) => void importar(e.target.files?.[0]).finally(() => (e.target.value = ""))} hidden />
+                </label>
+              )}
+              {avisoReplay && <small className="tags-note">{avisoReplay}</small>}
+              {!recentes.locais.length && !recentes.servidor.length && <small className="tags-note">{t("Nenhum replay ainda: termine (ou desista de) um duelo.")}</small>}
               <ul>
                 {recentes.servidor.map((d) => (
                   <li key={d.id}>
@@ -1099,11 +1156,23 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota }: { onBa
                 {recentes.locais.map((d) => (
                   <li key={d.quando}>
                     <span>
-                      {new Date(d.quando).toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" })} · {d.remoto ? t("1x1") : t("contra a IA")}
+                      <strong>{new Date(d.quando).toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" })}</strong> · {d.remoto ? t("1x1") : t("contra a IA")}
+                      <small>
+                        {d.rotulos
+                          ? t("{0} ({1}) x {2} ({3})", [d.rotulos.eu, d.rotulos.meuDeck, d.rotulos.oponente, d.rotulos.deckOponente])
+                          : t("Decks não registrados (replay antigo)")}
+                      </small>
                     </span>
-                    <button className="ghost-btn" disabled={carregando} onClick={() => void abrirRevisao({ partida: d.partida, humano: d.humano, nivel: "normal", historico: d.historico }, d.remoto ? t("Oponente") : t("IA"))}>
-                      {t("Revisar")}
-                    </button>
+                    <span className="sim-niveis">
+                      <button className="ghost-btn" disabled={carregando} onClick={() => void abrirRevisao({ partida: d.partida, humano: d.humano, nivel: "normal", historico: d.historico }, d.rotulos?.oponente ?? (d.remoto ? t("Oponente") : t("IA")))}>
+                        {t("Revisar")}
+                      </button>
+                      {premium && (
+                        <button className="ghost-btn" onClick={() => void exportar(d)}>
+                          {t("Exportar")}
+                        </button>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>

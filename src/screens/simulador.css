@@ -860,3 +860,19 @@
     display: none;
   }
 }
+
+.sim-recentes li > span:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sim-recentes li small {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.sim-importar {
+  align-self: flex-start;
+  cursor: pointer;
+}
