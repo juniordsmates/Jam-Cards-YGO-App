@@ -7,6 +7,7 @@ import ComboDeVideo from "../components/ComboDeVideo";
 import { FontesButton } from "../components/Fontes";
 import KnownCombos from "../components/KnownCombos";
 import VerifiedCombos from "../components/VerifiedCombos";
+import CalculoDaMao from "../components/CalculoDaMao";
 import { KNOWN_COMBOS } from "../data/combos";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
@@ -19,16 +20,10 @@ import type { Rota } from "../rotas";
 import { supabaseReady } from "../db/supabase";
 import { exportarTodos, useCombosLocais } from "../db/combosLocais";
 import { temRecursosAvancados, useConta } from "../db/conta";
-import { bilingualName, displayName, type Card } from "../db/types";
+import { displayName, type Card } from "../db/types";
 import "./combos.css";
 import { t, LOCALE } from "../i18n";
 import Lateral from "../components/Lateral";
-
-/** Nome do arquétipo (oficial, em inglês) com o nome em português ao lado, quando é outro */
-function arquetipoBilingue(en: string, cards: Card[]) {
-  const pt = cards.find((c) => c.archetype?.toLowerCase() === en.toLowerCase())?.archetypePt;
-  return pt && pt.toLowerCase() !== en.toLowerCase() ? `${en} · ${pt}` : en;
-}
 
 /**
  * Combos da Comunidade (criados no Teste de Jogo e compartilhados): os que começam com a mão
@@ -203,20 +198,11 @@ export default function Combos({
       .slice(0, 12);
   }, [combos, hand, lines, fits]);
   const handNames = hand.map((c) => displayName(c)).join(", ");
+  // mão com várias cartas sem linha da base que use todas: o motor calcula uma na hora
+  const calcularMao = !!combos && hand.length >= 2 && hand.length <= 5 && !lines.some((l) => hand.every((c) => l.mao.includes(c.id)));
 
   // linhas escritas pela comunidade só aparecem quando o motor as confirmou
   const confirmed = KNOWN_COMBOS.filter((k) => lines.some((l) => l.comunidade === k.id));
-
-  // cartas que iniciam combos calculados sozinhas (atalhos na tela vazia), por deck
-  const starters = useMemo(() => {
-    if (!combos) return [];
-    return combos.decks.map((d, i) => ({
-      deck: d,
-      cards: [...new Set(combos.linhas.filter((l) => l.deck === i && l.mao.length === 1 && fits(l)).map((l) => l.mao[0]))]
-        .map((id) => byId.get(id))
-        .filter((c): c is Card => !!c),
-    })).filter((s) => s.cards.length);
-  }, [combos, byId, fits]);
 
   // prévia ao passar o mouse (mesmo popup da busca)
   const [hover, setHover] = useState<{ card: Card; rect: DOMRect } | null>(null);
@@ -227,11 +213,6 @@ export default function Combos({
     hoverTimer.current = window.setTimeout(() => setHover({ card, rect: el.getBoundingClientRect() }), 300);
   }, []);
   useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
-
-  const addCard = (c: Card) => {
-    setHand((h) => [...h, c]);
-    inputRef.current?.focus();
-  };
 
   const ready = db.status === "ready";
   // Teste de Jogo de uma linha: deck temporário "<arquétipo> Temporário" com as cartas dela
@@ -339,26 +320,29 @@ export default function Combos({
                 {compartilhado.status === "erro" && <p className="db-warning">{t("Não foi possível carregar o combo: {0}", [compartilhado.erro])}</p>}
               </section>
             )}
+            {calcularMao && combos && (
+              <CalculoDaMao
+                combos={combos}
+                mao={hand.map((c) => c.id)}
+                format={format}
+                linhas={lines}
+                byId={byId}
+                known={known}
+                onHover={onHover}
+                respostas={respostas}
+                legal={legal}
+                onTestar={testar}
+              />
+            )}
             {!combos ? (
               <div className="combos-empty">
                 <p>{t("Os combos calculados ainda não foram baixados.")}</p>
                 <small>{t("Eles chegam com a camada de marcações da base; confira a conexão e abra a tela de novo.")}</small>
               </div>
             ) : !hand.length ? (
-              <div className="combos-empty">
-                <p>{t("Escolha uma ou mais cartas para a mão inicial.")}</p>
-                <small>
-                  {t("Só aparecem linhas que o App conseguiu jogar, com as regras do EDOPro, usando decklists reais de torneio: custos, condições de ativação, travas, “uma vez por turno” e o limite de Invocação-Normal são aplicados pelos scripts oficiais das cartas, no primeiro turno e com o oponente passando.")}</small>
-                {starters.map((s) => (
-                  <div key={s.deck.url} className="starter-chips">
-                    <span className="field-label">{arquetipoBilingue(s.deck.busca, s.cards)}</span>
-                    {s.cards.map((c) => (
-                      <button key={c.id} className="chip" onClick={() => addCard(c)} title={bilingualName(c)}>
-                        {displayName(c)}
-                      </button>
-                    ))}
-                  </div>
-                ))}
+              // tela inicial limpa: só o aviso (sem sugestões de cartas nem combos)
+              <div className="combos-empty combos-aviso">
+                <p>{t("Combos podem estar sujeitos a erros e melhorias. Eles dão uma base para o jogador testar, estudar, aprimorar etc")}</p>
               </div>
             ) : !lines.length && !reach.length ? (
               <div className="combos-empty">
@@ -414,7 +398,7 @@ export default function Combos({
                 </p>
               </>
             )}
-            <CombosComunidade mao={hand.map((c) => c.id)} byId={byId} format={format} onHover={onHover} onTestar={testarDaComunidade} />
+            {hand.length > 0 && <CombosComunidade mao={hand.map((c) => c.id)} byId={byId} format={format} onHover={onHover} onTestar={testarDaComunidade} />}
           </section>
         </div>
         )

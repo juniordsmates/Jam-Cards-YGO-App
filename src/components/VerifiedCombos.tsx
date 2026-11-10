@@ -271,7 +271,8 @@ export default function VerifiedCombos({ title = tr("Combos calculados"), lines,
                 </span>
               </div>
             )}
-            <p className="tags-note">
+            {/* linha calculada na hora (mão com várias cartas) não tem deck de torneio */}
+            {deck && <p className="tags-note">
               {tr("Deck {0}", [deck.nome])}
               {tr("{0}. Jogado pelo App no primeiro turno, com o oponente passando; vale em todo formato em que as cartas da linha existem e não são proibidas.", [deck.evento && ` (${deck.evento})`])}{" "}
               <FontesButton
@@ -281,7 +282,7 @@ export default function VerifiedCombos({ title = tr("Combos calculados"), lines,
                   ...(community?.fontes ?? []).filter((f) => f.url).map((f) => ({ nome: f.nome, url: f.url! })),
                 ]}
               />
-            </p>
+            </p>}
           </details>
         );
       })}

@@ -5,7 +5,8 @@ import { archetypeKey, normalize } from "../db/search";
 import { bilingualName, displayName, type Card } from "../db/types";
 import { t } from "../i18n";
 
-const MAX_SUGGESTIONS = 8;
+// a lista rola: um arquétipo inteiro (ex.: "toon", com as do Extra Deck) cabe nela
+const MAX_SUGGESTIONS = 80;
 
 type Props = {
   label: string;

@@ -21,6 +21,25 @@ import "./comunidade.css";
 // veja quem mais compartilhou combos dele, os Combos da Comunidade com a tag do arquétipo e o
 // resumo do Guia de Deck. A tag vem de "Arquétipos vinculados", ao compartilhar o combo.
 
+// até 5 comunidades favoritas, guardadas neste aparelho; aparecem no topo da lista
+const FAVORITAS = "comunidade-favoritas";
+const MAX_FAVORITAS = 5;
+function lerFavoritas(): string[] {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(FAVORITAS) ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, MAX_FAVORITAS) : [];
+  } catch {
+    return [];
+  }
+}
+function gravarFavoritas(lista: string[]) {
+  try {
+    localStorage.setItem(FAVORITAS, JSON.stringify(lista));
+  } catch {
+    // sem armazenamento: vale só enquanto a tela estiver aberta
+  }
+}
+
 export default function Comunidade({
   onBack,
   inicial,
@@ -48,14 +67,27 @@ export default function Comunidade({
     return () => void (vivo = false);
   }, []);
 
-  // três grupos, separados por uma linha:
-  // 1. os 5 decks com mais representatividade no meta atual (fatia dos últimos 2 meses de torneios);
-  // 2. os 5 com mais interações da comunidade (fora os do grupo 1);
-  // 3. o restante, em ordem alfabética.
+  const [favoritas, setFavoritas] = useState<string[]>(lerFavoritas);
+  const ehFavorita = (a: string) => favoritas.some((f) => f.toLowerCase() === a.toLowerCase());
+  const alternarFavorita = (a: string) => {
+    const nova = ehFavorita(a) ? favoritas.filter((f) => f.toLowerCase() !== a.toLowerCase()) : [...favoritas, a].slice(0, MAX_FAVORITAS);
+    setFavoritas(nova);
+    gravarFavoritas(nova);
+  };
+
+  // quatro grupos, separados por uma linha:
+  // 1. as favoritas do usuário (até 5);
+  // 2. os 5 decks com mais representatividade no meta atual (fatia dos últimos 2 meses de torneios);
+  // 3. os 5 com mais interações da comunidade (fora os dos grupos anteriores);
+  // 4. o restante, em ordem alfabética.
   const grupos = useMemo(() => {
     const chave = (a: string) => a.toLowerCase();
-    const usados = new Set<string>();
-    const doMeta = [...(meta?.arquetipos ?? [])].sort((a, b) => b.pct2m - a.pct2m || b.pct6m - a.pct6m).slice(0, 5).map((a) => a.arquetipo);
+    const usados = new Set<string>(favoritas.map(chave));
+    const doMeta = [...(meta?.arquetipos ?? [])]
+      .filter((a) => !usados.has(chave(a.arquetipo)))
+      .sort((a, b) => b.pct2m - a.pct2m || b.pct6m - a.pct6m)
+      .slice(0, 5)
+      .map((a) => a.arquetipo);
     doMeta.forEach((a) => usados.add(chave(a)));
     const ativos = [...interacoes]
       .filter(([a, i]) => i.total > 0 && !usados.has(chave(a)))
@@ -73,11 +105,12 @@ export default function Comunidade({
       .filter((a) => !usados.has(chave(a)) && !/\||supports_archetypes/.test(a) && !/^-/.test(a))
       .sort((a, b) => ordem(a).localeCompare(ordem(b), LOCALE));
     return [
+      { id: "favoritas", titulo: t("Favoritas"), itens: favoritas },
       { id: "meta", titulo: t("Mais jogados no meta atual"), itens: doMeta },
       { id: "comunidade", titulo: t("Mais ativos na comunidade"), itens: ativos },
       { id: "todos", titulo: t("Todos (A–Z)"), itens: resto },
     ];
-  }, [meta, interacoes, db.archetypes]);
+  }, [meta, interacoes, db.archetypes, favoritas]);
   const lista = useMemo(() => grupos.flatMap((g) => g.itens), [grupos]);
   const nome = (a: string) => {
     const pt = IDIOMA === "pt" ? db.archetypePt.get(a) : undefined;
@@ -172,7 +205,18 @@ export default function Comunidade({
             <>
               <header className="cm-cabecalho">
                 <h2>{nome(arquetipo)}</h2>
-                <BotaoLink rota={{ tela: "comunidade", arquetipo }} />
+                <div className="cm-acoes">
+                  <BotaoLink rota={{ tela: "comunidade", arquetipo }} />
+                  <button
+                    className="ghost-btn cm-favoritar"
+                    aria-pressed={ehFavorita(arquetipo)}
+                    disabled={!ehFavorita(arquetipo) && favoritas.length >= MAX_FAVORITAS}
+                    title={!ehFavorita(arquetipo) && favoritas.length >= MAX_FAVORITAS ? t("Você já tem 5 favoritas: tire uma para acrescentar outra.") : undefined}
+                    onClick={() => alternarFavorita(arquetipo)}
+                  >
+                    {ehFavorita(arquetipo) ? t("★ Favorita") : t("☆ Favoritar")}
+                  </button>
+                </div>
                 {daMeta && <p className="tags-note">{t("{0}% dos decks do TCG nos últimos 2 meses · {1}% em 6 meses", [daMeta.pct2m, daMeta.pct6m])}</p>}
               </header>
 

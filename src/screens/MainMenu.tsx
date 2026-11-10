@@ -58,12 +58,13 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
   const conta = useConta();
   const tema = useTema();
   const B = (label: string, hint: string, icon: Item["icon"], accent: Item["accent"], action: () => void): Item => ({ label, hint, icon, accent, action });
-  // três colunas; a ordem dentro de cada uma é a dos botões
+  // quatro colunas; a ordem dentro de cada uma é a dos botões
   const colunas: { titulo: string; itens: Item[] }[] = [
     {
       titulo: t("Explorar"),
       itens: [
         B(t("Buscar Carta"), t("Encontre qualquer carta"), <SearchIcon />, "cyan", onSearch),
+        B(t("Comunidade"), t("Por arquétipo: quem mais compartilha, combos e guia"), <PeopleIcon />, "cyan", onComunidade),
         B(t("Combos"), t("Mão inicial e Combo Search"), <ComboIcon />, "cyan", onCombos),
         B(t("Guia de Deck"), t("Decks do meta: ideias, combos e interações"), <BookIcon />, "cyan", onGuia),
         B(t("Meta Call"), t("Decks esperados no torneio → cartas contra eles"), <TargetIcon />, "cyan", onMetaCall),
@@ -73,20 +74,24 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
       titulo: t("Seus decks e cartas"),
       itens: [
         B(t("Editor de Deck"), t("Monte e ajuste seus decks"), <DeckIcon />, "magenta", onDeck),
-        B(t("Teste de Jogo"), t("Teste de mão e jogadas com o seu deck"), <DeckIcon />, "magenta", onTeste),
-        B(t("Simulador"), t("Duelo com as regras do jogo contra a IA"), <DuelIcon />, "magenta", onSimulador),
-        B(t("Minha Coleção"), t("Cartas que você possui, raridades e valor"), <CollectionIcon />, "magenta", onColecao),
         B(t("Meus Combos"), t("Combos que você salvou, para abrir rápido"), <ComboIcon />, "magenta", onMeusCombos),
+        B(t("Minha Coleção"), t("Cartas que você possui, raridades e valor"), <CollectionIcon />, "magenta", onColecao),
+        B(t("Lista de Desejos"), t("Cartas que você quer conseguir"), <HeartIcon />, "magenta", onDesejos),
       ],
     },
     {
-      titulo: t("Comunidade e app"),
+      titulo: t("Outros"),
       itens: [
-        B(t("Lista de Desejos"), t("Cartas que você quer conseguir"), <HeartIcon />, "magenta", onDesejos),
-        B(t("Comunidade"), t("Por arquétipo: quem mais compartilha, combos e guia"), <PeopleIcon />, "magenta", onComunidade),
-        B(t("Eventos"), t("Resultados de torneio com a decklist"), <EventIcon />, "magenta", onEventos),
-        B(t("Rank e Conquistas"), t("Duelistas com mais pontos e suas conquistas"), <TrophyIcon />, "magenta", onRank),
+        B(t("Resultados de Eventos"), t("Resultados de torneio com a decklist"), <EventIcon />, "cyan", onEventos),
+        B(t("Rank e Conquistas"), t("Duelistas com mais pontos e suas conquistas"), <TrophyIcon />, "cyan", onRank),
         B(t("Como Utilizar"), t("Manual de cada tela, com exemplos"), <HelpIcon />, "cyan", onManual),
+      ],
+    },
+    {
+      titulo: t("Simulador"),
+      itens: [
+        B(t("Simulador Automático"), t("Duelo com as regras do jogo contra a IA"), <DuelIcon />, "magenta", onSimulador),
+        B(t("Teste de Combo Manual"), t("Teste de mão e jogadas com o seu deck"), <DeckIcon />, "magenta", onTeste),
       ],
     },
   ];

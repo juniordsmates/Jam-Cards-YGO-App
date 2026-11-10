@@ -83,7 +83,7 @@
 .spinner {
   width: 42px;
   height: 42px;
-  border: 3px solid rgb(0 165 196 / 0.15);
+  border: 3px solid rgb(31 95 174 / 0.15);
   border-top-color: var(--cyan);
   border-radius: 50%;
   box-shadow: none;
@@ -128,7 +128,7 @@
 .results-bar select:focus,
 .search-input:focus-within {
   border-color: var(--cyan);
-  box-shadow: 0 0 0 3px rgb(0 165 196 / 0.15);
+  box-shadow: 0 0 0 3px rgb(31 95 174 / 0.15);
 }
 
 .filters input::-webkit-inner-spin-button {
@@ -199,7 +199,7 @@
   color: var(--on-accent);
   background: var(--cyan);
   border-color: var(--cyan);
-  box-shadow: 0 4px 12px rgb(0 165 196 / 0.3);
+  box-shadow: 0 4px 12px rgb(31 95 174 / 0.3);
 }
 
 /* Cores dos atributos */
@@ -687,7 +687,7 @@
   background: var(--magenta);
   border-color: var(--magenta);
   border-style: solid;
-  box-shadow: 0 4px 12px rgb(214 31 143 / 0.3);
+  box-shadow: 0 4px 12px rgb(224 100 15 / 0.3);
 }
 
 .drawer .chip.tag-chip {
@@ -1633,7 +1633,7 @@
 }
 
 .left-tabs button:focus-visible {
-  box-shadow: 0 0 0 3px rgb(0 165 196 / 0.25);
+  box-shadow: 0 0 0 3px rgb(31 95 174 / 0.25);
 }
 
 .drawer.docked {

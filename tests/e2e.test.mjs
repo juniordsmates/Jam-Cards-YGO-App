@@ -422,8 +422,11 @@ test("combos: sugestões respeitam o formato e mão sem linha calculada avisa", 
 test("combos: Trudea mostra só linhas calculadas com o App, com deck de torneio e linha da comunidade confirmada", async () => {
   await page.click(".menu-btn:has-text('Combos')");
   await page.waitForSelector(".combos-setup");
-  // atalhos da tela vazia, por deck
-  await page.click(".starter-chips:has-text('Centur-Ion') .chip:has-text('Trudea')");
+  // a tela vazia só tem o aviso (sem atalhos de cartas)
+  assert.ok((await page.textContent(".combos-aviso")).includes("sujeitos a erros e melhorias"));
+  await page.fill(".hand-search input", "centur-ion trudea");
+  await page.waitForSelector(".suggestions button");
+  await page.keyboard.press("Enter");
   await page.waitForSelector(".verified-combos .vc", { timeout: 15_000 });
   const lines = await page.$$eval(".verified-combos .vc", (e) => e.map((x) => x.textContent));
   assert.ok(lines.every((t) => t.includes("Calculado com o App")));
@@ -885,6 +888,8 @@ test("combo → Teste de Jogo: deck temporário do arquétipo, Executar combo co
   await page.keyboard.press("Enter");
   await page.waitForSelector(".verified-combos .vc .vc-testar", { timeout: 15_000 });
   await page.click(".verified-combos .vc >> nth=1 >> .vc-testar");
+  // "Testar" abre as formas de teste: a manual é o Teste de Combo Manual
+  await page.click(".testar-opcao:has-text('Manualmente')");
   await page.waitForSelector(".teste-jogo");
   assert.ok((await page.textContent(".tj-dir h3")).includes("Centur-Ion Temporário"));
   // Executar combo: a mão vira a mão da linha e a caixa de passos aparece no topo
@@ -909,8 +914,8 @@ test("combo → Teste de Jogo: deck temporário do arquétipo, Executar combo co
   await page.waitForSelector(".combos-setup");
   await page.keyboard.press("Escape");
   await page.waitForSelector(".menu-btn");
-  // Teste de Jogo pela tela principal abre com o deck padrão
-  await page.click(".menu-btn:has-text('Teste de Jogo')");
+  // Teste de Combo Manual pela tela principal abre com o deck padrão
+  await page.click(".menu-btn:has-text('Teste de Combo Manual')");
   await page.waitForSelector(".teste-jogo");
   await page.keyboard.press("Escape");
   await page.waitForSelector(".deck-editor");

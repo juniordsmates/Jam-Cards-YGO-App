@@ -4,6 +4,7 @@ import wasmUrl from "ocgcore-wasm/lib/ocgcore.sync.wasm?url";
 import type { OcgResponse } from "ocgcore-wasm";
 import { abrirMotor, type ComandoFicha, type Jogada, type Motor, type PacoteMotor } from "./regras";
 import { Sessao, type Aprendizado, type ConfigSessao, type Quadro } from "./sessao";
+import { calcularMao, type PedidoCalculo } from "./calculo";
 
 export type ParaWorker =
   | { tipo: "pacote"; dados: ArrayBuffer }
@@ -21,7 +22,9 @@ export type ParaWorker =
   /** revisão: o duelo refeito até a posição k */
   | { tipo: "momento"; id: number; cfg: ConfigSessao; k: number }
   /** "?": fatos do motor sobre uma carta, no duelo em andamento (cfg ausente) ou na posição k */
-  | { tipo: "fatos"; id: number; cfg?: ConfigSessao; k?: number; code: number; jogador: number };
+  | { tipo: "fatos"; id: number; cfg?: ConfigSessao; k?: number; code: number; jogador: number }
+  /** Combos → Mão inicial: combo de uma mão com várias cartas, calculado na hora */
+  | { tipo: "calcular"; id: number; pedido: PedidoCalculo };
 
 export type DoWorker =
   | { tipo: "pronto"; versao: string; nomes: Record<string, string> }
@@ -58,10 +61,13 @@ function refazer(cfg: ConfigSessao, k?: number): Sessao {
 onmessage = async (e: MessageEvent<ParaWorker>) => {
   const m = e.data;
   try {
-    if (m.tipo === "linha-do-tempo" || m.tipo === "momento" || m.tipo === "fatos") {
+    if (m.tipo === "linha-do-tempo" || m.tipo === "momento" || m.tipo === "fatos" || m.tipo === "calcular") {
       try {
         let dados: unknown;
-        if (m.tipo === "linha-do-tempo") {
+        if (m.tipo === "calcular") {
+          if (!motor) throw new Error("motor ainda não carregado");
+          dados = calcularMao(motor, m.pedido);
+        } else if (m.tipo === "linha-do-tempo") {
           // um passo por resposta: o momento antes de cada uma (e o do fim)
           const s = refazer({ ...m.cfg, historico: [] });
           const momentos = [s.momento()];

@@ -191,6 +191,8 @@ export interface ConfigSessao {
   linhas?: LinhaIA[];
   /** teste de combo: passos que a IA tenta repetir no primeiro turno (a mão do combo vem em `partida.maos`) */
   roteiro?: PassoCombo[];
+  /** cálculo de combo da mão: cartas que a linha da IA precisa usar */
+  exigidas?: number[];
   /** janelas de resposta do jogador: "acao" só pergunta logo depois de uma jogada da IA; "todas" pergunta sempre */
   janelas?: "acao" | "todas";
   /** o oponente é outra pessoa (partida 1x1): sem IA; as decisões dele chegam por `receberRemota` */
@@ -242,7 +244,7 @@ export class Sessao {
     readonly motor: Motor,
     readonly cfg: ConfigSessao,
   ) {
-    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, cfg.roteiro);
+    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, cfg.roteiro, cfg.exigidas);
     this.pendentes = [...(cfg.historico ?? [])];
     this.duel = motor.novoDuelo(cfg.partida);
   }
@@ -298,6 +300,11 @@ export class Sessao {
       this.aplicar(this.ia.decidir(d, this, repetida), dono(d));
     }
     throw new Error("simulador: a IA não terminou de jogar");
+  }
+
+  /** Decisão em aberto do jogador (null no fim do duelo) */
+  get pendente(): OcgMessage | null {
+    return this.fim ? null : this.decisao;
   }
 
   /** Troca as janelas de resposta no meio do duelo */

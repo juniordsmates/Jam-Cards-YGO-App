@@ -63,7 +63,7 @@ function sortear(ops: Opcao[], peso: (o: Opcao) => number): Opcao {
 }
 
 /** Resposta de quem não interage (o oponente nas simulações, a IA Passiva) */
-function passivo(d: OcgMessage, motor: Motor): OcgResponse | undefined {
+export function passivo(d: OcgMessage, motor: Motor): OcgResponse | undefined {
   if (d.type === T.SELECT_CHAIN && !d.forced) return { type: R.SELECT_CHAIN, index: null };
   if (d.type === T.SELECT_EFFECTYN) return { type: R.SELECT_EFFECTYN, yes: false };
   if (d.type === T.SELECT_YESNO) return { type: R.SELECT_YESNO, yes: false };
@@ -90,6 +90,8 @@ export class IA {
     readonly linhas: LinhaIA[],
     motor: Motor,
     roteiro?: Passo[],
+    /** cálculo de combo da mão: cartas que a linha precisa usar (cada uma que fica na mão pesa contra) */
+    private readonly exigidas: number[] = [],
   ) {
     this.roteiro = roteiro?.length ? new Roteiro(roteiro, eu, (a, b) => this.canonico(motor, a) === this.canonico(motor, b), motor.tipo) : null;
   }
@@ -349,6 +351,11 @@ export class IA {
       if (alvo.has(this.canonico(motor, c.code))) n += 2;
     }
     n += 0.7 * motor.core.duelQueryCount(duel, this.eu, L.HAND);
+    if (this.exigidas.length) {
+      const exigidas = new Set(this.exigidas.map((c) => this.canonico(motor, c)));
+      const naMao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND }).filter((c) => c?.code && exigidas.has(this.canonico(motor, c.code as number)));
+      n -= 4 * naMao.length;
+    }
     n -= 1.2 * (q(op, L.MZONE).length + q(op, L.SZONE).length);
     const campo = motor.core.duelQueryField(duel);
     // o motor manda os PV sem sinal: abaixo de 0 vira um número enorme

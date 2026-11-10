@@ -6,6 +6,7 @@ import { t } from "../i18n";
 import type { Aprendizado, ConfigSessao, FatosCarta, Momento, Quadro } from "./sessao";
 import type { ComandoFicha, Jogada } from "./regras";
 import type { DoWorker, ParaWorker } from "./worker";
+import type { LinhaCalculada, PedidoCalculo } from "./calculo";
 
 // O pacote (dados das cartas e scripts do Project Ignis, ~6 MB) fica no bucket privado "camada",
 // publicado pelo pipeline (Database-Cards-Ygo, scripts/pacote-motor.ts). motor-versao.json traz só
@@ -142,6 +143,11 @@ export class ClienteSim {
   /** "?": fatos do motor sobre uma carta (no duelo em andamento, sem cfg, ou na posição k) */
   fatos(code: number, jogador: number, cfg?: ConfigSessao, k?: number) {
     return this.pedir<FatosCarta>({ tipo: "fatos", code, jogador, cfg, k });
+  }
+
+  /** Combo de uma mão com várias cartas, calculado na hora no motor */
+  calcular(pedido: PedidoCalculo) {
+    return this.pedir<LinhaCalculada>({ tipo: "calcular", pedido });
   }
 
   /** O que o duelo ensinou até agora */

@@ -276,3 +276,16 @@
   text-transform: uppercase;
   color: var(--text-dim);
 }
+
+/* link e favoritar, lado a lado no cabeçalho do arquétipo */
+.cm-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cm-favoritar[aria-pressed="true"] {
+  color: var(--magenta);
+  border-color: var(--magenta);
+}

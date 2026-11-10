@@ -1052,7 +1052,7 @@ export default function TesteJogo({
         {onModo && (
           <div className="left-tabs tj-modo" role="tablist" aria-label={tr("Modo do teste")}>
             <button className={!avancado ? "active" : ""} onClick={() => onModo(false)}>
-              {tr("Teste de Jogo")}</button>
+              {tr("Teste de Combo Manual")}</button>
             <button
               className={avancado ? "active" : ""}
               disabled={!temRecursosAvancados(conta)}

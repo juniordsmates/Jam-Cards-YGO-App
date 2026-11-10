@@ -46,11 +46,11 @@
 .format-switch button.active {
   color: var(--on-accent);
   background: var(--magenta);
-  box-shadow: 0 4px 12px rgb(214 31 143 / 0.3);
+  box-shadow: 0 4px 12px rgb(224 100 15 / 0.3);
 }
 
 .format-switch button:focus-visible {
-  box-shadow: 0 0 0 3px rgb(214 31 143 / 0.25);
+  box-shadow: 0 0 0 3px rgb(224 100 15 / 0.25);
 }
 
 .hand {
@@ -118,7 +118,7 @@
 
 .hand-search .search-input:focus-within {
   border-color: var(--magenta);
-  box-shadow: 0 0 0 3px rgb(214 31 143 / 0.15);
+  box-shadow: 0 0 0 3px rgb(224 100 15 / 0.15);
 }
 
 .hand-search input {
@@ -152,6 +152,8 @@
   border: 1px solid var(--line);
   border-radius: 9px;
   box-shadow: 0 12px 30px rgb(40 30 90 / 0.15);
+  max-height: min(360px, 55vh);
+  overflow-y: auto;
 }
 
 .suggestions button {
@@ -676,4 +678,12 @@
 .combo-excluir-ok {
   color: var(--erro);
   font-weight: 700;
+}
+
+/* aviso da tela inicial: só leitura, sem seleção de texto */
+.combos-aviso p {
+  max-width: 46ch;
+  color: var(--text-dim);
+  user-select: none;
+  -webkit-user-select: none;
 }

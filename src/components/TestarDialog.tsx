@@ -6,7 +6,7 @@ export type QuemTemOCombo = "eu" | "ia" | "ambos";
 export type ModoTeste = "manual" | QuemTemOCombo;
 
 const OPCOES: { id: ModoTeste; titulo: string; dica: string }[] = [
-  { id: "manual", titulo: t("Testar Execução do Combo Manualmente"), dica: t("Abre o Teste de Jogo: você move as cartas e segue os passos do combo.") },
+  { id: "manual", titulo: t("Testar Execução do Combo Manualmente"), dica: t("Abre o Teste de Combo Manual: você move as cartas e segue os passos do combo.") },
   { id: "eu", titulo: t("Teste Contra a IA (Eu Tenho o Combo)"), dica: t("Você começa com a mão do combo no Simulador, e a IA tenta interromper.") },
   { id: "ia", titulo: t("Teste Contra a IA (A IA Tem o Combo)"), dica: t("A IA começa com a mão do combo e tenta executá-lo contra você.") },
   { id: "ambos", titulo: t("Teste Contra a IA (Ambos Temos o Combo)"), dica: t("Os dois começam com a mão do combo; a IA joga primeiro.") },

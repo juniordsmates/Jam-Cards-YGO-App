@@ -7,8 +7,9 @@
   --line: #e2dfef;
   --text: #1b1830;
   --text-dim: #6b6787;
-  --cyan: #00a5c4;
-  --magenta: #d61f8f;
+  /* destaques: azul escuro (--cyan) e laranja sólido (--magenta); os nomes ficaram da paleta antiga */
+  --cyan: #1f5fae;
+  --magenta: #e0640f;
   --red: #e0364f;
   --on-accent: #ffffff;
   /* textos de estado (certo, erro, aviso…) sobre o fundo das telas */
@@ -38,8 +39,8 @@
   --line: #313d55;
   --text: #e3e8f3;
   --text-dim: #98a3bb;
-  --cyan: #22bfdc;
-  --magenta: #f0459f;
+  --cyan: #4a8fe0;
+  --magenta: #ff7a21;
   --red: #ff5f74;
   --on-accent: #ffffff;
   --ok: #5cc98a;
@@ -184,7 +185,7 @@ kbd {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 4px 14px rgb(214 31 143 / 0.18));
+  filter: drop-shadow(0 4px 14px rgb(224 100 15 / 0.18));
 }
 
 .subtitle {
@@ -198,10 +199,10 @@ kbd {
   color: var(--text-dim);
 }
 
-/* até 3 colunas com até 4 opções cada; 2 colunas em telas médias e 1 no celular */
+/* 4 colunas (Explorar, Seus decks e cartas, Outros, Simulador); 2 em telas médias e 1 no celular */
 .menu-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 22px;
   align-items: start;
 }
@@ -390,7 +391,7 @@ kbd {
 .ghost-btn:hover,
 .ghost-btn:focus-visible {
   border-color: var(--cyan);
-  box-shadow: 0 0 0 3px rgb(0 165 196 / 0.15);
+  box-shadow: 0 0 0 3px rgb(31 95 174 / 0.15);
 }
 
 .danger-btn {

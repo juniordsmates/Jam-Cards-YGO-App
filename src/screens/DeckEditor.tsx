@@ -422,14 +422,14 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
 
   return (
     <ScreenShell
-      title={testando ? (avancado && podeAvancado ? t("Teste Avançado") : t("Teste de Jogo")) : t("Editor de Deck")}
+      title={testando ? (avancado && podeAvancado ? t("Teste Avançado") : t("Teste de Combo Manual")) : t("Editor de Deck")}
       accent="magenta"
       onBack={onBack}
       actions={
         <span className="de-topo">
           {!testando && (
-            <button className="ghost-btn de-teste" disabled={!trabalho?.main.length} onClick={() => abrirTeste("simples")} title={t("Teste de Jogo (Solo Mode) com este deck")}>
-              {t("▶ Teste de Jogo")}</button>
+            <button className="ghost-btn de-teste" disabled={!trabalho?.main.length} onClick={() => abrirTeste("simples")} title={t("Teste de Combo Manual (Solo Mode) com este deck")}>
+              {t("▶ Teste de Combo Manual")}</button>
           )}
           {!testando && (
             <button
