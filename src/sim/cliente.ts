@@ -91,7 +91,8 @@ export class ClienteSim {
       } else this.aoErro(m.erro);
     };
     this.worker.onerror = (e) => {
-      const msg = e.message || t("o motor parou");
+      // sem mensagem: o arquivo do motor não carregou (ex.: logo depois de uma publicação, antes de chegar a todos os servidores)
+      const msg = e.message || t("O motor de regras não carregou. Recarregue a página e tente de novo.");
       if (this.esperaPronto) this.esperaPronto.erro(new Error(msg));
       else this.aoErro(msg);
       this.esperaPronto = null;

@@ -2721,4 +2721,5 @@ export const ES: Record<string, string> = {
   "deck do oponente": "deck del oponente",
   "seu deck": "tu deck",
   "{0} ({1}) x {2} ({3})": "{0} ({1}) vs {2} ({3})",
+  "O motor de regras não carregou. Recarregue a página e tente de novo.": "El motor de reglas no cargó. Recarga la página e inténtalo de nuevo.",
 };
