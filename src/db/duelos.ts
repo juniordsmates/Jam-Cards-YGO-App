@@ -23,6 +23,12 @@ export interface Duelo {
 
 const COLUNAS = "id, criador, convidado, criador_jogador, semente, deck_criador, deck_convidado, versao_motor, versao_app, estado, vencedor";
 
+/** Erro do banco em texto para o jogador (sem a migração das partidas, as tabelas não existem) */
+function falha(error: { message: string; code?: string }): Error {
+  if (error.code === "PGRST205" || error.code === "PGRST202" || error.code === "42P01") return new Error(t("As partidas com amigos ainda não foram ativadas no servidor do app."));
+  return new Error(error.message);
+}
+
 function cliente() {
   const sb = supabase();
   if (!sb) throw new Error(t("Contas ainda não configuradas neste app."));
@@ -51,27 +57,27 @@ export async function criarDuelo(deck: DeckSim, versaoMotor: string, versaoApp: 
     .insert({ criador_jogador, semente, deck_criador: deck, versao_motor: versaoMotor, versao_app: versaoApp })
     .select(COLUNAS)
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw falha(error);
   return data as Duelo;
 }
 
 export async function obterDuelo(id: string): Promise<Duelo | null> {
   const { data, error } = await cliente().from("duelos").select(COLUNAS).eq("id", id).maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw falha(error);
   return (data as Duelo | null) ?? null;
 }
 
 /** Entra na sala (o banco confere se as versões do app e do motor batem com as do criador) */
 export async function entrarDuelo(id: string, deck: DeckSim, versaoMotor: string, versaoApp: string): Promise<Duelo> {
   const { data, error } = await cliente().rpc("entrar_duelo", { p_duelo: id, p_deck: deck, p_versao_motor: versaoMotor, p_versao_app: versaoApp });
-  if (error) throw new Error(error.message);
+  if (error) throw falha(error);
   return data as Duelo;
 }
 
 /** Fim do duelo, desistência (vencedor = o outro) ou sala cancelada (null); repetir não muda nada */
 export async function encerrarDuelo(id: string, vencedor: 0 | 1 | null) {
   const { error } = await cliente().rpc("encerrar_duelo", { p_duelo: id, p_vencedor: vencedor });
-  if (error) throw new Error(error.message);
+  if (error) throw falha(error);
 }
 
 /** Envia uma resposta deste aparelho (tenta de novo se a rede falhar; a repetida já gravada vale) */
@@ -80,7 +86,7 @@ export async function enviarResposta(id: string, n: number, jogador: 0 | 1, resp
   for (let tentativa = 0; tentativa < 4; tentativa++) {
     const { error } = await cliente().from("duelo_respostas").insert({ duelo: id, n, jogador, resposta: codificar(resp) });
     if (!error || error.code === "23505") return;
-    erro = error.message;
+    erro = falha(error).message;
     await new Promise((r) => setTimeout(r, 600 * (tentativa + 1)));
   }
   throw new Error(erro);
@@ -89,7 +95,7 @@ export async function enviarResposta(id: string, n: number, jogador: 0 | 1, resp
 /** Todas as respostas do duelo, em ordem (para entrar ou voltar a um duelo em andamento) */
 export async function respostasDoDuelo(id: string): Promise<{ n: number; jogador: 0 | 1; resp: OcgResponse }[]> {
   const { data, error } = await cliente().from("duelo_respostas").select("n, jogador, resposta").eq("duelo", id).order("n");
-  if (error) throw new Error(error.message);
+  if (error) throw falha(error);
   return (data ?? []).map((r) => ({ n: r.n as number, jogador: r.jogador as 0 | 1, resp: decodificar(r.resposta) }));
 }
 

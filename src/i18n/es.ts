@@ -2576,4 +2576,5 @@ export const ES: Record<string, string> = {
   "{0} venceu o duelo": "{0} ganó el duelo",
   "{0} venceu.": "{0} ganó.",
   "{0} viu {1} carta(s)": "{0} vio {1} carta(s)",
+  "As partidas com amigos ainda não foram ativadas no servidor do app.": "Las partidas con amigos aún no están activadas en el servidor de la app.",
 };
