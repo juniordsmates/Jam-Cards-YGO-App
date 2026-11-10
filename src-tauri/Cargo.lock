@@ -419,7 +419,7 @@ dependencies = [
 
 [[package]]
 name = "jam-cards-ygo"
-version = "1.0.12"
+version = "1.0.13"
 dependencies = [
  "reqwest 0.12.28",
  "serde",
