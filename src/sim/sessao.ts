@@ -274,8 +274,10 @@ export class Sessao {
       // fase): passa sozinha, a não ser que o jogador peça todas. Com corrente aberta, de qualquer
       // jogador, sempre pergunta: dá para encadear até à própria ativação (ex.: Infinite Impermanence
       // em cima da Mind Scan quando o oponente não responde)
+      // spe_count > 0: o motor marca opções que não são de corrente livre (ex.: gatilhos que acabaram de
+      // acontecer): também pergunta, para não pular um gatilho opcional do jogador
       const cadeiaAberta = d.type === T.SELECT_CHAIN && this.motor.core.duelQueryField(this.duel).chain.length > 0;
-      if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && this.cfg.janelas !== "todas" && !cadeiaAberta && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)) {
+      if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && !d.spe_count && this.cfg.janelas !== "todas" && !cadeiaAberta && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)) {
         this.aplicar({ type: R.SELECT_CHAIN, index: null }, this.cfg.humano);
         continue;
       }

@@ -2685,4 +2685,11 @@ export const EN: Record<string, string> = {
   "Seus Pontos de Vida": "Your Life Points",
   "{0} jogou um dado: {1}": "{0} rolled a die: {1}",
   "Desligado: o simulador pergunta se você quer encadear quando há uma corrente aberta (de qualquer jogador) ou logo depois de uma jogada do oponente, e pula as janelas vazias, como as das mudanças de fase.": "Off: the simulator asks whether you want to chain when a chain is open (from either player) or right after an opponent's play, and skips empty windows, such as phase changes.",
+  "Ordem dos seus efeitos na corrente": "Order of your effects in the chain",
+  "Pela regra, quem ativa efeitos ao mesmo tempo escolhe a ordem deles. Clique na ordem dos elos: o 1º entra primeiro na corrente (e resolve por último).": "By the rules, whoever activates effects at the same time chooses their order. Click in chain link order: the 1st enters the chain first (and resolves last).",
+  "Clique as cartas na ordem desejada: a 1ª clicada fica em primeiro.": "Click the cards in the order you want: the 1st clicked comes first.",
+  "{0}º": "#{0}",
+  "Confirmar ordem": "Confirm order",
+  "Usar a ordem proposta": "Use the suggested order",
+  "Efeitos que acontecem ao mesmo tempo: pela regra, você escolhe a ordem. O que você escolher agora entra como o próximo elo da corrente (e resolve depois dos que vierem em cima dele).": "Effects happening at the same time: by the rules, you choose the order. The one you pick now becomes the next chain link (and resolves after the ones added on top of it).",
 };

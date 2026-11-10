@@ -1797,6 +1797,9 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
         return (
           <>
             <h4>{d.forced ? t("Ative um efeito obrigatório") : t("Encadear um efeito?")}</h4>
+            {d.forced && d.selects.length > 1 && (
+              <small className="tags-note">{t("Efeitos que acontecem ao mesmo tempo: pela regra, você escolhe a ordem. O que você escolher agora entra como o próximo elo da corrente (e resolve depois dos que vierem em cima dele).")}</small>
+            )}
             {d.selects.map((c, i) => cartaBotao(c, i, false, () => tocar(i), texto(c.description) && <em>{texto(c.description)}</em>))}
             {!d.forced && (
               <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_CHAIN, index: null })} autoFocus>
@@ -1914,16 +1917,37 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
           </>
         );
       case T.SORT_CARD:
-      case T.SORT_CHAIN:
+      case T.SORT_CHAIN: {
+        // marcadas = índices das cartas na ordem em que foram clicadas; a resposta diz a posição de cada carta
+        const completa = marcadas.length === d.cards.length;
         return (
           <>
-            <h4>{d.type === T.SORT_CHAIN ? t("Ordem dos efeitos na cadeia") : t("Ordem das cartas")}</h4>
-            {d.cards.map((c, i) => cartaBotao(c, i, false, () => {}))}
-            <button className="ghost-btn" onClick={() => responder({ type: R.SORT_CARD, order: null })} autoFocus>
-              {t("Usar esta ordem")}
-            </button>
+            <h4>{d.type === T.SORT_CHAIN ? t("Ordem dos seus efeitos na corrente") : t("Ordem das cartas")}</h4>
+            <small className="tags-note">
+              {d.type === T.SORT_CHAIN
+                ? t("Pela regra, quem ativa efeitos ao mesmo tempo escolhe a ordem deles. Clique na ordem dos elos: o 1º entra primeiro na corrente (e resolve por último).")
+                : t("Clique as cartas na ordem desejada: a 1ª clicada fica em primeiro.")}
+            </small>
+            {d.cards.map((c, i) =>
+              cartaBotao(
+                c,
+                i,
+                marcadas.includes(i),
+                () => setMarcadas((m) => (m.includes(i) ? m.filter((x) => x !== i) : [...m, i])),
+                marcadas.includes(i) ? <small className="sim-ordem">{t("{0}º", [marcadas.indexOf(i) + 1])}</small> : undefined,
+              ),
+            )}
+            <div className="sim-niveis">
+              <button className="ghost-btn" disabled={!completa} onClick={() => responder({ type: R.SORT_CARD, order: d.cards.map((_, i) => marcadas.indexOf(i)) })}>
+                {t("Confirmar ordem")}
+              </button>
+              <button className="ghost-btn" onClick={() => responder({ type: R.SORT_CARD, order: null })}>
+                {t("Usar a ordem proposta")}
+              </button>
+            </div>
           </>
         );
+      }
       case T.ANNOUNCE_NUMBER:
         return (
           <>

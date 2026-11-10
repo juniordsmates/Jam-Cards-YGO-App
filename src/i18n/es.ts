@@ -2685,4 +2685,11 @@ export const ES: Record<string, string> = {
   "Seus Pontos de Vida": "Tus Puntos de Vida",
   "{0} jogou um dado: {1}": "{0} lanzó un dado: {1}",
   "Desligado: o simulador pergunta se você quer encadear quando há uma corrente aberta (de qualquer jogador) ou logo depois de uma jogada do oponente, e pula as janelas vazias, como as das mudanças de fase.": "Desactivado: el simulador pregunta si quieres encadenar cuando hay una cadena abierta (de cualquier jugador) o justo después de una jugada del oponente, y omite las ventanas vacías, como las de los cambios de fase.",
+  "Ordem dos seus efeitos na corrente": "Orden de tus efectos en la cadena",
+  "Pela regra, quem ativa efeitos ao mesmo tempo escolhe a ordem deles. Clique na ordem dos elos: o 1º entra primeiro na corrente (e resolve por último).": "Según las reglas, quien activa efectos al mismo tiempo elige su orden. Haz clic en el orden de los eslabones: el 1.º entra primero en la cadena (y se resuelve el último).",
+  "Clique as cartas na ordem desejada: a 1ª clicada fica em primeiro.": "Haz clic en las cartas en el orden deseado: la 1.ª clicada queda primero.",
+  "{0}º": "{0}.º",
+  "Confirmar ordem": "Confirmar orden",
+  "Usar a ordem proposta": "Usar el orden propuesto",
+  "Efeitos que acontecem ao mesmo tempo: pela regra, você escolhe a ordem. O que você escolher agora entra como o próximo elo da corrente (e resolve depois dos que vierem em cima dele).": "Efectos que ocurren al mismo tiempo: según las reglas, eliges el orden. El que elijas ahora entra como el siguiente eslabón de la cadena (y se resuelve después de los que vengan encima).",
 };
