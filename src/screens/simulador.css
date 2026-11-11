@@ -218,14 +218,12 @@
   transform: rotate(90deg) scale(1.12);
 }
 
-/* cartas do oponente de cabeça para baixo, como num campo real (só a imagem: os selos de ATK e elo
-   continuam legíveis, e a rotação da Posição de Defesa fica na carta) */
+/* cartas do oponente no campo de cabeça para baixo, como num campo real (só a imagem: os selos de ATK
+   e elo continuam legíveis, e a rotação da Posição de Defesa fica na carta); a mão dele fica normal */
 .sim .tj-zona-op .tj-carta > img,
 .sim .tj-zona-op .tj-carta > .sim-ficha-carta,
 .sim .tj-zona-op .tj-carta > .tj-verso,
-.sim .tj-zona-op > .tj-verso,
-.sim .tj-mao-op .tj-carta > img,
-.sim .tj-mao-op .tj-carta > .tj-verso {
+.sim .tj-zona-op > .tj-verso {
   transform: rotate(180deg);
 }
 
@@ -1326,4 +1324,69 @@
 
 .sim-replays-topo h3 {
   margin: 0;
+}
+
+/* ---------- Duelo em tela única (sem barras de rolagem) ---------- */
+
+/* cabeçalho mais baixo: título menor, menos espaço até a mesa e na borda da janela */
+.stage:has(.teste-jogo.sim) {
+  padding-block: 12px;
+}
+
+.screen:has(.teste-jogo.sim) {
+  gap: 10px;
+}
+
+.screen:has(.teste-jogo.sim) .screen-title {
+  font-size: 1.15rem;
+}
+
+.screen:has(.teste-jogo.sim) .sim-fase {
+  padding-block: 4px;
+}
+
+/*
+ * A mesa mede a altura que sobra e o campo se ajusta a ela: as cartas da mão e as zonas encolhem
+ * em janelas baixas, em vez de a mesa rolar. Campo: 7 colunas x 5 linhas de zonas quadradas
+ * (largura ≈ 1,4 x altura); a altura dele é a da mesa menos as duas mãos, os espaços e, no Modo
+ * de Treino, a caixa de combos.
+ */
+.sim .tj-mesa {
+  container-type: size;
+  overflow: hidden;
+  --carta-mao: clamp(32px, min(4.4vw, 7.5cqh), 92px);
+  --altura-mao: calc(var(--carta-mao) * 86 / 59 + 12px);
+  --combos: 0px;
+}
+
+.sim .tj-mesa:has(.treino-combos) {
+  --combos: calc(min(150px, 16cqh) + 16px);
+}
+
+.sim .tj-mesa .treino-combos {
+  max-height: min(150px, 16cqh);
+}
+
+.sim .tj-mesa-avancada .tj-mao .tj-carta {
+  width: var(--carta-mao);
+}
+
+.sim .sim-mao-linha .tj-mao,
+.sim .tj-mao-op {
+  min-height: var(--altura-mao);
+}
+
+.sim .tj-mesa-avancada .tj-campo {
+  max-width: calc((100cqh - 2 * var(--altura-mao) - 16px - var(--combos)) * 1.4);
+}
+
+/* PV, fase e botões do centro não aumentam a linha do meio (as zonas quadradas ditam a altura);
+   em mesas baixas o texto encolhe para caber */
+.sim .tj-l1 > .sim-centro,
+.sim .tj-l1 > .sim-acoes-campo {
+  contain: size;
+}
+
+.sim .tj-l1 > .sim-centro .sim-lp {
+  font-size: clamp(0.72rem, 2cqh, 1rem);
 }
