@@ -253,6 +253,7 @@ export default function App() {
               setTesteCombo(null);
             }}
             duelo={rota.tela === "simulador" ? rota.duelo : undefined}
+            replay={rota.tela === "simulador" ? rota.replay : undefined}
             onRota={aoRota}
             testeCombo={testeCombo?.teste}
           />

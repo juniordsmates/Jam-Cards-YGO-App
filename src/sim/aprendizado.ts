@@ -22,6 +22,8 @@ export interface DueloGuardado extends Aprendizado {
   versaoMotor: string;
   versaoApp: string;
   rotulos?: RotulosReplay;
+  /** link compartilhado deste replay (src/db/replays.ts): código e validade */
+  compartilhado?: { codigo: string; expira: string };
 }
 
 /** Guarda o duelo (replay para revisar depois) com o que ele ensinou; ficam só os `limite` mais recentes */
@@ -37,18 +39,41 @@ export const listarAprendizado = async () => (await idbGet<DueloGuardado[]>(CHAV
 /** Replay em texto (arquivo .json) para guardar fora do app ou mandar a alguém */
 export const exportarReplay = (d: DueloGuardado) => JSON.stringify({ formato: "jam-cards-replay", versao: 1, ...d }, (_, v) => (typeof v === "bigint" ? { $big: String(v) } : v));
 
-/** Lê um replay exportado e guarda junto dos outros (confere o formato antes) */
-export async function importarReplay(texto: string, limite: number): Promise<DueloGuardado> {
+/** Lê um replay em texto (arquivo exportado ou link compartilhado), conferindo o formato */
+export function lerReplay(texto: string): DueloGuardado {
   const d = JSON.parse(texto, (_, v) => (v && typeof v === "object" && "$big" in v ? BigInt(v.$big) : v)) as DueloGuardado & { formato?: string };
   const decks = d?.partida?.decks;
   if (d?.formato !== "jam-cards-replay" || !Array.isArray(decks) || decks.length !== 2 || !Array.isArray(d.historico) || (d.humano !== 0 && d.humano !== 1) || !Array.isArray(d.partida.semente))
     throw new Error("Arquivo de replay inválido.");
-  const { formato: _f, versao: _v, ...replay } = d as DueloGuardado & { formato?: string; versao?: number };
+  const { formato: _f, versao: _v, compartilhado: _c, ...replay } = d as DueloGuardado & { formato?: string; versao?: number };
+  return { ...replay, linhas: replay.linhas ?? [], respostas: replay.respostas ?? [], quando: replay.quando ?? new Date().toISOString() };
+}
+
+/** Guarda um replay recebido junto dos outros (ficam os `limite` mais recentes) */
+export async function guardarReplay(d: DueloGuardado, limite: number) {
   const lista = (await idbGet<DueloGuardado[]>(CHAVE)) ?? [];
-  const novo: DueloGuardado = { ...replay, linhas: replay.linhas ?? [], respostas: replay.respostas ?? [], quando: replay.quando ?? new Date().toISOString() };
-  lista.push(novo);
+  // o mesmo replay (mesma data e semente) não entra duas vezes
+  const igual = (x: DueloGuardado) => x.quando === d.quando && x.partida.semente.join() === d.partida.semente.join();
+  if (!lista.some(igual)) lista.push(d);
   await idbSetMany({ [CHAVE]: lista.slice(-limite) });
+}
+
+/** Lê um replay exportado e guarda junto dos outros */
+export async function importarReplay(texto: string, limite: number): Promise<DueloGuardado> {
+  const novo = lerReplay(texto);
+  await guardarReplay(novo, limite);
   return novo;
+}
+
+/** Anota (ou tira, com null) o link compartilhado de um replay guardado */
+export async function marcarCompartilhado(quando: string, compartilhado: DueloGuardado["compartilhado"] | null) {
+  const lista = (await idbGet<DueloGuardado[]>(CHAVE)) ?? [];
+  const novo = lista.map((d) => {
+    if (d.quando !== quando) return d;
+    const { compartilhado: _c, ...resto } = d;
+    return compartilhado ? { ...resto, compartilhado } : resto;
+  });
+  await idbSetMany({ [CHAVE]: novo });
 }
 
 // Valor aprendido das cartas: a análise de cada duelo (src/sim/analise.ts) aponta Invocações que a IA

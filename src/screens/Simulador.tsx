@@ -19,7 +19,8 @@ import { ClienteSim, obterPacote } from "../sim/cliente";
 import { zonasLivres } from "../sim/opcoes";
 import type { LinhaIA, NivelIA } from "../sim/ia";
 import type { Aprendizado, CartaSim, ConfigSessao, EventoSim, Momento, PedidoSim, Quadro } from "../sim/sessao";
-import { aprenderValores, exportarReplay, guardarAprendizado, importarReplay, lerValoresAprendidos, listarAprendizado, REPLAYS_GRATIS, REPLAYS_PREMIUM, type DueloGuardado, type RotulosReplay } from "../sim/aprendizado";
+import { apagarReplay, compartilharReplay, obterReplay } from "../db/replays";
+import { aprenderValores, exportarReplay, guardarAprendizado, guardarReplay, importarReplay, lerValoresAprendidos, listarAprendizado, marcarCompartilhado, REPLAYS_GRATIS, REPLAYS_PREMIUM, type DueloGuardado, type RotulosReplay } from "../sim/aprendizado";
 import type { AnaliseDuelo, FatoDuelo } from "../sim/analise";
 import { temPremium } from "../db/conta";
 import { isDesktop } from "../platform";
@@ -220,7 +221,20 @@ function faltando(main: number[], mao: number[]): number[] {
   });
 }
 
-export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCombo }: { onBack: () => void; duelo?: string; onRota?: (r: Rota) => void; testeCombo?: TesteCombo }) {
+export default function Simulador({
+  onBack,
+  duelo: dueloDaRota,
+  replay: replayDaRota,
+  onRota,
+  testeCombo,
+}: {
+  onBack: () => void;
+  duelo?: string;
+  /** código de um replay compartilhado (#/replay/<código>) */
+  replay?: string;
+  onRota?: (r: Rota) => void;
+  testeCombo?: TesteCombo;
+}) {
   const conta = useConta();
   const db = useCardDb();
   const { decks } = useDecks();
@@ -346,7 +360,14 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   const limiteReplays = premium ? REPLAYS_PREMIUM : REPLAYS_GRATIS;
   const [avisoReplay, setAvisoReplay] = useState<string | null>(null);
   // revisão: a partida refeita, os momentos (um por resposta) e o momento mostrado
-  const [revisao, setRevisao] = useState<{ cfg: ConfigSessao; momentos: Momento[]; k: number; oponente: string } | null>(null);
+  const [revisao, setRevisao] = useState<{
+    cfg: ConfigSessao;
+    momentos: Momento[];
+    k: number;
+    oponente: string;
+    /** replay recebido por link: o duelo (para guardar), quem compartilhou e o aviso de versão das regras */
+    recebido?: { d: DueloGuardado; jogador: string; aviso?: string; salvo?: boolean };
+  } | null>(null);
   const revisaoRef = useRef(revisao);
   revisaoRef.current = revisao;
   // "?": pergunta aberta (de quem é a carta, qual carta) e a resposta
@@ -661,6 +682,24 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
     if (dueloDaRota && etapaRef.current !== "duelo" && salaRef.current?.id !== dueloDaRota) void abrirSala(dueloDaRota);
   }, [dueloDaRota, conta?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // link de replay compartilhado (#/replay/<código>): abre na revisão, sem precisar de conta
+  const replayAberto = useRef<string | null>(null);
+  useEffect(() => {
+    if (!replayDaRota || replayAberto.current === replayDaRota || etapaRef.current === "duelo") return;
+    replayAberto.current = replayDaRota;
+    void (async () => {
+      setErro(null);
+      setEtapa("carregando");
+      try {
+        const d = await obterReplay(replayDaRota);
+        if (!d) throw new Error(t("Este link de replay não existe ou já venceu (os links valem por 10 dias)."));
+        await abrirRevisao({ partida: d.partida, humano: d.humano, nivel: "normal", historico: d.historico }, d.rotulos?.oponente ?? (d.remoto ? t("Oponente") : t("IA")), d);
+      } catch (e) {
+        falhou(e);
+      }
+    })();
+  }, [replayDaRota]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /** Guarda neste aparelho o que o duelo ensinou e mostra no fim */
   function registrarAprendizado(a: Aprendizado) {
     setAprendido(a);
@@ -688,7 +727,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
     }
   }
 
-  async function abrirRevisao(cfg: ConfigSessao, oponente: string) {
+  async function abrirRevisao(cfg: ConfigSessao, oponente: string, recebido?: DueloGuardado) {
     setErro(null);
     setEtapa("carregando");
     try {
@@ -697,7 +736,13 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
       setEu(cfg.humano);
       partidaRef.current = cfg.partida;
       setPergunta(null);
-      setRevisao({ cfg, momentos, k: momentos.length - 1, oponente });
+      const deLink = recebido && {
+        d: recebido,
+        jogador: recebido.rotulos?.eu || t("Jogador"),
+        // as regras mudaram desde o duelo: o replay pode seguir outro caminho
+        aviso: recebido.versaoMotor !== versaoMotor.current ? t("Este replay foi gravado com outra versão das regras do motor: a partir de algum lance, ele pode não repetir o duelo original.") : undefined,
+      };
+      setRevisao({ cfg, momentos, k: momentos.length - 1, oponente, ...(deLink ? { recebido: deLink } : {}) });
       await irPara(momentos.length - 1, cfg);
       setEtapa("duelo");
     } catch (e) {
@@ -718,6 +763,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   }
 
   function sairRevisao() {
+    if (revisaoRef.current?.recebido && replayDaRota) onRota?.({ tela: "simulador" });
     setRevisao(null);
     setPergunta(null);
     setQuadro(null);
@@ -810,13 +856,68 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
     }
   }
 
+  async function recarregarReplays() {
+    const locais = await listarAprendizado();
+    setRecentes((r) => ({ ...r, locais: locais.slice(-limiteReplays).reverse() }));
+  }
+
+  /** Link compartilhado ainda válido de um replay guardado */
+  const linkValido = (d: DueloGuardado) => (d.compartilhado && new Date(d.compartilhado.expira).getTime() > Date.now() ? d.compartilhado : null);
+
+  /** Copia o link do replay e avisa até quando ele vale */
+  async function copiarLinkReplay(c: NonNullable<DueloGuardado["compartilhado"]>) {
+    const rota: Rota = { tela: "simulador", replay: c.codigo };
+    const ok = await copiarLink(rota);
+    const ate = new Date(c.expira).toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" });
+    setAvisoReplay(ok ? t("Link copiado (vale até {0}): {1}", [ate, linkPara(rota)]) : t("Link do replay (vale até {0}): {1}", [ate, linkPara(rota)]));
+  }
+
+  /** Compartilha o replay por link (precisa de conta; quem recebe vê sem conta) */
+  async function compartilhar(d: DueloGuardado) {
+    if (!conta) return openConta();
+    const ja = linkValido(d);
+    if (ja) return copiarLinkReplay(ja);
+    try {
+      const c = await compartilharReplay(d);
+      await marcarCompartilhado(d.quando, c);
+      await recarregarReplays();
+      await copiarLinkReplay(c);
+    } catch (e) {
+      setAvisoReplay(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /** Apaga o link do replay (libera a vaga no limite de links ativos) */
+  async function apagarLink(d: DueloGuardado) {
+    if (!d.compartilhado) return;
+    try {
+      await apagarReplay(d.compartilhado.codigo);
+      await marcarCompartilhado(d.quando, null);
+      await recarregarReplays();
+      setAvisoReplay(t("Link apagado."));
+    } catch (e) {
+      setAvisoReplay(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /** Guarda nos meus replays o replay recebido por link */
+  async function salvarRecebido() {
+    const r = revisaoRef.current?.recebido;
+    if (!r) return;
+    try {
+      await guardarReplay(r.d, limiteReplays);
+      setRevisao((v) => (v?.recebido ? { ...v, recebido: { ...v.recebido, salvo: true } } : v));
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   /** Importa um replay de arquivo .json (Premium) */
   async function importar(arquivo: File | undefined) {
     if (!arquivo) return;
     try {
       await importarReplay(await arquivo.text(), limiteReplays);
-      const locais = await listarAprendizado();
-      setRecentes((r) => ({ ...r, locais: locais.slice(-limiteReplays).reverse() }));
+      await recarregarReplays();
       setAvisoReplay(t("Replay importado."));
     } catch (e) {
       setAvisoReplay(e instanceof Error ? t(e.message) : String(e));
@@ -1412,6 +1513,14 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
                           {t("Exportar")}
                         </button>
                       )}
+                      <button className="ghost-btn" onClick={() => void compartilhar(d)} title={conta ? t("Cria um link do replay (vale por 10 dias); quem recebe vê sem precisar de conta") : t("Entre na sua conta para compartilhar")}>
+                        {linkValido(d) ? t("Copiar link") : t("Compartilhar")}
+                      </button>
+                      {linkValido(d) && (
+                        <button className="ghost-btn" onClick={() => void apagarLink(d)}>
+                          {t("Apagar link")}
+                        </button>
+                      )}
                     </span>
                     {analise?.chave === d.quando && <AnaliseIA analise={analise} nomeDe={nomeDe} quem={(j) => (j === d.humano ? d.rotulos?.eu ?? t("Você") : t("IA"))} />}
                   </li>
@@ -1430,7 +1539,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
   const op = (1 - eu) as 0 | 1;
   const rotuloOp = sala ? (nomeOp ?? t("Oponente")) : t("IA");
   const nomeOponente = revisao ? revisao.oponente : rotuloOp;
-  const meuNome = conta?.usuario || t("Você");
+  const meuNome = revisao?.recebido?.jogador ?? (conta?.usuario || t("Você"));
   const est = quadro.estado;
   const meuLado = est.lados[eu];
   const lado2 = est.lados[op];
@@ -1604,7 +1713,7 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
     const ultimo = r.momentos.length - 1;
     const m = r.momentos[r.k];
     const turnoDe = (turno: number) => r.momentos.findIndex((x) => x.turno === turno);
-    const quem = (j: number) => (j === eu ? t("Você") : r.oponente);
+    const quem = (j: number) => (j === eu ? (r.recebido?.jogador ?? t("Você")) : r.oponente);
     const ir = (k: number) => void irPara(Math.max(0, Math.min(ultimo, k)));
     return (
       <div className="sim-revisao">
@@ -1625,7 +1734,23 @@ export default function Simulador({ onBack, duelo: dueloDaRota, onRota, testeCom
           <button className="ghost-btn" onClick={() => ir(ultimo)} title={t("Fim")}>⏭</button>
         </div>
         <small className="tags-note">{t("Na revisão, as cartas escondidas dos dois lados ficam visíveis.")}</small>
+        {r.recebido && (
+          <small className="tags-note">
+            {t("Replay compartilhado: {0} x {1}.", [r.recebido.jogador, r.oponente])}
+            {r.recebido.aviso && (
+              <>
+                <br />
+                {r.recebido.aviso}
+              </>
+            )}
+          </small>
+        )}
         <div className="sim-niveis">
+          {r.recebido && (
+            <button className="ghost-btn" disabled={r.recebido.salvo} onClick={() => void salvarRecebido()}>
+              {r.recebido.salvo ? t("Salvo nos seus replays") : t("Salvar nos meus replays")}
+            </button>
+          )}
           <button className="ghost-btn" onClick={sairRevisao}>
             {t("Sair da revisão")}
           </button>
