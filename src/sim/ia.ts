@@ -29,6 +29,8 @@ const TEMPO: Record<NivelIA, number> = { passiva: 0, facil: 0, normal: 2000, dif
 /** chance de responder a uma jogada do oponente com o que tiver (interrupções de mão, armadilhas) */
 const RESPONDE: Record<NivelIA, number> = { passiva: 0, facil: 0.15, normal: 0.6, dificil: 1 };
 const MAX_TENTATIVAS = 400;
+/** "Mulcharmy" (Purulia, Fuwalos, Meowls) e Maxx "C": só punem quem Invoca enquanto estão ativas */
+const puneInvocacoes = (nome: string) => /^Mulcharmy /.test(nome) || nome === 'Maxx "C"';
 /** linhas conhecidas testadas inteiras (pelo roteiro) a cada planejamento */
 const MAX_LINHAS_GUIADAS = 12;
 /**
@@ -202,6 +204,9 @@ export class IA {
         // interrupções de mão com momento certo (o que os jogadores costumam fazer para ganhar vantagem)
         const momento = this.momentoCerto(d, s);
         if (momento) return momento;
+        // Mulcharmy / Maxx "C" do oponente no turno dele não punem a IA (ela não Invoca do Deck/Extra
+        // no turno do oponente): negar seria gastar a interrupção à toa
+        if (this.respostaInutil(s)) return { type: R.SELECT_CHAIN, index: null };
         const ultima = s.ultimaAcao;
         // responde às jogadas do oponente com a chance do nível; no próprio turno, ativa os gatilhos
         if (ultima && ultima.p !== this.eu) return Math.random() < RESPONDE[this.nivel] ? ativar.resp : { type: R.SELECT_CHAIN, index: null };
@@ -237,6 +242,16 @@ export class IA {
     return s.motor.core.duelQueryCount(duel, op as 0, L.ONFIELD) === 0;
   }
 
+  /**
+   * A última jogada é um "Mulcharmy" ou Maxx "C" do oponente no turno dele. Essas cartas só punem
+   * Invocações da IA, e a IA não Invoca do Deck/Extra Deck no turno do oponente, então responder
+   * (negar, por exemplo) gastaria a carta sem ganho.
+   */
+  private respostaInutil(s: Sessao) {
+    const u = s.ultimaAcao;
+    return !!u && u.tipo === "ativa" && u.p !== this.eu && s.jogadorDaVez !== this.eu && puneInvocacoes(s.motor.nome(u.code));
+  }
+
   // ---------- momento certo das interrupções de mão ----------
 
   /**
@@ -251,7 +266,7 @@ export class IA {
   private momentoCerto(d: Extract<OcgMessage, { type: T.SELECT_CHAIN }>, s: Sessao): OcgResponse | null {
     if (d.forced) return null;
     const nome = (code: number) => s.motor.nome(code);
-    const cedo = (code: number) => /^Mulcharmy /.test(nome(code)) || nome(code) === 'Maxx "C"';
+    const cedo = (code: number) => puneInvocacoes(nome(code));
     const droll = (code: number) => nome(code) === "Droll & Lock Bird";
     const turnoDele = s.jogadorDaVez !== this.eu;
     const fase = s.faseAtual;
