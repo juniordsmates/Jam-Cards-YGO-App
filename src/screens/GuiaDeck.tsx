@@ -296,7 +296,10 @@ export default function GuiaDeck({
   const conteudo = useRef<HTMLDivElement>(null);
 
   useEffect(() => void initCardDb(), []);
-  useEffect(() => conteudo.current?.scrollTo({ top: 0 }), [deck?.arquetipo, aba]);
+  // (chaves: no Chromium novo scrollTo devolve uma Promise, e o efeito não pode devolver nada além de função)
+  useEffect(() => {
+    conteudo.current?.scrollTo({ top: 0 });
+  }, [deck?.arquetipo, aba]);
 
   const byId = useMemo(() => new Map(db.cards.map((c) => [c.id, c])), [db.cards]);
   const byName = useMemo(() => new Map(db.cards.map((c) => [c.name, c])), [db.cards]);
