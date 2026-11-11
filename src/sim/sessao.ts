@@ -56,6 +56,10 @@ export type EventoSim =
   | { t: "baixa"; p: number; code: number }
   /** ativação: elo da cadeia e onde a carta foi ativada (dono, local e posição) */
   | { t: "ativa"; p: number; code: number; texto?: string; elo: number; location: number; sequence: number }
+  /** cartas que viraram alvo da ativação do elo (code 0: carta baixada do oponente) */
+  | { t: "alvo"; elo: number; cartas: { code: number; p: number; location: number }[] }
+  /** nome de carta declarado por um efeito (elo 0: fora da ativação) */
+  | { t: "declara"; p: number; code: number; elo: number }
   | { t: "resolve"; elo: number }
   | { t: "cadeia-fim" }
   | { t: "nega"; code?: number }
@@ -211,6 +215,8 @@ export interface ConfigSessao {
 
 // código, posição, ATK, DEF, matérias, marcadores e se a carta é pública
 const QUERY = (1 | 2 | 256 | 512 | 65536 | 131072 | 1048576) as never;
+/** etapas da Battle Phase (início, batalha, Damage Step, cálculo de dano e fim) */
+const FASES_BATALHA = OcgPhase.BATTLE_START | OcgPhase.BATTLE_STEP | OcgPhase.DAMAGE | OcgPhase.DAMAGE_CAL | OcgPhase.BATTLE;
 
 export class Sessao {
   readonly duel: OcgDuelHandle;
@@ -237,6 +243,8 @@ export class Sessao {
   /** cartas da cadeia (pelo elo) e a que está resolvendo agora */
   private cadeia: number[] = [];
   private resolvendo: number | null = null;
+  /** elo sendo ativado agora (entre CHAINING e CHAINED: custo, alvos e nomes declarados); 0 fora disso */
+  private eloMontando = 0;
   // aprendizado: registro do turno do jogador (desde a Main Phase 1), mão no começo dele, linhas e respostas
   private logTurno: OcgMessage[] | null = null;
   private maoInicio: number[] = [];
@@ -299,7 +307,10 @@ export class Sessao {
       const cadeiaAberta = d.type === T.SELECT_CHAIN && this.motor.core.duelQueryField(this.duel).chain.length > 0;
       // no turno do jogador, a Draw e a Standby esperam ele passar de fase (barra de fases da tela)
       const faseManual = this.vez === this.cfg.humano && (this.fase === OcgPhase.DRAW || this.fase === OcgPhase.STANDBY);
-      if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && !d.spe_count && !faseManual && this.cfg.janelas !== "todas" && !cadeiaAberta && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)) {
+      // Battle Phase: as etapas sem nada para ativar (declaração de ataque, Damage Step, cálculo de dano…)
+      // passam sozinhas, mesmo com todas as janelas ligadas
+      const etapaVazia = d.type === T.SELECT_CHAIN && !d.selects.length && (this.fase & FASES_BATALHA) !== 0;
+      if (d.type === T.SELECT_CHAIN && d.player === this.cfg.humano && !d.forced && (etapaVazia || (!d.spe_count && !faseManual && this.cfg.janelas !== "todas" && !cadeiaAberta && (!this.ultimaAcao || this.ultimaAcao.p === this.cfg.humano)))) {
         this.aplicar({ type: R.SELECT_CHAIN, index: null }, this.cfg.humano);
         continue;
       }
@@ -398,6 +409,7 @@ export class Sessao {
     this.ia?.observar(resp, jogador);
     this.iaHumano?.observar(resp, jogador);
     if (publicar && this.cfg.remoto && jogador === this.cfg.humano) this.saida.push({ n: this.historico.length - 1, resp });
+    if (!ehComando(resp) && resp.type === R.ANNOUNCE_CARD) this.eventos.push({ t: "declara", p: jogador, code: resp.card, elo: this.eloMontando });
     if (ehComando(resp)) executarComando(this.motor, this.duel, resp);
     else this.motor.core.duelSetResponse(this.duel, resp);
   }
@@ -456,6 +468,19 @@ export class Sessao {
           this.ultimoEvento = { tipo: "ativacao", p: m.controller, code: m.code };
           this.ativacoesTurno.push({ code: this.canonico(m.code), p: m.controller });
           this.ultimaAcao = { p: m.controller, code: m.code, tipo: "ativa" };
+          this.eloMontando = m.chain_size;
+          break;
+        case T.CHAINED:
+          this.eloMontando = 0;
+          break;
+        case T.BECOME_TARGET:
+          // alvos declarados na ativação; carta baixada do oponente fica sem nome
+          if (this.eloMontando)
+            ev.push({
+              t: "alvo",
+              elo: this.eloMontando,
+              cartas: m.cards.map((c) => ({ code: c.position & 0xa && c.controller !== humano ? 0 : (this.cartaEm(c.controller, c.location, c.sequence) ?? 0), p: c.controller, location: c.location })),
+            });
           break;
         case T.CHAIN_SOLVING:
           this.resolvendo = this.cadeia[m.chain_size - 1] ?? null;
@@ -466,6 +491,7 @@ export class Sessao {
         case T.CHAIN_END:
           this.cadeia = [];
           this.resolvendo = null;
+          this.eloMontando = 0;
           ev.push({ t: "cadeia-fim" });
           break;
         case T.CONFIRM_CARDS:

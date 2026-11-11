@@ -322,7 +322,8 @@ export default function Simulador({
   const [embaralhando, setEmbaralhando] = useState<[boolean, boolean]>([false, false]);
   const timerEmbaralho = useRef<number[]>([]);
   // ativações: a cadeia atual (ou a última, já resolvida), para mostrar abaixo dos PV
-  const [ativacoes, setAtivacoes] = useState<{ itens: (Extract<EventoSim, { t: "ativa" }> & { resolvida?: boolean })[]; aberta: boolean }>({ itens: [], aberta: false });
+  // (com os alvos e o nome declarado de cada elo)
+  const [ativacoes, setAtivacoes] = useState<{ itens: (Extract<EventoSim, { t: "ativa" }> & { resolvida?: boolean; alvos?: Extract<EventoSim, { t: "alvo" }>["cartas"]; declarado?: number })[]; aberta: boolean }>({ itens: [], aberta: false });
   // cartas mostradas ao jogador (ex.: a mão do oponente)
   const [revelacao, setRevelacao] = useState<{ code: number; controller: number; location: number }[] | null>(null);
   const cliente = useRef<ClienteSim | null>(null);
@@ -1011,6 +1012,8 @@ export default function Simulador({
     if (q.eventos.length) setRegistro((r) => [...r, ...q.eventos].slice(-400));
     for (const e of q.eventos) {
       if (e.t === "ativa") setAtivacoes((a) => ({ itens: e.elo === 1 || !a.aberta ? [e] : [...a.itens, e], aberta: true }));
+      if (e.t === "alvo") setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, alvos: [...(x.alvos ?? []), ...e.cartas] } : x)) }));
+      if (e.t === "declara" && e.elo) setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, declarado: e.code } : x)) }));
       if (e.t === "resolve") setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, resolvida: true } : x)) }));
       if (e.t === "cadeia-fim") setAtivacoes((a) => ({ itens: a.itens.map((x) => ({ ...x, resolvida: true })), aberta: false }));
       if (e.t === "revela" && e.p === euRef.current) setRevelacao(e.cartas);
@@ -2043,6 +2046,8 @@ export default function Simulador({
                       </strong>
                       <small>{lugarDe(a.location, a.p === eu)}</small>
                       {a.texto && <em>{a.texto}</em>}
+                      {!!a.alvos?.length && <small className="sim-alvos">{t("Alvo: {0}", [a.alvos.map((c) => (c.code ? nomeDe(c.code) : t("carta baixada"))).join(", ")])}</small>}
+                      {!!a.declarado && <small className="sim-alvos">{t("Nome declarado: {0}", [nomeDe(a.declarado)])}</small>}
                     </span>
                     {a.resolvida && <span aria-label={t("resolvida")}>✓</span>}
                   </li>
@@ -2107,7 +2112,7 @@ export default function Simulador({
             {[...registro]
               .reverse()
               .map((e, i) => [e, registro.length - i] as const)
-              .filter(([e]) => e.t !== "resolve" && e.t !== "cadeia-fim" && e.t !== "voo")
+              .filter(([e]) => e.t !== "resolve" && e.t !== "cadeia-fim" && e.t !== "voo" && e.t !== "alvo")
               .map(([e, k]) => (
                 <li key={k}>{textoEvento(e, eu, nomeDe, rotuloOp)}</li>
               ))}
@@ -2715,6 +2720,10 @@ function textoEvento(e: EventoSim, eu: number, nomeDe: (c: number) => string, op
       return t("{0} baixou uma carta", [quem(e.p)]);
     case "ativa":
       return t("{0} ativou {1} {2}", [quem(e.p), nomeDe(e.code), lugarDe(e.location, e.p === eu)]).trim() + (e.texto ? ` — ${e.texto}` : "");
+    case "declara":
+      return t("{0} declarou o nome {1}", [quem(e.p), nomeDe(e.code)]);
+    case "alvo":
+      return "";
     case "nega":
       return t("Ativação ou efeito negado");
     case "revela":

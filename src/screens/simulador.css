@@ -474,6 +474,12 @@
   color: var(--text-dim);
 }
 
+/* alvos e nome declarado: o que a ativação vai afetar */
+.sim-cadeia small.sim-alvos {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .sim-elo-num {
   display: grid;
   place-items: center;
