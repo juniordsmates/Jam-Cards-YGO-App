@@ -163,7 +163,10 @@ export async function nomesDeUsuarios(ids: string[]): Promise<Record<string, str
 }
 
 /** Acompanha a sala e as respostas em tempo real; devolve a função que para de acompanhar */
-export function assinarDuelo(id: string, ao: { duelo?: (d: Duelo) => void; resposta?: (n: number, jogador: 0 | 1, resp: Jogada) => void }): () => void {
+export function assinarDuelo(
+  id: string,
+  ao: { duelo?: (d: Duelo) => void; resposta?: (n: number, jogador: 0 | 1, resp: Jogada) => void; chat?: (jogador: 0 | 1, texto: string) => void },
+): () => void {
   const sb = cliente();
   const canal = sb
     .channel(`duelo-${id}`)
@@ -172,8 +175,26 @@ export function assinarDuelo(id: string, ao: { duelo?: (d: Duelo) => void; respo
       const r = p.new as { n: number; jogador: 0 | 1; resposta: unknown };
       ao.resposta?.(r.n, r.jogador, decodificar(r.resposta));
     })
+    // chat da partida: mensagens de passagem (broadcast), sem gravar no banco
+    .on("broadcast", { event: "chat" }, ({ payload }) => {
+      const m = payload as { jogador?: unknown; texto?: unknown };
+      if ((m.jogador === 0 || m.jogador === 1) && typeof m.texto === "string") ao.chat?.(m.jogador, m.texto.slice(0, MAX_CHAT));
+    })
     .subscribe();
   return () => void sb.removeChannel(canal);
+}
+
+/** tamanho máximo de uma mensagem do chat da partida */
+export const MAX_CHAT = 300;
+
+/** Manda uma mensagem no chat da partida (pelo canal aberto em `assinarDuelo`); false se o canal não está aberto */
+export async function enviarChat(id: string, jogador: 0 | 1, texto: string): Promise<boolean> {
+  const canal = cliente()
+    .getChannels()
+    .find((c) => c.topic === `realtime:duelo-${id}`);
+  if (!canal) return false;
+  const r = await canal.send({ type: "broadcast", event: "chat", payload: { jogador, texto: texto.slice(0, MAX_CHAT) } });
+  return r === "ok";
 }
 
 /** Código de 6 dígitos digitado (com ou sem espaços) */

@@ -8,6 +8,8 @@ import type { ComandoFicha, Jogada } from "./regras";
 import type { DoWorker, ParaWorker } from "./worker";
 import type { LinhaCalculada, PedidoCalculo } from "./calculo";
 import type { AnaliseDuelo, PedidoAnalise } from "./analise";
+import type { LinhaIA } from "./ia";
+import type { Passo } from "./passos";
 
 // O pacote (dados das cartas e scripts do Project Ignis, ~6 MB) fica no bucket privado "camada",
 // publicado pelo pipeline (Database-Cards-Ygo, scripts/pacote-motor.ts). motor-versao.json traz só
@@ -154,6 +156,11 @@ export class ClienteSim {
   /** A IA analisa as próprias escolhas no duelo (leva de 2 a 3 minutos) */
   analisar(pedido: PedidoAnalise) {
     return this.pedir<AnaliseDuelo>({ tipo: "analisar", pedido });
+  }
+
+  /** Modo de Treino: passos que a IA faria pelo jogador a partir de agora até o fim do turno */
+  sugerir(linhas: LinhaIA[]) {
+    return this.pedir<Passo[]>({ tipo: "sugerir", linhas });
   }
 
   /** O que o duelo ensinou até agora */

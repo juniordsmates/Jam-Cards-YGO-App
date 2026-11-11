@@ -3,6 +3,9 @@ import { OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, 
 import ScreenShell from "./ScreenShell";
 import Lateral from "../components/Lateral";
 import EscolherMao from "../components/EscolherMao";
+import TreinoCombos, { type SugestaoTreino } from "../components/TreinoCombos";
+import InteracoesCarta from "../components/InteracoesCarta";
+import { ChatAssistente, ChatOponente, type MensagemOponente } from "../components/ChatDuelo";
 import { useCardDb } from "../db/cardStore";
 import { useDecks } from "../db/decks";
 import { cardImage } from "../db/images";
@@ -11,7 +14,7 @@ import { displayName, type Card } from "../db/types";
 import { aleatorio } from "../db/testeJogo";
 import { useConta } from "../db/conta";
 import { openConta } from "../components/Conta";
-import { assinarDuelo, meusDuelos, codigoDaSala, obterDueloPorCodigo, partidasAtivas, criarDuelo, definirMao, encerrarDuelo, entrarDuelo, enviarResposta, faltaMao, idDaSala, meuJogador, minhaMao, partidaDoDuelo, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
+import { assinarDuelo, enviarChat, meusDuelos, codigoDaSala, obterDueloPorCodigo, partidasAtivas, criarDuelo, definirMao, encerrarDuelo, entrarDuelo, enviarResposta, faltaMao, idDaSala, meuJogador, minhaMao, partidaDoDuelo, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
 import { copiarLink, linkPara, type Rota } from "../rotas";
 import { APP_VERSION } from "../version";
 import { LOCALE, t } from "../i18n";
@@ -227,6 +230,7 @@ export default function Simulador({
   replay: replayDaRota,
   onRota,
   testeCombo,
+  treino = false,
 }: {
   onBack: () => void;
   duelo?: string;
@@ -234,7 +238,10 @@ export default function Simulador({
   replay?: string;
   onRota?: (r: Rota) => void;
   testeCombo?: TesteCombo;
+  /** Modo de Treino: só contra a IA, com combos possíveis e interações da carta na tela */
+  treino?: boolean;
 }) {
+  const tituloTela = treino ? t("Modo de Treino") : t("Simulador");
   const conta = useConta();
   const db = useCardDb();
   const { decks } = useDecks();
@@ -324,6 +331,13 @@ export default function Simulador({
   // ativações: a cadeia atual (ou a última, já resolvida), para mostrar abaixo dos PV
   // (com os alvos e o nome declarado de cada elo)
   const [ativacoes, setAtivacoes] = useState<{ itens: (Extract<EventoSim, { t: "ativa" }> & { resolvida?: boolean; alvos?: Extract<EventoSim, { t: "alvo" }>["cartas"]; declarado?: number })[]; aberta: boolean }>({ itens: [], aberta: false });
+  // tela dos replays (aberta pelo botão "Replays" no topo da configuração)
+  const [replaysAberto, setReplaysAberto] = useState(false);
+  // chat abaixo do Registro (assistente contra a IA; oponente na partida 1x1)
+  const [chatAberto, setChatAberto] = useState(false);
+  const [chatOponente, setChatOponente] = useState<MensagemOponente[]>([]);
+  // Modo de Treino: jogada sugerida pela IA (pedida pelo jogador)
+  const [sugestao, setSugestao] = useState<SugestaoTreino | null>(null);
   // cartas mostradas ao jogador (ex.: a mão do oponente)
   const [revelacao, setRevelacao] = useState<{ code: number; controller: number; location: number }[] | null>(null);
   const cliente = useRef<ClienteSim | null>(null);
@@ -437,7 +451,19 @@ export default function Simulador({
     setQuadro(null);
     setDesistencia(null);
     setAprendido(null);
+    setSugestao(null);
+    setChatOponente([]);
     fimEnviado.current = false;
+  }
+
+  /** Modo de Treino: a IA joga pelo jogador a partir de agora até o fim do turno e mostra os passos */
+  function pedirJogada() {
+    const c = cliente.current;
+    if (!c) return;
+    setSugestao({ estado: "pensando" });
+    c.sugerir(meu?.linhas ?? [])
+      .then((passos) => setSugestao({ estado: "pronta", passos }))
+      .catch((e) => setSugestao({ estado: "erro", erro: e instanceof Error ? e.message : String(e) }));
   }
 
   const falhou = (e: unknown) => {
@@ -509,7 +535,11 @@ export default function Simulador({
    */
   function acompanhar(d: Duelo) {
     pararSala.current?.();
-    const pararTempoReal = assinarDuelo(d.id, { duelo: (novo) => aoMudarSala(d, novo), resposta: aoReceberJogada });
+    const pararTempoReal = assinarDuelo(d.id, {
+      duelo: (novo) => aoMudarSala(d, novo),
+      resposta: aoReceberJogada,
+      chat: (jogador, texto) => jogador !== euRef.current && setChatOponente((m) => [...m, { minha: false, texto }].slice(-100)),
+    });
     let conferindo = false;
     const conferir = async () => {
       if (conferindo || salaRef.current?.id !== d.id) return;
@@ -729,6 +759,7 @@ export default function Simulador({
   }
 
   async function abrirRevisao(cfg: ConfigSessao, oponente: string, recebido?: DueloGuardado) {
+    setReplaysAberto(false);
     setErro(null);
     setEtapa("carregando");
     try {
@@ -1012,6 +1043,8 @@ export default function Simulador({
     if (q.eventos.length) setRegistro((r) => [...r, ...q.eventos].slice(-400));
     for (const e of q.eventos) {
       if (e.t === "ativa") setAtivacoes((a) => ({ itens: e.elo === 1 || !a.aberta ? [e] : [...a.itens, e], aberta: true }));
+      // a jogada sugerida vale só para o turno em que foi pedida
+      if (e.t === "turno") setSugestao(null);
       if (e.t === "alvo") setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, alvos: [...(x.alvos ?? []), ...e.cartas] } : x)) }));
       if (e.t === "declara" && e.elo) setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, declarado: e.code } : x)) }));
       if (e.t === "resolve") setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, resolvida: true } : x)) }));
@@ -1155,8 +1188,8 @@ export default function Simulador({
     else setZonas(novas);
   };
 
-  // o teste de combo é sempre contra a IA
-  const amigo = !testeCombo && (cfg.modo === "amigo" || !!convite);
+  // o teste de combo e o Modo de Treino são sempre contra a IA
+  const amigo = !testeCombo && !treino && (cfg.modo === "amigo" || !!convite);
   const trocarModo = (modo: Config["modo"]) => {
     const novo = { ...cfg, modo };
     setCfg(novo);
@@ -1178,7 +1211,7 @@ export default function Simulador({
     const jaDei = minhaMao(sala, conta.id) !== null;
     const meuDeck = sala.criador === conta.id ? sala.deck_criador : sala.deck_convidado;
     return (
-      <ScreenShell title={t("Simulador")} accent="magenta" onBack={onBack}>
+      <ScreenShell title={tituloTela} accent="magenta" onBack={onBack}>
         <div className="sim-config">
           <h3>{t("Escolher Cartas na Mão")}</h3>
           {!jaDei ? (
@@ -1207,7 +1240,7 @@ export default function Simulador({
   if (etapa === "sala" && sala) {
     const link = linkPara({ tela: "simulador", duelo: sala.id });
     return (
-      <ScreenShell title={t("Simulador")} accent="magenta" onBack={onBack}>
+      <ScreenShell title={tituloTela} accent="magenta" onBack={onBack}>
         <div className="sim-config">
           <h3>{t("Sala criada")}</h3>
           <p>{t("Mande o link ou o código para o seu oponente. O duelo começa assim que ele entrar com o deck dele.")}</p>
@@ -1251,11 +1284,65 @@ export default function Simulador({
 
   if (etapa !== "duelo" || !quadro) {
     return (
-      <ScreenShell title={t("Simulador")} accent="magenta" onBack={onBack}>
-        <div className="sim-config">
-          <p className="tags-note">
-            {t("Duelo com as regras do jogo contra a IA. O motor é o do EDOPro (Project Ignis): custos, condições, cadeias e “uma vez por turno” valem como no jogo.")}
-          </p>
+      <ScreenShell
+        title={tituloTela}
+        accent="magenta"
+        onBack={onBack}
+        actions={
+          !convite && (
+            <button className="ghost-btn sim-replays-btn" onClick={() => setReplaysAberto(true)}>
+              {t("Replays")}
+            </button>
+          )
+        }
+      >
+        <div className="sim-config sim-config-grade">
+          <aside className="sim-config-esq">
+            {!convite && !testeCombo && !treino && (
+              <section className="sim-duelar-contra" role="group" aria-label={t("Duelar contra")}>
+                <h3>{t("Duelar contra")}</h3>
+                <div className="sim-niveis">
+                  <button className={`ghost-btn ${!amigo ? "sim-ativo" : ""}`} onClick={() => trocarModo("ia")} aria-pressed={!amigo}>
+                    {t("IA")}
+                  </button>
+                  <button className={`ghost-btn ${amigo ? "sim-ativo" : ""}`} onClick={() => trocarModo("amigo")} aria-pressed={amigo}>
+                    {t("Jogador")}
+                  </button>
+                </div>
+              </section>
+            )}
+            {!amigo && opcoes.length > 0 && (
+              <>
+                <fieldset className="sim-campo">
+                  <legend className="field-label">{t("Nível da IA")}</legend>
+                  <div className="sim-niveis">
+                    {NIVEIS.map((n) => (
+                      <button key={n.id} className={`ghost-btn ${cfg.nivel === n.id ? "sim-ativo" : ""}`} onClick={() => setCfg({ ...cfg, nivel: n.id })} title={n.hint} aria-pressed={cfg.nivel === n.id}>
+                        {n.label}
+                      </button>
+                    ))}
+                  </div>
+                  <small className="tags-note">{NIVEIS.find((n) => n.id === cfg.nivel)?.hint}</small>
+                </fieldset>
+                {!testeCombo && (
+                  <fieldset className="sim-campo">
+                    <legend className="field-label">{t("Quem começa")}</legend>
+                    <div className="sim-niveis">
+                      {QUEM_COMECA.map(({ id, label }) => (
+                        <button key={id} className={`ghost-btn ${cfg.primeiro === id ? "sim-ativo" : ""}`} onClick={() => setCfg({ ...cfg, primeiro: id })} aria-pressed={cfg.primeiro === id}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
+                <button className="sim-duelar-grande" onClick={iniciar} disabled={etapa === "carregando"}>
+                  {etapa === "carregando" ? progresso || t("Preparando…") : t("Duelar")}
+                </button>
+              </>
+            )}
+          </aside>
+          <div className="sim-config-dir">
           {testeCombo && (
             <div className="sim-teste-combo" role="note">
               <strong>{ROTULO_TESTE[testeCombo.quem]}</strong>
@@ -1267,16 +1354,7 @@ export default function Simulador({
                 {testeCombo.quem === "eu" ? t("Você começa o duelo.") : t("A IA começa o duelo e tenta repetir os passos do combo.")}</small>
             </div>
           )}
-          {!convite && !testeCombo && (
-            <div className="sim-niveis" role="group" aria-label={t("Modo")}>
-              <button className={`ghost-btn ${!amigo ? "sim-ativo" : ""}`} onClick={() => trocarModo("ia")} aria-pressed={!amigo}>
-                {t("Contra a IA")}
-              </button>
-              <button className={`ghost-btn ${amigo ? "sim-ativo" : ""}`} onClick={() => trocarModo("amigo")} aria-pressed={amigo}>
-                {t("Contra um amigo")}
-              </button>
-            </div>
-          )}
+          {treino && <p className="tags-note">{t("Modo de Treino: abaixo da mão do oponente aparecem os combos possíveis da carta em foco (e a IA sugere a jogada quando você pedir); abaixo da carta, as interações com ela.")}</p>}
           {!opcoes.length ? (
             <p>{t("Monte um deck no Editor de Deck para duelar.")}</p>
           ) : amigo && !conta ? (
@@ -1438,30 +1516,6 @@ export default function Simulador({
                   </div>
                 </div>
               )}
-              <fieldset className="sim-campo">
-                <legend className="field-label">{t("Nível da IA")}</legend>
-                <div className="sim-niveis">
-                  {NIVEIS.map((n) => (
-                    <button key={n.id} className={`ghost-btn ${cfg.nivel === n.id ? "sim-ativo" : ""}`} onClick={() => setCfg({ ...cfg, nivel: n.id })} title={n.hint} aria-pressed={cfg.nivel === n.id}>
-                      {n.label}
-                    </button>
-                  ))}
-                </div>
-                <small className="tags-note">{NIVEIS.find((n) => n.id === cfg.nivel)?.hint}</small>
-              </fieldset>
-              {!testeCombo && <fieldset className="sim-campo">
-                <legend className="field-label">{t("Quem começa")}</legend>
-                <div className="sim-niveis">
-                  {QUEM_COMECA.map(({ id, label }) => (
-                    <button key={id} className={`ghost-btn ${cfg.primeiro === id ? "sim-ativo" : ""}`} onClick={() => setCfg({ ...cfg, primeiro: id })} aria-pressed={cfg.primeiro === id}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>}
-              <button className="ghost-btn sim-duelar" onClick={iniciar} disabled={etapa === "carregando"}>
-                {etapa === "carregando" ? progresso || t("Preparando…") : t("Duelar")}
-              </button>
             </>
           )}
           {erro && !(amigo && conta && !convite) && (
@@ -1469,9 +1523,23 @@ export default function Simulador({
               {erro}
             </p>
           )}
-          {!convite && (
+          <p className="tags-note">
+            {t("Duelo com as regras do jogo contra a IA. O motor é o do EDOPro (Project Ignis): custos, condições, cadeias e “uma vez por turno” valem como no jogo.")}
+          </p>
+          <p className="tags-note sim-licenca">
+            {t("Motor de regras: ocgcore e scripts das cartas do Project Ignis (EDOPro), licença AGPL-3.0. Os textos dos efeitos nas escolhas vêm em inglês, como nos scripts.")}
+          </p>
+          </div>
+        </div>
+          {!convite && replaysAberto && (
+            <div className="sim-replays-tela" role="dialog" aria-label={t("Replays")}>
             <section className="sim-recentes">
-              <h4>{t("Replays (últimos {0})", [limiteReplays])}</h4>
+              <div className="sim-replays-topo">
+                <h3>{t("Replays (últimos {0})", [limiteReplays])}</h3>
+                <button className="ghost-btn" onClick={() => setReplaysAberto(false)} autoFocus>
+                  {t("Fechar")}
+                </button>
+              </div>
               <small className="tags-note">
                 {premium ? t("Premium: até 10 replays, com exportar e importar.") : t("Grátis: os últimos 5 replays ficam salvos neste aparelho. Premium: até 10, com exportar e importar.")}
               </small>
@@ -1530,11 +1598,8 @@ export default function Simulador({
                 ))}
               </ul>
             </section>
+            </div>
           )}
-          <p className="tags-note sim-licenca">
-            {t("Motor de regras: ocgcore e scripts das cartas do Project Ignis (EDOPro), licença AGPL-3.0. Os textos dos efeitos nas escolhas vêm em inglês, como nos scripts.")}
-          </p>
-        </div>
       </ScreenShell>
     );
   }
@@ -1884,6 +1949,40 @@ export default function Simulador({
   );
 
   const preCard = preview !== null ? byId.get(preview) : undefined;
+  // Modo de Treino: carta em foco (a do mouse ou a última que o jogador ativou) e as cartas que ele tem
+  const canon = (c: number) => byId.get(c)?.id ?? c;
+  const ultimaMinha = [...ativacoes.itens].reverse().find((a) => a.p === eu)?.code;
+  const focoTreino = preview !== null ? canon(preview) : ultimaMinha ? canon(ultimaMinha) : null;
+  const disponiveis = [...meuLado.mao, ...meuLado.monstros, ...meuLado.magias].flatMap((c) => (c ? [canon(c.code)] : []));
+  /** Estado do duelo em texto para o assistente do chat (as cartas viradas do oponente ficam ocultas) */
+  const contextoDuelo = () => {
+    const nomes = (cs: (CartaSim | null)[], oculta: (c: CartaSim) => boolean, campo = true) =>
+      cs.flatMap((c) => (!c ? [] : [oculta(c) ? "carta virada para baixo" : !campo ? nomeDe(c.code) : `${nomeDe(c.code)}${c.atk !== undefined && !virada(c.pos) ? ` (${c.atk}/${c.def}${c.pos & 0xc ? ", defesa" : ""})` : virada(c.pos) ? " (baixada)" : ""}`])).join("; ") || "nenhuma";
+    const lado = (l: typeof meuLado, meu: boolean) =>
+      [
+        `PV: ${l.lp}`,
+        meu ? `Mão: ${nomes(l.mao, () => false, false)}` : `Mão: ${l.mao.length} carta(s)${l.mao.some((c) => c.pub) ? ` (reveladas: ${nomes(l.mao.filter((c) => c.pub), () => false, false)})` : ""}`,
+        `Monstros: ${nomes(l.monstros, (c) => !meu && virada(c.pos))}`,
+        `Magias/Armadilhas: ${nomes(l.magias, (c) => !meu && virada(c.pos))}`,
+        `Cemitério: ${nomes(l.cemiterio, () => false, false)}`,
+        `Banidas: ${nomes(l.banidas, (c) => !meu && virada(c.pos))}`,
+        `Deck: ${l.deck} carta(s)`,
+      ].join("\n");
+    const log = registro
+      .filter((e) => e.t !== "resolve" && e.t !== "cadeia-fim" && e.t !== "voo" && e.t !== "alvo")
+      .slice(-15)
+      .map((e) => `- ${textoEvento(e, eu, nomeDe, rotuloOp)}`)
+      .join("\n");
+    return [
+      `Turno ${est.turno}, de ${minhaVez ? "jogador" : "oponente"}; fase ${siglaFase(est.fase)}.`,
+      `JOGADOR:\n${lado(meuLado, true)}`,
+      `OPONENTE (${rotuloOp}):\n${lado(lado2, false)}`,
+      est.cadeia.length ? `Corrente em aberto: ${est.cadeia.map((c, i) => `${i + 1}. ${nomeDe(c.code)}`).join(", ")}` : "",
+      `Últimos acontecimentos:\n${log || "nenhum"}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  };
   const vencedorFim = quadro.fim?.vencedor ?? desistencia?.vencedor;
   const fimTexto =
     quadro.fim || desistencia
@@ -1893,12 +1992,18 @@ export default function Simulador({
 
   return (
     <ScreenShell
-      title={revisao ? t("Revisão da partida") : t("Simulador")}
+      title={revisao ? t("Revisão da partida") : tituloTela}
       accent="magenta"
       onBack={() => (revisao ? sairRevisao() : fimTexto ? onBack() : setSair(true))}
       plain
       actions={
         <div className="sim-topo">
+          <div className="sim-fases-bloco">
+          {!revisao && !fimTexto && (
+            <span className={`sim-de-quem ${minhaVez ? "sim-de-quem-meu" : "sim-de-quem-op"}`} role="status">
+              {minhaVez ? t("Seu Turno") : t("Turno do Oponente")}
+            </span>
+          )}
           <nav className="sim-fases" aria-label={t("Fases do turno")}>
             {BARRA_FASES.map((f) => {
               const atual = siglaFase(est.fase) === f.id;
@@ -1917,6 +2022,7 @@ export default function Simulador({
               );
             })}
           </nav>
+          </div>
           <div className="sim-topo-botoes">
           <button className="ghost-btn sim-pergunta-btn" onClick={() => { setFicha(null); setPergunta({ jogador: op, code: null, resposta: null, carregando: false }); }} title={t("Por que uma carta não pôde ser usada?")}>
             {t("Perguntas / Dúvidas sobre o duelo")}
@@ -1938,6 +2044,7 @@ export default function Simulador({
               <strong>{nomeDe(preview)}</strong>
               {preCard && <small>{kindLabel(preCard)}</small>}
               {preCard && <p>{preCard.descPt ?? preCard.desc}</p>}
+              {treino && preCard && <InteracoesCarta key={preCard.id} card={preCard} byId={byId} />}
             </>
           ) : (
             <p className="tags-note">{t("Passe o mouse sobre uma carta para ver os detalhes. Cartas com contorno brilhante têm ações: clique nelas.")}</p>
@@ -1957,6 +2064,17 @@ export default function Simulador({
               ))}
             </div>
           </div>
+          {treino && !revisao && (
+            <TreinoCombos
+              carta={focoTreino}
+              linhas={db.extras?.combos?.linhas ?? []}
+              deck={(meu?.deck.main ?? []).map(canon)}
+              disponiveis={disponiveis}
+              nomeDe={nomeDe}
+              onPedir={minhaVez && pedido && !pensando && !fimTexto ? pedirJogada : undefined}
+              sugestao={sugestao}
+            />
+          )}
           <div className="tj-campo">
             <div className="tj-l3 tj-linha-op">
               {pilha(op, "deck")}
@@ -2117,6 +2235,27 @@ export default function Simulador({
                 <li key={k}>{textoEvento(e, eu, nomeDe, rotuloOp)}</li>
               ))}
           </ol>
+          {!revisao && (
+            <>
+              <button className={`ghost-btn sim-chat-btn ${chatAberto ? "sim-ativo" : ""}`} onClick={() => setChatAberto(!chatAberto)} aria-expanded={chatAberto}>
+                {sala ? t("Chat com {0}", [rotuloOp]) : t("Chat com o assistente")}
+                {sala && !chatAberto && chatOponente[chatOponente.length - 1]?.minha === false && <span className="sim-chat-novo" aria-label={t("mensagens novas")} />}
+              </button>
+              {chatAberto &&
+                (sala ? (
+                  <ChatOponente
+                    mensagens={chatOponente}
+                    nome={rotuloOp}
+                    enviar={(texto) => {
+                      setChatOponente((m) => [...m, { minha: true, texto }].slice(-100));
+                      void enviarChat(sala.id, eu as 0 | 1, texto).then((ok) => !ok && setErro(t("O chat não conectou. Tente de novo em instantes.")));
+                    }}
+                  />
+                ) : (
+                  <ChatAssistente contexto={contextoDuelo} />
+                ))}
+            </>
+          )}
         </Lateral>
 
         {lista && (

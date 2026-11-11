@@ -8,7 +8,7 @@ import { isActivated, readCard } from "./effects";
 import { legalIn, type GameFormat } from "./legality";
 import type { CombosCalculados, LinhaCombo, Passo } from "./motor";
 import type { CartaNucleo, Overlay } from "./overlay";
-import type { ContextoRespostas } from "./respostas";
+import { usoEmTorneio, type ContextoRespostas } from "./respostas";
 import { categoryOf, type Card } from "./types";
 import { t, LOCALE } from "../i18n";
 
@@ -121,7 +121,7 @@ export function catalogoDeDecks(overlay: Pick<Overlay, "metaTcg" | "meta" | "arq
  */
 function nucleoDoArquetipo(arquetipo: string, cards: Card[], formato: GameFormat, uso?: { decks: number; cartas: Record<string, number> }): DeckDoMeta["nucleo"] {
   const doArq = cards.filter((c) => c.archetype?.toLowerCase() === arquetipo.toLowerCase() && legalIn(c, formato));
-  const usoDe = (c: Card) => (uso ? (uso.cartas[c.id] ?? 0) / uso.decks : 0);
+  const usoDe = (c: Card) => usoEmTorneio(uso, c.id);
   const maior = Math.max(0, ...doArq.map(usoDe));
   const nuc = (cs: Card[]): CartaNucleo[] => cs.map((c) => ({ id: c.id, pct: maior > 0 ? Math.max(0.15, usoDe(c) / maior) : 1, copias: 1 }));
   const ehExtraC = (c: Card) => /^(fusion|synchro|xyz|link)/.test(c.frame);
@@ -674,7 +674,7 @@ export function recomendar(e: EntradaMetaCall): Recomendacao[] {
     const minimo = Math.min(...porDeck.map((p) => p.nota));
     // o que o meta já põe no Side (validação de torneio)
     const noSide = e.decks.reduce((s, d) => s + d.peso * (d.deck.nucleo.side.find((x) => x.id === card.id)?.pct ?? 0), 0) / pesoTotal;
-    const uso = e.uso ? (e.uso.cartas[card.id] ?? 0) / e.uso.decks : 0;
+    const uso = usoEmTorneio(e.uso, card.id);
     // 70% o confronto com os decks escolhidos, 30% o que os jogadores de torneio realmente usam
     const torneio = limitar(uso * 1.4 + noSide * 0.6);
     let total = contra > 0.05 ? 0.7 * contra + 0.3 * torneio : contra;

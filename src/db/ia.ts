@@ -4,7 +4,7 @@ import type { CampoFinal, Passo } from "./motor";
 import { categoryOf, type Card } from "./types";
 import { SITES } from "../data/referencias";
 import { isDesktop } from "../platform";
-import { t } from "../i18n";
+import { IDIOMA, t } from "../i18n";
 
 // Combo Search com IA: o app chama a IA escolhida pelo usuário, com a chave de API dele (guardada
 // só neste dispositivo). A IA consulta o app pelas ferramentas abaixo (texto das cartas e combos já
@@ -473,6 +473,49 @@ async function buscarCompativel(cfg: ConfigIA, ctx: ContextoBusca): Promise<Resu
 /** Busca combos com a IA configurada; devolve as sugestões e o texto final da IA */
 export function buscarCombosComIA(cfg: ConfigIA, ctx: ContextoBusca): Promise<ResultadoIA> {
   return cfg.provedor === "anthropic" ? buscarComClaude(cfg, ctx) : buscarCompativel(cfg, ctx);
+}
+
+// ---------------------------------------------------------------- chat do Simulador (assistente)
+
+export interface MensagemChat {
+  role: "user" | "assistant";
+  content: string;
+}
+
+const IDIOMA_RESPOSTA: Record<string, string> = { pt: "português do Brasil", en: "English", es: "español" };
+
+/** Instruções do assistente do duelo, com o estado atual do duelo em texto */
+const sistemaChat = (contexto: string) =>
+  `Você é um assistente de Yu-Gi-Oh! que ajuda o jogador durante um duelo no Simulador do app Jam Cards - YGO! (regras do EDOPro). ` +
+  `Responda em ${IDIOMA_RESPOSTA[IDIOMA] ?? "português do Brasil"}, de forma curta e direta, com jogadas concretas quando ele pedir. ` +
+  `Use só as cartas que aparecem no estado do duelo abaixo; as cartas viradas para baixo do oponente são desconhecidas. ` +
+  `Se não tiver certeza de uma regra ou interação, diga isso.\n\nEstado do duelo agora:\n${contexto}`;
+
+/** Conversa com a IA configurada pelo usuário sobre o duelo em andamento; devolve a resposta em texto */
+export async function conversarComIA(cfg: ConfigIA, mensagens: MensagemChat[], contexto: string): Promise<string> {
+  if (cfg.provedor === "anthropic") {
+    // a chave é do próprio usuário e fica só neste dispositivo (mesmo caso do Combo Search)
+    const { default: AnthropicClient } = await import("@anthropic-ai/sdk");
+    const client = new AnthropicClient({ apiKey: cfg.chave, dangerouslyAllowBrowser: true });
+    const r = await client.messages.create({ model: cfg.modelo, max_tokens: 2000, system: sistemaChat(contexto), messages: mensagens });
+    if (r.stop_reason === "refusal") throw new Error(t("A IA recusou responder."));
+    return r.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
+  }
+  const url = `${cfg.url.replace(/\/+$/, "")}/chat/completions`;
+  const res = await postChat(url, cfg.chave, { model: cfg.modelo, messages: [{ role: "system", content: sistemaChat(contexto) }, ...mensagens] });
+  let json: { choices?: { message?: { content?: string | null } }[]; error?: { message?: string } | string };
+  try {
+    json = JSON.parse(res.body);
+  } catch {
+    throw new Error(t("A IA respondeu em formato inesperado (HTTP {0}).", [res.status]));
+  }
+  if (res.status >= 400 || json.error) {
+    const msg = typeof json.error === "string" ? json.error : json.error?.message;
+    throw new Error(t("Erro da IA (HTTP {0}): {1}", [res.status, msg ?? t("sem detalhes")]));
+  }
+  const texto = json.choices?.[0]?.message?.content?.trim();
+  if (!texto) throw new Error(t("A IA não devolveu resposta."));
+  return texto;
 }
 
 // ---------------------------------------------------------------- vídeo do YouTube (Gemini, experimental)

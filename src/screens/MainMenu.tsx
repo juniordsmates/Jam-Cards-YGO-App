@@ -27,6 +27,8 @@ type Props = {
   onTeste: () => void;
   /** Simulador: duelo com regras contra a IA */
   onSimulador: () => void;
+  /** Modo de Treino: duelo contra a IA com combos e interações na tela */
+  onTreino: () => void;
   /** Minha Coleção: as cartas que o usuário possui */
   onColecao: () => void;
   /** Lista de Desejos: cartas que o jogador quer conseguir */
@@ -54,7 +56,7 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onSimulador, onColecao, onDesejos, onMeusCombos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onSimulador, onTreino, onColecao, onDesejos, onMeusCombos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
   const conta = useConta();
   const tema = useTema();
   const B = (label: string, hint: string, icon: Item["icon"], accent: Item["accent"], action: () => void): Item => ({ label, hint, icon, accent, action });
@@ -91,6 +93,7 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
       titulo: t("Simulador"),
       itens: [
         B(t("Simulador Automático"), t("Duelo com as regras do jogo contra a IA"), <DuelIcon />, "magenta", onSimulador),
+        B(t("Modo de Treino"), t("Contra a IA, com combos e interações de cada carta"), <TargetIcon />, "magenta", onTreino),
         B(t("Teste de Combo Manual"), t("Teste de mão e jogadas com o seu deck"), <DeckIcon />, "magenta", onTeste),
       ],
     },

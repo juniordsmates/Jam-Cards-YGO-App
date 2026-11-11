@@ -37,6 +37,7 @@ export type Rota =
   | { tela: "desejos" }
   | { tela: "meuscombos" }
   | { tela: "simulador"; duelo?: string; replay?: string }
+  | { tela: "treino" }
   | { tela: "comunidade"; arquetipo?: string };
 
 const NOMES: Record<string, Rota["tela"]> = {
@@ -59,6 +60,7 @@ const NOMES: Record<string, Rota["tela"]> = {
   simulador: "simulador",
   duelo: "simulador",
   replay: "simulador",
+  treino: "treino",
   comunidade: "comunidade",
 };
 

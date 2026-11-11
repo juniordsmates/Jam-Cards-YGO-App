@@ -2,6 +2,7 @@ import { useCardDb } from "./cardStore";
 import { displayName, type Card } from "./types";
 import { RESPOSTAS } from "../data/respostas";
 import { respostasDaLinha, uniqueLines, type CombosCalculados } from "./motor";
+import type { MetaTcg } from "./overlay";
 import { t, LOCALE } from "../i18n";
 
 // Ordem e classificação das respostas (cartas que o oponente pode ativar):
@@ -35,6 +36,40 @@ export const TIPOS: Record<string, string> = {
 /** Carta em pelo menos 1% dos decklists de torneio conta como "mais usada" */
 const USO_MINIMO = 0.01;
 
+/** Fração dos decklists de torneio recentes com a carta (0 a 1) */
+export const usoEmTorneio = (uso: { decks: number; cartas: Record<string, number> } | undefined, id: number) => (uso?.decks ? (uso.cartas[id] ?? 0) / uso.decks : 0);
+
+/** Peso a partir do qual a carta é uma das principais do meta atual (5% do metagame recente a usa) */
+const META_PRINCIPAL = 0.05;
+let cachePeso: { meta: MetaTcg; peso: Map<number, number> } | undefined;
+
+/**
+ * Peso de cada carta no meta atual: para cada deck do metagame do TCG, a fatia dele nos últimos 2 meses
+ * vezes a fração das listas dele com a carta (Main, Extra e Side), somados.
+ */
+export function pesoNoMeta(meta: MetaTcg | undefined): Map<number, number> {
+  if (!meta) return new Map();
+  if (cachePeso?.meta === meta) return cachePeso.peso;
+  const peso = new Map<number, number>();
+  for (const a of meta.arquetipos) {
+    const vistos = new Set<number>();
+    for (const c of [...a.nucleo.main, ...a.nucleo.extra, ...a.nucleo.side]) {
+      if (vistos.has(c.id)) continue;
+      vistos.add(c.id);
+      peso.set(c.id, (peso.get(c.id) ?? 0) + (a.pct2m / 100) * c.pct);
+    }
+  }
+  cachePeso = { meta, peso };
+  return peso;
+}
+
+/** 0 = principal no meta atual; 1 = comum nas listas dos principais decks; 2 = as outras */
+export function nivelMeta(id: number, peso: Map<number, number>, uso?: { decks: number; cartas: Record<string, number> }): 0 | 1 | 2 {
+  const p = peso.get(id) ?? 0;
+  if (p >= META_PRINCIPAL) return 0;
+  return p > 0 || usoEmTorneio(uso, id) >= USO_MINIMO ? 1 : 2;
+}
+
 export interface Resposta {
   id: number;
   card?: Card;
@@ -56,7 +91,7 @@ const ORDEM: Record<Classe, number> = { torneio: 0, "ht-staple": 1, "hand-trap":
 
 export function resposta(id: number, ctx: ContextoRespostas): Resposta {
   const card = ctx.byId.get(id);
-  const uso = ctx.uso ? (ctx.uso.cartas[id] ?? 0) / ctx.uso.decks : 0;
+  const uso = usoEmTorneio(ctx.uso, id);
   const ht = !!card?.tags?.includes("hand-trap");
   const st = !!card?.staple;
   const classe: Classe = uso >= USO_MINIMO ? "torneio" : ht && st ? "ht-staple" : ht ? "hand-trap" : st ? "staple" : "outras";

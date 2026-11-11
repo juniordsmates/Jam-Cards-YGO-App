@@ -31,7 +31,7 @@ import type { Card } from "./db/types";
 import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos" | "meuscombos" | "simulador";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos" | "meuscombos" | "simulador" | "treino";
 
 /** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
 const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
@@ -170,6 +170,7 @@ export default function App() {
             setScreen("deck");
           }}
           onSimulador={() => setScreen("simulador")}
+          onTreino={() => setScreen("treino")}
           onColecao={() => setScreen("colecao")}
           onDesejos={() => setScreen("desejos")}
           onMeusCombos={() => setScreen("meuscombos")}
@@ -257,6 +258,11 @@ export default function App() {
             onRota={aoRota}
             testeCombo={testeCombo?.teste}
           />
+        </Suspense>
+      )}
+      {screen === "treino" && (
+        <Suspense fallback={<p className="tags-note">{t("Carregando o Simulador…")}</p>}>
+          <Simulador treino onBack={() => setScreen("menu")} onRota={aoRota} />
         </Suspense>
       )}
       {screen === "deck" && <DeckEditor key={JSON.stringify(deckInicial)} inicial={deckInicial} onBack={() => setScreen(deckFrom)} />}

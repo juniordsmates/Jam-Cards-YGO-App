@@ -2,7 +2,7 @@ import { REGRAS, REGRA_POR_NOME } from "../data/interrupcoes";
 import { isActivated, readCard, type ParsedEffect } from "./effects";
 import { RESPOSTAS } from "../data/respostas";
 import { analisar, outroLado, type Analise, type Evento, type Indicacao, type Regra, type Situacao } from "./indicacoes";
-import type { IndiceRespostas } from "./respostas";
+import { usoEmTorneio, type IndiceRespostas } from "./respostas";
 import { categoryOf, type Card } from "./types";
 import { t as tr } from "../i18n";
 
@@ -56,7 +56,7 @@ const INTERROMPE = new Set(["nega-ativacao", "nega-efeito", "destroi", "bane", "
 /** Carta de torneio em pelo menos 3% dos decklists */
 const USO_OUTRAS = 0.03;
 
-const usoDe = (ctx: ContextoIndicacoes, id: number) => (ctx.uso ? (ctx.uso.cartas[id] ?? 0) / ctx.uso.decks : 0);
+const usoDe = (ctx: ContextoIndicacoes, id: number) => usoEmTorneio(ctx.uso, id);
 const ordem = (a: ItemIndicacao, b: ItemIndicacao) => Number(!!a.impedida) - Number(!!b.impedida) || b.uso - a.uso || (b.motor ?? 0) - (a.motor ?? 0);
 
 /** A regra vale para a carta onde o respondente (lado) a tem? */
@@ -223,7 +223,7 @@ export function respostasDaCarta(card: Card, ctx: ContextoIndicacoes): Respostas
     for (const nome of monstro ? CONTRA_MONSTRO : CONTRA_MAGIA_ARMADILHA) {
       const c = ctx.byName.get(nome);
       if (!c || !ctx.legal(c) || itens.some((x) => x.id === c.id)) continue;
-      itens.push({ id: c.id, card: c, uso: ctx.uso ? (ctx.uso.cartas[c.id] ?? 0) / ctx.uso.decks : 0, motivo: RESPOSTAS_CAMPO[nome], fonte: "regra" });
+      itens.push({ id: c.id, card: c, uso: usoDe(ctx, c.id), motivo: RESPOSTAS_CAMPO[nome], fonte: "regra" });
     }
     itens.sort((a, b) => b.uso - a.uso);
     out.push({ tipo: "campo", itens });

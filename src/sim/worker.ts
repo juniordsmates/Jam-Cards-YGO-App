@@ -6,6 +6,8 @@ import { abrirMotor, type ComandoFicha, type Jogada, type Motor, type PacoteMoto
 import { Sessao, type Aprendizado, type ConfigSessao, type Quadro } from "./sessao";
 import { calcularMao, type PedidoCalculo } from "./calculo";
 import { analisarDuelo, type PedidoAnalise } from "./analise";
+import { sugerirJogada } from "./sugestao";
+import type { LinhaIA } from "./ia";
 
 export type ParaWorker =
   | { tipo: "pacote"; dados: ArrayBuffer }
@@ -27,7 +29,9 @@ export type ParaWorker =
   /** Combos → Mão inicial: combo de uma mão com várias cartas, calculado na hora */
   | { tipo: "calcular"; id: number; pedido: PedidoCalculo }
   /** fim do duelo ou replay: a IA analisa as próprias escolhas */
-  | { tipo: "analisar"; id: number; pedido: PedidoAnalise };
+  | { tipo: "analisar"; id: number; pedido: PedidoAnalise }
+  /** Modo de Treino: a IA joga pelo jogador a partir de agora até o fim do turno (sem mudar o duelo) */
+  | { tipo: "sugerir"; id: number; linhas: LinhaIA[] };
 
 export type DoWorker =
   | { tipo: "pronto"; versao: string; nomes: Record<string, string> }
@@ -64,10 +68,14 @@ function refazer(cfg: ConfigSessao, k?: number): Sessao {
 onmessage = async (e: MessageEvent<ParaWorker>) => {
   const m = e.data;
   try {
-    if (m.tipo === "linha-do-tempo" || m.tipo === "momento" || m.tipo === "fatos" || m.tipo === "calcular" || m.tipo === "analisar") {
+    if (m.tipo === "linha-do-tempo" || m.tipo === "momento" || m.tipo === "fatos" || m.tipo === "calcular" || m.tipo === "analisar" || m.tipo === "sugerir") {
       try {
         let dados: unknown;
-        if (m.tipo === "analisar") {
+        if (m.tipo === "sugerir") {
+          if (!motor) throw new Error("motor ainda não carregado");
+          if (!sessao) throw new Error("nenhum duelo em andamento");
+          dados = sugerirJogada(motor, { cfg: sessao.cfg, historico: [...sessao.historico], turno: sessao.momento().turno, linhas: m.linhas });
+        } else if (m.tipo === "analisar") {
           if (!motor) throw new Error("motor ainda não carregado");
           dados = analisarDuelo(motor, m.pedido);
         } else if (m.tipo === "calcular") {
