@@ -2532,6 +2532,7 @@ export const EN: Record<string, string> = {
   "{0} ativou {1} {2}": "{0} activated {1} {2}",
   "Última ativação": "Last activation",
   "Alvo: {0}": "Target: {0}",
+  "Não encadear nada e seguir o duelo": "Chain nothing and continue the duel",
   "carta baixada": "Set card",
   "Nome declarado: {0}": "Declared name: {0}",
   "{0} declarou o nome {1}": "{0} declared the name {1}",

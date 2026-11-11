@@ -2532,6 +2532,7 @@ export const ES: Record<string, string> = {
   "{0} ativou {1} {2}": "{0} activó {1} {2}",
   "Última ativação": "Última activación",
   "Alvo: {0}": "Objetivo: {0}",
+  "Não encadear nada e seguir o duelo": "No encadenar nada y seguir el duelo",
   "carta baixada": "carta colocada",
   "Nome declarado: {0}": "Nombre declarado: {0}",
   "{0} declarou o nome {1}": "{0} declaró el nombre {1}",

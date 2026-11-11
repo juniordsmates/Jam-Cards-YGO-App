@@ -2446,8 +2446,9 @@ function Escolha({ pedido, nomeDe, responder, eu, setPreview, marcadas, setMarca
             )}
             {d.selects.map((c, i) => cartaBotao(c, i, false, () => tocar(i), texto(c.description) && <em>{texto(c.description)}</em>))}
             {!d.forced && (
-              <button className="ghost-btn" onClick={() => responder({ type: R.SELECT_CHAIN, index: null })} autoFocus>
-                {t("Resolver")}
+              <button className="sim-resolver" onClick={() => responder({ type: R.SELECT_CHAIN, index: null })} autoFocus>
+                <strong>{t("Resolver")} ▸</strong>
+                <small>{t("Não encadear nada e seguir o duelo")}</small>
               </button>
             )}
           </>
