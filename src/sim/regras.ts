@@ -116,6 +116,16 @@ export interface Motor {
    * sem Invocar, buscar nem comprar: com o campo do oponente vazio, ativá-lo tiraria uma carta própria
    */
   soRemove(desc: bigint | number): boolean;
+  /**
+   * A carta faz algo quando vai ou está no Cemitério (efeito ativado no Cemitério, ou gatilho de ser
+   * mandada para lá), conforme o script: mandá-la ao Cemitério é ganho, não perda
+   */
+  noCemiterio(code: number): boolean;
+  /**
+   * Proteção que a carta dá a si mesma, lida do script: não pode ser destruída por efeito, ou fica
+   * imune a efeitos. Aproximada: as condições da proteção (ex.: "enquanto você controlar...") não são lidas.
+   */
+  protecao(code: number): { destruir: boolean; imune: boolean };
   /** acrescenta uma carta inventada (Ficha criada pelo jogador) */
   registrar(code: number, dados: DadosCarta, nome: string): void;
   /** cria o duelo; o motor só tem as cartas que existem no pacote (as outras ficam de fora) */
@@ -202,6 +212,35 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     return v;
   }
 
+  const scriptDe = (code: number) => {
+    const d = dados(code);
+    return (d && (pacote.arquivos[`c${code}.lua`] ?? (d.alias ? pacote.arquivos[`c${d.alias}.lua`] : undefined))) ?? "";
+  };
+  /** linhas que montam cada efeito do script (as funções, depois, citam outras constantes) */
+  const blocos = (code: number) =>
+    scriptDe(code)
+      .split(/(?=\bEffect\.CreateEffect\()/)
+      .map((b) => b.split("\n").filter((l) => /:Set(Category|Type|Range|Code|Property)\(/.test(l)).join("\n"));
+
+  const cemiterio = new Map<number, boolean>();
+  function noCemiterio(code: number): boolean {
+    if (!cemiterio.has(code)) cemiterio.set(code, blocos(code).some((e) => /SetRange\([^)]*LOCATION_GRAVE/.test(e) || /SetCode\(EVENT_TO_GRAVE\b/.test(e)));
+    return cemiterio.get(code)!;
+  }
+
+  const protecoes = new Map<number, { destruir: boolean; imune: boolean }>();
+  function protecao(code: number) {
+    if (!protecoes.has(code)) {
+      // só proteção da própria carta (efeito SINGLE); a que ela dá a outras cartas fica de fora
+      const proprios = blocos(code).filter((e) => /EFFECT_TYPE_SINGLE/.test(e));
+      protecoes.set(code, {
+        destruir: proprios.some((e) => /EFFECT_INDESTRUCTABLE_EFFECT\b/.test(e)),
+        imune: proprios.some((e) => /EFFECT_IMMUNE_EFFECT\b/.test(e)),
+      });
+    }
+    return protecoes.get(code)!;
+  }
+
   function soRemove(desc: bigint | number): boolean {
     const d = BigInt(desc);
     const code = Number(d >> 20n);
@@ -276,6 +315,8 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     interrompeDaMao,
     valorEmCampo,
     soRemove,
+    noCemiterio,
+    protecao,
     registrar(code, d, nome) {
       pacote.cartas[code] = d;
       pacote.nomes[code] = nome;

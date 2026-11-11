@@ -51,6 +51,20 @@ const QUERY = (1 | 2 | 256 | 512 | 65536) as never;
 const HOSTIS = new Set(["DESTROY", "REMOVE", "TOGRAVE", "RTOHAND", "TODECK", "CONTROL", "FACEDOWN", "POSCHANGE", "DISABLE", "NEGATE", "ATTACKTARGET", "TARGET", "DEATTACHFROM"]);
 // dicas de custo: gastar as cartas que valem menos
 const CUSTOS = new Set(["RELEASE", "DISCARD", "XMATERIAL", "SMATERIAL", "LMATERIAL", "FMATERIAL", "REMOVEXYZ", "TRIBUTE"]);
+// dicas em que a carta escolhida vai para o Cemitério (carta com efeito lá ganha com isso)
+const AO_CEMITERIO = new Set(["TOGRAVE", "DISCARD", "RELEASE", "TRIBUTE", "DESTROY", "REMOVEXYZ", "SMATERIAL", "LMATERIAL", "FMATERIAL"]);
+// dicas que tiram a carta do campo (tirar uma Magia Contínua que está ativando corta o efeito dela)
+const TIRAM = new Set(["DESTROY", "REMOVE", "TOGRAVE", "RTOHAND", "TODECK", "CONTROL"]);
+/** Magias/Armadilhas que ficam no campo e valem pelo que fazem lá */
+const PERMANENTES = TIPO.CONTINUA | TIPO.CAMPO | TIPO.EQUIPAMENTO;
+
+/** contexto de uma escolha de cartas (dica do motor e cadeia em aberto) */
+interface Escolha {
+  dica: string;
+  hostil: boolean;
+  /** cartas ativadas na cadeia em aberto */
+  cadeia: { code: number; controller: number }[];
+}
 
 const igual = (a: Jogada, b: Jogada) => JSON.stringify(a, (_, v) => (typeof v === "bigint" ? String(v) : v)) === JSON.stringify(b, (_, v) => (typeof v === "bigint" ? String(v) : v));
 
@@ -344,11 +358,40 @@ export class IA {
 
   // ---------- escolha de cartas fora do plano ----------
 
-  private valor(motor: Motor, c: RefCarta, linha: Set<number>) {
+  /**
+   * Valor de uma carta numa escolha (o sinal vem de quem é a carta e da dica):
+   * - monstro: ATK, Extra Deck e o que ele faz em campo (interrupção, remoção, proteção, o aprendido nos duelos);
+   * - Magia/Armadilha: Contínua, de Campo e de Equipamento valem pelo que fazem em campo; baixada é uma
+   *   possível interrupção;
+   * - em campo, nas linhas de combo da mão, ativando na cadeia agora (tirar uma Contínua/de Campo/
+   *   Equipamento/Pêndulo que está ativando corta o efeito);
+   * - alvo do oponente que não sai (imune, ou não pode ser destruído e a dica é destruir) quase não vale.
+   */
+  private valor(s: Sessao, c: RefCarta, linha: Set<number>, e: Escolha) {
+    const motor = s.motor;
+    const campo = (c.location & L.ONFIELD) !== 0;
+    const pos = campo ? (((motor.core.duelQuery(s.duel, { flags: 2 as never, controller: c.controller as 0, location: c.location as L, sequence: c.sequence, overlaySequence: 0 })?.position as number) ?? 0) as number) : 0;
+    const baixada = campo && (pos & 0xa) !== 0;
+    // carta baixada do oponente: a IA não vê qual é (Magia/Armadilha baixada pode ser uma interrupção)
+    if (baixada && c.controller !== this.eu) return c.location & L.SZONE ? 3 : 2.5;
     const dados = motor.dados(c.code);
-    let v = dados && dados.type & TIPO.MONSTRO ? dados.attack / 1000 + (dados.type & TIPOS_EXTRA ? 2 : 0) : 1;
-    if (c.location & L.ONFIELD) v += 1;
-    if (linha.has(this.canonico(motor, c.code))) v += 1.5;
+    const tipo = (dados?.type as number) ?? 0;
+    const k = this.canonico(motor, c.code);
+    let v: number;
+    if (tipo & TIPO.MONSTRO)
+      v = Math.max(0, (dados!.attack as number) ?? 0) / 1000 + (tipo & TIPOS_EXTRA ? 2 : 0) + VALOR_EFEITO * motor.valorEmCampo(c.code) + (this.aprendidos[k] ?? 0) + (tipo & TIPO.EFEITO ? 0.05 : 0);
+    else if (baixada) v = 2;
+    else v = 1 + (tipo & PERMANENTES ? 1 + VALOR_EFEITO * motor.valorEmCampo(c.code) : 0);
+    if (campo) v += 1;
+    if (linha.has(k)) v += 1.5;
+    if (campo && e.cadeia.some((x) => x.code === c.code && x.controller === c.controller)) {
+      const corta = TIRAM.has(e.dica) && (tipo & PERMANENTES || (tipo & TIPO.PENDULO && c.location & L.SZONE));
+      v += corta ? 2 : 0.1;
+    }
+    if (campo && e.hostil && c.controller !== this.eu) {
+      const p = motor.protecao(c.code);
+      if (p.imune || (e.dica === "DESTROY" && p.destruir)) v *= 0.2;
+    }
     return v;
   }
 
@@ -361,18 +404,30 @@ export class IA {
     }
     const comEscolha = ops.filter((o) => o.escolha?.length);
     if (!comEscolha.length) return ops[0]?.resp;
+    const motor = s.motor;
     const linha = this.cartasDasLinhas(s).passos;
     const hostil = HOSTIS.has(dica);
     const custo = CUSTOS.has(dica);
+    const aoCemiterio = AO_CEMITERIO.has(dica);
     // tirar da mão para o campo (Invocar, baixar): poupa as interrupções de mão
     const paraOCampo = dica === "SPSUMMON" || dica === "SUMMON" || dica === "SET";
+    const e: Escolha = { dica, hostil, cadeia: motor.core.duelQueryField(s.duel).chain.map((x) => ({ code: x.code as number, controller: x.triggering_controller as number })) };
     const nota = (o: Opcao) =>
       o.escolha!.reduce((n, c) => {
-        const v = this.valor(s.motor, c, linha);
-        const guardada = c.controller === this.eu && c.location & L.HAND && this.guardar(s.motor, c.code, linha) ? VALOR_INTERRUPCAO : 0;
-        if (hostil) return n + (c.controller !== this.eu ? v : -v - guardada);
-        if (custo) return n - v - guardada;
-        return n + (c.controller === this.eu ? v - (paraOCampo ? 2 * guardada : 0) : -v);
+        const minha = c.controller === this.eu;
+        const v = this.valor(s, c, linha, e);
+        const guardada = minha && c.location & L.HAND && this.guardar(motor, c.code, linha) ? VALOR_INTERRUPCAO : 0;
+        if (hostil || custo) {
+          if (!minha) return n + (hostil ? v : -v);
+          // carta própria para o Cemitério: com efeito lá é ganho; saindo do Deck/Extra Deck quase não é perda
+          // (ex.: "mande 1 monstro do seu Deck para o Cemitério" busca justamente um efeito no Cemitério)
+          const ganho = aoCemiterio && !(c.location & L.GRAVE) && motor.noCemiterio(c.code) ? 2 : 0;
+          const perda = aoCemiterio && c.location & (L.DECK | L.EXTRA) ? 0.2 * v : v + guardada;
+          return n + ganho - perda;
+        }
+        // Invocar vai para o campo de quem escolhe, venha a carta de que lado vier (ex.: do Cemitério do oponente)
+        if (paraOCampo) return n + (minha || !(c.location & L.ONFIELD) ? v - 2 * guardada : -v);
+        return n + (minha ? v : -v);
       }, 0) - (custo ? 0.01 * o.escolha!.length : 0);
     return comEscolha.reduce((a, b) => (nota(b) > nota(a) ? b : a)).resp;
   }
