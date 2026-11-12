@@ -4,7 +4,8 @@ Escolha a versão e baixe o instalador do seu sistema: abra o arquivo e clique e
 
 | Versão | Windows | macOS (Apple Silicon e Intel) |
 | --- | --- | --- |
-| **1.0.22** (mais recente) | [Jam.Cards.-.YGO._1.0.22_x64-setup.exe](1.0.22/Jam.Cards.-.YGO._1.0.22_x64-setup.exe) (4.9 MB) | [Jam.Cards.-.YGO._1.0.22_universal.dmg](1.0.22/Jam.Cards.-.YGO._1.0.22_universal.dmg) (11.1 MB) |
+| **1.0.23** (mais recente) | [Jam.Cards.-.YGO._1.0.23_x64-setup.exe](1.0.23/Jam.Cards.-.YGO._1.0.23_x64-setup.exe) (4.9 MB) | [Jam.Cards.-.YGO._1.0.23_universal.dmg](1.0.23/Jam.Cards.-.YGO._1.0.23_universal.dmg) (11.1 MB) |
+| **1.0.22** | [Jam.Cards.-.YGO._1.0.22_x64-setup.exe](1.0.22/Jam.Cards.-.YGO._1.0.22_x64-setup.exe) (4.9 MB) | [Jam.Cards.-.YGO._1.0.22_universal.dmg](1.0.22/Jam.Cards.-.YGO._1.0.22_universal.dmg) (11.1 MB) |
 | **1.0.21** | [Jam.Cards.-.YGO._1.0.21_x64-setup.exe](1.0.21/Jam.Cards.-.YGO._1.0.21_x64-setup.exe) (4.9 MB) | [Jam.Cards.-.YGO._1.0.21_universal.dmg](1.0.21/Jam.Cards.-.YGO._1.0.21_universal.dmg) (11.1 MB) |
 | **1.0.20** | [Jam.Cards.-.YGO._1.0.20_x64-setup.exe](1.0.20/Jam.Cards.-.YGO._1.0.20_x64-setup.exe) (4.9 MB) | [Jam.Cards.-.YGO._1.0.20_universal.dmg](1.0.20/Jam.Cards.-.YGO._1.0.20_universal.dmg) (11.1 MB) |
 | **1.0.19** | [Jam.Cards.-.YGO._1.0.19_x64-setup.exe](1.0.19/Jam.Cards.-.YGO._1.0.19_x64-setup.exe) (4.9 MB) | [Jam.Cards.-.YGO._1.0.19_universal.dmg](1.0.19/Jam.Cards.-.YGO._1.0.19_universal.dmg) (11.1 MB) |
