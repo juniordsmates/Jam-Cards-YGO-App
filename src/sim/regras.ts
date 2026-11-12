@@ -90,6 +90,15 @@ export interface Partida {
   maos?: [number[], number[]];
 }
 
+/** Um elo da cadeia: quem ativou, se nega e se tira cartas, a carta que ativou e os alvos */
+export interface EloCadeia {
+  p: number;
+  nega: boolean;
+  tira: boolean;
+  dono: { controller: number; location: number; sequence: number };
+  alvos: { controller: number; location: number; sequence: number }[];
+}
+
 export interface Motor {
   core: OcgCoreSync;
   pacote: PacoteMotor;
@@ -127,6 +136,25 @@ export interface Motor {
    * Usado contra a própria jogada, só desperdiça a carta.
    */
   respondeJogada(code: number, desc: bigint | number): boolean;
+  /** O efeito só nega (Ash Blossom): a carta que ativou fica onde está */
+  soNega(code: number, desc: bigint | number): boolean;
+  /**
+   * O efeito pode ser usado de novo no mesmo turno (limite de 2 ou mais vezes, ou sem limite, numa carta
+   * que fica em campo): negar uma das vezes só atrasa o oponente, não é o ponto que trava o combo
+   */
+  repetivel(code: number, desc: bigint | number): boolean;
+  /**
+   * O efeito só devolve ao Deck ou bane cartas do Cemitério (ex.: Evil Box), sem Invocar, buscar nem
+   * tocar no campo: só vale se houver no Cemitério do oponente uma carta com efeito lá
+   */
+  soNoCemiterio(code: number, desc: bigint | number): boolean;
+  /**
+   * A carta tem efeito contínuo que age antes de cada elo resolver (ex.: Toon World the Perfect World
+   * bane um monstro Toon até o elo resolver, para ele escapar do efeito)
+   */
+  aoResolver(code: number): boolean;
+  /** Elos da cadeia em aberto (o último é o que resolve agora, na resolução), lidos no duelo */
+  cadeia(duel: OcgDuelHandle): EloCadeia[];
   /**
    * Sequências das Magias/Armadilhas baixadas do jogador cuja condição de ativação o campo atende agora
    * (ex.: Toon Terror sem monstro Toon fica de fora). Lido executando a condição do script no duelo.
@@ -281,22 +309,79 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     return /CATEGORY_(REMOVE|DESTROY|TODECK|CONTROL)/.test(cat) && !/CATEGORY_(SPECIAL_SUMMON|SEARCH|DRAW|RECOVER|TOGRAVE|DECKDES)/.test(cat);
   }
 
-  const respostas = new Map<string, boolean>();
-  function respondeJogada(code: number, desc: bigint | number): boolean {
+  /**
+   * Blocos brutos do script que montam o efeito da descrição (aux.Stringid(id, n)); efeito sem descrição
+   * (ex.: Ghost Ogre) ou descrição de outra carta: os blocos sem SetDescription
+   */
+  function blocosDoEfeito(code: number, desc: bigint | number): string[] {
     const d = BigInt(desc);
-    const chave = `${code}:${d}`;
-    if (respostas.has(chave)) return respostas.get(chave)!;
     const brutos = scriptDe(code).split(/(?=\bEffect\.CreateEffect\()/);
-    // o bloco da descrição (aux.Stringid(id, n)); efeito sem descrição (ex.: Ghost Ogre): os blocos sem SetDescription
     const n = Number(d & 0xfffffn);
     const daDescricao = d >> 20n ? brutos.filter((b) => new RegExp(`SetDescription\\(aux\\.Stringid\\(id,\\s*${n}\\)`).test(b)) : [];
-    const candidatos = daDescricao.length ? daDescricao : brutos.filter((b) => !/SetDescription\(/.test(b));
-    const sim = candidatos.some((b) => {
-      const e = b.split("\n").filter((l) => /:Set(Category|Code)\(/.test(l)).join("\n");
-      return /SetCode\(EVENT_(CHAINING|SUMMON|SPSUMMON|FLIP_SUMMON)\)/.test(e) && /CATEGORY_(NEGATE|DISABLE|DESTROY|REMOVE|TODECK|CONTROL)/.test(e);
+    return daDescricao.length ? daDescricao : brutos.filter((b) => !/SetDescription\(/.test(b));
+  }
+  /** linhas de montagem (categoria, tipo, código, alcance) de um bloco bruto */
+  const montagem = (b: string) => b.split("\n").filter((l) => /:Set(Category|Type|Range|Code|Property|CountLimit)\(/.test(l)).join("\n");
+
+  const porEfeito = new Map<string, boolean>();
+  /** memoriza uma leitura de script por carta, descrição e pergunta */
+  const lembrar = (chave: string, f: () => boolean) => {
+    if (!porEfeito.has(chave)) porEfeito.set(chave, f());
+    return porEfeito.get(chave)!;
+  };
+
+  function respondeJogada(code: number, desc: bigint | number): boolean {
+    return lembrar(`responde:${code}:${BigInt(desc)}`, () =>
+      blocosDoEfeito(code, desc).some((b) => {
+        const e = montagem(b);
+        return /SetCode\(EVENT_(CHAINING|SUMMON|SPSUMMON|FLIP_SUMMON)\)/.test(e) && /CATEGORY_(NEGATE|DISABLE|DESTROY|REMOVE|TODECK|CONTROL)/.test(e);
+      }),
+    );
+  }
+
+  function soNega(code: number, desc: bigint | number): boolean {
+    return lembrar(`nega:${code}:${BigInt(desc)}`, () =>
+      blocosDoEfeito(code, desc).some((b) => {
+        const e = montagem(b);
+        return /CATEGORY_(NEGATE|DISABLE)/.test(e) && !/CATEGORY_(DESTROY|REMOVE|TODECK|CONTROL|RELEASE|TOGRAVE|TOHAND)/.test(e);
+      }),
+    );
+  }
+
+  function repetivel(code: number, desc: bigint | number): boolean {
+    return lembrar(`repete:${code}:${BigInt(desc)}`, () =>
+      blocosDoEfeito(code, desc).some((b) => {
+        const e = montagem(b);
+        // ativar a Magia/Armadilha gasta a carta; gatilho depende do evento
+        if (/EFFECT_TYPE_ACTIVATE|EFFECT_TYPE_TRIGGER/.test(e)) return false;
+        const limite = /SetCountLimit\((\d+)/.exec(e);
+        return limite ? Number(limite[1]) >= 2 : /EFFECT_TYPE_(IGNITION|QUICK_O)/.test(e);
+      }),
+    );
+  }
+
+  function soNoCemiterio(code: number, desc: bigint | number): boolean {
+    return lembrar(`cemiterio:${code}:${BigInt(desc)}`, () => {
+      const script = scriptDe(code);
+      return blocosDoEfeito(code, desc).some((b) => {
+        const e = montagem(b);
+        if (!/CATEGORY_(TODECK|REMOVE)/.test(e) || /CATEGORY_(SPECIAL_SUMMON|TOHAND|SEARCH|DRAW|DESTROY|CONTROL|NEGATE|DISABLE|RELEASE)/.test(e)) return false;
+        // a função de alvo só procura no Cemitério
+        const alvo = /SetTarget\(([\w.]+)\)/.exec(b)?.[1];
+        if (!alvo) return false;
+        const inicio = script.indexOf(`function ${alvo}(`);
+        if (inicio < 0) return false;
+        const fim = script.indexOf("\nfunction ", inicio + 1);
+        const corpo = script.slice(inicio, fim < 0 ? undefined : fim);
+        return /LOCATION_GRAVE/.test(corpo) && !/LOCATION_(ONFIELD|MZONE|SZONE|FZONE|HAND|DECK|EXTRA|REMOVED)/.test(corpo);
+      });
     });
-    respostas.set(chave, sim);
-    return sim;
+  }
+
+  const resolucao = new Map<number, boolean>();
+  function aoResolver(code: number): boolean {
+    if (!resolucao.has(code)) resolucao.set(code, blocos(code).some((e) => /SetCode\(EVENT_CHAIN_SOLVING\)/.test(e) && /EFFECT_TYPE_CONTINUOUS/.test(e)));
+    return resolucao.get(code)!;
   }
 
   // saída do Debug.Message das sondas (o errorHandler do duelo só guarda enquanto uma sonda roda)
@@ -319,15 +404,45 @@ for c in Duel.GetMatchingGroup(Card.IsFacedown,tp,LOCATION_SZONE,0,nil):Iter() d
   if viva then out[#out+1]=c:GetSequence() end
 end
 Debug.Message("vivas:"..table.concat(out,","))`;
+    return new Set((sondar(duel, "vivas", sonda) ?? "").split(",").filter(Boolean).map(Number));
+  }
+
+  /** roda um script Lua no duelo e devolve o que ele mandou em Debug.Message("<prefixo>:...") */
+  function sondar(duel: OcgDuelHandle, prefixo: string, sonda: string): string | undefined {
     const saida: string[] = [];
     saidaLua = saida;
     try {
-      core.loadScript(duel, `sonda_baixadas_${sondas++}.lua`, sonda);
+      core.loadScript(duel, `sonda_${prefixo}_${sondas++}.lua`, sonda);
     } finally {
       saidaLua = null;
     }
-    const linha = saida.find((t) => t.startsWith("vivas:"));
-    return new Set((linha?.slice(6) ?? "").split(",").filter(Boolean).map(Number));
+    return saida.find((t) => t.startsWith(`${prefixo}:`))?.slice(prefixo.length + 1);
+  }
+
+  function cadeia(duel: OcgDuelHandle): EloCadeia[] {
+    const sonda = `
+local out={}
+local function ref(c) return c:GetControler()..","..c:GetLocation()..","..c:GetSequence() end
+for i=1,Duel.GetCurrentChain() do
+  local te,p,tg=Duel.GetChainInfo(i,CHAININFO_TRIGGERING_EFFECT,CHAININFO_TRIGGERING_PLAYER,CHAININFO_TARGET_CARDS)
+  local nega=te:IsHasCategory(CATEGORY_NEGATE+CATEGORY_DISABLE) and 1 or 0
+  local tira=te:IsHasCategory(CATEGORY_DESTROY+CATEGORY_REMOVE+CATEGORY_RELEASE+CATEGORY_TODECK+CATEGORY_TOHAND+CATEGORY_CONTROL+CATEGORY_TOGRAVE) and 1 or 0
+  local s=p..";"..nega..";"..tira..";"..ref(te:GetHandler())..";"
+  if tg then for c in tg:Iter() do s=s..ref(c).."|" end end
+  out[#out+1]=s
+end
+Debug.Message("cadeia:"..table.concat(out,"/"))`;
+    const ref = (t: string) => {
+      const [controller, location, sequence] = t.split(",").map(Number);
+      return { controller, location, sequence };
+    };
+    return (sondar(duel, "cadeia", sonda) ?? "")
+      .split("/")
+      .filter(Boolean)
+      .map((elo) => {
+        const [p, nega, tira, dono, alvos] = elo.split(";");
+        return { p: Number(p), nega: nega === "1", tira: tira === "1", dono: ref(dono), alvos: (alvos ?? "").split("|").filter(Boolean).map(ref) };
+      });
   }
 
   const constantes = new Map<string, string>();
@@ -394,6 +509,11 @@ Debug.Message("vivas:"..table.concat(out,","))`;
     valorAoAtivar,
     soRemove,
     respondeJogada,
+    soNega,
+    repetivel,
+    soNoCemiterio,
+    aoResolver,
+    cadeia,
     baixadasVivas,
     noCemiterio,
     protecao,

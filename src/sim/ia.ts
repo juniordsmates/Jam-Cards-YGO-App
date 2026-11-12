@@ -3,7 +3,7 @@
 // linhas de combo conhecidas do deck; fica com a sequência que deixou o melhor campo e a executa.
 // Se o jogador responder diferente do que o plano previa, ela planeja de novo. Batalha, respostas
 // no turno do oponente e escolhas fora do plano seguem regras simples.
-import { cardMatchesOpcode, OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
+import { cardMatchesOpcode, OcgHintType, OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
 import type { LinhaCombo, Passo } from "../db/motor";
 import { reproduzir, TIPO, TIPOS_EXTRA, type Jogada, type Motor } from "./regras";
 import { opcoesDe, type Opcao, type RefCarta } from "./opcoes";
@@ -39,8 +39,24 @@ const MAX_LINHAS_GUIADAS = 12;
  * matéria de S:P Little Knight e banir uma carta importante do oponente).
  */
 const VALOR_INTERRUPCAO = 1.5;
-/** monstro do Extra Deck em campo (antes do ATK e dos efeitos); um do Main Deck vale 1,5 */
-const EXTRA = 4.5;
+/**
+ * monstro do Extra Deck em campo (antes do ATK e dos efeitos); um do Main Deck vale 1,5. Pouco acima de
+ * dois corpos do Main Deck: subir para o Extra só compensa se o monstro fizer mais que as matérias
+ */
+const EXTRA = 3.5;
+/**
+ * cartas que ainda estão no Extra Deck: gastar o Extra (matéria, custo de banir) também gasta recurso.
+ * Por carta: a 1ª cópia vale mais, as repetidas menos (com 3 Chaos Angel, banir 1 quase não custa; banir
+ * a única cópia de outra carta custa bem mais)
+ */
+const RECURSO_EXTRA = [0.6, 0.3, 0.15];
+/** interrupções além da terceira quase não mudam o turno do oponente: cada uma vale isto a menos */
+const SOBRA_INTERRUPCAO = 0.6;
+/**
+ * gastar (custo, matéria, banir) a última cópia de uma carta do Deck/Extra Deck/mão, que perde o acesso a
+ * ela; com cópias sobrando, isto dividido pelas que sobram mais 1
+ */
+const COPIA_FINAL = 1;
 /** cada ponto de Motor.valorEmCampo (interrupção vale 2, remoção 1, proteção 1) */
 const VALOR_EFEITO = 0.8;
 /** Magia/Armadilha baixada vale 2 (possível interrupção); a que não pode ser ativada com o campo de agora, isto */
@@ -59,6 +75,9 @@ const AO_CEMITERIO = new Set(["TOGRAVE", "DISCARD", "RELEASE", "TRIBUTE", "DESTR
 const TIRAM = new Set(["DESTROY", "REMOVE", "TOGRAVE", "RTOHAND", "TODECK", "CONTROL"]);
 /** Magias/Armadilhas que ficam no campo e valem pelo que fazem lá */
 const PERMANENTES = TIPO.CONTINUA | TIPO.CAMPO | TIPO.EQUIPAMENTO;
+
+type RefLoc = { controller: number; location: number; sequence: number };
+const mesmaZona = (a: RefLoc, b: RefLoc) => a.controller === b.controller && a.location === b.location && a.sequence === b.sequence;
 
 /** contexto de uma escolha de cartas (dica do motor e cadeia em aberto) */
 interface Escolha {
@@ -171,6 +190,11 @@ export class IA {
   private tentativa = 0;
   /** alvo escolhido para o ataque em andamento */
   private alvo: RefCarta | null = null;
+  /**
+   * proteção na resolução aceita (ex.: Toon World the Perfect World): monstros que o elo do oponente
+   * atinge (escolher um deles) e os que os elos da própria IA miram (não tirar do campo)
+   */
+  private proteger: { alvos: RefLoc[]; proibidas: RefLoc[] } | null = null;
 
   /** teste de combo: passos que a IA tenta repetir no primeiro turno */
   private roteiro: Roteiro | null;
@@ -242,6 +266,9 @@ export class IA {
       return ops[this.tentativa % ops.length].resp;
     }
     const fallback = ops[0]?.resp ?? passivo(d, motor) ?? { type: R.SELECT_CHAIN, index: null };
+    // a proteção aceita só vale para a escolha de carta logo em seguida
+    const proteger = this.proteger;
+    this.proteger = null;
 
     // seguindo o plano do turno
     if (this.plano) {
@@ -304,14 +331,19 @@ export class IA {
         }
         // efeito que só tiraria uma carta própria (o campo do oponente está vazio) fica de fora, e também
         // interrupção (Ash Blossom, Ghost Ogre, Toon Terror...) em cima da própria jogada
-        const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa" && !this.semAlvo(s, o) && !this.desperdica(motor, s.duel, o, s.ultimaAcao));
+        // também: efeito só de Cemitério sem carta do oponente que valha tirar de lá (Evil Box à toa), e
+        // negação simples num efeito que o oponente pode repetir no turno (não é o ponto que trava o combo)
+        const ativar = ops.find(
+          (o) => !o.recusa && o.acao?.k === "ativa" && !this.semAlvo(s, o) && !this.desperdica(motor, s.duel, o, s.ultimaAcao) && !this.semUso(motor, s.duel, o) && !this.naoTrava(motor, s.duel, o),
+        );
         if (d.forced) {
           this.motivo = "Efeito obrigatório.";
           return ativar?.resp ?? fallback;
         }
         // nenhuma opção que valha a pena: passa (o fallback ativaria a primeira, ex.: Ghost Ogre no próprio efeito)
         if (!ativar) {
-          this.motivo = "Não ativa: os efeitos disponíveis não teriam alvo no oponente ou gastariam uma interrupção na própria jogada.";
+          this.motivo =
+            "Não ativa: os efeitos disponíveis não teriam alvo útil no oponente, gastariam uma interrupção na própria jogada ou negariam um efeito que o oponente repete no mesmo turno.";
           return { type: R.SELECT_CHAIN, index: null };
         }
         // interrupções de mão com momento certo (o que os jogadores costumam fazer para ganhar vantagem)
@@ -342,6 +374,7 @@ export class IA {
         return { type: R.SELECT_CHAIN, index: null };
       }
       case T.SELECT_EFFECTYN: {
+        if (motor.aoResolver(d.code)) return this.protegerNaResolucao(s);
         const sim = !this.semAlvo(s, ops[0]);
         this.motivo = sim ? "Usa o efeito opcional." : "Não usa o efeito: ele só tiraria uma carta própria (o oponente não tem cartas em campo).";
         return { type: R.SELECT_EFFECTYN, yes: sim };
@@ -357,7 +390,7 @@ export class IA {
       case T.SELECT_CARD:
       case T.SELECT_TRIBUTE:
       case T.SELECT_UNSELECT_CARD:
-        return this.escolherCartas(s, ops) ?? fallback;
+        return this.escolherCartas(s, ops, d, proteger) ?? fallback;
       case T.ANNOUNCE_CARD:
         this.motivo = "Declara uma carta que o oponente ainda pode usar (mão, campo, Cemitério ou banidas; senão, do deck dele).";
         return this.declarar(s, s.duel, d) ?? fallback;
@@ -388,6 +421,67 @@ export class IA {
     const cadeia = motor.core.duelQueryField(duel).chain;
     const autor = cadeia.length ? (cadeia[cadeia.length - 1].triggering_controller as number) : ultima?.p;
     return autor !== 1 - this.eu;
+  }
+
+  /**
+   * Efeito que só mexe no Cemitério (Motor.soNoCemiterio, ex.: Evil Box) sem carta do oponente que valha
+   * tirar de lá: uma com efeito no Cemitério e que não seja do Extra Deck (devolver ao Deck um monstro
+   * do Extra Deck o devolve ao Extra Deck do dono, de presente)
+   */
+  private semUso(motor: Motor, duel: OcgDuelHandle, o: Opcao | undefined) {
+    const code = o?.acao?.code;
+    if (!o || o.recusa || !code || !o.acao?.desc || !/^\d+$/.test(o.acao.desc) || !motor.soNoCemiterio(code, BigInt(o.acao.desc))) return false;
+    const op = 1 - this.eu;
+    return !motor.core
+      .duelQueryLocation(duel, { flags: 1 as never, controller: op as 0, location: L.GRAVE })
+      .some((c) => c?.code && motor.noCemiterio(c.code as number) && !(motor.tipo(c.code as number) & TIPOS_EXTRA));
+  }
+
+  /**
+   * Negação simples (Motor.soNega, ex.: Ash Blossom) contra um efeito que o oponente pode usar de novo no
+   * mesmo turno (Motor.repetivel, ex.: a busca do Toon World the Perfect World, 3 vezes por turno): ela só
+   * atrasa a jogada. A interrupção fica para um efeito que trava o combo (uma Magia ativada, um efeito
+   * de uma vez por turno).
+   */
+  private naoTrava(motor: Motor, duel: OcgDuelHandle, o: Opcao | undefined) {
+    const code = o?.acao?.code;
+    if (!o || o.recusa || !code || !o.acao?.desc || !/^\d+$/.test(o.acao.desc) || !motor.soNega(code, BigInt(o.acao.desc))) return false;
+    const cadeia = motor.core.duelQueryField(duel).chain;
+    const elo = cadeia[cadeia.length - 1];
+    return !!elo && elo.triggering_controller === 1 - this.eu && motor.repetivel(elo.code as number, elo.description);
+  }
+
+  /**
+   * Efeito contínuo que age antes de um elo resolver (ex.: Toon World the Perfect World bane um monstro
+   * Toon até o elo resolver). Só usa quando o elo que resolve é do oponente e atinge um monstro da IA:
+   * mira ele, ou nega e destrói a carta que ativou o elo anterior. Elo da própria IA, nunca: tirar um
+   * monstro do campo no meio do próprio efeito faz o efeito perder o alvo (ex.: S:P Little Knight). E
+   * nunca tira um monstro que um elo da própria IA ainda mira.
+   */
+  private protegerNaResolucao(s: Sessao): OcgResponse {
+    const cadeia = s.motor.cadeia(s.duel);
+    const elo = cadeia[cadeia.length - 1];
+    const nao = (motivo: string): OcgResponse => {
+      this.motivo = motivo;
+      return { type: R.SELECT_EFFECTYN, yes: false };
+    };
+    if (!elo || elo.p === this.eu) return nao("Não usa a proteção: o efeito que resolve agora é da própria IA (tirar um monstro do campo agora só atrapalharia o efeito).");
+    const meu = (r: RefLoc) => r.controller === this.eu && (r.location & L.MZONE) !== 0;
+    const proibidas = cadeia
+      .slice(0, -1)
+      .filter((e) => e.p === this.eu)
+      .flatMap((e) => e.alvos)
+      .filter(meu);
+    const alvos = elo.alvos.filter(meu);
+    const anterior = cadeia[cadeia.length - 2];
+    if (elo.nega && elo.tira && anterior && meu(anterior.dono)) alvos.push(anterior.dono);
+    const livres = alvos.filter((a) => !proibidas.some((p) => mesmaZona(a, p)));
+    // sem alvo: um efeito que tira cartas escolhendo na resolução (ex.: Comic Cat Tributa um monstro) pode pegar qualquer um
+    const qualquer = !elo.alvos.length && elo.tira && !elo.nega;
+    if (!livres.length && !qualquer) return nao("Não usa a proteção: o efeito do oponente que resolve agora não atinge os monstros da IA.");
+    this.proteger = { alvos: livres, proibidas };
+    this.motivo = "Usa a proteção: tira do campo, até o efeito do oponente resolver, o monstro que ele atingiria.";
+    return { type: R.SELECT_EFFECTYN, yes: true };
   }
 
   /**
@@ -543,8 +637,17 @@ export class IA {
     return v;
   }
 
-  private escolherCartas(s: Sessao, ops: Opcao[]): OcgResponse | undefined {
+  private escolherCartas(s: Sessao, ops: Opcao[], d: OcgMessage, proteger: IA["proteger"]): OcgResponse | undefined {
     const dica = s.dicaDe(this.eu).nome?.replace(/^HINTMSG_/, "") ?? "";
+    if (proteger) {
+      const so = ops.filter((o) => o.escolha?.length === 1);
+      const alvo = so.find((o) => proteger.alvos.some((a) => mesmaZona(a, o.escolha![0])));
+      const livre = alvo ?? so.filter((o) => !proteger.proibidas.some((p) => mesmaZona(p, o.escolha![0]))).sort((a, b) => (this.campoValor(s, b.escolha![0]) > this.campoValor(s, a.escolha![0]) ? 1 : -1))[0];
+      if (livre) {
+        this.motivo = alvo ? "Proteção: tira do campo o monstro que o efeito do oponente atinge." : "Proteção: tira do campo o monstro de mais valor (o efeito do oponente escolhe na resolução).";
+        return livre.resp;
+      }
+    }
     if (dica === "ATTACKTARGET" && this.alvo) {
       const alvo = this.alvo;
       const o = ops.find((x) => x.escolha?.some((c) => c.controller === alvo.controller && c.sequence === alvo.sequence && c.location === alvo.location));
@@ -568,24 +671,80 @@ export class IA {
     // tirar da mão para o campo (Invocar, baixar): poupa as interrupções de mão
     const paraOCampo = dica === "SPSUMMON" || dica === "SUMMON" || dica === "SET";
     const e: Escolha = { dica, hostil, cadeia: motor.core.duelQueryField(s.duel).chain.map((x) => ({ code: x.code as number, controller: x.triggering_controller as number })) };
-    const nota = (o: Opcao) =>
-      o.escolha!.reduce((n, c) => {
+    // cópias de cada carta própria no Deck, Extra Deck e mão (gastar a última cópia perde o acesso a ela);
+    // numa escolha de uma carta por vez, as já escolhidas contam como gastas
+    const copias = new Map<string, number>();
+    const chave = (location: number, code: number) => `${location}:${this.canonico(motor, code)}`;
+    for (const loc of [L.DECK, L.EXTRA, L.HAND])
+      for (const c of motor.core.duelQueryLocation(s.duel, { flags: 1 as never, controller: this.eu, location: loc }))
+        if (c?.code) copias.set(chave(loc, c.code as number), (copias.get(chave(loc, c.code as number)) ?? 0) + 1);
+    const jaEscolhidas = d.type === T.SELECT_UNSELECT_CARD ? d.unselect_cards : [];
+    for (const c of jaEscolhidas) if (c.controller === this.eu) copias.set(chave(c.location, c.code), (copias.get(chave(c.location, c.code)) ?? 0) - 1);
+    const nota = (o: Opcao) => {
+      const gastas = new Map<string, number>();
+      return o.escolha!.reduce((n, c) => {
         const minha = c.controller === this.eu;
         const v = this.valor(s, c, linha, e);
         const guardada = minha && c.location & L.HAND && this.guardar(motor, c.code, linha) ? VALOR_INTERRUPCAO : 0;
         if (hostil || custo) {
-          if (!minha) return n + (hostil ? v : -v);
+          if (!minha) {
+            // Cemitério do oponente: tirar de lá uma carta com efeito no Cemitério vale mais; devolver ao Deck
+            // um monstro do Extra Deck o devolve ao Extra Deck dele (presente)
+            if (c.location & L.GRAVE && (dica === "TODECK" || dica === "REMOVE")) {
+              if (dica === "TODECK" && motor.tipo(c.code) & TIPOS_EXTRA) return n - 1;
+              if (motor.noCemiterio(c.code)) return n + v + 2;
+            }
+            return n + (hostil ? v : -v);
+          }
           // carta própria para o Cemitério: com efeito lá é ganho; saindo do Deck/Extra Deck quase não é perda
           // (ex.: "mande 1 monstro do seu Deck para o Cemitério" busca justamente um efeito no Cemitério)
           const ganho = aoCemiterio && !(c.location & L.GRAVE) && motor.noCemiterio(c.code) ? 2 : 0;
           const perda = aoCemiterio && c.location & (L.DECK | L.EXTRA) ? 0.2 * v : v + guardada;
-          return n + ganho - perda;
+          // cópias no Deck/Extra Deck/mão: gastar uma das repetidas custa pouco; a última, mais (depois dela a
+          // carta não está mais à mão). Ex.: o custo do Rainbow Bridge Bifrost bane 1 Chaos Angel, não 2
+          let escassez = 0;
+          if (c.location & (L.DECK | L.EXTRA | L.HAND)) {
+            const k = chave(c.location, c.code);
+            gastas.set(k, (gastas.get(k) ?? 0) + 1);
+            escassez = COPIA_FINAL / (Math.max(0, (copias.get(k) ?? 1) - gastas.get(k)!) + 1);
+          }
+          return n + ganho - perda - escassez;
         }
         // Invocar vai para o campo de quem escolhe, venha a carta de que lado vier (ex.: do Cemitério do oponente)
         if (paraOCampo) return n + (minha || !(c.location & L.ONFIELD) ? v - 2 * guardada : -v);
         return n + (minha ? v : -v);
       }, 0) - (custo ? 0.01 * o.escolha!.length : 0);
-    return comEscolha.reduce((a, b) => (nota(b) > nota(a) ? b : a)).resp;
+    };
+    const melhor = comEscolha.reduce((a, b) => (nota(b) > nota(a) ? b : a));
+    if (hostil && melhor.escolha!.every((c) => c.controller === this.eu))
+      this.motivo = "Efeito que tira a carta escolhida, sem carta do oponente para escolher: escolhe a própria que menos vale.";
+    return melhor.resp;
+  }
+
+  /**
+   * Folga das cartas próprias que uma escolha gasta do Deck/Extra Deck: para cada uma, 0,5 mais as cópias
+   * que sobram dela ali (as já escolhidas, numa escolha de uma por vez, contam como gastas)
+   */
+  private folga(motor: Motor, duel: OcgDuelHandle, escolha: RefCarta[], d: OcgMessage) {
+    const copias = new Map<string, number>();
+    const chave = (location: number, code: number) => `${location}:${this.canonico(motor, code)}`;
+    for (const loc of [L.DECK, L.EXTRA])
+      for (const c of motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: loc }))
+        if (c?.code) copias.set(chave(loc, c.code as number), (copias.get(chave(loc, c.code as number)) ?? 0) + 1);
+    if (d.type === T.SELECT_UNSELECT_CARD) for (const c of d.unselect_cards) copias.set(chave(c.location, c.code), (copias.get(chave(c.location, c.code)) ?? 0) - 1);
+    return escolha.reduce((f, c) => {
+      const k = chave(c.location, c.code);
+      const sobra = (copias.get(k) ?? 1) - 1;
+      copias.set(k, sobra);
+      return f * (0.5 + Math.max(0, sobra));
+    }, 1);
+  }
+
+  /** Valor de um monstro em campo para a proteção: ATK, Extra Deck e o que ele faz em campo */
+  private campoValor(s: Sessao, c: RefCarta) {
+    const motor = s.motor;
+    const atk = Math.max(0, (motor.dados(c.code)?.attack as number) ?? 0);
+    return atk / 1000 + (motor.tipo(c.code) & TIPOS_EXTRA ? 2 : 0) + VALOR_EFEITO * motor.valorEmCampo(c.code);
   }
 
   /**
@@ -661,18 +820,38 @@ export class IA {
       if (!(m.pos & 0xa)) n += VALOR_EFEITO * motor.valorEmCampo(m.code) + (this.aprendidos[this.canonico(motor, m.code)] ?? 0);
       if (alvo.has(this.canonico(motor, m.code))) n += 2;
     }
+    // interrupções prontas para o turno do oponente (monstro com Efeito Rápido que tira cartas, baixada
+    // viva que nega ou tira, interrupção de mão guardada): passando de 3, cada uma muda pouco
+    let interrupcoes = q(this.eu, L.MZONE).filter((m) => !(m.pos & 0xa) && motor.valorEmCampo(m.code) >= 2).length;
     const magias = q(this.eu, L.SZONE);
     // baixada só vale como interrupção se o campo deixa ativá-la (ex.: Toon Terror pede um monstro Toon);
     // viva, vale também o que o efeito faz ao ativar (negar ou tirar uma carta conta como um monstro que faz isso)
     const vivas = magias.some((c) => c.pos & 0xa) ? motor.baixadasVivas(duel, this.eu) : new Set<number>();
     for (const c of magias) {
-      if (c.pos & 0xa) n += vivas.has(c.sequence) ? 2 + VALOR_EFEITO * motor.valorAoAtivar(c.code) : BAIXADA_MORTA;
-      else n += 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
+      if (c.pos & 0xa) {
+        const viva = vivas.has(c.sequence);
+        n += viva ? 2 + VALOR_EFEITO * motor.valorAoAtivar(c.code) : BAIXADA_MORTA;
+        if (viva && motor.valorAoAtivar(c.code) > 0) interrupcoes++;
+      } else n += 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
       if (alvo.has(this.canonico(motor, c.code))) n += 2;
     }
     const mao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND });
     n += 0.7 * mao.length;
-    for (const c of mao) if (c?.code && this.guardar(motor, c.code as number, linha)) n += VALOR_INTERRUPCAO;
+    for (const c of mao)
+      if (c?.code && this.guardar(motor, c.code as number, linha)) {
+        n += VALOR_INTERRUPCAO;
+        interrupcoes++;
+      }
+    n -= SOBRA_INTERRUPCAO * Math.max(0, interrupcoes - 3);
+    // o que sobra no Extra Deck é recurso para os próximos turnos (Pêndulos virados para cima ficam de fora)
+    const extra = new Map<number, number>();
+    for (const c of motor.core.duelQueryLocation(duel, { flags: 3 as never, controller: this.eu, location: L.EXTRA }))
+      if (c?.code && (c.position as number) & 0xa) {
+        const k = this.canonico(motor, c.code as number);
+        const i = extra.get(k) ?? 0;
+        extra.set(k, i + 1);
+        n += RECURSO_EXTRA[i] ?? 0.1;
+      }
     if (this.exigidas.length) {
       const exigidas = new Set(this.exigidas.map((c) => this.canonico(motor, c)));
       const naMao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND }).filter((c) => c?.code && exigidas.has(this.canonico(motor, c.code as number)));
@@ -716,6 +895,8 @@ export class IA {
       const resps: OcgResponse[] = [];
       let d = decisao;
       let acoes = 0;
+      // dica da última escolha pedida à IA (HINTMSG_*): diz se a escolha é um custo
+      let dica = "";
       for (let passo = 0; d && passo < 400; passo++) {
         if (d.type === T.RETRY) return null;
         let resp: OcgResponse | undefined;
@@ -732,16 +913,24 @@ export class IA {
             break;
           } else if (d.type === T.SELECT_IDLECMD) {
             acoes++;
-            const jogadas = ops.filter((o) => o.acao && o.acao.k !== "fase" && o.acao.k !== "posicao");
+            const jogadas = ops.filter((o) => o.acao && o.acao.k !== "fase" && o.acao.k !== "posicao" && !this.semUso(motor, duel, o));
             if (!jogadas.length || acoes > 30 || (!guloso && Math.random() < 0.03 * acoes)) break;
             resp = (guloso ? jogadas.reduce((a, b) => (this.peso(motor, b, linha) > this.peso(motor, a, linha) ? b : a)) : sortear(jogadas, (o) => this.peso(motor, o, linha))).resp;
           } else if (d.type === T.ANNOUNCE_CARD) {
             resp = this.declarar(s, duel, d);
+          } else if (d.type === T.SELECT_EFFECTYN && motor.aoResolver(d.code)) {
+            // no planejamento o oponente não joga: o elo que resolve é sempre da própria IA
+            resp = { type: R.SELECT_EFFECTYN, yes: false };
           } else if (ops.length) {
             const pesoEscolha = (o: Opcao) => {
               if (o.recusa) return 0.6;
-              if (d!.type === T.SELECT_EFFECTYN || d!.type === T.SELECT_CHAIN) return this.semAlvo(s, o, duel) || this.desperdica(motor, duel, o, null) ? 0 : 3;
-              return o.escolha?.some((c) => linha.has(this.canonico(motor, c.code))) ? 3 : 1;
+              // "então você pode..." (ex.: Evil Box busca ou baixa uma Armadilha Toon): o sim é testado mais vezes
+              if (d!.type === T.SELECT_YESNO) return (o.resp as { yes?: boolean }).yes ? 3 : 1;
+              if (d!.type === T.SELECT_EFFECTYN || d!.type === T.SELECT_CHAIN) return this.semAlvo(s, o, duel) || this.desperdica(motor, duel, o, null) || this.semUso(motor, duel, o) ? 0 : 3;
+              const p = o.escolha?.some((c) => linha.has(this.canonico(motor, c.code))) ? 3 : 1;
+              // custo pago com cartas do Deck/Extra Deck: as repetidas são sorteadas mais vezes
+              const gasto = dica === "REMOVE" || dica === "TOGRAVE" || CUSTOS.has(dica);
+              return gasto && o.escolha?.length && o.escolha.every((c) => c.controller === this.eu && c.location & (L.DECK | L.EXTRA)) ? p * this.folga(motor, duel, o.escolha, d!) : p;
             };
             resp = (guloso ? ops.reduce((a, b) => (pesoEscolha(b) > pesoEscolha(a) ? b : a)) : sortear(ops, pesoEscolha)).resp;
           }
@@ -751,6 +940,8 @@ export class IA {
         motor.core.duelSetResponse(duel, resp);
         const r = motor.ate(duel);
         roteiro?.ler(r.log);
+        for (const m of r.log)
+          if (m.type === T.HINT && m.hint_type === OcgHintType.SELECTMSG && m.player === this.eu) dica = motor.constante(Number(m.hint), "HINTMSG")?.replace(/^HINTMSG_/, "") ?? "";
         if (r.log.some((m) => m.type === T.WIN)) return { resps, nota: r.log.some((m) => m.type === T.WIN && m.player === this.eu) ? 1e6 : -1e6 };
         if (r.log.some((m) => m.type === T.NEW_TURN)) break;
         d = r.decisao;
