@@ -3,7 +3,7 @@
 // linhas de combo conhecidas do deck; fica com a sequência que deixou o melhor campo e a executa.
 // Se o jogador responder diferente do que o plano previa, ela planeja de novo. Batalha, respostas
 // no turno do oponente e escolhas fora do plano seguem regras simples.
-import { OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
+import { cardMatchesOpcode, OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
 import type { LinhaCombo, Passo } from "../db/motor";
 import { reproduzir, TIPO, TIPOS_EXTRA, type Jogada, type Motor } from "./regras";
 import { opcoesDe, type Opcao, type RefCarta } from "./opcoes";
@@ -217,7 +217,9 @@ export class IA {
         // efeito que só tiraria uma carta própria (o campo do oponente está vazio) fica de fora, e também
         // interrupção (Ash Blossom, Ghost Ogre, Toon Terror...) em cima da própria jogada
         const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa" && !this.semAlvo(s, o) && !this.desperdica(motor, s.duel, o, s.ultimaAcao));
-        if (!ativar || d.forced) return ativar?.resp ?? fallback;
+        if (d.forced) return ativar?.resp ?? fallback;
+        // nenhuma opção que valha a pena: passa (o fallback ativaria a primeira, ex.: Ghost Ogre no próprio efeito)
+        if (!ativar) return { type: R.SELECT_CHAIN, index: null };
         // interrupções de mão com momento certo (o que os jogadores costumam fazer para ganhar vantagem)
         const momento = this.momentoCerto(d, s);
         if (momento) return momento;
@@ -244,6 +246,8 @@ export class IA {
       case T.SELECT_TRIBUTE:
       case T.SELECT_UNSELECT_CARD:
         return this.escolherCartas(s, ops) ?? fallback;
+      case T.ANNOUNCE_CARD:
+        return this.declarar(s, s.duel, d) ?? fallback;
       default:
         return fallback;
     }
@@ -449,6 +453,26 @@ export class IA {
     return comEscolha.reduce((a, b) => (nota(b) > nota(a) ? b : a)).resp;
   }
 
+  /**
+   * Declarar um nome de carta (ex.: Mind Scan nega os efeitos ativados do nome declarado): primeiro as
+   * cartas do oponente que ele ainda pode usar (mão, campo, Cemitério, banidas), depois o resto do deck
+   * dele e, por fim, qualquer carta que o filtro do efeito aceite. Sem resposta, o motor pediria de novo
+   * para sempre.
+   */
+  private declarar(s: Sessao, duel: OcgDuelHandle, d: Extract<OcgMessage, { type: T.ANNOUNCE_CARD }>): OcgResponse | undefined {
+    const motor = s.motor;
+    const op = 1 - this.eu;
+    const aceita = (code: number) => {
+      const c = motor.dados(code);
+      return !!c && cardMatchesOpcode(c, d.opcodes);
+    };
+    for (const loc of [L.HAND, L.MZONE, L.SZONE, L.GRAVE, L.REMOVED])
+      for (const c of motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: op as 0, location: loc })) if (c?.code && aceita(c.code as number)) return { type: R.ANNOUNCE_CARD, card: c.code as number };
+    const deck = s.partida.decks[op];
+    const conhecida = [...deck.main, ...deck.extra].find(aceita) ?? Object.keys(motor.pacote.cartas).map(Number).find(aceita);
+    return conhecida ? { type: R.ANNOUNCE_CARD, card: conhecida } : undefined;
+  }
+
   // ---------- planejamento do turno ----------
 
   private canonico(motor: Motor, code: number) {
@@ -503,10 +527,12 @@ export class IA {
       if (alvo.has(this.canonico(motor, m.code))) n += 2;
     }
     const magias = q(this.eu, L.SZONE);
-    // baixada só vale como interrupção se o campo deixa ativá-la (ex.: Toon Terror pede um monstro Toon)
+    // baixada só vale como interrupção se o campo deixa ativá-la (ex.: Toon Terror pede um monstro Toon);
+    // viva, vale também o que o efeito faz ao ativar (negar ou tirar uma carta conta como um monstro que faz isso)
     const vivas = magias.some((c) => c.pos & 0xa) ? motor.baixadasVivas(duel, this.eu) : new Set<number>();
     for (const c of magias) {
-      n += c.pos & 0xa ? (vivas.has(c.sequence) ? 2 : BAIXADA_MORTA) : 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
+      if (c.pos & 0xa) n += vivas.has(c.sequence) ? 2 + VALOR_EFEITO * motor.valorAoAtivar(c.code) : BAIXADA_MORTA;
+      else n += 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
       if (alvo.has(this.canonico(motor, c.code))) n += 2;
     }
     const mao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND });
@@ -574,6 +600,8 @@ export class IA {
             const jogadas = ops.filter((o) => o.acao && o.acao.k !== "fase" && o.acao.k !== "posicao");
             if (!jogadas.length || acoes > 30 || (!guloso && Math.random() < 0.03 * acoes)) break;
             resp = (guloso ? jogadas.reduce((a, b) => (this.peso(motor, b, linha) > this.peso(motor, a, linha) ? b : a)) : sortear(jogadas, (o) => this.peso(motor, o, linha))).resp;
+          } else if (d.type === T.ANNOUNCE_CARD) {
+            resp = this.declarar(s, duel, d);
           } else if (ops.length) {
             const pesoEscolha = (o: Opcao) => {
               if (o.recusa) return 0.6;

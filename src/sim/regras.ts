@@ -112,6 +112,11 @@ export interface Motor {
    */
   valorEmCampo(code: number): number;
   /**
+   * Valor de uma Magia/Armadilha baixada ao ser ativada, na mesma escala de valorEmCampo: 2 se o efeito
+   * de ativação nega ou tira cartas (interrupção, ex.: Toon Terror, Infinite Impermanence), senão 0.
+   */
+  valorAoAtivar(code: number): number;
+  /**
    * O efeito (descrição do EDOPro) só tira cartas do campo (bane, destrói, devolve, toma o controle),
    * sem Invocar, buscar nem comprar: com o campo do oponente vazio, ativá-lo tiraria uma carta própria
    */
@@ -233,6 +238,17 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     scriptDe(code)
       .split(/(?=\bEffect\.CreateEffect\()/)
       .map((b) => b.split("\n").filter((l) => /:Set(Category|Type|Range|Code|Property)\(/.test(l)).join("\n"));
+
+  const aoAtivar = new Map<number, number>();
+  function valorAoAtivar(code: number): number {
+    if (!aoAtivar.has(code)) {
+      const interrompe = blocos(code).some(
+        (e) => /EFFECT_TYPE_ACTIVATE/.test(e) && /CATEGORY_(NEGATE|DISABLE|REMOVE|DESTROY|TODECK|CONTROL|RELEASE)|CATEGORY_TOHAND(?![^)]*SEARCH)/.test(e),
+      );
+      aoAtivar.set(code, interrompe ? 2 : 0);
+    }
+    return aoAtivar.get(code)!;
+  }
 
   const cemiterio = new Map<number, boolean>();
   function noCemiterio(code: number): boolean {
@@ -375,6 +391,7 @@ Debug.Message("vivas:"..table.concat(out,","))`;
     constante: (valor, prefixo) => constantes.get(`${prefixo}_:${valor}`),
     interrompeDaMao,
     valorEmCampo,
+    valorAoAtivar,
     soRemove,
     respondeJogada,
     baixadasVivas,
