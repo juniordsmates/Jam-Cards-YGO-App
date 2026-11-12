@@ -642,6 +642,11 @@ export interface EntradaMetaCall {
   meuDeck?: PerfilDeck;
   /** ids do seu Main/Extra (para "já está no seu deck") */
   meusIds?: Set<number>;
+  /**
+   * só estas cartas (ids da base), mesmo com nota baixa: "Aplicar Deck" avalia todas as cartas do
+   * catálogo que estão no deck do jogador, inclusive as que pouco servem contra os decks escolhidos
+   */
+  apenas?: Set<number>;
 }
 
 export function recomendar(e: EntradaMetaCall): Recomendacao[] {
@@ -649,7 +654,7 @@ export function recomendar(e: EntradaMetaCall): Recomendacao[] {
   const out: Recomendacao[] = [];
   for (const item of CATALOGO) {
     const card = e.byName.get(item.nome);
-    if (!card) continue;
+    if (!card || (e.apenas && !e.apenas.has(card.id))) continue;
     const maximo = copiasPermitidas(card, e.formato);
     if (!maximo) continue;
     const porDeck = e.decks.map(({ deck, perfil }): NotaNoDeck => {
@@ -689,7 +694,7 @@ export function recomendar(e: EntradaMetaCall): Recomendacao[] {
         total *= e.meuDeck ? 0.25 : (item.fatorSemDeck ?? 0.5);
       }
     }
-    if (total < 0.08) continue;
+    if (total < 0.08 && !e.apenas) continue;
     out.push({
       id: card.id,
       card,

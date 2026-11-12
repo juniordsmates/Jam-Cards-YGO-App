@@ -524,3 +524,174 @@
   display: block;
   color: var(--text-dim);
 }
+
+/* ---------- "Aplicar Deck": seu deck contra o meta (src/components/DeckNoMeta.tsx) ---------- */
+
+.mc-aplicar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.mc-aplicar select {
+  max-width: 220px;
+}
+
+.dm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.dm-cab {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dm-cab h3 {
+  margin: 0;
+}
+
+.dm-focos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dm-focos button {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.dm-focos button.active {
+  border-color: var(--cyan, #1aa3d6);
+  background: color-mix(in srgb, var(--cyan, #1aa3d6) 18%, transparent);
+}
+
+.dm-resumo {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.dm-resumo th,
+.dm-resumo td {
+  padding: 4px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.dm-resumo tbody tr {
+  cursor: pointer;
+}
+
+.dm-linha-foco {
+  background: color-mix(in srgb, var(--cyan, #1aa3d6) 12%, transparent);
+}
+
+.dm-faixa {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.dm-rotulo {
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.dm-rotulo small {
+  display: block;
+  color: var(--text-dim);
+}
+
+.dm-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 4px;
+}
+
+.dm-carta {
+  position: relative;
+  margin: 0;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  transition: opacity 0.15s;
+}
+
+.dm-carta img {
+  display: block;
+  width: 100%;
+  border-radius: 3px;
+}
+
+/* carta que serve contra o confronto: borda destacada e a chance de abrir */
+.dm-destaque {
+  border-color: #ffb020;
+  box-shadow: 0 0 0 1px #ffb020, 0 0 10px rgb(255 176 32 / 0.7);
+}
+
+.dm-destaque figcaption {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.75);
+  color: #ffd27a;
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dm-apagada {
+  opacity: 0.35;
+}
+
+.dm-sem {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 59 / 86;
+  font-size: 0.6rem;
+  color: var(--text-dim);
+}
+
+.dm-lista {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dm-lista small {
+  display: block;
+  color: var(--text-dim);
+}
+
+.dm-selo-side {
+  color: #1aa3d6;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-carta {
+    transition: none;
+  }
+}

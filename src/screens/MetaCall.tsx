@@ -29,6 +29,7 @@ import BotaoLink from "../components/BotaoLink";
 import type { Rota } from "../rotas";
 import { IDIOMA, t, LOCALE } from "../i18n";
 import Lateral from "../components/Lateral";
+import DeckNoMeta from "../components/DeckNoMeta";
 
 // Meta Call: escolha os decks esperados no torneio (e quanto de cada um) e veja as cartas boas
 // contra eles — hand traps, respostas, cartas para jogar em segundo e de Side —, com o motivo em
@@ -151,6 +152,8 @@ export default function MetaCall({
   );
 
   const meuDeck = meusDecks.find((d) => d.id === escolha.meuDeck);
+  // "Aplicar Deck" (canto superior): o deck marcado na lista só vale depois do botão
+  const [deckMarcado, setDeckMarcado] = useState(escolha.meuDeck ?? "");
   const meuPerfil = useMemo(() => (meuDeck ? perfilDoDeck(nucleoDoDeck(meuDeck), byId, undefined, ctx) : undefined), [meuDeck, byId, ctx]);
   const meusIds = useMemo(() => new Set(meuDeck ? [...meuDeck.main, ...meuDeck.extra, ...meuDeck.side] : []), [meuDeck]);
 
@@ -160,6 +163,12 @@ export default function MetaCall({
     [sel, escolha.formato, byName, extras?.uso, meuPerfil, meusIds],
   );
   const listas = useMemo(() => sugerirListas(recs), [recs]);
+  // "Aplicar Deck": as cartas do catálogo que estão no seu deck (Main e Side), com a nota contra cada deck escolhido
+  const recsDoDeck = useMemo(() => {
+    if (!meuDeck || !sel.length) return [];
+    const apenas = new Set([...meuDeck.main, ...meuDeck.side].map((id) => byId.get(id)?.id ?? id));
+    return recomendar({ decks: sel, formato: escolha.formato, byName, byId, uso: extras?.uso, meuDeck: meuPerfil, apenas });
+  }, [meuDeck, sel, escolha.formato, byName, byId, extras?.uso, meuPerfil]);
   const visiveis = recs.filter((r) => categoria === "todas" || r.categoria === categoria);
   const somaPesos = sel.reduce((s, d) => s + d.peso, 0);
 
@@ -210,7 +219,29 @@ export default function MetaCall({
 
   const pronto = db.status === "ready";
   return (
-    <ScreenShell title={t("Meta Call")} accent="cyan" onBack={onBack} plain>
+    <ScreenShell
+      title={t("Meta Call")}
+      accent="cyan"
+      onBack={onBack}
+      plain
+      actions={
+        <span className="mc-aplicar" title={t("Com o seu deck: mostra quais cartas dele (e do Side) servem contra os decks esperados e a chance de abrir cada uma; também avisa cartas que travam você e confere requisitos (Fadas, Sincros, Fusões).")}>
+          <select value={deckMarcado} onChange={(e) => setDeckMarcado(e.target.value)} aria-label={t("Meu deck")}>
+            <option value="">{t("— meu deck —")}</option>
+            {meusDecks
+              .filter((d) => !d.temporario)
+              .map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.nome}
+                </option>
+              ))}
+          </select>
+          <button className="ghost-btn" disabled={deckMarcado === (escolha.meuDeck ?? "")} onClick={() => salvar({ ...escolha, meuDeck: deckMarcado || undefined })}>
+            {t("Aplicar Deck")}
+          </button>
+        </span>
+      }
+    >
       {!pronto ? (
         <div className="db-loading">
           <span className="spinner" />
@@ -319,20 +350,6 @@ export default function MetaCall({
                 );
               })}
             </ul>
-            <label className="field mc-meu">
-              <span className="field-label">{t("Meu deck (opcional)")}</span>
-              <select value={escolha.meuDeck ?? ""} onChange={(e) => salvar({ ...escolha, meuDeck: e.target.value || undefined })}>
-                <option value="">{t("— nenhum —")}</option>
-                {meusDecks
-                  .filter((d) => !d.temporario)
-                  .map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.nome}
-                    </option>
-                  ))}
-              </select>
-              <small className="tags-note">{t("Com o seu deck: avisa cartas que também travam você e confere requisitos (Fadas, Sincros, Fusões).")}</small>
-            </label>
           </Lateral>
 
           {/* ---------------- direita: leitura dos decks e recomendação */}
@@ -340,6 +357,7 @@ export default function MetaCall({
             {!sel.length ? (
               <div className="mc-vazio">
                 <h3>{t("Qual é o meta do seu torneio?")}</h3>
+                {meuDeck && <p className="tags-note">{t("Deck aplicado: {0}. Marque os decks esperados para ver quais cartas dele servem contra eles.", [meuDeck.nome])}</p>}
                 <p>
                   {t("Escolha os decks que você espera enfrentar (ou use")}{" "}<strong>{t("Top 5")}</strong>{t("). O Meta Call lê o que cada deck faz — buscas, Invocações, Cemitério, efeitos no campo, campo final —, cruza com as linhas do motor de regras e com o que os jogadores de torneio usam, e indica as melhores cartas contra eles.")}</p>
               </div>
@@ -349,6 +367,7 @@ export default function MetaCall({
                   rota={{ tela: "metacall", formato: escolha.formato, decks: Object.fromEntries(Object.entries(pesos).filter(([, p]) => p > 0)) }}
                   className="mc-link"
                 />
+                {meuDeck && <DeckNoMeta key={meuDeck.id} deck={meuDeck} arquetipos={sel.map((x) => x.deck.arquetipo)} recs={recsDoDeck} byId={byId} comPrevia={comPrevia} />}
                 <h3 className="mc-titulo">
                   {t("{0} {1} · soma {2}%", [sel.length, sel.length === 1 ? t("deck esperado") : t("decks esperados"), somaPesos])}{somaPesos !== 100 && <small> {" "}{t("(os % valem como proporção entre eles)")}</small>}
                 </h3>
