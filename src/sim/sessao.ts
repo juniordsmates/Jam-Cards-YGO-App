@@ -3,7 +3,7 @@
 // assim que a IA testa jogadas (src/sim/ia.ts). Roda no Worker; a tela recebe só Quadros.
 import { cardMatchesOpcode, OcgHintType, OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
 import { ehComando, executarComando, TIPO, TIPOS_EXTRA, type ComandoFicha, type Historico, type Jogada, type Motor, type Partida } from "./regras";
-import { IA, type LinhaIA, type NivelIA } from "./ia";
+import { descreverResposta, IA, type DecisaoIA, type LinhaIA, type NivelIA } from "./ia";
 import { passosDoLog, type Passo } from "./passos";
 import type { CampoFinal, Passo as PassoCombo } from "../db/motor";
 
@@ -138,6 +138,8 @@ export interface Aprendizado {
   historico: Jogada[];
   linhas: LinhaAprendida[];
   respostas: RespostaAprendida[];
+  /** decisões da IA com o motivo de cada uma (posição no histórico) */
+  decisoes?: DecisaoIA[];
 }
 
 /** Um momento da partida (antes da resposta de posição n): quem decide, em que turno e fase */
@@ -316,7 +318,7 @@ export class Sessao {
       }
       if (dono(d) === this.cfg.humano) {
         if (this.iaHumano) {
-          this.aplicar(this.iaHumano.decidir(d, this, repetida), this.cfg.humano);
+          this.aplicarDaIA(this.iaHumano, d, repetida, this.cfg.humano);
           continue;
         }
         if (d.type === T.SELECT_CHAIN && !d.forced && d.selects.length) this.abrirJanela(d.selects.map((c) => c.code));
@@ -325,9 +327,20 @@ export class Sessao {
       // partida 1x1: a decisão é do oponente, que responde do aparelho dele
       if (!this.ia) return { ...this.quadro(), aguardando: true };
       if (aoPensar && this.ia.vaiPensar(d, this)) aoPensar({ ...this.quadro(), pedido: null, pensando: true });
-      this.aplicar(this.ia.decidir(d, this, repetida), dono(d));
+      this.aplicarDaIA(this.ia, d, repetida, dono(d));
     }
     throw new Error("simulador: a IA não terminou de jogar");
+  }
+
+  /** decisões da IA (das duas, na apresentação IA x IA) com o motivo de cada uma */
+  private decisoesIA: DecisaoIA[] = [];
+
+  /** A IA decide, a decisão é anotada com o motivo e a resposta entra no duelo */
+  private aplicarDaIA(ia: IA, d: OcgMessage, repetida: boolean, jogador: number) {
+    const resp = ia.decidir(d, this, repetida);
+    const { texto, relevante } = descreverResposta(d, resp, this.motor);
+    this.decisoesIA.push({ n: this.historico.length, jogador, turno: this.turno, fase: this.fase, acao: texto, motivo: ia.motivo, relevante });
+    this.aplicar(resp, jogador);
   }
 
   /** Decisão em aberto do jogador (null no fim do duelo) */
@@ -726,7 +739,15 @@ export class Sessao {
   aprendizado(): Aprendizado {
     // turno do jogador ainda aberto (desistiu no meio dele): entra se já é um combo
     const aberta = this.logTurno && this.vez === this.cfg.humano ? this.linhaDoTurno() : null;
-    return { partida: this.cfg.partida, humano: this.cfg.humano, remoto: !!this.cfg.remoto, historico: [...this.historico], linhas: aberta ? [...this.linhas, aberta] : this.linhas, respostas: this.respostas };
+    return {
+      partida: this.cfg.partida,
+      humano: this.cfg.humano,
+      remoto: !!this.cfg.remoto,
+      historico: [...this.historico],
+      linhas: aberta ? [...this.linhas, aberta] : this.linhas,
+      respostas: this.respostas,
+      ...(this.decisoesIA.length ? { decisoes: [...this.decisoesIA] } : {}),
+    };
   }
 
   estado(): EstadoSim {

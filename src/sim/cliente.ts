@@ -163,6 +163,11 @@ export class ClienteSim {
     return this.pedir<Passo[]>({ tipo: "sugerir", linhas });
   }
 
+  /** Apresentação IA x IA: o duelo inteiro jogado pelas duas IAs (com o motivo de cada decisão) */
+  iaxia(cfg: ConfigSessao) {
+    return this.pedir<{ aprendizado: Aprendizado; fim: Quadro["fim"] | null }>({ tipo: "iaxia", cfg });
+  }
+
   /** O que o duelo ensinou até agora */
   aprendizado(): Promise<Aprendizado | null> {
     return new Promise((ok) => {

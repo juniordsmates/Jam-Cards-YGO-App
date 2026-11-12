@@ -103,6 +103,48 @@ function sortear(ops: Opcao[], peso: (o: Opcao) => number): Opcao {
   return ops[ops.length - 1];
 }
 
+/** Decisão da IA no duelo, com o motivo (lista da apresentação IA x IA e exportação do replay) */
+export interface DecisaoIA {
+  /** posição da resposta no histórico do duelo */
+  n: number;
+  jogador: number;
+  turno: number;
+  fase: number;
+  /** o que ela fez, em texto */
+  acao: string;
+  motivo: string;
+  /** jogada de verdade ou escolha com alternativa (fica de fora: passar sem ter o que ativar) */
+  relevante: boolean;
+}
+
+const FASE_TEXTO: Record<string, string> = { bp: "Vai para a Battle Phase", m2: "Vai para a Main Phase 2", ep: "Encerra o turno" };
+
+/** A resposta da IA em texto, a partir das opções da decisão */
+export function descreverResposta(d: OcgMessage, resp: OcgResponse, motor: Motor): { texto: string; relevante: boolean } {
+  const o = opcoesDe(d, motor.tipo).find((x) => igual(x.resp, resp));
+  const nome = (code?: number) => (code ? motor.nome(code) : "uma carta");
+  // passar com algo para ativar é uma decisão; sem nada, não
+  const temEscolha = d.type === T.SELECT_CHAIN ? d.selects.length > 0 : d.type !== T.SELECT_YESNO;
+  if (!o) return { texto: "Responde ao motor", relevante: false };
+  if (o.acao) {
+    const a = o.acao;
+    const texto =
+      a.k === "normal" ? `Invoca por Invocação-Normal ${nome(a.code)}`
+      : a.k === "especial" ? `Invoca por Invocação-Especial ${nome(a.code)}`
+      : a.k === "ativa" ? `Ativa ${nome(a.code)}`
+      : a.k === "baixa" ? `Baixa ${nome(a.code)}`
+      : a.k === "baixa-monstro" ? `Baixa um monstro (${nome(a.code)})`
+      : a.k === "posicao" ? `Muda a posição de ${nome(a.code)}`
+      : a.k === "ataque" ? `Declara ataque com ${nome(a.code)}`
+      : (FASE_TEXTO[a.desc ?? ""] ?? "Muda de fase");
+    return { texto, relevante: true };
+  }
+  if (o.escolha?.length) return { texto: `Escolhe ${o.escolha.map((c) => nome(c.code)).join(", ")}`, relevante: true };
+  if (o.recusa || (resp.type === R.SELECT_CHAIN && resp.index === null)) return { texto: "Passa (não ativa)", relevante: temEscolha };
+  if (resp.type === R.SELECT_EFFECTYN) return { texto: resp.yes ? "Usa o efeito" : "Não usa o efeito", relevante: true };
+  return { texto: "Responde ao motor", relevante: false };
+}
+
 /** Resposta de quem não interage (o oponente nas simulações, a IA Passiva) */
 export function passivo(d: OcgMessage, motor: Motor): OcgResponse | undefined {
   if (d.type === T.SELECT_CHAIN && !d.forced) return { type: R.SELECT_CHAIN, index: null };
@@ -117,6 +159,14 @@ export function passivo(d: OcgMessage, motor: Motor): OcgResponse | undefined {
 }
 
 export class IA {
+  /**
+   * Por que a IA tomou a última decisão (texto para a lista de decisões da apresentação IA x IA e para
+   * a exportação do replay). A IA só usa o que um jogador veria: as suas cartas, o campo e o que foi
+   * revelado; nas simulações do turno, o oponente não responde (ela não conhece a mão dele).
+   */
+  motivo = "";
+  /** como o plano do turno foi escolhido (para o motivo de cada lance dele) */
+  private planoInfo: { nota: number; base: number; tentativas: number; origem: "linha" | "gulosa" | "sorteio"; mao?: number[] } | null = null;
   private plano: { resps: OcgResponse[]; i: number } | null = null;
   private tentativa = 0;
   /** alvo escolhido para o ataque em andamento */
@@ -176,70 +226,137 @@ export class IA {
   }
 
   decidir(d: OcgMessage, s: Sessao, repetida = false): OcgResponse {
+    this.motivo = "";
+    const r = this.escolher(d, s, repetida);
+    if (!this.motivo) this.motivo = "Opção padrão: a decisão não muda o jogo.";
+    return r;
+  }
+
+  private escolher(d: OcgMessage, s: Sessao, repetida: boolean): OcgResponse {
     const motor = s.motor;
+    const nome = (code: number | undefined) => (code ? motor.nome(code) : "");
     const ops = opcoesDe(d, motor.tipo);
     if (!repetida) this.tentativa = 0;
-    else if (ops.length) return ops[this.tentativa % ops.length].resp;
+    else if (ops.length) {
+      this.motivo = "A resposta anterior não valia para o motor: tenta outra opção.";
+      return ops[this.tentativa % ops.length].resp;
+    }
     const fallback = ops[0]?.resp ?? passivo(d, motor) ?? { type: R.SELECT_CHAIN, index: null };
 
     // seguindo o plano do turno
     if (this.plano) {
       const r = this.plano.resps[this.plano.i];
       if (r && r.type === RESPOSTA_DE[d.type]) {
+        const info = this.planoInfo;
+        this.motivo = info
+          ? `Plano do turno (lance ${this.plano.i + 1} de ${this.plano.resps.length}): ${
+              info.origem === "linha"
+                ? `linha de combo conhecida do deck${info.mao?.length ? ` (${info.mao.map(nome).join(" + ")})` : ""}`
+                : info.origem === "gulosa"
+                  ? "a sequência mais direta (cada passo com a jogada de maior peso)"
+                  : `a melhor de ${info.tentativas} sequências testadas`
+            }; deixa o campo com nota ${info.nota.toFixed(1)}, contra ${info.base.toFixed(1)} sem jogar.`
+          : "Plano do turno.";
         this.plano.i++;
         if (this.plano.i >= this.plano.resps.length) this.plano = null;
         return r;
       }
       this.plano = null;
+      this.motivo = "O oponente respondeu diferente do previsto: o plano caiu e a IA decide de novo.";
     }
     // teste de combo: o próximo passo do combo vem antes do planejamento (vale em qualquer nível)
     const doRoteiro = "player" in d && d.player === this.eu ? this.roteiro?.decidir(d, ops) : undefined;
-    if (doRoteiro) return doRoteiro;
-    if (this.nivel === "passiva") return passivo(d, motor) ?? fallback;
+    if (doRoteiro) {
+      this.motivo = "Teste de combo: o próximo passo do combo escolhido.";
+      return doRoteiro;
+    }
+    if (this.nivel === "passiva") {
+      this.motivo = "IA Passiva: não joga nem responde.";
+      return passivo(d, motor) ?? fallback;
+    }
 
     switch (d.type) {
       case T.SELECT_IDLECMD: {
         if (s.faseAtual === OcgPhase.MAIN1) {
           this.planejar(s);
-          if (this.plano) return this.decidir(d, s);
+          if (this.plano) return this.escolher(d, s, false);
           const bp = ops.find((o) => o.acao?.k === "fase" && o.acao.desc === "bp");
-          if (bp && this.atacantes(s) > 0) return bp.resp;
+          if (bp && this.atacantes(s) > 0) {
+            this.motivo = "Nenhuma sequência testada deixa o campo melhor; com monstros em Posição de Ataque, vai para a Battle Phase.";
+            return bp.resp;
+          }
         }
         // Main Phase 2 (ou nada melhor a fazer): baixa interrupções e passa
         const baixa = ops.find((o) => o.acao?.k === "baixa");
-        if (baixa) return baixa.resp;
+        if (baixa) {
+          this.motivo = `Sem jogada melhor: baixa ${nome(baixa.acao?.code)} para usar no turno do oponente.`;
+          return baixa.resp;
+        }
+        this.motivo = "Nada melhora o campo: encerra o turno.";
         return (ops.find((o) => o.acao?.k === "fase" && o.acao.desc === "ep") ?? ops[0])?.resp ?? fallback;
       }
       case T.SELECT_BATTLECMD:
         return this.batalha(d, s, ops) ?? fallback;
       case T.SELECT_CHAIN: {
-        if (!d.selects.length) return fallback;
+        if (!d.selects.length) {
+          this.motivo = "Nada para encadear.";
+          return fallback;
+        }
         // efeito que só tiraria uma carta própria (o campo do oponente está vazio) fica de fora, e também
         // interrupção (Ash Blossom, Ghost Ogre, Toon Terror...) em cima da própria jogada
         const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa" && !this.semAlvo(s, o) && !this.desperdica(motor, s.duel, o, s.ultimaAcao));
+<<<<<<< Updated upstream
         if (d.forced) return ativar?.resp ?? fallback;
         // nenhuma opção que valha a pena: passa (o fallback ativaria a primeira, ex.: Ghost Ogre no próprio efeito)
         if (!ativar) return { type: R.SELECT_CHAIN, index: null };
+=======
+        if (d.forced) {
+          this.motivo = "Efeito obrigatório.";
+          return ativar?.resp ?? fallback;
+        }
+        if (!ativar) {
+          this.motivo = "Não ativa: os efeitos disponíveis não teriam alvo no oponente ou gastariam uma interrupção na própria jogada.";
+          return fallback;
+        }
+>>>>>>> Stashed changes
         // interrupções de mão com momento certo (o que os jogadores costumam fazer para ganhar vantagem)
         const momento = this.momentoCerto(d, s);
         if (momento) return momento;
         // Mulcharmy / Maxx "C" do oponente no turno dele não punem a IA (ela não Invoca do Deck/Extra
         // no turno do oponente): negar seria gastar a interrupção à toa
-        if (this.respostaInutil(s)) return { type: R.SELECT_CHAIN, index: null };
+        if (this.respostaInutil(s)) {
+          this.motivo = "Não nega Mulcharmy / Maxx \"C\" no turno do oponente: a IA não Invoca no turno dele, então a carta não a pune.";
+          return { type: R.SELECT_CHAIN, index: null };
+        }
         const ultima = s.ultimaAcao;
         // responde às jogadas do oponente com a chance do nível; no próprio turno, ativa os gatilhos
-        if (ultima && ultima.p !== this.eu) return Math.random() < RESPONDE[this.nivel] ? ativar.resp : { type: R.SELECT_CHAIN, index: null };
+        if (ultima && ultima.p !== this.eu) {
+          const responde = Math.random() < RESPONDE[this.nivel];
+          this.motivo = responde
+            ? `Responde à jogada do oponente (${nome(ultima.code)}) com ${nome(ativar.acao?.code)}.`
+            : `Guarda ${nome(ativar.acao?.code)}: no nível ${this.nivel}, a IA responde só às vezes (${Math.round(RESPONDE[this.nivel] * 100)}% das jogadas do oponente).`;
+          return responde ? ativar.resp : { type: R.SELECT_CHAIN, index: null };
+        }
         // no próprio turno, os gatilhos sim; na Draw e na Standby, cartas de corrente livre ficam para o plano da Main Phase
         const comecoDoTurno = s.faseAtual === OcgPhase.DRAW || s.faseAtual === OcgPhase.STANDBY;
-        if (s.jogadorDaVez === this.eu && this.nivel !== "facil" && (!comecoDoTurno || d.spe_count)) return ativar.resp;
+        if (s.jogadorDaVez === this.eu && this.nivel !== "facil" && (!comecoDoTurno || d.spe_count)) {
+          this.motivo = `Ativa ${nome(ativar.acao?.code)} no próprio turno: o efeito só ajuda a montar o campo.`;
+          return ativar.resp;
+        }
+        this.motivo = comecoDoTurno ? "Na Draw e na Standby, guarda as cartas de corrente livre para o plano da Main Phase." : "Guarda as cartas para um momento melhor.";
         return { type: R.SELECT_CHAIN, index: null };
       }
-      case T.SELECT_EFFECTYN:
-        return { type: R.SELECT_EFFECTYN, yes: !this.semAlvo(s, ops[0]) };
+      case T.SELECT_EFFECTYN: {
+        const sim = !this.semAlvo(s, ops[0]);
+        this.motivo = sim ? "Usa o efeito opcional." : "Não usa o efeito: ele só tiraria uma carta própria (o oponente não tem cartas em campo).";
+        return { type: R.SELECT_EFFECTYN, yes: sim };
+      }
       case T.SELECT_YESNO:
+        this.motivo = "Aceita.";
         return { type: R.SELECT_YESNO, yes: true };
       case T.SELECT_POSITION: {
         const defesa = this.emDefesa ? ops.find((o) => (o.resp as { position?: number }).position === 4) : undefined;
+        this.motivo = defesa ? "Posição de Defesa: jogar mais seguro." : "Posição padrão.";
         return defesa?.resp ?? fallback;
       }
       case T.SELECT_CARD:
@@ -315,16 +432,27 @@ export class IA {
       // uma de cada por turno: a segunda cópia não traz vantagem nova
       const jaUsou = s.ativadasNoTurno.some((x) => x.p === this.eu && nome(x.code) === nome(code));
       if (cedo(code)) {
-        if (turnoDele && comecoDoTurno && !jaUsou) return sorte() ? { type: R.SELECT_CHAIN, index: i } : null;
+        if (turnoDele && comecoDoTurno && !jaUsou) {
+          if (!sorte()) return null;
+          this.motivo = `${nome(code)} logo no começo do turno do oponente: se ele Invocar ao menos uma vez, a carta já se pagou.`;
+          return { type: R.SELECT_CHAIN, index: i };
+        }
         guardar = true;
       }
       if (droll(code)) {
-        if (turnoDele && !jaUsou && ev?.tipo === "busca" && ev.p !== this.eu && fase !== OcgPhase.DRAW) return sorte() ? { type: R.SELECT_CHAIN, index: i } : null;
+        if (turnoDele && !jaUsou && ev?.tipo === "busca" && ev.p !== this.eu && fase !== OcgPhase.DRAW) {
+          if (!sorte()) return null;
+          this.motivo = "Droll & Lock Bird logo depois da primeira busca do oponente: trava as buscas seguintes.";
+          return { type: R.SELECT_CHAIN, index: i };
+        }
         guardar = true;
       }
     }
     // só tem cartas de momento e não é o momento delas: passa (sem gastar por sorteio)
-    if (guardar && d.selects.every((c) => cedo(c.code) || droll(c.code))) return { type: R.SELECT_CHAIN, index: null };
+    if (guardar && d.selects.every((c) => cedo(c.code) || droll(c.code))) {
+      this.motivo = "Guarda a interrupção para o momento certo (Mulcharmy / Maxx \"C\" no começo do turno do oponente; Droll depois de uma busca).";
+      return { type: R.SELECT_CHAIN, index: null };
+    }
     return null;
   }
 
@@ -369,9 +497,12 @@ export class IA {
     });
     if (melhor) {
       this.alvo = melhor.alvo;
+      const a = d.attacks[melhor.i];
+      this.motivo = `Ataca com ${s.motor.nome(a.code)} (ATK ${melhor.atk}) ${melhor.alvo ? `${s.motor.nome(melhor.alvo.code)}: o monstro de mais valor que ele vence` : "diretamente: o oponente não tem monstros que o parem"}.`;
       return { type: R.SELECT_BATTLECMD, action: 1, index: melhor.i };
     }
     this.alvo = null;
+    this.motivo = "Nenhum ataque vantajoso: segue para a Main Phase 2.";
     const m2 = ops.find((o) => o.acao?.k === "fase" && o.acao.desc === "m2");
     const ep = ops.find((o) => o.acao?.k === "fase" && o.acao.desc === "ep");
     return (m2 ?? ep)?.resp;
@@ -421,8 +552,16 @@ export class IA {
     if (dica === "ATTACKTARGET" && this.alvo) {
       const alvo = this.alvo;
       const o = ops.find((x) => x.escolha?.some((c) => c.controller === alvo.controller && c.sequence === alvo.sequence && c.location === alvo.location));
-      if (o) return o.resp;
+      if (o) {
+        this.motivo = "Alvo do ataque escolhido na declaração: o monstro de mais valor que o atacante vence.";
+        return o.resp;
+      }
     }
+    this.motivo = HOSTIS.has(dica)
+      ? "Efeito prejudicial: escolhe as cartas do oponente que mais valem (do Extra Deck, com ATK alto, que respondem) e poupa as próprias."
+      : CUSTOS.has(dica)
+        ? "Custo: paga com as cartas que menos valem e poupa as interrupções de mão e as peças das linhas de combo."
+        : "Escolhe as cartas que mais ajudam: as das linhas de combo do deck e as de mais valor no campo.";
     const comEscolha = ops.filter((o) => o.escolha?.length);
     if (!comEscolha.length) return ops[0]?.resp;
     const motor = s.motor;
@@ -652,19 +791,22 @@ export class IA {
     const turno = s.momento().turno;
     const tempo = turno === this.turnoPlanejado ? TEMPO[this.nivel] / 2 : TEMPO[this.nivel];
     this.turnoPlanejado = turno;
-    let melhor: { resps: OcgResponse[]; nota: number } | null = null;
+    let melhor: { resps: OcgResponse[]; nota: number; origem: "linha" | "gulosa" | "sorteio"; mao?: number[] } | null = null;
     // linhas inteiras primeiro: cada linha conhecida que passa pelas cartas que a IA tem, seguida pelo roteiro
     for (const l of this.linhasPossiveis(s)) {
       const r = this.tentar(s, passos, campo, true, l.passos);
-      if (r && (!melhor || r.nota > melhor.nota)) melhor = r;
+      if (r && (!melhor || r.nota > melhor.nota)) melhor = { ...r, origem: "linha", mao: l.mao };
     }
+    let tentativas = 0;
     for (let n = 0; n < MAX_TENTATIVAS; n++) {
       // a primeira tentativa é a gulosa: a linha de maior peso sempre é avaliada
       const r = this.tentar(s, passos, campo, n === 0);
-      if (r && (!melhor || r.nota > melhor.nota)) melhor = r;
+      tentativas++;
+      if (r && (!melhor || r.nota > melhor.nota)) melhor = { ...r, origem: n === 0 ? "gulosa" : "sorteio" };
       if (performance.now() - inicio >= tempo) break;
     }
     // só joga se a sequência deixa o campo melhor do que passar a vez
     this.plano = melhor && melhor.nota > base && melhor.resps.length ? { resps: melhor.resps, i: 0 } : null;
+    this.planoInfo = melhor ? { nota: melhor.nota, base, tentativas, origem: melhor.origem, mao: melhor.mao } : null;
   }
 }

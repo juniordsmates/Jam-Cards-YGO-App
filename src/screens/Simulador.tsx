@@ -24,7 +24,7 @@ import { APP_VERSION } from "../version";
 import { LOCALE, t } from "../i18n";
 import { ClienteSim, obterPacote } from "../sim/cliente";
 import { zonasLivres } from "../sim/opcoes";
-import type { LinhaIA, NivelIA } from "../sim/ia";
+import type { DecisaoIA, LinhaIA, NivelIA } from "../sim/ia";
 import type { Aprendizado, CartaSim, ConfigSessao, EventoSim, Momento, PedidoSim, Quadro } from "../sim/sessao";
 import { apagarReplay, compartilharReplay, obterReplay } from "../db/replays";
 import { aprenderValores, exportarReplay, guardarAprendizado, guardarReplay, importarReplay, lerValoresAprendidos, listarAprendizado, marcarCompartilhado, REPLAYS_GRATIS, REPLAYS_PREMIUM, type DueloGuardado, type RotulosReplay } from "../sim/aprendizado";
@@ -393,7 +393,27 @@ export default function Simulador({
     oponente: string;
     /** replay recebido por link: o duelo (para guardar), quem compartilhou e o aviso de versão das regras */
     recebido?: { d: DueloGuardado; jogador: string; aviso?: string; salvo?: boolean };
+    /** decisões da IA com o motivo de cada uma (apresentação IA x IA e replays contra a IA) */
+    decisoes?: DecisaoIA[];
+    /** nome do lado de baixo, quando não é "Você" (IA x IA) */
+    jogador?: string;
   } | null>(null);
+  // revisão: reprodução automática (decisão a decisão) e a lista com todas as decisões, não só as jogadas
+  const [reproduzindo, setReproduzindo] = useState(false);
+  const [todasDecisoes, setTodasDecisoes] = useState(false);
+  useEffect(() => {
+    const r = revisao;
+    if (!reproduzindo || !r) return;
+    // vai até logo depois da próxima jogada da IA (o motivo dela aparece no painel)
+    const prox = r.decisoes?.find((x) => x.relevante && x.n + 1 > r.k);
+    const alvo = prox ? prox.n + 1 : r.k + 1;
+    if (alvo > r.momentos.length - 1) {
+      setReproduzindo(false);
+      return;
+    }
+    const id = window.setTimeout(() => void irPara(alvo), 1400);
+    return () => window.clearTimeout(id);
+  }, [reproduzindo, revisao?.k]); // eslint-disable-line react-hooks/exhaustive-deps
   const revisaoRef = useRef(revisao);
   revisaoRef.current = revisao;
   // "?": pergunta aberta (de quem é a carta, qual carta) e a resposta
@@ -770,7 +790,8 @@ export default function Simulador({
     }
   }
 
-  async function abrirRevisao(cfg: ConfigSessao, oponente: string, recebido?: DueloGuardado) {
+  async function abrirRevisao(cfg: ConfigSessao, oponente: string, recebido?: DueloGuardado, extra: { decisoes?: DecisaoIA[]; jogador?: string } = {}) {
+    setReproduzindo(false);
     setReplaysAberto(false);
     setErro(null);
     setEtapa("carregando");
@@ -786,8 +807,11 @@ export default function Simulador({
         // as regras mudaram desde o duelo: o replay pode seguir outro caminho
         aviso: recebido.versaoMotor !== versaoMotor.current ? t("Este replay foi gravado com outra versão das regras do motor: a partir de algum lance, ele pode não repetir o duelo original.") : undefined,
       };
-      setRevisao({ cfg, momentos, k: momentos.length - 1, oponente, ...(deLink ? { recebido: deLink } : {}) });
-      await irPara(momentos.length - 1, cfg);
+      const decisoes = extra.decisoes ?? recebido?.decisoes;
+      // IA x IA: começa do início, para a apresentação
+      const k = extra.jogador ? 0 : momentos.length - 1;
+      setRevisao({ cfg, momentos, k, oponente, ...(deLink ? { recebido: deLink } : {}), ...(decisoes?.length ? { decisoes } : {}), ...(extra.jogador ? { jogador: extra.jogador } : {}) });
+      await irPara(k, cfg);
       setEtapa("duelo");
     } catch (e) {
       falhou(e);
@@ -806,7 +830,33 @@ export default function Simulador({
     setPensando(false);
   }
 
+  /** Apresentação IA x IA (administrador): as duas IAs jogam o duelo inteiro; o resultado abre na revisão */
+  async function iniciarIaXIa() {
+    if (!meu || !doIA) return;
+    gravarConfig({ ...cfg, meu: meu.valor, ia: doIA.valor });
+    setEtapa("carregando");
+    setErro(null);
+    try {
+      const c = await prepararMotor(meu.deck);
+      const humano = cfg.primeiro === "eu" ? 0 : cfg.primeiro === "ia" ? 1 : (aleatorio(2) as 0 | 1);
+      const par: [DeckSim, DeckSim] = humano === 0 ? [meu.deck, doIA.deck] : [doIA.deck, meu.deck];
+      const semente = Array.from(crypto.getRandomValues(new Uint32Array(4)), String) as [string, string, string, string];
+      const partida: Partida = { decks: par, semente };
+      const nivel: NivelIA = cfg.nivel === "passiva" ? "normal" : cfg.nivel;
+      const aprendidos = await lerValoresAprendidos().catch(() => ({}));
+      setProgresso(t("As duas IAs estão duelando (pode levar alguns minutos)…"));
+      const { aprendizado } = await c.iaxia({ partida, humano, nivel, linhas: doIA.linhas, aprendidos, iaNoHumano: { nivel, linhas: meu.linhas, aprendidos }, ateTurno: 20, janelas: "todas" });
+      const rotulos = { eu: t("IA ({0})", [meu.nome]), oponente: t("IA ({0})", [doIA.nome]), meuDeck: meu.nome, deckOponente: doIA.nome };
+      // fica nos replays, com o motivo de cada decisão (o Exportar leva tudo)
+      await guardarAprendizado(aprendizado, versaoMotor.current, APP_VERSION, limiteReplays, rotulos).catch(() => {});
+      await abrirRevisao({ partida, humano, nivel, historico: aprendizado.historico }, rotulos.oponente, undefined, { decisoes: aprendizado.decisoes, jogador: rotulos.eu });
+    } catch (e) {
+      falhou(e);
+    }
+  }
+
   function sairRevisao() {
+    setReproduzindo(false);
     if (revisaoRef.current?.recebido && replayDaRota) onRota?.({ tela: "simulador" });
     setRevisao(null);
     setPergunta(null);
@@ -1354,6 +1404,14 @@ export default function Simulador({
                 <button className="sim-duelar-grande" onClick={iniciar} disabled={etapa === "carregando"}>
                   {etapa === "carregando" ? progresso || t("Preparando…") : t("Duelar")}
                 </button>
+                {conta?.admin && !testeCombo && !treino && (
+                  <div className="sim-campo">
+                    <button className="ghost-btn sim-iaxia" onClick={() => void iniciarIaXIa()} disabled={etapa === "carregando"}>
+                      {t("IA x IA (apresentação)")}
+                    </button>
+                    <small className="tags-note">{t("Só administradores. A IA joga com os dois decks acima, cada lado só com o que um jogador veria; depois a revisão mostra cada decisão e o motivo dela.")}</small>
+                  </div>
+                )}
               </>
             )}
           </aside>
@@ -1586,7 +1644,7 @@ export default function Simulador({
                       </small>
                     </span>
                     <span className="sim-niveis">
-                      <button className="ghost-btn" disabled={carregando} onClick={() => void abrirRevisao({ partida: d.partida, humano: d.humano, nivel: "normal", historico: d.historico }, d.rotulos?.oponente ?? (d.remoto ? t("Oponente") : t("IA")))}>
+                      <button className="ghost-btn" disabled={carregando} onClick={() => void abrirRevisao({ partida: d.partida, humano: d.humano, nivel: "normal", historico: d.historico }, d.rotulos?.oponente ?? (d.remoto ? t("Oponente") : t("IA")), undefined, { decisoes: d.decisoes, jogador: d.decisoes?.some((x) => x.jogador === d.humano) ? d.rotulos?.eu : undefined })}>
                         {t("Revisar")}
                       </button>
                       {!d.remoto && (
@@ -1622,7 +1680,7 @@ export default function Simulador({
   const op = (1 - eu) as 0 | 1;
   const rotuloOp = sala ? (nomeOp ?? t("Oponente")) : t("IA");
   const nomeOponente = revisao ? revisao.oponente : rotuloOp;
-  const meuNome = revisao?.recebido?.jogador ?? (conta?.usuario || t("Você"));
+  const meuNome = revisao?.recebido?.jogador ?? revisao?.jogador ?? (conta?.usuario || t("Você"));
   const est = quadro.estado;
   const meuLado = est.lados[eu];
   const lado2 = est.lados[op];
@@ -1796,7 +1854,10 @@ export default function Simulador({
     const ultimo = r.momentos.length - 1;
     const m = r.momentos[r.k];
     const turnoDe = (turno: number) => r.momentos.findIndex((x) => x.turno === turno);
-    const quem = (j: number) => (j === eu ? (r.recebido?.jogador ?? t("Você")) : r.oponente);
+    const quem = (j: number) => (j === eu ? (r.recebido?.jogador ?? r.jogador ?? t("Você")) : r.oponente);
+    // decisões da IA: a última antes do momento mostrado e a lista (só as jogadas, ou todas)
+    const ultimaDecisao = r.decisoes ? [...r.decisoes].reverse().find((x) => x.n < r.k) : undefined;
+    const listaDecisoes = (r.decisoes ?? []).filter((x) => todasDecisoes || x.relevante);
     const ir = (k: number) => void irPara(Math.max(0, Math.min(ultimo, k)));
     return (
       <div className="sim-revisao">
@@ -1817,6 +1878,40 @@ export default function Simulador({
           <button className="ghost-btn" onClick={() => ir(ultimo)} title={t("Fim")}>⏭</button>
         </div>
         <small className="tags-note">{t("Na revisão, as cartas escondidas dos dois lados ficam visíveis.")}</small>
+        {r.decisoes && (
+          <div className="sim-decisoes">
+            <div className="sim-niveis">
+              <button className="ghost-btn" onClick={() => setReproduzindo(!reproduzindo)} aria-pressed={reproduzindo}>
+                {reproduzindo ? t("⏸ Pausar") : t("▶ Reproduzir")}
+              </button>
+            </div>
+            {ultimaDecisao && (
+              <p className="sim-decisao-atual">
+                <strong>
+                  {t("Turno {0} · {1}", [ultimaDecisao.turno, quem(ultimaDecisao.jogador)])}: {ultimaDecisao.acao}
+                </strong>
+                <br />
+                <small>{ultimaDecisao.motivo}</small>
+              </p>
+            )}
+            <details>
+              <summary>{t("Decisões da IA ({0})", [listaDecisoes.length])}</summary>
+              <label className="sim-janelas">
+                <input type="checkbox" checked={todasDecisoes} onChange={(e) => setTodasDecisoes(e.target.checked)} /> {t("Mostrar também as passagens sem nada a ativar")}
+              </label>
+              <ol>
+                {listaDecisoes.map((x) => (
+                  <li key={x.n} className={ultimaDecisao?.n === x.n ? "sim-decisao-marcada" : ""}>
+                    <button className="link-btn" onClick={() => ir(x.n + 1)}>
+                      {t("T{0} · {1}: {2}", [x.turno, quem(x.jogador), x.acao])}
+                    </button>
+                    <small>{x.motivo}</small>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          </div>
+        )}
         {r.recebido && (
           <small className="tags-note">
             {t("Replay compartilhado: {0} x {1}.", [r.recebido.jogador, r.oponente])}

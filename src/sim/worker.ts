@@ -31,7 +31,9 @@ export type ParaWorker =
   /** fim do duelo ou replay: a IA analisa as próprias escolhas */
   | { tipo: "analisar"; id: number; pedido: PedidoAnalise }
   /** Modo de Treino: a IA joga pelo jogador a partir de agora até o fim do turno (sem mudar o duelo) */
-  | { tipo: "sugerir"; id: number; linhas: LinhaIA[] };
+  | { tipo: "sugerir"; id: number; linhas: LinhaIA[] }
+  // apresentação IA x IA (administrador): uma IA de cada lado, o duelo inteiro de uma vez
+  | { tipo: "iaxia"; id: number; cfg: ConfigSessao };
 
 export type DoWorker =
   | { tipo: "pronto"; versao: string; nomes: Record<string, string> }
@@ -68,10 +70,24 @@ function refazer(cfg: ConfigSessao, k?: number): Sessao {
 onmessage = async (e: MessageEvent<ParaWorker>) => {
   const m = e.data;
   try {
-    if (m.tipo === "linha-do-tempo" || m.tipo === "momento" || m.tipo === "fatos" || m.tipo === "calcular" || m.tipo === "analisar" || m.tipo === "sugerir") {
+    if (m.tipo === "linha-do-tempo" || m.tipo === "momento" || m.tipo === "fatos" || m.tipo === "calcular" || m.tipo === "analisar" || m.tipo === "sugerir" || m.tipo === "iaxia") {
       try {
         let dados: unknown;
-        if (m.tipo === "sugerir") {
+        if (m.tipo === "iaxia") {
+          if (!motor) throw new Error("motor ainda não carregado");
+          if (!m.cfg.iaNoHumano) throw new Error("IA x IA: falta a IA do outro lado");
+          // as duas IAs jogam até o fim (ou até o limite de turnos); o resultado vira um replay
+          const s = new Sessao(motor, m.cfg);
+          let fim = null;
+          try {
+            fim = s.avancar().fim ?? null;
+          } catch (err) {
+            // duelo longo demais para uma rodada: fica o que já foi jogado
+            if (!s.historico.length) throw err;
+          }
+          dados = { aprendizado: s.aprendizado(), fim };
+          s.encerrar();
+        } else if (m.tipo === "sugerir") {
           if (!motor) throw new Error("motor ainda não carregado");
           if (!sessao) throw new Error("nenhum duelo em andamento");
           dados = sugerirJogada(motor, { cfg: sessao.cfg, historico: [...sessao.historico], turno: sessao.momento().turno, linhas: m.linhas });

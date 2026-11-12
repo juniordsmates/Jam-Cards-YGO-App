@@ -1390,3 +1390,47 @@
 .sim .tj-l1 > .sim-centro .sim-lp {
   font-size: clamp(0.72rem, 2cqh, 1rem);
 }
+
+/* revisão: decisões da IA (apresentação IA x IA e replays contra a IA) */
+.sim-decisoes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sim-decisao-atual {
+  margin: 0;
+  padding: 6px 8px;
+  border-left: 3px solid var(--laranja);
+  background: color-mix(in srgb, var(--laranja) 8%, transparent);
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.sim-decisoes ol {
+  max-height: 38vh;
+  overflow-y: auto;
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 0.78rem;
+}
+
+.sim-decisoes li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.sim-decisoes li small {
+  color: var(--text-dim);
+}
+
+.sim-decisao-marcada {
+  background: color-mix(in srgb, var(--laranja) 12%, transparent);
+  border-radius: 4px;
+}
+
+.sim-iaxia {
+  border-style: dashed;
+}
