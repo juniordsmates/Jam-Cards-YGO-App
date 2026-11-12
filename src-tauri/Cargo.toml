@@ -1,6 +1,6 @@
 [package]
 name = "jam-cards-ygo"
-version = "1.0.20"
+version = "1.0.21"
 description = "Jam Cards - YGO!"
 edition = "2021"
 
