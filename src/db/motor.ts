@@ -57,6 +57,17 @@ export interface CombosCalculados {
   linhas: LinhaCombo[];
 }
 
+/** Agrupa as consequências da resolução de um efeito sob o passo anterior (numeração só nos passos) */
+export function groupSteps(passos: Passo[]) {
+  const groups: { step: Passo; subs: Passo[] }[] = [];
+  for (const p of passos) {
+    const sub = "por" in p && p.por !== undefined && p.por !== p.c;
+    if (sub && groups.length) groups[groups.length - 1].subs.push(p);
+    else groups.push({ step: p, subs: [] });
+  }
+  return groups;
+}
+
 /** Ids de todas as cartas citadas numa linha (passos e campo final) */
 export function cardsOfLine(l: LinhaCombo): number[] {
   const ids = new Set<number>(l.mao);

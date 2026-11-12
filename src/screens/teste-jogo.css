@@ -1067,3 +1067,196 @@
   }
 }
 
+
+/* ---------- guia de combo (botão "Combos"; src/components/GuiaCombo.tsx) ---------- */
+
+.tj-combos {
+  color: var(--laranja);
+  border-color: color-mix(in srgb, var(--laranja) 60%, transparent);
+  background: color-mix(in srgb, var(--laranja) 10%, transparent);
+  font-weight: 600;
+}
+
+.tj-combos:hover {
+  background: color-mix(in srgb, var(--laranja) 18%, transparent);
+}
+
+/* painel da carta dividido: em cima a carta, embaixo o guia */
+.tj-esq.tj-esq-guia {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.tj-esq-carta {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tj-esq-guia .tj-esq-carta {
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+/* parte de baixo em 3: Passos do combo, Interações e Probabilidades (cada uma rola sozinha) */
+.guia-painel {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.guia-painel section {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.guia-painel h4 {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--laranja);
+}
+
+.guia-passos header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.guia-passos ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.guia-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.guia-nav .ghost-btn {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+}
+
+.guia-interrompido {
+  color: var(--danger, #c0392b) !important;
+  font-weight: 600;
+}
+
+.guia-prob p {
+  margin: 0;
+}
+
+.guia-nivel-alta {
+  color: #2e8b57;
+}
+
+.guia-nivel-media {
+  color: #b8860b;
+}
+
+.guia-nivel-baixa,
+.guia-nivel-nula {
+  color: var(--danger, #c0392b);
+}
+
+.guia-respondido {
+  margin: 0;
+  padding-left: 16px;
+}
+
+/* janela "Combos" */
+.guia-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(20 16 40 / 0.4);
+}
+
+.guia-janela {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(720px, 100%);
+  max-height: 85vh;
+  padding: 16px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 50px rgb(40 30 90 / 0.25);
+}
+
+.guia-janela h3 {
+  margin: 0;
+  color: var(--laranja);
+}
+
+.guia-lista {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guia-lista fieldset {
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.guia-lista legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+.guia-linha {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.guia-linha span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guia-linha small {
+  color: var(--text-dim);
+}
+
+.guia-linha:hover,
+.guia-marcada {
+  background: color-mix(in srgb, var(--laranja) 10%, transparent);
+}
+
+.guia-botoes {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.guia-selecionar:not(:disabled) {
+  color: #fff;
+  background: var(--laranja);
+  border-color: var(--laranja);
+}

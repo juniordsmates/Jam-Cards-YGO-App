@@ -3,7 +3,7 @@ import { FontesButton } from "./Fontes";
 import BotaoSalvarCombo from "./BotaoSalvarCombo";
 import { linhaComoCombo } from "../db/combosSalvos";
 import type { KnownCombo } from "../data/combos";
-import { CARTA_QUALQUER, METODO_LABEL, moveText, origemText, respostasDaLinha, semCartaDoCalculo, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
+import { CARTA_QUALQUER, groupSteps, METODO_LABEL, moveText, origemText, respostasDaLinha, semCartaDoCalculo, type CombosCalculados, type LinhaCombo, type Passo } from "../db/motor";
 import { openRespostas } from "./RespostasDialog";
 import { ordenarRespostas, TIPOS, useContextoRespostas } from "../db/respostas";
 import { bilingualName, displayName, type Card } from "../db/types";
@@ -107,16 +107,7 @@ export function stepHas(p: Passo, ids: Set<number>) {
   return ids.has(p.c);
 }
 
-/** Agrupa as consequências da resolução de um efeito sob o passo anterior (numeração só nos passos) */
-export function groupSteps(passos: Passo[]) {
-  const groups: { step: Passo; subs: Passo[] }[] = [];
-  for (const p of passos) {
-    const sub = "por" in p && p.por !== undefined && p.por !== p.c;
-    if (sub && groups.length) groups[groups.length - 1].subs.push(p);
-    else groups.push({ step: p, subs: [] });
-  }
-  return groups;
-}
+export { groupSteps } from "../db/motor";
 
 /** Respostas mostradas por item no combo; o "+" abre a lista completa */
 const MAX_RESPOSTAS = 5;

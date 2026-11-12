@@ -4,6 +4,10 @@ import ScreenShell from "./ScreenShell";
 import Lateral from "../components/Lateral";
 import EscolherMao from "../components/EscolherMao";
 import TreinoCombos, { type SugestaoTreino } from "../components/TreinoCombos";
+import { EscolherCombo, PainelGuia } from "../components/GuiaCombo";
+import { avaliarGuia, combosDoDeck, passosDaLinha, type EstadoGuia } from "../db/guiaCombo";
+import { usoEmTorneio } from "../db/respostas";
+import { legalIn } from "../db/legality";
 import InteracoesCarta from "../components/InteracoesCarta";
 import { ChatAssistente, ChatOponente, type MensagemOponente } from "../components/ChatDuelo";
 import { useCardDb } from "../db/cardStore";
@@ -338,6 +342,13 @@ export default function Simulador({
   const [chatOponente, setChatOponente] = useState<MensagemOponente[]>([]);
   // Modo de Treino: jogada sugerida pela IA (pedida pelo jogador)
   const [sugestao, setSugestao] = useState<SugestaoTreino | null>(null);
+  // Modo de Treino: guia de combo (botão "Combos"), como no Teste de Jogo
+  const [guia, setGuia] = useState<EstadoGuia | null>(null);
+  const [escolhendoCombo, setEscolhendoCombo] = useState(false);
+  const combosDeck = useMemo(
+    () => (treino ? combosDoDeck(db.extras?.combos, (meu?.deck.main ?? []).map((id) => byId.get(id)?.id ?? id)) : []),
+    [treino, db.extras?.combos, meu?.deck.main, byId],
+  );
   // cartas mostradas ao jogador (ex.: a mão do oponente)
   const [revelacao, setRevelacao] = useState<{ code: number; controller: number; location: number }[] | null>(null);
   const cliente = useRef<ClienteSim | null>(null);
@@ -451,6 +462,7 @@ export default function Simulador({
     setQuadro(null);
     setDesistencia(null);
     setAprendido(null);
+    setGuia(null);
     setSugestao(null);
     setChatOponente([]);
     fimEnviado.current = false;
@@ -1043,6 +1055,9 @@ export default function Simulador({
     if (q.eventos.length) setRegistro((r) => [...r, ...q.eventos].slice(-400));
     for (const e of q.eventos) {
       if (e.t === "ativa") setAtivacoes((a) => ({ itens: e.elo === 1 || !a.aberta ? [e] : [...a.itens, e], aberta: true }));
+      // guia de combo: a IA ativou algo no seu turno, uma resposta ao combo que resolveu
+      if (e.t === "ativa" && e.p !== euRef.current && q.estado.vez === euRef.current)
+        setGuia((g) => (g ? { ...g, interrupcoes: [...g.interrupcoes, { passo: g.passo, carta: byId.get(e.code)?.id ?? e.code }] } : g));
       // a jogada sugerida vale só para o turno em que foi pedida
       if (e.t === "turno") setSugestao(null);
       if (e.t === "alvo") setAtivacoes((a) => ({ ...a, itens: a.itens.map((x) => (x.elo === e.elo ? { ...x, alvos: [...(x.alvos ?? []), ...e.cartas] } : x)) }));
@@ -1954,6 +1969,21 @@ export default function Simulador({
   const ultimaMinha = [...ativacoes.itens].reverse().find((a) => a.p === eu)?.code;
   const focoTreino = preview !== null ? canon(preview) : ultimaMinha ? canon(ultimaMinha) : null;
   const disponiveis = [...meuLado.mao, ...meuLado.monstros, ...meuLado.magias].flatMap((c) => (c ? [canon(c.code)] : []));
+  // guia de combo: a mão do oponente fica escondida (estimativa pelo uso das respostas em torneios)
+  const avaliacaoGuia = guia
+    ? avaliarGuia({
+        estado: guia,
+        linhasDoDeck: combosDeck.flatMap((g) => g.linhas),
+        mao: meuLado.mao.flatMap((c) => (c ? [canon(c.code)] : [])),
+        campo: [...meuLado.monstros, ...meuLado.magias].flatMap((c) => (c ? [canon(c.code)] : [])),
+        maoOponente: null,
+        uso: (id) => usoEmTorneio(db.extras?.uso, id),
+        legal: (id) => {
+          const c = byId.get(id);
+          return !c || legalIn(c, "TCG") || legalIn(c, "OCG");
+        },
+      })
+    : null;
   /** Estado do duelo em texto para o assistente do chat (as cartas viradas do oponente ficam ocultas) */
   const contextoDuelo = () => {
     const nomes = (cs: (CartaSim | null)[], oculta: (c: CartaSim) => boolean, campo = true) =>
@@ -2037,7 +2067,8 @@ export default function Simulador({
       }
     >
       <div className="teste-jogo sim">
-        <Lateral className="tj-esq" titulo={t("Carta")}>
+        <Lateral className={`tj-esq ${guia && avaliacaoGuia ? "tj-esq-guia" : ""}`} titulo={t("Carta")}>
+          <div className="tj-esq-carta">
           {preview !== null ? (
             <>
               <img src={cardImage(preview, "full")} alt={nomeDe(preview)} onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
@@ -2049,7 +2080,32 @@ export default function Simulador({
           ) : (
             <p className="tags-note">{t("Passe o mouse sobre uma carta para ver os detalhes. Cartas com contorno brilhante têm ações: clique nelas.")}</p>
           )}
+          </div>
+          {guia && avaliacaoGuia && (
+            <PainelGuia
+              estado={guia}
+              avaliacao={avaliacaoGuia}
+              nomeDe={nomeDe}
+              byId={byId}
+              onHover={(c) => c && setPreview(c.id)}
+              onPasso={(k) => setGuia((g) => (g ? { ...g, passo: Math.max(0, Math.min(passosDaLinha(g.linha).length - 1, k)) } : g))}
+              onDesfazer={(i) => setGuia((g) => (g ? { ...g, interrupcoes: g.interrupcoes.filter((_, n) => n !== i) } : g))}
+              onFechar={() => setGuia(null)}
+            />
+          )}
         </Lateral>
+        {escolhendoCombo && (
+          <EscolherCombo
+            grupos={combosDeck}
+            nomeDe={nomeDe}
+            descricao={t("Combos dos arquétipos do seu deck (calculados com as regras das cartas). Escolha um: o painel abaixo da carta acompanha os passos a partir de agora; a mão do duelo não muda.")}
+            onEscolher={(l) => {
+              setGuia({ linha: l, passo: 0, interrupcoes: [] });
+              setEscolhendoCombo(false);
+            }}
+            onFechar={() => setEscolhendoCombo(false)}
+          />
+        )}
 
         <section className="tj-mesa tj-mesa-avancada" onClick={() => setMenu(null)}>
           <div className="sim-mao-linha">
@@ -2073,6 +2129,7 @@ export default function Simulador({
               nomeDe={nomeDe}
               onPedir={minhaVez && pedido && !pensando && !fimTexto ? pedirJogada : undefined}
               sugestao={sugestao}
+              onCombos={() => setEscolhendoCombo(true)}
             />
           )}
           <div className="tj-campo">

@@ -23,9 +23,11 @@ interface Props {
   /** pedir a jogada à IA (ausente quando não é a vez do jogador) */
   onPedir?: () => void;
   sugestao: SugestaoTreino | null;
+  /** abre a janela "Combos" (guia de combo abaixo da carta) */
+  onCombos?: () => void;
 }
 
-export default function TreinoCombos({ carta, linhas, deck, disponiveis, nomeDe, onPedir, sugestao }: Props) {
+export default function TreinoCombos({ carta, linhas, deck, disponiveis, nomeDe, onPedir, sugestao, onCombos }: Props) {
   // linhas com a carta: as do deck do jogador primeiro; sem nenhuma, as de outros decks
   const { lista, deOutros } = useMemo(() => {
     if (!carta) return { lista: [], deOutros: false };
@@ -56,6 +58,11 @@ export default function TreinoCombos({ carta, linhas, deck, disponiveis, nomeDe,
     <section className="treino-combos" aria-live="polite" aria-label={t("Combos possíveis")}>
       <header>
         <h4>{carta ? t("Combos possíveis com {0}", [nomeDe(carta)]) : t("Combos possíveis")}</h4>
+        {onCombos && (
+          <button className="ghost-btn tj-combos" onClick={onCombos} title={t("Combos dos arquétipos do seu deck: escolha um para acompanhar os passos, as interações e as probabilidades abaixo da carta")}>
+            {t("Combos")}
+          </button>
+        )}
         <button className="ghost-btn" disabled={!onPedir || sugestao?.estado === "pensando"} onClick={onPedir} title={onPedir ? undefined : t("Disponível no seu turno, quando for a sua vez de jogar")}>
           {sugestao?.estado === "pensando" ? t("A IA está pensando…") : t("Pedir jogada à IA")}
         </button>

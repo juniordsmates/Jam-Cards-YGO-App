@@ -50,7 +50,10 @@ import { temRecursosAvancados, useConta } from "../db/conta";
 import { salvarComboLocal } from "../db/combosLocais";
 import { FORMATS, legalIn, type GameFormat } from "../db/legality";
 import { useCardDb } from "../db/cardStore";
-import { indiceDeRespostas } from "../db/respostas";
+import { indiceDeRespostas, usoEmTorneio } from "../db/respostas";
+import { avaliarGuia, combosDoDeck, passosDaLinha, type EstadoGuia } from "../db/guiaCombo";
+import { EscolherCombo, PainelGuia } from "../components/GuiaCombo";
+import type { LinhaCombo } from "../db/motor";
 import { outroLado, type Evento, type Lado, type LadoCampo, type Situacao } from "../db/indicacoes";
 import { indicar, type CartaDoLado } from "../db/indicar";
 import IndicacoesResposta, { type EntradaIndicacao } from "../components/IndicacoesResposta";
@@ -140,6 +143,9 @@ export default function TesteJogo({
     return t.charAt(0).toUpperCase() + t.slice(1);
   };
   const [t, setT] = useState<Tabuleiro>(() => testeDeMao(main, extra));
+  // guia de combo (botão "Combos"): linha escolhida, passo atual e respostas do oponente que resolveram
+  const [guia, setGuia] = useState<EstadoGuia | null>(null);
+  const [escolhendoCombo, setEscolhendoCombo] = useState(false);
   const [lp, setLp] = useState(8000);
   const [lpAjuste, setLpAjuste] = useState("");
   const [fase, setFase] = useState<(typeof FASES)[number]>("M1");
@@ -320,6 +326,46 @@ export default function TesteJogo({
       monstrosEfeito: monstros.filter((c) => !c.baixada && !c.ficha && byId.get(c.id)?.frame !== "normal").length,
     };
   };
+  // ---------------------------------------------------------------- guia de combo
+
+  /** id da base (as artes alternativas apontam para a carta original) */
+  const canon = (id: number) => byId.get(id)?.id ?? id;
+  const formatoBase = formato === "OCG" ? "OCG" : formato === "TCG" ? "TCG" : undefined;
+  const combosDeck = useMemo(() => combosDoDeck(extrasDb?.combos, main.map((id) => byId.get(id)?.id ?? id), formatoBase), [extrasDb?.combos, main, byId, formatoBase]);
+  const linhasDeck = useMemo(() => combosDeck.flatMap((g) => g.linhas), [combosDeck]);
+  /** "Selecionar esse combo": a mão inicial da linha vem para a mão (como no Executar combo) e o guia começa */
+  const escolherCombo = (l: LinhaCombo) => {
+    const noDeck = (id: number) => main.find((m) => canon(m) === id) ?? id;
+    const novo = maoDoCombo(main, extra, l.mao.map(noDeck));
+    setT(novo);
+    recomecarAnotacao(novo);
+    setLp(8000);
+    setFase("M1");
+    setSelecionada(null);
+    setPasso(null);
+    setExecutados(new Set());
+    setHistorico([]);
+    setIndicacoes([]);
+    zerarTurno();
+    setGuia({ linha: l, passo: 0, interrupcoes: [] });
+    setEscolhendoCombo(false);
+    setLog([tr("Combo escolhido: mão inicial ({0}). Acompanhe os passos abaixo da carta.", [l.mao.map((id) => nomeId(id)).join(" + ")])]);
+  };
+  const avaliacaoGuia = guia
+    ? avaliarGuia({
+        estado: guia,
+        linhasDoDeck: linhasDeck,
+        mao: t.mao.map((c) => canon(c.id)),
+        campo: ZONAS_CAMPO.flatMap((z) => t[z]).map((c) => canon(c.id)),
+        maoOponente: avancado ? op.mao.map((c) => canon(c.id)) : null,
+        uso: (id) => usoEmTorneio(extrasDb?.uso, id),
+        legal: (id) => {
+          const c = byId.get(id);
+          return !c || legalIn(c, formato);
+        },
+      })
+    : null;
+
   /** cartas com que um lado pode responder: mão e campo (monstros baixados não respondem) */
   const cartasDoLado = (b: Tabuleiro): CartaDoLado[] => [
     ...b.mao.map((c): CartaDoLado => ({ id: c.id, card: byId.get(c.id), onde: "mao" })),
@@ -334,6 +380,8 @@ export default function TesteJogo({
 
   /** Indicações de resposta: o que o outro lado pode fazer depois desta ação */
   const avaliar = (p: Passo, lado: Lado, opts: { virada?: boolean } = {}) => {
+    // guia de combo: a ativação de uma carta do oponente é uma resposta que resolveu
+    if (lado === "op" && p.t === "ativa") setGuia((g) => (g ? { ...g, interrupcoes: [...g.interrupcoes, { passo: g.passo, carta: canon(p.c) }] } : g));
     if (!avancado || p.t === "texto") return;
     const id = p.t === "compra" ? p.c[0] : p.c;
     const card = byId.get(id);
@@ -404,6 +452,7 @@ export default function TesteJogo({
       e.preventDefault();
       e.stopPropagation();
       if (menu) setMenu(null);
+      else if (escolhendoCombo) setEscolhendoCombo(false);
       else if (adicionando) setAdicionando(false);
       else if (criando) setCriando(null);
       else if (selecionada) setSelecionada(null);
@@ -413,7 +462,7 @@ export default function TesteJogo({
     };
     window.addEventListener("keydown", onKey, { capture: true });
     return () => window.removeEventListener("keydown", onKey, { capture: true });
-  }, [menu, adicionando, criando, selecionada, lista, passo, onFechar]);
+  }, [menu, escolhendoCombo, adicionando, criando, selecionada, lista, passo, onFechar]);
 
   const executarCombo = () => {
     if (!combo) return;
@@ -893,7 +942,8 @@ export default function TesteJogo({
 
   return (
     <div className="teste-jogo" onContextMenu={(e) => e.preventDefault()}>
-      <Lateral className="tj-esq" titulo={tr("Carta")}>
+      <Lateral className={`tj-esq ${guia && avaliacaoGuia ? "tj-esq-guia" : ""}`} titulo={tr("Carta")}>
+        <div className="tj-esq-carta">
         {preview === "token" ? (
           <>
             <div className="tj-token tj-token-grande">
@@ -919,6 +969,19 @@ export default function TesteJogo({
           </>
         ) : (
           <p className="tags-note">{tr("Passe o mouse sobre uma carta para ver os detalhes.")}</p>
+        )}
+        </div>
+        {guia && avaliacaoGuia && (
+          <PainelGuia
+            estado={guia}
+            avaliacao={avaliacaoGuia}
+            nomeDe={nomeId}
+            byId={byId}
+            onHover={(c) => c && setPreview(c)}
+            onPasso={(k) => setGuia((g) => (g ? { ...g, passo: Math.max(0, Math.min(passosDaLinha(g.linha).length - 1, k)) } : g))}
+            onDesfazer={(i) => setGuia((g) => (g ? { ...g, interrupcoes: g.interrupcoes.filter((_, n) => n !== i) } : g))}
+            onFechar={() => setGuia(null)}
+          />
         )}
       </Lateral>
 
@@ -1197,6 +1260,8 @@ export default function TesteJogo({
             {tr("Criar token")}</button>
           <button className="ghost-btn" onClick={() => registrar(`Dado: ${aleatorio(6) + 1}.`)}>{tr("Dado")}</button>
           <button className="ghost-btn" onClick={() => registrar(`Moeda: ${aleatorio(2) ? "cara" : "coroa"}.`)}>{tr("Moeda")}</button>
+          <button className="ghost-btn tj-combos" onClick={() => setEscolhendoCombo(true)} title={tr("Combos dos arquétipos deste deck: escolha um para acompanhar os passos, as interações e as probabilidades")}>
+            {tr("Combos")}</button>
           <button className="ghost-btn" onClick={onFechar}>{tr("Voltar ao editor")}</button>
           <button
             className="ghost-btn tj-criar-combo"
@@ -1232,6 +1297,8 @@ export default function TesteJogo({
         <p className="tags-note">
           {tr("Sem regras: arraste uma carta até a zona, ou clique nela e depois na zona; botão direito para ações. O embaralhamento usa o gerador aleatório criptográfico do sistema.")}</p>
       </Lateral>
+
+      {escolhendoCombo && <EscolherCombo grupos={combosDeck} nomeDe={nomeId} onEscolher={escolherCombo} onFechar={() => setEscolhendoCombo(false)} />}
 
       {anuncio && (
         <div key={anuncio.n} className="tj-anuncio" role="status" aria-live="assertive" onClick={() => setAnuncio(null)}>
