@@ -2846,4 +2846,5 @@ export const ES: Record<string, string> = {
   "As mensagens não ficam salvas: somem ao recarregar a página.": "Los mensajes no se guardan: desaparecen al recargar la página.",
   "Mensagem para {0}": "Mensaje para {0}",
   "A IA recusou responder.": "La IA se negó a responder.",
+  "Carta ampliada": "Carta ampliada",
 };

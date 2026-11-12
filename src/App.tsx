@@ -21,6 +21,7 @@ import type { DeckTemporario } from "./db/decks";
 import ExitDialog from "./components/ExitDialog";
 import TestarDialog, { type ModoTeste } from "./components/TestarDialog";
 import AvisoConquista from "./components/AvisoConquista";
+import ZoomCarta from "./components/ZoomCarta";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
 import { ContaDialog, isContaOpen, openConta } from "./components/Conta";
 import { isRespostasOpen, RespostasDialog } from "./components/RespostasDialog";
@@ -150,6 +151,8 @@ export default function App() {
       <div className="backdrop" aria-hidden />
       {/* aviso de conquista desbloqueada, por cima de qualquer tela */}
       <AvisoConquista />
+      {/* botão do meio sobre a imagem de uma carta: carta ampliada no meio da tela */}
+      <ZoomCarta />
 
       {screen === "menu" && (
         <MainMenu
