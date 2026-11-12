@@ -318,7 +318,14 @@ export const CATALOGO: ItemCatalogo[] = [
     alvo: "permanentes",
     categoria: "resposta",
     papel: t("destrói uma Magia/Armadilha virada para cima (da mão, se o oponente tiver 2+ e você nenhuma)"),
-    nota: (p) => ({ nota: p.permanentes * 1.5, motivo: t("{0} de Magias/Armadilhas que ficam no campo", [pct(p.permanentes)]) }),
+    // da mão (oponente com 2+ Magias/Armadilhas e você sem nenhuma): vale mais contra quem baixa muitas
+    // cartas, mas só se houver alvo virado para cima (ela não destrói carta baixada)
+    nota: (p) => ({
+      nota: p.permanentes * (1.5 + Math.min(0.5, p.armadilhas)),
+      motivo: p.viradasFinais
+        ? t("termina o combo com ~{0} Magias/Armadilhas viradas para cima; ativa da mão contra quem baixa muitas cartas", [n1(p.viradasFinais)])
+        : t("{0} de Magias/Armadilhas que ficam no campo", [pct(p.permanentes)]),
+    }),
   },
   {
     nome: "Book of Moon",

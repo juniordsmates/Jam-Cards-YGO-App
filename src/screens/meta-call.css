@@ -645,18 +645,43 @@
   box-shadow: 0 0 0 1px #ffb020, 0 0 10px rgb(255 176 32 / 0.7);
 }
 
-.dm-destaque figcaption {
+/* selos embaixo da carta: % de abrir e a eficácia (quadrados lado a lado) */
+.dm-carta figcaption {
   position: absolute;
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 0 4px;
-  border-radius: 4px;
-  background: rgb(0 0 0 / 0.75);
-  color: #ffd27a;
-  font-size: 0.62rem;
+  display: flex;
+  gap: 2px;
+  font-size: 0.58rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.dm-carta figcaption span {
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.dm-pct {
+  background: rgb(0 0 0 / 0.78);
+  color: #ffd27a;
+}
+
+.dm-ef {
+  color: #fff;
+}
+
+.dm-ef-alta {
+  background: #1e9e55;
+}
+
+.dm-ef-media {
+  background: #c99a06;
+}
+
+.dm-ef-baixa {
+  background: #c0392b;
 }
 
 .dm-apagada {

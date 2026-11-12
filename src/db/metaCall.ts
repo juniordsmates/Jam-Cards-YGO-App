@@ -172,8 +172,14 @@ export interface PerfilDeck {
   /** Magias e Armadilhas do motor */
   magias: number;
   armadilhas: number;
-  /** Magias/Armadilhas que ficam no campo (Contínuas, de Campo, de Equipamento) */
+  /**
+   * Magias/Armadilhas viradas para cima que ficam no campo (0 a 1): as Contínuas, de Campo e de
+   * Equipamento do decklist, as cartas que põem monstros na zona de Magias e Armadilhas como Magia
+   * Contínua (Angelechy) e o campo final das melhores linhas do motor (o maior dos três)
+   */
   permanentes: number;
+  /** Magias/Armadilhas viradas para cima no campo final das melhores linhas do motor (média) */
+  viradasFinais?: number;
   /** Magias que Invocam (Retaliating "C") */
   magiaInvoca: number;
   /** monstros LUZ ou TREVAS do motor que vão ao Cemitério ou têm efeito lá (Bystial) */
@@ -279,6 +285,9 @@ const leitura = (c: Card) => {
   return l;
 };
 
+/** texto de carta que guarda um monstro na zona de Magias e Armadilhas como Magia/Armadilha Contínua */
+const COMO_MAGIA = /as an? (face-up )?Continuous (Spell|Trap)/i;
+
 export function perfilDoDeck(
   deck: Pick<DeckDoMeta, "arquetipo" | "nucleo" | "fonte">,
   byId: Map<number, Card>,
@@ -363,6 +372,10 @@ export function perfilDoDeck(
     return [...m].map(([id, n]) => ({ id, pct: n / linhas.length })).sort((a, b) => b.pct - a.pct);
   };
   const finais = contagem((l) => [...l.campo.monstros, ...l.campo.magias.map(([c]) => c)]).slice(0, 8);
+  // campo final das melhores linhas (o terço de mais pontos, no mínimo 3): Magias/Armadilhas viradas
+  // para cima, inclusive monstros guardados como Magia Contínua
+  const melhores = [...linhas].sort((a, b) => b.pontos - a.pontos).slice(0, Math.max(3, Math.ceil(linhas.length / 3)));
+  const viradasFinais = melhores.length ? melhores.reduce((s, l) => s + l.campo.magias.filter(([, baixada]) => !baixada).length, 0) / melhores.length : undefined;
   const quintaInvocacao = contagem((l) => {
     const inv = l.passos.filter((p): p is Extract<Passo, { t: "normal" | "invoca" }> => p.t === "normal" || p.t === "invoca");
     return inv.length >= 5 ? [inv[4].c] : [];
@@ -400,7 +413,12 @@ export function perfilDoDeck(
     bane: fracao((_c, l) => l.acoes.has("bane") || l.acoes.has("gy-bane") || l.custoBane),
     magias: fracao((c) => categoryOf(c) === "spell"),
     armadilhas: fracao((c) => categoryOf(c) === "trap"),
-    permanentes: fracao((c) => !monstro(c) && ["Continuous", "Field", "Equip"].includes(c.race)),
+    // cada Magia/Armadilha virada para cima no campo final vale 1/4 (4 ou mais: 100%)
+    permanentes: Math.max(
+      Math.min(1, fracao((c) => !monstro(c) && ["Continuous", "Field", "Equip"].includes(c.race)) + fracao((c) => COMO_MAGIA.test(c.desc))),
+      Math.min(1, (viradasFinais ?? 0) / 4),
+    ),
+    ...(viradasFinais !== undefined ? { viradasFinais } : {}),
     magiaInvoca: fracao((c, l) => categoryOf(c) === "spell" && l.acoes.has("invoca")),
     luzTrevasGY: fracao((c, l) => monstro(c) && (c.attribute === "LIGHT" || c.attribute === "DARK") && (l.zonas.has("Cemitério") || l.zonas.has("Mão"))),
     tipoPrincipal: { race: racas[0]?.[0] ?? "", fracao: (racas[0]?.[1] ?? 0) / pesoM },

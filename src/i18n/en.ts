@@ -2926,4 +2926,7 @@ export const EN: Record<string, string> = {
   "Jogo 2, com o Side (1 / 2 / 3)": "Game 2, with the Side (1 / 2 / 3)",
   "Side vazio: monte até 15 cartas no Editor de Deck (Shift+clique na busca). A sugestão de Side do Meta Call está logo abaixo.": "Empty Side: build up to 15 cards in the Deck Editor (Shift+click in the search). The Meta Call Side suggestion is right below.",
   "{0} indo primeiro (5 cartas) · {1} indo segundo (6 cartas)": "{0} going first (5 cards) · {1} going second (6 cards)",
+  "Eficácia {0} ({1})": "Effectiveness {0} ({1})",
+  "Eficácia: a nota da carta contra o confronto em foco (em \"Todos\", a média ponderada pelos % dos decks esperados): Alta a partir de 60%, Média a partir de 30%, Baixa abaixo disso.": "Effectiveness: the card's score against the matchup in focus (in \"All\", the average weighted by the expected decks' %): High from 60%, Medium from 30%, Low below that.",
+  "termina o combo com ~{0} Magias/Armadilhas viradas para cima; ativa da mão contra quem baixa muitas cartas": "ends the combo with ~{0} face-up Spells/Traps; activates from the hand against decks that set many cards",
 };

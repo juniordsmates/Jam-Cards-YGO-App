@@ -12,6 +12,14 @@ import { LOCALE, t } from "../i18n";
 /** nota a partir da qual a carta "serve" contra o deck (a mesma faixa das recomendações boas) */
 const SERVE = 0.3;
 
+/** eficácia pela nota contra o confronto: Alta (verde), Média (amarela), Baixa (vermelha) */
+const EFICACIA = [
+  { min: 0.6, id: "alta", rotulo: t("Alta") },
+  { min: SERVE, id: "media", rotulo: t("Média") },
+  { min: -1, id: "baixa", rotulo: t("Baixa") },
+] as const;
+const eficaciaDe = (nota: number) => EFICACIA.find((e) => nota >= e.min)!;
+
 const pct = (x: number) => `${(x * 100).toLocaleString(LOCALE, { maximumFractionDigits: x < 0.1 ? 1 : 0 })}%`;
 
 type Parte = "main" | "extra" | "side";
@@ -68,10 +76,23 @@ export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: 
         ? `${displayName(c)} — ${t("serve contra: {0}", [contra.map((n) => `${n.arquetipo} (${pct(n.nota)})`).join(", ")])} · ${parte === "side" ? t("depois de entrar do Side: abre em {0}", [pct(chanceDeAbrir(N, k))]) : t("abre em {0} (5 cartas)", [pct(chanceDeAbrir(N, k))])}`
         : displayName(c)
       : `#${id}`;
+    // eficácia: contra o confronto em foco ou, em "Todos", a média ponderada pelos % dos decks esperados
+    const r = parte === "extra" ? undefined : porCarta.get(canon(id));
+    const nota = r ? (foco ? (r.porDeck.find((n) => n.arquetipo === foco)?.nota ?? 0) : r.contra) : undefined;
+    const ef = nota !== undefined ? eficaciaDe(nota) : undefined;
     return (
       <figure key={`${parte}-${i}`} className={`dm-carta ${destaque ? "dm-destaque" : contra.length || foco ? "dm-apagada" : ""}`} title={titulo} {...(c ? comPrevia(c) : {})}>
         {c ? <img src={cardImage(c.id, "small")} alt={displayName(c)} loading="lazy" /> : <span className="dm-sem">#{id}</span>}
-        {destaque && <figcaption>{pct(chanceDeAbrir(N, k))}</figcaption>}
+        {(destaque || ef) && (
+          <figcaption>
+            {destaque && <span className="dm-pct">{pct(chanceDeAbrir(N, k))}</span>}
+            {ef && (
+              <span className={`dm-ef dm-ef-${ef.id}`} title={t("Eficácia {0} ({1})", [ef.rotulo, pct(nota!)])}>
+                {ef.rotulo}
+              </span>
+            )}
+          </figcaption>
+        )}
       </figure>
     );
   };
@@ -211,7 +232,8 @@ export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: 
             .join("; ")}
         </p>
       )}
-      <small className="tags-note">{t("Chance de abrir ao menos 1, 2 ou 3 cartas úteis na mão inicial (5 cartas indo primeiro / 6 indo segundo), pelo mesmo cálculo do Teste de Jogo. Nas cartas, a chance de abrir ao menos 1 cópia. As do Side contam como se entrassem no lugar de cartas que não servem no confronto.")}</small>
+      <small className="tags-note">{t("Eficácia: a nota da carta contra o confronto em foco (em \"Todos\", a média ponderada pelos % dos decks esperados): Alta a partir de 60%, Média a partir de 30%, Baixa abaixo disso.")}{" "}
+        {t("Chance de abrir ao menos 1, 2 ou 3 cartas úteis na mão inicial (5 cartas indo primeiro / 6 indo segundo), pelo mesmo cálculo do Teste de Jogo. Nas cartas, a chance de abrir ao menos 1 cópia. As do Side contam como se entrassem no lugar de cartas que não servem no confronto.")}</small>
     </section>
   );
 }
