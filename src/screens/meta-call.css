@@ -645,14 +645,16 @@
   box-shadow: 0 0 0 1px #ffb020, 0 0 10px rgb(255 176 32 / 0.7);
 }
 
-/* selos embaixo da carta: % de abrir e a eficácia (quadrados lado a lado) */
+/* selos embaixo da carta: a eficácia sobre a % de abrir (empilhados, cabem na carta pequena) */
 .dm-carta figcaption {
   position: absolute;
   bottom: 2px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 2px;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 1px;
   font-size: 0.58rem;
   font-weight: 700;
   white-space: nowrap;
