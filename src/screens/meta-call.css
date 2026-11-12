@@ -722,3 +722,32 @@
     transition: none;
   }
 }
+
+/* Side sugerido pelo Meta Call: as cópias que você já tem ficam marcadas */
+.dm-sugerido {
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+}
+
+.dm-sugerido .dm-carta {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--text-dim) 50%, transparent);
+}
+
+.dm-sugerido .dm-tenho {
+  border-style: solid;
+  border-color: #1aa3d6;
+}
+
+.dm-selo-tenho {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 3px;
+  border-radius: 3px;
+  background: #1aa3d6;
+  color: #fff;
+  font-size: 0.55rem;
+  font-weight: 700;
+}

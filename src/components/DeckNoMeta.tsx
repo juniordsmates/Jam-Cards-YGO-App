@@ -31,9 +31,11 @@ interface Props {
   recs: Recomendacao[];
   byId: Map<number, Card>;
   comPrevia: (c: Card) => { onPointerEnter: (e: PointerEvent<HTMLElement>) => void; onPointerLeave: () => void };
+  /** Side de 15 sugerido pelo Meta Call para os decks escolhidos (cartas e cópias) */
+  sideSugerido: { r: Recomendacao; n: number }[];
 }
 
-export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: Props) {
+export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia, sideSugerido }: Props) {
   // confronto em foco: só as cartas que servem contra ele ficam destacadas
   const [foco, setFoco] = useState<string | null>(null);
   const canon = (id: number) => byId.get(id)?.id ?? id;
@@ -193,7 +195,33 @@ export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: 
           <span className="dm-rotulo">
             {t("Side")} <small>0</small>
           </span>
-          <small className="tags-note">{t("Side vazio: monte até 15 cartas no Editor de Deck (Shift+clique na busca). A sugestão de Side do Meta Call está logo abaixo.")}</small>
+          <small className="tags-note">{t("Side vazio: monte até 15 cartas no Editor de Deck (Shift+clique na busca). Veja o Side sugerido logo abaixo.")}</small>
+        </div>
+      )}
+      {sideSugerido.length > 0 && (
+        <div className="dm-faixa dm-sugerido">
+          <span className="dm-rotulo">
+            {t("Side sugerido")} <small>{sideSugerido.reduce((s2, x) => s2 + x.n, 0)}</small>
+          </span>
+          <div className="dm-grade">
+            {sideSugerido.flatMap(({ r, n }) => {
+              // eficácia contra o confronto em foco (ou a média ponderada) e a chance de abrir se entrar no lugar de outra carta
+              const nota = foco ? (r.porDeck.find((x) => x.arquetipo === foco)?.nota ?? 0) : r.contra;
+              const ef = eficaciaDe(nota);
+              const tem = copias(deck.side, r.id) + copias(deck.main, r.id);
+              const titulo = `${displayName(r.card)} — ${t("{0}× sugeridas", [n])}${tem ? ` · ${t("você tem {0} no deck/Side", [tem])}` : ""} · ${t("serve contra: {0}", [r.porDeck.filter((x) => x.nota >= SERVE).map((x) => `${x.arquetipo} (${pct(x.nota)})`).join(", ") || "—"])}`;
+              return Array.from({ length: n }, (_, i) => (
+                <figure key={`${r.id}-${i}`} className={`dm-carta ${foco && nota < SERVE ? "dm-apagada" : ""} ${i < tem ? "dm-tenho" : ""}`} title={titulo} {...comPrevia(r.card)}>
+                  <img src={cardImage(r.card.id, "small")} alt={displayName(r.card)} loading="lazy" />
+                  <figcaption>
+                    <span className="dm-pct">{pct(chanceDeAbrir(N, n))}</span>
+                    <span className={`dm-ef dm-ef-${ef.id}`}>{ef.rotulo}</span>
+                  </figcaption>
+                  {i < tem && <span className="dm-selo-tenho">{t("tenho")}</span>}
+                </figure>
+              ));
+            })}
+          </div>
         </div>
       )}
 

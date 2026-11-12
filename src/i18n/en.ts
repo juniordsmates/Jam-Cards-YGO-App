@@ -2929,4 +2929,9 @@ export const EN: Record<string, string> = {
   "Eficácia {0} ({1})": "Effectiveness {0} ({1})",
   "Eficácia: a nota da carta contra o confronto em foco (em \"Todos\", a média ponderada pelos % dos decks esperados): Alta a partir de 60%, Média a partir de 30%, Baixa abaixo disso.": "Effectiveness: the card's score against the matchup in focus (in \"All\", the average weighted by the expected decks' %): High from 60%, Medium from 30%, Low below that.",
   "termina o combo com ~{0} Magias/Armadilhas viradas para cima; ativa da mão contra quem baixa muitas cartas": "ends the combo with ~{0} face-up Spells/Traps; activates from the hand against decks that set many cards",
+  "Side sugerido": "Suggested Side",
+  "Side vazio: monte até 15 cartas no Editor de Deck (Shift+clique na busca). Veja o Side sugerido logo abaixo.": "Empty Side: build up to 15 cards in the Deck Editor (Shift+click in the search). See the suggested Side right below.",
+  "tenho": "have",
+  "você tem {0} no deck/Side": "you have {0} in the deck/Side",
+  "{0}× sugeridas": "{0}× suggested",
 };

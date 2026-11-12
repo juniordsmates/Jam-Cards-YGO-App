@@ -367,7 +367,7 @@ export default function MetaCall({
                   rota={{ tela: "metacall", formato: escolha.formato, decks: Object.fromEntries(Object.entries(pesos).filter(([, p]) => p > 0)) }}
                   className="mc-link"
                 />
-                {meuDeck && <DeckNoMeta key={meuDeck.id} deck={meuDeck} arquetipos={sel.map((x) => x.deck.arquetipo)} recs={recsDoDeck} byId={byId} comPrevia={comPrevia} />}
+                {meuDeck && <DeckNoMeta key={meuDeck.id} deck={meuDeck} arquetipos={sel.map((x) => x.deck.arquetipo)} recs={recsDoDeck} byId={byId} comPrevia={comPrevia} sideSugerido={listas.side} />}
                 <h3 className="mc-titulo">
                   {t("{0} {1} · soma {2}%", [sel.length, sel.length === 1 ? t("deck esperado") : t("decks esperados"), somaPesos])}{somaPesos !== 100 && <small> {" "}{t("(os % valem como proporção entre eles)")}</small>}
                 </h3>
