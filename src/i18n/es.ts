@@ -2919,4 +2919,11 @@ export const ES: Record<string, string> = {
   "— meu deck —": "— mi deck —",
   "Pouco servem contra estes decks:": "Poco útiles contra estos decks:",
   "melhor contra {0}: {1}": "mejor contra {0}: {1}",
+  "Ao menos 1": "Al menos 1",
+  "Ao menos 2": "Al menos 2",
+  "Ao menos 3": "Al menos 3",
+  "Chance de abrir ao menos 1, 2 ou 3 cartas úteis na mão inicial (5 cartas indo primeiro / 6 indo segundo), pelo mesmo cálculo do Teste de Jogo. Nas cartas, a chance de abrir ao menos 1 cópia. As do Side contam como se entrassem no lugar de cartas que não servem no confronto.": "Probabilidad de abrir al menos 1, 2 o 3 cartas útiles en la mano inicial (5 cartas yendo primero / 6 yendo segundo), con el mismo cálculo de la Prueba de Juego. En las cartas, la probabilidad de abrir al menos 1 copia. Las del Side cuentan como si entraran en lugar de cartas que no sirven en el enfrentamiento.",
+  "Jogo 2, com o Side (1 / 2 / 3)": "Juego 2, con el Side (1 / 2 / 3)",
+  "Side vazio: monte até 15 cartas no Editor de Deck (Shift+clique na busca). A sugestão de Side do Meta Call está logo abaixo.": "Side vacío: arma hasta 15 cartas en el Editor de Deck (Shift+clic en la búsqueda). La sugerencia de Side del Meta Call está justo abajo.",
+  "{0} indo primeiro (5 cartas) · {1} indo segundo (6 cartas)": "{0} yendo primero (5 cartas) · {1} yendo segundo (6 cartas)",
 };

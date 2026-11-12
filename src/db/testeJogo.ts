@@ -222,6 +222,19 @@ function combinacoes(n: number, k: number): number {
 }
 
 /**
+ * Chance de abrir ao menos m cópias de um grupo de k cartas (hipergeométrica, como o chanceDeAbrir):
+ * 1 − Σ_{x<m} C(k, x) · C(N−k, n−x) / C(N, n)
+ */
+export function chanceDeAbrirAoMenos(N: number, k: number, m: number, n = 5): number {
+  if (m <= 1) return chanceDeAbrir(N, k, n);
+  if (k < m || N <= 0) return 0;
+  const total = combinacoes(N, Math.min(n, N));
+  let menos = 0;
+  for (let x = 0; x < m; x++) menos += (combinacoes(k, x) * combinacoes(N - k, n - x)) / total;
+  return Math.max(0, Math.min(1, 1 - menos));
+}
+
+/**
  * Chance de abrir exatamente esta mão (as mesmas cartas, em qualquer ordem), comprando do Deck
  * inteiro: Π C(cópias no Deck, cópias na mão) / C(cartas no Deck, cartas na mão)
  * (hipergeométrica multivariada).

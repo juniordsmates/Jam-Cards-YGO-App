@@ -2919,4 +2919,11 @@ export const EN: Record<string, string> = {
   "— meu deck —": "— my deck —",
   "Pouco servem contra estes decks:": "Barely useful against these decks:",
   "melhor contra {0}: {1}": "best against {0}: {1}",
+  "Ao menos 1": "At least 1",
+  "Ao menos 2": "At least 2",
+  "Ao menos 3": "At least 3",
+  "Chance de abrir ao menos 1, 2 ou 3 cartas úteis na mão inicial (5 cartas indo primeiro / 6 indo segundo), pelo mesmo cálculo do Teste de Jogo. Nas cartas, a chance de abrir ao menos 1 cópia. As do Side contam como se entrassem no lugar de cartas que não servem no confronto.": "Chance to open at least 1, 2 or 3 useful cards in the opening hand (5 cards going first / 6 going second), with the same calculation as the Playtest. On the cards, the chance to open at least 1 copy. Side cards count as if they replaced cards that are not useful in the matchup.",
+  "Jogo 2, com o Side (1 / 2 / 3)": "Game 2, with the Side (1 / 2 / 3)",
+  "Side vazio: monte até 15 cartas no Editor de Deck (Shift+clique na busca). A sugestão de Side do Meta Call está logo abaixo.": "Empty Side: build up to 15 cards in the Deck Editor (Shift+click in the search). The Meta Call Side suggestion is right below.",
+  "{0} indo primeiro (5 cartas) · {1} indo segundo (6 cartas)": "{0} going first (5 cards) · {1} going second (6 cards)",
 };

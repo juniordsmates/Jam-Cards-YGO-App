@@ -5,7 +5,7 @@ import { useMemo, useState, type PointerEvent } from "react";
 import type { Deck } from "../db/decks";
 import { cardImage } from "../db/images";
 import type { Recomendacao } from "../db/metaCall";
-import { chanceDeAbrir } from "../db/testeJogo";
+import { chanceDeAbrir, chanceDeAbrirAoMenos } from "../db/testeJogo";
 import { displayName, type Card } from "../db/types";
 import { LOCALE, t } from "../i18n";
 
@@ -43,14 +43,15 @@ export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: 
         const util = (ids: number[]) => ids.filter((id) => serveContra(id).some((n) => n.arquetipo === arq));
         const main = util(deck.main);
         const side = util(deck.side);
+        // ao menos 1, 2 e 3 cartas úteis na mão: [5 cartas (indo primeiro), 6 (indo segundo)]
+        const abre = (k: number) => [1, 2, 3].map((m) => [chanceDeAbrirAoMenos(N, k, m, 5), chanceDeAbrirAoMenos(N, k, m, 6)] as const);
         return {
           arq,
           main: main.length,
           side: side.length,
-          abre5: chanceDeAbrir(N, main.length, 5),
-          abre6: chanceDeAbrir(N, main.length, 6),
+          abre: abre(main.length),
           // jogo 2: as do Side entram no lugar de cartas que não servem (o Main fica do mesmo tamanho)
-          comSide: chanceDeAbrir(N, Math.min(N, main.length + side.length), 5),
+          comSide: abre(Math.min(N, main.length + side.length)),
         };
       }),
     [arquetipos, deck, porCarta], // eslint-disable-line react-hooks/exhaustive-deps
@@ -138,9 +139,11 @@ export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: 
           <tr>
             <th>{t("Confronto")}</th>
             <th>{t("Cartas úteis no Main")}</th>
-            <th>{t("Abrir ao menos 1 (5 / 6 cartas)")}</th>
+            <th>{t("Ao menos 1")}</th>
+            <th>{t("Ao menos 2")}</th>
+            <th>{t("Ao menos 3")}</th>
             <th>{t("No Side")}</th>
-            <th>{t("Jogo 2, com o Side")}</th>
+            <th>{t("Jogo 2, com o Side (1 / 2 / 3)")}</th>
           </tr>
         </thead>
         <tbody>
@@ -148,11 +151,13 @@ export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: 
             <tr key={r.arq} className={foco === r.arq ? "dm-linha-foco" : ""} onClick={() => setFoco(foco === r.arq ? null : r.arq)}>
               <td>{r.arq}</td>
               <td>{r.main}</td>
-              <td>
-                <strong>{pct(r.abre5)}</strong> / {pct(r.abre6)}
-              </td>
+              {r.abre.map(([cinco, seis], m) => (
+                <td key={m} title={t("{0} indo primeiro (5 cartas) · {1} indo segundo (6 cartas)", [pct(cinco), pct(seis)])}>
+                  <strong>{pct(cinco)}</strong> / {pct(seis)}
+                </td>
+              ))}
               <td>{r.side}</td>
-              <td>{r.side ? <strong>{pct(r.comSide)}</strong> : "—"}</td>
+              <td>{r.side ? r.comSide.map(([cinco]) => pct(cinco)).join(" / ") : "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -160,7 +165,16 @@ export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: 
 
       {faixa("main", t("Main"), deck.main)}
       {faixa("extra", t("Extra"), deck.extra)}
-      {faixa("side", t("Side"), deck.side)}
+      {deck.side.length ? (
+        faixa("side", t("Side"), deck.side)
+      ) : (
+        <div className="dm-faixa dm-side">
+          <span className="dm-rotulo">
+            {t("Side")} <small>0</small>
+          </span>
+          <small className="tags-note">{t("Side vazio: monte até 15 cartas no Editor de Deck (Shift+clique na busca). A sugestão de Side do Meta Call está logo abaixo.")}</small>
+        </div>
+      )}
 
       {uteis.length ? (
         <ul className="dm-lista">
@@ -197,7 +211,7 @@ export default function DeckNoMeta({ deck, arquetipos, recs, byId, comPrevia }: 
             .join("; ")}
         </p>
       )}
-      <small className="tags-note">{t("Chance de abrir: ao menos 1 cópia na mão inicial (5 cartas indo primeiro, 6 indo segundo), como no Teste de Jogo. As cartas do Side contam como se entrassem no lugar de cartas que não servem no confronto.")}</small>
+      <small className="tags-note">{t("Chance de abrir ao menos 1, 2 ou 3 cartas úteis na mão inicial (5 cartas indo primeiro / 6 indo segundo), pelo mesmo cálculo do Teste de Jogo. Nas cartas, a chance de abrir ao menos 1 cópia. As do Side contam como se entrassem no lugar de cartas que não servem no confronto.")}</small>
     </section>
   );
 }
