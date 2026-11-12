@@ -305,20 +305,15 @@ export class IA {
         // efeito que só tiraria uma carta própria (o campo do oponente está vazio) fica de fora, e também
         // interrupção (Ash Blossom, Ghost Ogre, Toon Terror...) em cima da própria jogada
         const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa" && !this.semAlvo(s, o) && !this.desperdica(motor, s.duel, o, s.ultimaAcao));
-<<<<<<< Updated upstream
-        if (d.forced) return ativar?.resp ?? fallback;
-        // nenhuma opção que valha a pena: passa (o fallback ativaria a primeira, ex.: Ghost Ogre no próprio efeito)
-        if (!ativar) return { type: R.SELECT_CHAIN, index: null };
-=======
         if (d.forced) {
           this.motivo = "Efeito obrigatório.";
           return ativar?.resp ?? fallback;
         }
+        // nenhuma opção que valha a pena: passa (o fallback ativaria a primeira, ex.: Ghost Ogre no próprio efeito)
         if (!ativar) {
           this.motivo = "Não ativa: os efeitos disponíveis não teriam alvo no oponente ou gastariam uma interrupção na própria jogada.";
-          return fallback;
+          return { type: R.SELECT_CHAIN, index: null };
         }
->>>>>>> Stashed changes
         // interrupções de mão com momento certo (o que os jogadores costumam fazer para ganhar vantagem)
         const momento = this.momentoCerto(d, s);
         if (momento) return momento;
@@ -364,6 +359,7 @@ export class IA {
       case T.SELECT_UNSELECT_CARD:
         return this.escolherCartas(s, ops) ?? fallback;
       case T.ANNOUNCE_CARD:
+        this.motivo = "Declara uma carta que o oponente ainda pode usar (mão, campo, Cemitério ou banidas; senão, do deck dele).";
         return this.declarar(s, s.duel, d) ?? fallback;
       default:
         return fallback;
