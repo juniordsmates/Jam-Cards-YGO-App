@@ -2889,4 +2889,10 @@ export const ES: Record<string, string> = {
   "T{0} · {1}: {2}": "T{0} · {1}: {2}",
   "⏸ Pausar": "⏸ Pausar",
   "▶ Reproduzir": "▶ Reproducir",
+  "Clique adiciona ao Deck (ou ao Extra); Shift+clique, ao Side (até 15 cartas). Arraste para mover; solte aqui para retirar.": "Clic añade al Deck (o al Extra); Shift+clic, al Side (hasta 15 cartas). Arrastra para mover; suelta aquí para quitar.",
+  "Importado \"{0}\": {1} no Main, {2} no Extra e {3} no Side{4}.": "Importado \"{0}\": {1} en el Main, {2} en el Extra y {3} en el Side{4}.",
+  "Side": "Side",
+  "Vira um deck novo (com o nome do arquivo), com Main, Extra e Side.": "Se convierte en un deck nuevo (con el nombre del archivo), con Main, Extra y Side.",
+  "{0} — botão direito retira; Shift+clique troca com o Side": "{0} — clic derecho quita; Shift+clic cambia con el Side",
+  "{0} — clique adiciona ao Deck (ou ao Extra); Shift+clique, ao Side": "{0} — clic añade al Deck (o al Extra); Shift+clic, al Side",
 };

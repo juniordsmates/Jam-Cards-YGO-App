@@ -165,8 +165,8 @@
   background: color-mix(in srgb, var(--roxo) 12%, transparent);
 }
 
-/* grades do deck: tamanho das cartas calculado no DeckEditor (Main e Extra cabem sem rolar).
-   Main: 10 por linha, sempre com espaço para 4 a 6 linhas; Extra: as 15 numa linha */
+/* grades do deck: tamanho das cartas calculado no DeckEditor (Main, Extra e Side cabem sem rolar).
+   Main: 10 por linha, sempre com espaço para 4 a 6 linhas; Extra e Side: as 15 numa linha */
 .de-parte .de-grade {
   justify-content: center;
 }
@@ -177,7 +177,8 @@
   min-height: calc(var(--linhas-main) * var(--carta-main) * 86 / 59 + (var(--linhas-main) - 1) * 4px);
 }
 
-.de-extra .de-grade {
+.de-extra .de-grade,
+.de-side .de-grade {
   grid-template-columns: repeat(15, var(--carta-extra));
   grid-auto-rows: calc(var(--carta-extra) * 86 / 59);
   min-height: calc(var(--carta-extra) * 86 / 59);

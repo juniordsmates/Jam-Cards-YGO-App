@@ -51,10 +51,11 @@ const ESTOQUES: { id: Estoque; label: string }[] = [
   { id: "todas", label: t("Listar todas as cartas") },
   { id: "possuo", label: t("Listar apenas cartas que possuo") },
 ];
-// sem Side Deck no editor
+// Main, Extra e Side (até 15 cartas, com as cópias contando junto com Main e Extra)
 const PARTES: { id: Parte; label: string }[] = [
   { id: "main", label: t("Deck") },
   { id: "extra", label: t("Extra") },
+  { id: "side", label: t("Side") },
 ];
 
 type Nomeando = { modo: "novo" | "renomear" | "salvarComo"; valor: string } | null;
@@ -308,21 +309,21 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
 
   /**
    * Importa uma deck list (.ydk ou ydke://) como deck novo, com o nome do arquivo; se já existir um
-   * deck com esse nome, salva por cima dele (um deck por nome). O Side é ignorado.
+   * deck com esse nome, salva por cima dele (um deck por nome). O Side vem junto (até 15 cartas).
    */
   const importarDeckList = (texto: string, nomeArquivo?: string) => {
     const { deck, ignorados } = lerDeckList(texto, idCanonico);
     if (!deck.main.length && !deck.extra.length) return avisar("erro", "Nenhuma carta reconhecida. Use um arquivo .ydk (#main, #extra, !side) ou um link ydke://.");
     const nome = nomeArquivo?.replace(/\.(ydk|txt)$/i, "").trim() || t("Deck importado");
-    const novo = criarDeck(nome, { main: deck.main, extra: deck.extra, side: [] });
+    const novo = criarDeck(nome, { main: deck.main, extra: deck.extra, side: deck.side.slice(0, 15) });
     conquistar("meu_primeiro_deck");
     setDeckId(novo.id);
-    setTrabalho({ ...novo, main: [...novo.main], extra: [...novo.extra], side: [] });
+    setTrabalho({ ...novo, main: [...novo.main], extra: [...novo.extra], side: [...novo.side] });
     setImportando(false);
     setTextoImport("");
     avisar(
       "ok",
-      t("Importado \"{0}\": {1} no Main e {2} no Extra{3}{4}.", [novo.nome, deck.main.length, deck.extra.length, deck.side.length ? t(" (Side ignorado: {0})", [deck.side.length]) : "", ignorados ? t(" ({0} cartas não reconhecidas)", [ignorados]) : ""]),
+      t("Importado \"{0}\": {1} no Main, {2} no Extra e {3} no Side{4}.", [novo.nome, deck.main.length, deck.extra.length, novo.side.length, ignorados ? t(" ({0} cartas não reconhecidas)", [ignorados]) : ""]),
     );
   };
   const lerArquivo = (f?: File | null) => {
@@ -351,14 +352,15 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
       const linhas = Math.max(4, Math.ceil(qtdMain / COLUNAS_MAIN));
       const largura = grade.clientWidth;
       const estilo = getComputedStyle(centro);
-      // fora do centro: espaçamento interno do painel, título, vãos entre blocos e o respiro de cada bloco
+      // fora do centro: espaçamento interno do painel, título, vãos entre os 3 blocos e o respiro de cada bloco
       const altura =
-        centro.clientHeight - parseFloat(estilo.paddingTop) - parseFloat(estilo.paddingBottom) - (titulo?.offsetHeight ?? 0) - 2 * 10 - 4 * 8;
+        centro.clientHeight - parseFloat(estilo.paddingTop) - parseFloat(estilo.paddingBottom) - (titulo?.offsetHeight ?? 0) - 3 * 10 - 6 * 8;
       let extra = Math.floor((largura - (COLUNAS_EXTRA - 1) * VAO) / COLUNAS_EXTRA);
       let main = Math.floor((largura - (COLUNAS_MAIN - 1) * VAO) / COLUNAS_MAIN);
       // tela larga (três colunas): a altura também limita; no celular (uma coluna), só a largura
       if (window.innerWidth > 1100) {
-        const cabeAltura = (altura - extra * PROPORCAO - (linhas - 1) * VAO) / linhas / PROPORCAO;
+        // Extra e Side: uma linha cada, com as cartas do mesmo tamanho
+        const cabeAltura = (altura - 2 * extra * PROPORCAO - (linhas - 1) * VAO) / linhas / PROPORCAO;
         main = Math.min(main, Math.floor(cabeAltura));
         extra = Math.min(extra, main);
       }
@@ -383,11 +385,11 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
   // estoque (Minha Coleção): no deck, a cópia além das que o usuário possui fica escurecida (conta
   // só a quantidade, somando as raridades; Main antes do Extra); na busca, a carta sem cópia livre
   const possuo = (id: number) => naColecao.get(id) ?? 0;
-  const noDeck = (id: number) => (trabalho ? [...trabalho.main, ...trabalho.extra].filter((x) => x === id).length : 0);
+  const noDeck = (id: number) => (trabalho ? [...trabalho.main, ...trabalho.extra, ...trabalho.side].filter((x) => x === id).length : 0);
   const semEstoque = (id: number, parte?: Parte, indice?: number) => {
     if (estoque === "nao") return false;
     if (!parte || indice === undefined || !trabalho) return possuo(id) - noDeck(id) <= 0;
-    const antes = parte === "main" ? trabalho.main.slice(0, indice) : [...trabalho.main, ...trabalho.extra.slice(0, indice)];
+    const antes = parte === "main" ? trabalho.main.slice(0, indice) : parte === "extra" ? [...trabalho.main, ...trabalho.extra.slice(0, indice)] : [...trabalho.main, ...trabalho.extra, ...trabalho.side.slice(0, indice)];
     return antes.filter((x) => x === id).length >= possuo(id);
   };
 
@@ -404,13 +406,25 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
         onDragOver={parte ? (e) => e.preventDefault() : undefined}
         onDrop={parte ? soltar(parte, indice) : undefined}
         onMouseEnter={() => setPreview(c)}
-        onClick={() => (parte ? setPreview(c) : adicionar(c))}
+        onClick={(e: MouseEvent) => {
+          // Shift+clique: na busca, vai para o Side; no deck, troca entre o Side e o Main (ou o Extra)
+          if (e.shiftKey) {
+            if (!parte) return adicionar(c, "side");
+            if (indice !== undefined) return mover(parte, indice, parte === "side" ? (ehExtra(c) ? "extra" : "main") : "side");
+          }
+          if (parte) setPreview(c);
+          else adicionar(c);
+        }}
         onContextMenu={(e: MouseEvent) => {
           e.preventDefault();
           if (parte && indice !== undefined) remover(parte, indice);
           else adicionar(c);
         }}
-        title={parte ? t("{0} — botão direito retira", [bilingualName(c)]) : t("{0} — clique adiciona ao Deck (ou ao Extra)", [bilingualName(c)])}
+        title={
+          parte
+            ? t("{0} — botão direito retira; Shift+clique troca com o Side", [bilingualName(c)])
+            : t("{0} — clique adiciona ao Deck (ou ao Extra); Shift+clique, ao Side", [bilingualName(c)])
+        }
         data-card-id={c.id}
       >
         <img src={cardImage(c.id, "small")} alt={displayName(c)} loading="lazy" draggable={false} />
@@ -594,7 +608,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
                   />
                   <button className="ghost-btn" disabled={!textoImport.trim()} onClick={() => importarDeckList(textoImport)}>
                     {t("Importar")}</button>
-                  <p className="tags-note">{t("Vira um deck novo (com o nome do arquivo). O Side é ignorado.")}</p>
+                  <p className="tags-note">{t("Vira um deck novo (com o nome do arquivo), com Main, Extra e Side.")}</p>
                 </div>
               )}
               {trocaPendente && (
@@ -774,7 +788,7 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
             <div className="de-resultados">
               {resultados.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA).map((c) => thumb(c.id, undefined, undefined, String(c.id)))}
             </div>
-            <p className="tags-note">{t("Clique adiciona ao Deck (ou ao Extra). Arraste para mover; solte aqui para retirar.")}</p>
+            <p className="tags-note">{t("Clique adiciona ao Deck (ou ao Extra); Shift+clique, ao Side (até 15 cartas). Arraste para mover; solte aqui para retirar.")}</p>
           </Lateral>
         </div>
       )}
