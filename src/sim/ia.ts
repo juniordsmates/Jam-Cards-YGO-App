@@ -43,6 +43,8 @@ const VALOR_INTERRUPCAO = 1.5;
 const EXTRA = 4.5;
 /** cada ponto de Motor.valorEmCampo (interrupção vale 2, remoção 1, proteção 1) */
 const VALOR_EFEITO = 0.8;
+/** Magia/Armadilha baixada vale 2 (possível interrupção); a que não pode ser ativada com o campo de agora, isto */
+const BAIXADA_MORTA = 0.5;
 
 // código, posição, ATK, DEF e matérias
 const QUERY = (1 | 2 | 256 | 512 | 65536) as never;
@@ -212,8 +214,9 @@ export class IA {
         return this.batalha(d, s, ops) ?? fallback;
       case T.SELECT_CHAIN: {
         if (!d.selects.length) return fallback;
-        // efeito que só tiraria uma carta própria (o campo do oponente está vazio) fica de fora
-        const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa" && !this.semAlvo(s, o));
+        // efeito que só tiraria uma carta própria (o campo do oponente está vazio) fica de fora, e também
+        // interrupção (Ash Blossom, Ghost Ogre, Toon Terror...) em cima da própria jogada
+        const ativar = ops.find((o) => !o.recusa && o.acao?.k === "ativa" && !this.semAlvo(s, o) && !this.desperdica(motor, s.duel, o, s.ultimaAcao));
         if (!ativar || d.forced) return ativar?.resp ?? fallback;
         // interrupções de mão com momento certo (o que os jogadores costumam fazer para ganhar vantagem)
         const momento = this.momentoCerto(d, s);
@@ -254,6 +257,20 @@ export class IA {
     if (!o || o.recusa || !o.acao?.desc || !/^d+$/.test(o.acao.desc) || !s.motor.soRemove(BigInt(o.acao.desc))) return false;
     const op = 1 - this.eu;
     return s.motor.core.duelQueryCount(duel, op as 0, L.ONFIELD) === 0;
+  }
+
+  /**
+   * Ativar a opção gastaria uma interrupção na própria jogada: o efeito responde a uma ativação ou
+   * Invocação (Motor.respondeJogada) e quem fez a jogada não é o oponente. A jogada é o último elo da
+   * cadeia; com a cadeia vazia, a última ação vista (`ultima`, ex.: uma Invocação). Sem jogada conhecida
+   * (no planejamento, o oponente é passivo), conta como da própria IA.
+   */
+  private desperdica(motor: Motor, duel: OcgDuelHandle, o: Opcao | undefined, ultima: { p: number } | null) {
+    const code = o?.acao?.code;
+    if (!o || o.recusa || !code || !o.acao?.desc || !/^\d+$/.test(o.acao.desc) || !motor.respondeJogada(code, BigInt(o.acao.desc))) return false;
+    const cadeia = motor.core.duelQueryField(duel).chain;
+    const autor = cadeia.length ? (cadeia[cadeia.length - 1].triggering_controller as number) : ultima?.p;
+    return autor !== 1 - this.eu;
   }
 
   /**
@@ -485,8 +502,11 @@ export class IA {
       if (!(m.pos & 0xa)) n += VALOR_EFEITO * motor.valorEmCampo(m.code) + (this.aprendidos[this.canonico(motor, m.code)] ?? 0);
       if (alvo.has(this.canonico(motor, m.code))) n += 2;
     }
-    for (const c of q(this.eu, L.SZONE)) {
-      n += c.pos & 0xa ? 2 : 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
+    const magias = q(this.eu, L.SZONE);
+    // baixada só vale como interrupção se o campo deixa ativá-la (ex.: Toon Terror pede um monstro Toon)
+    const vivas = magias.some((c) => c.pos & 0xa) ? motor.baixadasVivas(duel, this.eu) : new Set<number>();
+    for (const c of magias) {
+      n += c.pos & 0xa ? (vivas.has(c.sequence) ? 2 : BAIXADA_MORTA) : 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
       if (alvo.has(this.canonico(motor, c.code))) n += 2;
     }
     const mao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND });
@@ -557,7 +577,7 @@ export class IA {
           } else if (ops.length) {
             const pesoEscolha = (o: Opcao) => {
               if (o.recusa) return 0.6;
-              if (d!.type === T.SELECT_EFFECTYN || d!.type === T.SELECT_CHAIN) return this.semAlvo(s, o, duel) ? 0 : 3;
+              if (d!.type === T.SELECT_EFFECTYN || d!.type === T.SELECT_CHAIN) return this.semAlvo(s, o, duel) || this.desperdica(motor, duel, o, null) ? 0 : 3;
               return o.escolha?.some((c) => linha.has(this.canonico(motor, c.code))) ? 3 : 1;
             };
             resp = (guloso ? ops.reduce((a, b) => (pesoEscolha(b) > pesoEscolha(a) ? b : a)) : sortear(ops, pesoEscolha)).resp;

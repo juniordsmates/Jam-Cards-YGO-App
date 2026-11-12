@@ -117,6 +117,17 @@ export interface Motor {
    */
   soRemove(desc: bigint | number): boolean;
   /**
+   * O efeito (carta e descrição do EDOPro) responde a uma jogada: ativado quando um efeito é ativado
+   * ou um monstro é Invocado, e nega ou tira a carta (Ash Blossom, Ghost Ogre, Toon Terror, Solemn).
+   * Usado contra a própria jogada, só desperdiça a carta.
+   */
+  respondeJogada(code: number, desc: bigint | number): boolean;
+  /**
+   * Sequências das Magias/Armadilhas baixadas do jogador cuja condição de ativação o campo atende agora
+   * (ex.: Toon Terror sem monstro Toon fica de fora). Lido executando a condição do script no duelo.
+   */
+  baixadasVivas(duel: OcgDuelHandle, p: number): Set<number>;
+  /**
    * A carta faz algo quando vai ou está no Cemitério (efeito ativado no Cemitério, ou gatilho de ser
    * mandada para lá), conforme o script: mandá-la ao Cemitério é ganho, não perda
    */
@@ -202,7 +213,8 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
       // efeito que vale com a carta em campo: na zona dela, ou contínuo dela mesma
       const emCampo = new RegExp(`SetRange\\([^)]*${zona.source}`).test(e) || (/EFFECT_TYPE_SINGLE/.test(e) && !/EFFECT_TYPE_TRIGGER|SetRange/.test(e));
       if (!emCampo) continue;
-      const tira = /CATEGORY_(NEGATE|DISABLE|REMOVE|DESTROY|TODECK|CONTROL)|CATEGORY_TOHAND(?![^)]*SEARCH)/.test(e);
+      // RELEASE: Tributar um monstro do oponente (ex.: Comic Cat) também o tira do campo
+      const tira = /CATEGORY_(NEGATE|DISABLE|REMOVE|DESTROY|TODECK|CONTROL|RELEASE)|CATEGORY_TOHAND(?![^)]*SEARCH)/.test(e);
       if (tira && /EFFECT_TYPE_QUICK_[OF]/.test(e)) interrompe = true;
       else if (tira) remove = true;
       if (/EFFECT_INDESTRUCTABLE|EFFECT_IMMUNE_EFFECT|EFFECT_CANNOT_BE_EFFECT_TARGET|EFFECT_CANNOT_BE_BATTLE_TARGET/.test(e)) protege = true;
@@ -253,6 +265,55 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     return /CATEGORY_(REMOVE|DESTROY|TODECK|CONTROL)/.test(cat) && !/CATEGORY_(SPECIAL_SUMMON|SEARCH|DRAW|RECOVER|TOGRAVE|DECKDES)/.test(cat);
   }
 
+  const respostas = new Map<string, boolean>();
+  function respondeJogada(code: number, desc: bigint | number): boolean {
+    const d = BigInt(desc);
+    const chave = `${code}:${d}`;
+    if (respostas.has(chave)) return respostas.get(chave)!;
+    const brutos = scriptDe(code).split(/(?=\bEffect\.CreateEffect\()/);
+    // o bloco da descrição (aux.Stringid(id, n)); efeito sem descrição (ex.: Ghost Ogre): os blocos sem SetDescription
+    const n = Number(d & 0xfffffn);
+    const daDescricao = d >> 20n ? brutos.filter((b) => new RegExp(`SetDescription\\(aux\\.Stringid\\(id,\\s*${n}\\)`).test(b)) : [];
+    const candidatos = daDescricao.length ? daDescricao : brutos.filter((b) => !/SetDescription\(/.test(b));
+    const sim = candidatos.some((b) => {
+      const e = b.split("\n").filter((l) => /:Set(Category|Code)\(/.test(l)).join("\n");
+      return /SetCode\(EVENT_(CHAINING|SUMMON|SPSUMMON|FLIP_SUMMON)\)/.test(e) && /CATEGORY_(NEGATE|DISABLE|DESTROY|REMOVE|TODECK|CONTROL)/.test(e);
+    });
+    respostas.set(chave, sim);
+    return sim;
+  }
+
+  // saída do Debug.Message das sondas (o errorHandler do duelo só guarda enquanto uma sonda roda)
+  let saidaLua: string[] | null = null;
+  let sondas = 0;
+  function baixadasVivas(duel: OcgDuelHandle, p: number): Set<number> {
+    // condição que dá true, ou que dá erro (chegou na parte que depende da cadeia, então a do campo passou): viva
+    const sonda = `
+local tp=${p}
+local re=setmetatable({},{__index=function() return function() return true end end})
+local out={}
+for c in Duel.GetMatchingGroup(Card.IsFacedown,tp,LOCATION_SZONE,0,nil):Iter() do
+  local viva=false
+  for _,e in ipairs({c:GetActivateEffect()}) do
+    local cond=e:GetCondition()
+    if not cond then viva=true break end
+    local ok,res=pcall(cond,e,tp,Group.CreateGroup(),1-tp,nil,re,0,1-tp)
+    if not ok or res then viva=true break end
+  end
+  if viva then out[#out+1]=c:GetSequence() end
+end
+Debug.Message("vivas:"..table.concat(out,","))`;
+    const saida: string[] = [];
+    saidaLua = saida;
+    try {
+      core.loadScript(duel, `sonda_baixadas_${sondas++}.lua`, sonda);
+    } finally {
+      saidaLua = null;
+    }
+    const linha = saida.find((t) => t.startsWith("vivas:"));
+    return new Set((linha?.slice(6) ?? "").split(",").filter(Boolean).map(Number));
+  }
+
   const constantes = new Map<string, string>();
   for (const m of (pacote.arquivos["constant.lua"] ?? "").matchAll(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*(0x[0-9a-fA-F]+|\d+)\b/gm)) {
     const chave = `${m[1].split("_")[0]}_:${Number(m[2])}`;
@@ -270,7 +331,7 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
       team2: time,
       cardReader: dados,
       scriptReader,
-      errorHandler: () => {},
+      errorHandler: (_, texto) => saidaLua?.push(texto),
     });
     if (!duel) throw new Error("motor: não criou o duelo");
     for (const f of ["constant.lua", "utility.lua"]) core.loadScript(duel, f, scriptReader(f) ?? "");
@@ -315,6 +376,8 @@ export async function abrirMotor(pacote: PacoteMotor, wasm?: { url?: string; bin
     interrompeDaMao,
     valorEmCampo,
     soRemove,
+    respondeJogada,
+    baixadasVivas,
     noCemiterio,
     protecao,
     registrar(code, d, nome) {
