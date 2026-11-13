@@ -1,0 +1,12 @@
+// Site no Cloudflare (Workers com arquivos estáticos): o build do Cloudflare roda `npm run build`
+// e depois `npx wrangler deploy`, que publica o conteúdo de dist/. Sem este arquivo, o wrangler
+// tenta se configurar sozinho e exige Vite 6 ou mais novo.
+// O app usa rotas com # (src/rotas.ts), então todo endereço é servido pelo index.html da raiz.
+{
+  "name": "jam-cards-ygo-app",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
