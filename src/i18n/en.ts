@@ -3030,4 +3030,13 @@ export const EN: Record<string, string> = {
   "{0} de {1} escolhidas": "{0} of {1} chosen",
   "{0} — botão direito: retirar, Side ou categorizar; Shift+clique troca com o Side": "{0} — right-click: remove, Side or categorize; Shift+click swaps with the Side",
   "{0} — clique adiciona ao Deck (ou ao Extra); Shift+clique, ao Side; botão direito: mais opções": "{0} — click adds to the Deck (or the Extra); Shift+click, to the Side; right-click: more options",
+  "5 cartas (indo primeiro)": "5 cards (going first)",
+  "6 cartas (indo segundo)": "6 cards (going second)",
+  "Ao menos N cartas do tipo na mão inicial (hipergeométrica, o mesmo cálculo das chances acima). As categorias são as dos selos, inclusive as que você escolheu em \"Categorizar\"; uma carta pode contar em mais de um tipo.": "At least N cards of the type in the opening hand (hypergeometric, the same calculation as the chances above). The categories are the ones on the seals, including the ones you chose in \"Categorize\"; a card can count in more than one type.",
+  "Cartas na mão inicial": "Cards in the opening hand",
+  "Chance de abrir ao menos 1 a 5 Starters, Extenders, Hand Traps, Board Breakers e Floodgates": "Chance to open at least 1 to 5 Starters, Extenders, Hand Traps, Board Breakers and Floodgates",
+  "Chance de abrir ao menos {0} {1} em {2} cartas, com {3} no Deck de {4}": "Chance to open at least {0} {1} in {2} cards, with {3} in a {4}-card Deck",
+  "No Deck": "In the Deck",
+  "Probabilidades Avançadas": "Advanced Probabilities",
+  "{0}+": "{0}+",
 };

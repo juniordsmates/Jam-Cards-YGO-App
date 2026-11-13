@@ -17,6 +17,7 @@ import {
   zonaDoPasso,
   comprar,
   chanceDeAbrir,
+  chanceDeAbrirAoMenos,
   probabilidadeDaMao,
   probabilidadeGeral,
   embaralharDeck,
@@ -40,7 +41,7 @@ import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
 import { CARTA_QUALQUER, passoEmTexto, semCartaDoCalculo, type CampoFinal, type Passo } from "../db/motor";
 import { groupSteps } from "../components/VerifiedCombos";
 import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
-import { contarPapeis } from "../db/classificacao";
+import { contarPapeis, PAPEIS, papeisDa } from "../db/classificacao";
 import { FontesButton } from "../components/Fontes";
 import { isContaOpen, openConta } from "../components/Conta";
 import { arquetiposDe, arquetiposSemCartas, avisoSemCartas, criarComboDoTeste, ordemParaGravar, validadeNoFormato } from "../db/baseCombos";
@@ -146,6 +147,8 @@ export default function TesteJogo({
   // guia de combo (botão "Combos"): linha escolhida, passo atual e respostas do oponente que resolveram
   const [guia, setGuia] = useState<EstadoGuia | null>(null);
   const [escolhendoCombo, setEscolhendoCombo] = useState(false);
+  // "Probabilidades Avançadas": caixa no lugar das barras de probabilidade, com a mão de 5 ou de 6 cartas
+  const [probAvancadas, setProbAvancadas] = useState<5 | 6 | null>(null);
   const [lp, setLp] = useState(8000);
   const [lpAjuste, setLpAjuste] = useState("");
   const [fase, setFase] = useState<(typeof FASES)[number]>("M1");
@@ -1074,6 +1077,61 @@ export default function TesteJogo({
           const pct = (x: number) => `${(x * 100).toLocaleString(LOCALE, { maximumSignificantDigits: 3 })}%`;
           // classificação das cartas da mão (hand trap, starter, floodgate, staple…)
           const papeis = contarPapeis(t.mao.map((c) => byId.get(c.id)).filter((c): c is Card => !!c));
+          if (probAvancadas) {
+            // por tipo: quantas no Deck, quantas na mão e a chance de abrir ao menos 1 a 5 delas
+            const tipos = PAPEIS.filter((p) => p.id !== "staple");
+            const deTipo = (ids: number[], id: string) => ids.filter((x) => { const c = byId.get(x); return !!c && papeisDa(c).some((p) => p.id === id); }).length;
+            const pctA = (x: number) => (x <= 0 ? "—" : `${(x * 100).toLocaleString(LOCALE, { maximumFractionDigits: x < 0.1 ? 1 : 0 })}%`);
+            return (
+              <div className="tj-prob-avancadas" role="region" aria-label={tr("Probabilidades Avançadas")}>
+                <div className="tj-prob-av-cab">
+                  <strong title={tr("Ao menos N cartas do tipo na mão inicial (hipergeométrica, o mesmo cálculo das chances acima). As categorias são as dos selos, inclusive as que você escolheu em \"Categorizar\"; uma carta pode contar em mais de um tipo.")}>
+                    {tr("Probabilidades Avançadas")} <small>ⓘ</small>
+                  </strong>
+                  <span className="left-tabs" role="radiogroup" aria-label={tr("Cartas na mão inicial")}>
+                    {([5, 6] as const).map((n) => (
+                      <button key={n} role="radio" aria-checked={probAvancadas === n} className={probAvancadas === n ? "active" : ""} onClick={() => setProbAvancadas(n)}>
+                        {n === 5 ? tr("5 cartas (indo primeiro)") : tr("6 cartas (indo segundo)")}
+                      </button>
+                    ))}
+                  </span>
+                  <button className="link-btn" onClick={() => setProbAvancadas(null)} aria-label={tr("Fechar")}>✕</button>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{tr("Tipo")}</th>
+                      <th>{tr("No Deck")}</th>
+                      <th>{tr("Na mão")}</th>
+                      {[1, 2, 3, 4, 5].map((m) => (
+                        <th key={m}>{tr("{0}+", [m])}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tipos.map((p) => {
+                      const k = deTipo(main, p.id);
+                      const naMao = deTipo(ids, p.id);
+                      return (
+                        <tr key={p.id}>
+                          <td>
+                            <span className="selo-papel" style={{ background: p.cor }}>{p.sigla}</span> {p.label}
+                          </td>
+                          <td>{k}</td>
+                          <td>{naMao}</td>
+                          {[1, 2, 3, 4, 5].map((m) => (
+                            <td key={m} className={m === naMao ? "tj-prob-av-atual" : ""} title={tr("Chance de abrir ao menos {0} {1} em {2} cartas, com {3} no Deck de {4}", [m, p.label, probAvancadas, k, main.length])}>
+                              {pctA(chanceDeAbrirAoMenos(main.length, k, m, probAvancadas))}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          }
           return (
             <>
             <div className="tj-prob-mao">
@@ -1103,6 +1161,9 @@ export default function TesteJogo({
                   {tr("Sem classificação")}{" "}<strong>{papeis.semPapel}</strong>
                 </span>
               )}
+              <button className="link-btn tj-prob-av-btn" onClick={() => setProbAvancadas(5)} title={tr("Chance de abrir ao menos 1 a 5 Starters, Extenders, Hand Traps, Board Breakers e Floodgates")}>
+                {tr("Probabilidades Avançadas")}
+              </button>
             </div>
             </>
           );
