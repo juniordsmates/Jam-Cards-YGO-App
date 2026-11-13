@@ -28,6 +28,7 @@ import { FORMATS, type GameFormat } from "../db/legality";
 import { EMPTY_FILTERS, searchCards, type Filters, type SortKey } from "../db/search";
 import { bilingualName, categoryOf, displayName, type Card } from "../db/types";
 import { conquistar } from "../db/minhasConquistas";
+import { abrirMenuCarta } from "../components/MenuCarta";
 import CardSelos, { PapeisDaCarta } from "../components/CardSelos";
 import TesteJogo, { type ComboTeste } from "./TesteJogo";
 import "./deck-editor.css";
@@ -416,14 +417,21 @@ export default function DeckEditor({ onBack, inicial = {} }: { onBack: () => voi
           else adicionar(c);
         }}
         onContextMenu={(e: MouseEvent) => {
+          // menu da carta: a ação do editor (retirar ou adicionar) e "Categorizar"
           e.preventDefault();
-          if (parte && indice !== undefined) remover(parte, indice);
-          else adicionar(c);
+          abrirMenuCarta(e.clientX, e.clientY, c.id, [
+            parte && indice !== undefined
+              ? { label: t("Retirar do deck"), fazer: () => remover(parte, indice) }
+              : { label: t("Adicionar ao deck"), fazer: () => adicionar(c) },
+            ...(parte && indice !== undefined
+              ? [{ label: parte === "side" ? t("Mover para o Deck") : t("Mover para o Side"), fazer: () => mover(parte, indice, parte === "side" ? (ehExtra(c) ? "extra" : "main") : "side") }]
+              : [{ label: t("Adicionar ao Side"), fazer: () => adicionar(c, "side") }]),
+          ]);
         }}
         title={
           parte
-            ? t("{0} — botão direito retira; Shift+clique troca com o Side", [bilingualName(c)])
-            : t("{0} — clique adiciona ao Deck (ou ao Extra); Shift+clique, ao Side", [bilingualName(c)])
+            ? t("{0} — botão direito: retirar, Side ou categorizar; Shift+clique troca com o Side", [bilingualName(c)])
+            : t("{0} — clique adiciona ao Deck (ou ao Extra); Shift+clique, ao Side; botão direito: mais opções", [bilingualName(c)])
         }
         data-card-id={c.id}
       >

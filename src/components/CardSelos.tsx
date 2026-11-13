@@ -1,4 +1,5 @@
 import { banNoFormato, papeisDa } from "../db/classificacao";
+import { useCategoriasManuais } from "../db/categoriasManuais";
 import { BAN_LABELS } from "../db/labels";
 import type { GameFormat } from "../db/legality";
 import type { Card } from "../db/types";
@@ -7,6 +8,7 @@ import { t } from "../i18n";
 
 /** Classificação por extenso (painel da carta) */
 export function PapeisDaCarta({ card }: { card: Card }) {
+  useCategoriasManuais();
   const papeis = papeisDa(card);
   if (!papeis.length) return null;
   return (
@@ -26,6 +28,7 @@ export function PapeisDaCarta({ card }: { card: Card }) {
  * (Hand trap, Starter, Extender, Board breaker, Floodgate, Staple).
  */
 export default function CardSelos({ card, formato }: { card: Card; formato: GameFormat }) {
+  useCategoriasManuais();
   const ban = banNoFormato(card, formato);
   const papeis = papeisDa(card);
   return (

@@ -22,6 +22,7 @@ import ExitDialog from "./components/ExitDialog";
 import TestarDialog, { type ModoTeste } from "./components/TestarDialog";
 import AvisoConquista from "./components/AvisoConquista";
 import ZoomCarta from "./components/ZoomCarta";
+import MenuCarta from "./components/MenuCarta";
 import { FontesDialog, isFontesOpen } from "./components/Fontes";
 import { ContaDialog, isContaOpen, openConta } from "./components/Conta";
 import { isRespostasOpen, RespostasDialog } from "./components/RespostasDialog";
@@ -153,6 +154,8 @@ export default function App() {
       <AvisoConquista />
       {/* botão do meio sobre a imagem de uma carta: carta ampliada no meio da tela */}
       <ZoomCarta />
+      {/* botão direito sobre uma carta (fora do Simulador e dos testes): "Categorizar" */}
+      <MenuCarta />
 
       {screen === "menu" && (
         <MainMenu
