@@ -23,7 +23,7 @@ export const PAPEIS: Papel[] = [
   { id: "floodgate", label: t("Floodgate"), sigla: "FG", cor: "#b91c1c" },
   { id: "staple", label: t("Staple"), sigla: "SP", cor: "#a16207" },
   // carta que o combo precisa ter no Deck, mas que é ruim abrir na mão (só por escolha do usuário em "Categorizar")
-  { id: "combo-garnet", label: t("Combo Garnets"), sigla: "CG", cor: "#9f1239" },
+  { id: "brick", label: t("Brick"), sigla: "BR", cor: "#9f1239" },
 ];
 
 /** Papéis automáticos da carta (tags), na ordem de PAPEIS */

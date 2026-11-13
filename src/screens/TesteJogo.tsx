@@ -1161,7 +1161,7 @@ export default function TesteJogo({
                   {tr("Sem classificação")}{" "}<strong>{papeis.semPapel}</strong>
                 </span>
               )}
-              <button className="link-btn tj-prob-av-btn" onClick={() => setProbAvancadas(5)} title={tr("Chance de abrir ao menos 1 a 5 Starters, Extenders, Hand Traps, Board Breakers, Floodgates e Combo Garnets")}>
+              <button className="link-btn tj-prob-av-btn" onClick={() => setProbAvancadas(5)} title={tr("Chance de abrir ao menos 1 a 5 Starters, Extenders, Hand Traps, Board Breakers, Floodgates e Bricks")}>
                 {tr("Probabilidades Avançadas")}
               </button>
             </div>

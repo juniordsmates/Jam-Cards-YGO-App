@@ -8,7 +8,7 @@ import { t } from "../i18n";
 
 // Menu do botão direito sobre uma carta, em qualquer tela (menos no Simulador e nos Testes de Jogo,
 // que têm os menus de jogo): "Categorizar" abre a janela para escolher até 3 categorias (os papéis:
-// Hand trap, Starter, Extender, Board breaker, Floodgate, Staple, Combo Garnets). Telas que já usam o botão direito
+// Hand trap, Starter, Extender, Board breaker, Floodgate, Staple, Brick). Telas que já usam o botão direito
 // (Editor de Deck) abrem este menu com as ações delas antes (abrirMenuCarta).
 
 /** áreas de jogo, onde o botão direito é dos menus do duelo/teste */

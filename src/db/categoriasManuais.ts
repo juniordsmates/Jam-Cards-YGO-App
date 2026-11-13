@@ -9,10 +9,14 @@ export const MAX_CATEGORIAS = 3;
 
 type Mapa = Record<string, string[]>;
 
+/** categorias que mudaram de id (a "Combo Garnets" virou "Brick") */
+const RENOMEADAS: Record<string, string> = { "combo-garnet": "brick" };
+
 function ler(): Mapa {
   try {
     const m = JSON.parse(localStorage.getItem(CHAVE) ?? "{}") as Mapa;
-    return m && typeof m === "object" ? m : {};
+    if (!m || typeof m !== "object") return {};
+    return Object.fromEntries(Object.entries(m).map(([id, papeis]) => [id, papeis.map((x) => RENOMEADAS[x] ?? x)]));
   } catch {
     return {};
   }
