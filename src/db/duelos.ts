@@ -25,6 +25,10 @@ export interface Duelo {
   /** mão escolhida (vazia = aleatória); nula enquanto o jogador não deu "Pronto" */
   mao_criador?: number[] | null;
   mao_convidado?: number[] | null;
+  /** match (melhor de 3) de que esta sala é um jogo (migração 20261112000000); nulo no duelo único */
+  match?: string | null;
+  /** número do jogo na match (1, 2, 3…) */
+  jogo?: number;
 }
 
 // todas as colunas: funciona com ou sem a coluna "codigo" (migração 20261110020000)
@@ -49,10 +53,12 @@ const decodificar = (j: unknown): Jogada => JSON.parse(JSON.stringify(j), (_, v)
 /** Lugar de quem está jogando neste aparelho (0 ou 1) */
 export const meuJogador = (d: Duelo, contaId: string): 0 | 1 => (d.criador === contaId ? d.criador_jogador : ((1 - d.criador_jogador) as 0 | 1));
 
-/** Os dois decks na ordem do motor */
+/** Os dois decks na ordem do motor (na match o deck gravado traz o Side, que o motor não usa) */
 export const decksDoDuelo = (d: Duelo): [DeckSim, DeckSim] => {
-  const outro = d.deck_convidado ?? { main: [], extra: [] };
-  return d.criador_jogador === 0 ? [d.deck_criador, outro] : [outro, d.deck_criador];
+  const soMotor = (x: DeckSim | null): DeckSim => ({ main: x?.main ?? [], extra: x?.extra ?? [] });
+  const criador = soMotor(d.deck_criador);
+  const outro = soMotor(d.deck_convidado);
+  return d.criador_jogador === 0 ? [criador, outro] : [outro, criador];
 };
 
 /** Com a escolha das mãos ligada, falta alguém dar "Pronto" (o duelo ainda não começa) */
@@ -82,14 +88,14 @@ function falhaMao(error: { message: string; code?: string }): Error {
   return falha(error);
 }
 
-/** Cria a sala; o lugar de cada um e a semente são sorteados aqui */
-export async function criarDuelo(deck: DeckSim, versaoMotor: string, versaoApp: string, escolherMao = false): Promise<Duelo> {
+/** Cria a sala; o lugar de cada um e a semente são sorteados aqui. `match`: sala do jogo 1 de uma match */
+export async function criarDuelo(deck: DeckSim, versaoMotor: string, versaoApp: string, escolherMao = false, match?: string): Promise<Duelo> {
   const semente = Array.from(crypto.getRandomValues(new Uint32Array(4)), String);
   const criador_jogador = crypto.getRandomValues(new Uint8Array(1))[0] % 2;
   const { data, error } = await cliente()
     .from("duelos")
     // sem a escolha das mãos, a coluna fica fora (a sala funciona antes da migração dela)
-    .insert({ criador_jogador, semente, deck_criador: deck, versao_motor: versaoMotor, versao_app: versaoApp, ...(escolherMao ? { escolher_mao: true } : {}) })
+    .insert({ criador_jogador, semente, deck_criador: deck, versao_motor: versaoMotor, versao_app: versaoApp, ...(escolherMao ? { escolher_mao: true } : {}), ...(match ? { match } : {}) })
     .select(COLUNAS)
     .single();
   if (error) throw escolherMao ? falhaMao(error) : falha(error);
@@ -117,7 +123,7 @@ export async function obterDueloPorCodigo(codigo: string): Promise<Duelo | null>
 }
 
 /** Entra na sala (o banco confere se as versões do app e do motor batem com as do criador) */
-export async function entrarDuelo(id: string, deck: DeckSim, versaoMotor: string, versaoApp: string): Promise<Duelo> {
+export async function entrarDuelo(id: string, deck: DeckSim | DeckMatch, versaoMotor: string, versaoApp: string): Promise<Duelo> {
   const { data, error } = await cliente().rpc("entrar_duelo", { p_duelo: id, p_deck: deck, p_versao_motor: versaoMotor, p_versao_app: versaoApp });
   if (error) throw falha(error);
   return data as Duelo;
@@ -202,3 +208,81 @@ export const codigoDaSala = (texto: string) => (/^\s*\d{3}\s?\d{3}\s*$/.test(tex
 
 /** Id da sala num link colado */
 export const idDaSala = (texto: string) => texto.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0]?.toLowerCase() ?? null;
+
+// ---------------------------------------------------------------- match (melhor de 3)
+// supabase/migrations/20261112000000_matches.sql: a match guarda os decks originais (com o Side), o
+// placar e o preparo do próximo jogo; cada jogo é uma sala acima, com `match` e `jogo`.
+
+/** Deck da match: o do motor mais o Side */
+export interface DeckMatch extends DeckSim {
+  side: number[];
+}
+
+export interface Match {
+  id: string;
+  criador: string;
+  convidado: string | null;
+  deck_criador: DeckMatch;
+  deck_convidado: DeckMatch | null;
+  vitorias_criador: number;
+  vitorias_convidado: number;
+  /** jogos já encerrados */
+  jogos: number;
+  /** quem escolhe quem começa o próximo jogo */
+  escolhe: "criador" | "convidado" | null;
+  estado: "em-andamento" | "encerrado";
+  vencedor: string | null;
+  duelo_atual: string | null;
+  prox_deck_criador: DeckMatch | null;
+  prox_deck_convidado: DeckMatch | null;
+  prox_primeiro: "criador" | "convidado" | null;
+}
+
+/** Papel da conta na match */
+export const papelNaMatch = (m: Match, contaId: string): "criador" | "convidado" => (m.criador === contaId ? "criador" : "convidado");
+
+/** Erro da match: sem a migração dela, a tabela e as funções não existem */
+function falhaMatch(error: { message: string; code?: string }): Error {
+  if (["PGRST205", "PGRST202", "PGRST204", "42P01", "42703"].includes(error.code ?? "")) return new Error(t("A match (melhor de 3) ainda não foi ativada no servidor do app."));
+  return new Error(error.message);
+}
+
+/** Cria a match e a sala do jogo 1 (o oponente entra pelo link ou pelo código, como no duelo único) */
+export async function criarMatch(deck: DeckMatch, versaoMotor: string, versaoApp: string): Promise<{ match: Match; duelo: Duelo }> {
+  const { data, error } = await cliente().from("matches").insert({ deck_criador: deck }).select("*").single();
+  if (error) throw falhaMatch(error);
+  const duelo = await criarDuelo(deck, versaoMotor, versaoApp, false, (data as Match).id);
+  return { match: (await obterMatch((data as Match).id)) ?? (data as Match), duelo };
+}
+
+export async function obterMatch(id: string): Promise<Match | null> {
+  const { data, error } = await cliente().from("matches").select("*").eq("id", id).maybeSingle();
+  if (error) throw falhaMatch(error);
+  return (data as Match | null) ?? null;
+}
+
+/**
+ * Entre os jogos: grava o deck com o side trocado; quem escolhe manda também quem começa. Com os dois
+ * decks e a escolha gravados, o banco cria a sala do próximo jogo (`duelo_atual` muda).
+ */
+export async function prepararJogo(id: string, deck: DeckMatch, primeiro: "criador" | "convidado" | null): Promise<Match> {
+  const { data, error } = await cliente().rpc("preparar_jogo", { p_match: id, p_deck: deck, p_primeiro: primeiro });
+  if (error) throw falhaMatch(error);
+  return data as Match;
+}
+
+/** Abandona a match: o oponente vence a match e o jogo em andamento */
+export async function abandonarMatch(id: string) {
+  const { error } = await cliente().rpc("abandonar_match", { p_match: id });
+  if (error) throw falhaMatch(error);
+}
+
+/** Acompanha a match em tempo real; devolve a função que para de acompanhar */
+export function assinarMatch(id: string, aoMudar: (m: Match) => void): () => void {
+  const sb = cliente();
+  const canal = sb
+    .channel(`match-${id}`)
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: `id=eq.${id}` }, (p) => aoMudar(p.new as Match))
+    .subscribe();
+  return () => void sb.removeChannel(canal);
+}

@@ -100,6 +100,18 @@
   border-color: var(--magenta);
 }
 
+/* match (melhor de 3): troca de side entre os jogos e placar */
+.sim-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sim-placar {
+  margin: 4px 0;
+  font-weight: 600;
+}
+
 /* teste de combo vindo do "Testar" de um combo */
 .sim-teste-combo {
   display: flex;

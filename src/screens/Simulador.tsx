@@ -19,6 +19,9 @@ import { aleatorio } from "../db/testeJogo";
 import { useConta } from "../db/conta";
 import { openConta } from "../components/Conta";
 import { assinarDuelo, enviarChat, meusDuelos, codigoDaSala, obterDueloPorCodigo, partidasAtivas, criarDuelo, definirMao, encerrarDuelo, entrarDuelo, enviarResposta, faltaMao, idDaSala, meuJogador, minhaMao, partidaDoDuelo, nomesDeUsuarios, obterDuelo, respostasDoDuelo, type Duelo } from "../db/duelos";
+import { abandonarMatch, assinarMatch, criarMatch, obterMatch, papelNaMatch, prepararJogo, type DeckMatch, type Match } from "../db/duelos";
+import SideDeck from "../components/SideDeck";
+import { placar, quemEscolhe, sideValido, vencedorDaMatch, type Lado, type ResultadoJogo } from "../sim/match";
 import { copiarLink, linkPara, type Rota } from "../rotas";
 import { APP_VERSION } from "../version";
 import { LOCALE, t } from "../i18n";
@@ -175,6 +178,8 @@ interface Config {
   modo?: "ia" | "amigo";
   /** "Escolher Cartas na Mão" antes do duelo (Premium) */
   escolherMao?: boolean;
+  /** duelo único (1) ou match, melhor de 3 (3) */
+  melhorDe?: 1 | 3;
 }
 function lerConfig(): Partial<Config> {
   try {
@@ -195,6 +200,8 @@ interface DeckOpcao {
   valor: string;
   nome: string;
   deck: DeckSim;
+  /** Side Deck (só os decks do Editor de Deck têm): usado na troca entre os jogos de uma match */
+  side: number[];
   linhas: LinhaIA[];
 }
 
@@ -263,16 +270,16 @@ export default function Simulador({
       .filter((d) => !d.temporario && d.main.length)
       .map((d) => {
         const ids = new Set(d.main);
-        return { valor: `meu:${d.id}`, nome: d.nome, deck: { main: d.main, extra: d.extra }, linhas: linhas.filter((l) => l.mao.every((c) => ids.has(c))) };
+        return { valor: `meu:${d.id}`, nome: d.nome, deck: { main: d.main, extra: d.extra }, side: d.side, linhas: linhas.filter((l) => l.mao.every((c) => ids.has(c))) };
       });
     const meta = (combos?.decks ?? []).flatMap((d, i) => {
       const lista = d.listas?.find((l) => l.formatos.includes("TCG")) ?? d.listas?.[0];
       if (!lista) return [];
-      return [{ valor: `meta:${i}`, nome: `${d.nome}${d.evento ? ` · ${d.evento}` : ""}`, deck: { main: lista.main, extra: lista.extra }, linhas: linhas.filter((l) => l.deck === i) }];
+      return [{ valor: `meta:${i}`, nome: `${d.nome}${d.evento ? ` · ${d.evento}` : ""}`, deck: { main: lista.main, extra: lista.extra }, side: [], linhas: linhas.filter((l) => l.deck === i) }];
     });
     // teste de combo: o deck temporário do combo, com as cópias que a mão do teste pede
     const doCombo = testeCombo
-      ? [{ valor: "combo", nome: testeCombo.deck.nome, deck: { main: [...testeCombo.deck.main, ...faltando(testeCombo.deck.main, maoDoTeste(testeCombo.combo))], extra: testeCombo.deck.extra }, linhas: [] }]
+      ? [{ valor: "combo", nome: testeCombo.deck.nome, deck: { main: [...testeCombo.deck.main, ...faltando(testeCombo.deck.main, maoDoTeste(testeCombo.combo))], extra: testeCombo.deck.extra }, side: [], linhas: [] }]
       : [];
     return [...doCombo, ...meus, ...meta];
   }, [decks, db.extras?.combos, testeCombo]);
@@ -298,11 +305,14 @@ export default function Simulador({
     todasJanelas: salvo.todasJanelas,
     escolherMao: salvo.escolherMao,
     modo: salvo.modo ?? "ia",
+    melhorDe: salvo.melhorDe ?? 1,
   }));
+  // match (melhor de 3): fora do teste de combo e do Modo de Treino
+  const melhorDe3 = cfg.melhorDe === 3 && !testeCombo && !treino;
   const meu = opcoes.find((o) => o.valor === cfg.meu) ?? (comboEu ? sugerido : undefined) ?? opcoes.find((o) => o.valor !== "combo") ?? opcoes[0];
   const doIA = opcoes.find((o) => o.valor === cfg.ia) ?? (comboIA ? sugerido : undefined) ?? opcoes.find((o) => o.valor.startsWith("meta:")) ?? opcoes[0];
 
-  const [etapa, setEtapaEstado] = useState<"config" | "carregando" | "sala" | "mao" | "duelo">("config");
+  const [etapa, setEtapaEstado] = useState<"config" | "carregando" | "sala" | "mao" | "duelo" | "side">("config");
   const etapaRef = useRef(etapa);
   const setEtapa = (e: typeof etapa) => {
     etapaRef.current = e;
@@ -368,6 +378,20 @@ export default function Simulador({
   const [copiado, setCopiado] = useState(false);
   const [desistencia, setDesistencia] = useState<{ vencedor: number | null; quem: "eu" | "oponente" } | null>(null);
   const [confirmarDesistir, setConfirmarDesistir] = useState(false);
+  // match contra a IA: o deck original (com o Side), o deck do jogo atual, os jogos já encerrados e
+  // quem começou o jogo 1 (escolhe de novo se ele empatar)
+  const [matchIA, setMatchIA] = useState<{ original: DeckMatch; atual: DeckMatch; resultados: ResultadoJogo[]; inicial: Lado; abandonada?: boolean } | null>(null);
+  // match na partida 1x1: a linha do banco (placar, quem escolhe, sala do jogo atual)
+  const [matchPvp, setMatchPvpEstado] = useState<Match | null>(null);
+  const matchPvpRef = useRef<Match | null>(null);
+  const setMatchPvp = (m: Match | null) => {
+    matchPvpRef.current = m;
+    setMatchPvpEstado(m);
+  };
+  const pararMatch = useRef<(() => void) | null>(null);
+  // troca de side entre os jogos: o deck sendo montado, quem começa (se for a sua escolha) e se já foi enviado
+  const [side, setSide] = useState<{ deck: DeckMatch; primeiro: Lado | null; enviado?: boolean } | null>(null);
+  const [confirmarAbandono, setConfirmarAbandono] = useState(false);
   // o que o duelo ensinou (fica só neste aparelho nesta etapa)
   const [aprendido, setAprendido] = useState<Aprendizado | null>(null);
   // "Análise da IA" de um duelo (chave: "fim" ou a data do replay)
@@ -378,7 +402,7 @@ export default function Simulador({
   const rotulosRef = useRef<RotulosReplay | undefined>(undefined);
   const premium = temPremium(conta);
   // "Escolher Cartas na Mão" (Premium): contra a IA, as duas mãos (null = Aleatório); no 1x1, a sua
-  const escolherMao = premium && !!cfg.escolherMao && !testeCombo;
+  const escolherMao = premium && !!cfg.escolherMao && !testeCombo && !melhorDe3;
   const [maos, setMaos] = useState<{ eu: number[] | null; ia: number[] | null }>({ eu: null, ia: null });
   // janela "Escolher Cartas na Mão" (contra a IA) aberta
   const [janelaMao, setJanelaMao] = useState(false);
@@ -446,6 +470,7 @@ export default function Simulador({
     () => () => {
       cliente.current?.encerrar();
       pararSala.current?.();
+      pararMatch.current?.();
       // sala aberta e ninguém entrou: sair cancela
       const d = salaRef.current;
       if (d?.estado === "aguardando") void encerrarDuelo(d.id, null).catch(() => {});
@@ -503,13 +528,18 @@ export default function Simulador({
     setEtapa("config");
   };
 
-  async function iniciar() {
+  /**
+   * Começa o duelo contra a IA. Sem `jogo`, é um duelo novo (o jogo 1, na match); com ele, o próximo
+   * jogo da match: o deck com o side trocado e quem começa, escolhido pelo perdedor do anterior.
+   */
+  async function iniciar(jogo?: { deck: DeckSim; humano: 0 | 1 }) {
     if (!meu || !doIA) return;
     gravarConfig({ ...cfg, meu: meu.valor, ia: doIA.valor });
     setEtapa("carregando");
     setErro(null);
     pararSala.current?.();
     setSala(null);
+    const meuDeck = jogo?.deck ?? meu.deck;
     try {
       // teste de combo: o deck de quem tem o combo precisa ter as cartas da mão dele
       const nome = (id: number) => (byId.get(id) ? displayName(byId.get(id)!) : `#${id}`);
@@ -517,11 +547,16 @@ export default function Simulador({
         const falta = tem ? faltando(o.deck.main, maoCombo) : [];
         if (falta.length) throw new Error(t("O deck {0} não tem estas cartas da mão do combo: {1}", [o.nome, falta.map(nome).join(", ")]));
       }
-      const c = await prepararMotor(meu.deck);
+      const c = await prepararMotor(meuDeck);
       // no teste de combo, quem tem o combo começa (com os dois, a IA)
-      const humano = testeCombo ? (testeCombo.quem === "eu" ? 0 : 1) : cfg.primeiro === "eu" ? 0 : cfg.primeiro === "ia" ? 1 : (aleatorio(2) as 0 | 1);
+      const humano = jogo ? jogo.humano : testeCombo ? (testeCombo.quem === "eu" ? 0 : 1) : cfg.primeiro === "eu" ? 0 : cfg.primeiro === "ia" ? 1 : (aleatorio(2) as 0 | 1);
+      // match nova: guarda o deck original (com o Side) para as trocas entre os jogos
+      if (!jogo) {
+        const completo: DeckMatch = { main: [...meu.deck.main], extra: [...meu.deck.extra], side: [...meu.side] };
+        setMatchIA(melhorDe3 ? { original: completo, atual: completo, resultados: [], inicial: humano === 0 ? "eu" : "op" } : null);
+      }
       // o motor sempre dá o primeiro turno ao jogador 0
-      const par: [DeckSim, DeckSim] = humano === 0 ? [meu.deck, doIA.deck] : [doIA.deck, meu.deck];
+      const par: [DeckSim, DeckSim] = humano === 0 ? [meuDeck, doIA.deck] : [doIA.deck, meuDeck];
       const semente = Array.from(crypto.getRandomValues(new Uint32Array(4)), String) as [string, string, string, string];
       // mãos fixas: a do combo (teste de combo) ou as escolhidas (Aleatório = sem mão fixa)
       const mao = { eu: comboEu ? maoCombo : escolherMao ? (maos.eu ?? []) : [], ia: comboIA ? maoCombo : escolherMao ? (maos.ia ?? []) : [] };
@@ -598,6 +633,18 @@ export default function Simulador({
   /** Começa (ou retoma, depois de cair) o duelo 1x1 com a sala já com os dois jogadores */
   async function comecarPvp(d: Duelo) {
     if (!conta) return;
+    // jogo de uma match: acompanha o placar e o preparo do próximo jogo
+    if (d.match) {
+      if (matchPvpRef.current?.id !== d.match || !pararMatch.current)
+        void obterMatch(d.match)
+          .then((m) => m && acompanharMatch(m))
+          .catch(() => {});
+    } else if (matchPvpRef.current) {
+      pararMatch.current?.();
+      pararMatch.current = null;
+      setMatchPvp(null);
+    }
+    setSide(null);
     // "Escolher Cartas na Mão": antes do duelo, cada um escolhe a própria mão e dá "Pronto"
     if (faltaMao(d)) {
       setSala(d);
@@ -648,7 +695,18 @@ export default function Simulador({
     setErro(null);
     try {
       await prepararMotor(meu.deck);
-      const d = await criarDuelo(meu.deck, versaoMotor.current, APP_VERSION, escolherMao);
+      let d: Duelo;
+      if (melhorDe3) {
+        // match: o deck vai com o Side, para as trocas entre os jogos
+        const r = await criarMatch({ ...meu.deck, side: meu.side }, versaoMotor.current, APP_VERSION);
+        acompanharMatch(r.match);
+        d = r.duelo;
+      } else {
+        pararMatch.current?.();
+        pararMatch.current = null;
+        setMatchPvp(null);
+        d = await criarDuelo(meu.deck, versaoMotor.current, APP_VERSION, escolherMao);
+      }
       setSala(d);
       acompanhar(d);
       setCopiado(false);
@@ -679,7 +737,8 @@ export default function Simulador({
     setErro(null);
     try {
       await prepararMotor(meu.deck);
-      const novo = await entrarDuelo(d.id, meu.deck, versaoMotor.current, APP_VERSION);
+      // sala de uma match: o deck vai com o Side, para as trocas entre os jogos
+      const novo = await entrarDuelo(d.id, d.match ? { ...meu.deck, side: meu.side } : meu.deck, versaoMotor.current, APP_VERSION);
       await comecarPvp(novo);
     } catch (e) {
       falhou(e);
@@ -694,8 +753,21 @@ export default function Simulador({
     try {
       const d = await obterDuelo(id);
       if (!d) throw new Error(t("Sala não encontrada (ou você não participa dela)."));
-      if (d.estado === "encerrado") throw new Error(t("Esta partida já terminou."));
       const participo = conta.id === d.criador || conta.id === d.convidado;
+      if (d.estado === "encerrado") {
+        // jogo encerrado de uma match em andamento: vai ao jogo atual ou volta à troca de side
+        const m = d.match && participo ? await obterMatch(d.match) : null;
+        if (!m || m.estado === "encerrado") throw new Error(t("Esta partida já terminou."));
+        if (m.duelo_atual && m.duelo_atual !== d.id) return void (await abrirSala(m.duelo_atual));
+        const outro = d.criador === conta.id ? d.convidado : d.criador;
+        if (outro) void nomesDeUsuarios([outro]).then((n) => setNomeOp(n[outro] ?? null));
+        setEu(meuJogador(d, conta.id));
+        setSala(d);
+        acompanharMatch(m);
+        setSide({ deck: comSide(d.criador === conta.id ? d.deck_criador : d.deck_convidado), primeiro: null, enviado: (papelNaMatch(m, conta.id) === "criador" ? m.prox_deck_criador : m.prox_deck_convidado) !== null });
+        setEtapa("side");
+        return;
+      }
       if (d.estado === "em-andamento") {
         if (!participo) throw new Error(t("Esta partida já começou com outros jogadores."));
         return void comecarPvp(d);
@@ -703,6 +775,10 @@ export default function Simulador({
       if (d.criador === conta.id) {
         setSala(d);
         acompanhar(d);
+        if (d.match)
+          void obterMatch(d.match)
+            .then((m) => m && acompanharMatch(m))
+            .catch(() => {});
         setEtapa("sala");
         return;
       }
@@ -1031,7 +1107,7 @@ export default function Simulador({
     }
   }
 
-  /** Desiste: na partida 1x1, o oponente vence; contra a IA, o duelo só termina */
+  /** Desiste: na partida 1x1, o oponente vence; contra a IA, o duelo só termina (na match, conta como derrota no jogo) */
   function desistir() {
     void cliente.current?.aprendizado().then((a) => a && registrarAprendizado(a));
     setConfirmarDesistir(false);
@@ -1041,15 +1117,112 @@ export default function Simulador({
     if (d) void encerrarDuelo(d.id, vencedor as 0 | 1).catch(() => {});
   }
 
-  /** Volta à configuração para outra partida (fecha a sala acompanhada) */
+  /** Volta à configuração para outra partida (fecha a sala e a match acompanhadas) */
   function novaPartida() {
     pararSala.current?.();
     pararSala.current = null;
+    pararMatch.current?.();
+    pararMatch.current = null;
+    setMatchPvp(null);
+    setMatchIA(null);
+    setSide(null);
+    setConfirmarAbandono(false);
     setSala(null);
     setNomeOp(null);
     setConvite(null);
     setEtapa("config");
     if (dueloDaRota) onRota?.({ tela: "simulador" });
+  }
+
+  // ---------- match (melhor de 3) ----------
+
+  /** Vencedor do jogo que acabou de terminar, do ponto de vista deste aparelho (null: empate) */
+  function resultadoDoJogo(): ResultadoJogo {
+    const v = quadroRef.current?.fim?.vencedor ?? desistenciaRef.current?.vencedor;
+    return v === euRef.current ? "eu" : v === 1 - euRef.current ? "op" : null;
+  }
+
+  /** O seu deck da match (original ou do jogo atual), com o Side */
+  const comSide = (d: DeckSim | null | undefined): DeckMatch => ({ main: [...(d?.main ?? [])], extra: [...(d?.extra ?? [])], side: [...((d as DeckMatch | null | undefined)?.side ?? [])] });
+
+  /** Mudança na match 1x1: placar, fim da match ou a sala do próximo jogo, que o banco acabou de criar */
+  function aoMudarMatch(m: Match) {
+    setMatchPvp(m);
+    if (etapaRef.current === "side" && m.estado === "em-andamento" && m.duelo_atual && m.duelo_atual !== salaRef.current?.id && abrindoJogo.current !== m.duelo_atual) {
+      abrindoJogo.current = m.duelo_atual;
+      void obterDuelo(m.duelo_atual)
+        .then((d) => d && comecarPvp(d))
+        .catch(falhou);
+    }
+  }
+  const abrindoJogo = useRef<string | null>(null);
+
+  /** Acompanha a match 1x1 pelo tempo real e, entre os jogos, conferindo o banco a cada 2 segundos */
+  function acompanharMatch(m: Match) {
+    const jaAcompanha = !!pararMatch.current && matchPvpRef.current?.id === m.id;
+    setMatchPvp(m);
+    if (jaAcompanha) return;
+    pararMatch.current?.();
+    const pararTempoReal = assinarMatch(m.id, aoMudarMatch);
+    const timer = window.setInterval(() => {
+      // durante o jogo nada muda na match: só confere entre os jogos
+      if (etapaRef.current !== "side" && !quadroRef.current?.fim && !desistenciaRef.current) return;
+      void obterMatch(m.id)
+        .then((novo) => novo && aoMudarMatch(novo))
+        .catch(() => {});
+    }, 2000);
+    pararMatch.current = () => {
+      pararTempoReal();
+      window.clearInterval(timer);
+    };
+  }
+
+  /** "Próximo jogo": guarda o resultado (contra a IA) e abre a troca de side */
+  function proximoJogo() {
+    setErro(null);
+    setConfirmarAbandono(false);
+    if (matchIA) {
+      const m = { ...matchIA, resultados: [...matchIA.resultados, resultadoDoJogo()] };
+      setMatchIA(m);
+      setSide({ deck: comSide(m.atual), primeiro: null });
+    } else if (matchPvp && conta && sala) {
+      setSide({ deck: comSide(sala.criador === conta.id ? sala.deck_criador : sala.deck_convidado), primeiro: null });
+    } else return;
+    setEtapa("side");
+  }
+
+  /** "Pronto" da troca de side: contra a IA começa o próximo jogo; no 1x1 manda o deck e a escolha ao banco */
+  async function prontoSide() {
+    if (!side) return;
+    if (matchIA) {
+      // a IA, quando escolhe, escolhe começar
+      const comeca: Lado = quemEscolhe(matchIA.resultados, matchIA.inicial) === "eu" ? (side.primeiro ?? "eu") : "op";
+      setMatchIA({ ...matchIA, atual: side.deck });
+      return void iniciar({ deck: { main: side.deck.main, extra: side.deck.extra }, humano: comeca === "eu" ? 0 : 1 });
+    }
+    const m = matchPvpRef.current;
+    if (!m || !conta) return;
+    const papel = papelNaMatch(m, conta.id);
+    const outro = papel === "criador" ? "convidado" : "criador";
+    const primeiro = m.escolhe === papel && side.primeiro ? (side.primeiro === "eu" ? papel : outro) : null;
+    setErro(null);
+    try {
+      const novo = await prepararJogo(m.id, side.deck, primeiro);
+      setSide({ ...side, enviado: true });
+      aoMudarMatch(novo);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /** Abandona a match: o oponente vence (e o jogo em andamento termina como desistência) */
+  function abandonar() {
+    setConfirmarAbandono(false);
+    setConfirmarDesistir(false);
+    if (matchIA) setMatchIA({ ...matchIA, abandonada: true });
+    const m = matchPvpRef.current;
+    if (m) void abandonarMatch(m.id).catch(() => {});
+    if (etapaRef.current === "duelo" && !quadroRef.current?.fim && !desistenciaRef.current) desistir();
   }
 
   /** Retângulo na tela do lugar de uma carta (mão, pilha ou zona do campo) */
@@ -1272,6 +1445,112 @@ export default function Simulador({
     </label>
   );
 
+  /**
+   * Situação da match (null: duelo único): placar, jogos encerrados, vencedor e quem escolhe quem
+   * começa o próximo jogo. `fimDoJogo`: resultado do jogo que acabou de terminar e ainda não foi guardado
+   * (contra a IA); no 1x1 o placar vem do banco e fica "atualizando" até ele contar o jogo.
+   */
+  const situacaoMatch = (fimDoJogo?: ResultadoJogo) => {
+    if (matchIA) {
+      const r = fimDoJogo !== undefined ? [...matchIA.resultados, fimDoJogo] : matchIA.resultados;
+      const vencedor: Lado | null = matchIA.abandonada ? "op" : vencedorDaMatch(r);
+      return { encerrados: r.length, placar: placar(r), vencedor, encerrada: !!vencedor, atualizando: false, escolhe: quemEscolhe(r, matchIA.inicial) };
+    }
+    if (matchPvp && conta) {
+      const papel = papelNaMatch(matchPvp, conta.id);
+      const p = papel === "criador" ? { eu: matchPvp.vitorias_criador, op: matchPvp.vitorias_convidado } : { eu: matchPvp.vitorias_convidado, op: matchPvp.vitorias_criador };
+      const encerrada = matchPvp.estado === "encerrado";
+      const vencedor: Lado | null = !encerrada || !matchPvp.vencedor ? null : matchPvp.vencedor === conta.id ? "eu" : "op";
+      const jogo = sala?.match === matchPvp.id ? (sala.jogo ?? 1) : 1;
+      const escolhe: Lado = matchPvp.escolhe === papel ? "eu" : "op";
+      return { encerrados: matchPvp.jogos, placar: p, vencedor, encerrada, atualizando: fimDoJogo !== undefined && !encerrada && matchPvp.jogos < jogo, escolhe };
+    }
+    return null;
+  };
+
+  if (etapa === "side" && side) {
+    const s = situacaoMatch();
+    const rotulo = matchIA ? t("IA") : (nomeOp ?? t("Oponente"));
+    const original = comSide(matchIA ? matchIA.original : matchPvp && conta ? (papelNaMatch(matchPvp, conta.id) === "criador" ? matchPvp.deck_criador : matchPvp.deck_convidado) : null);
+    const escolheEu = s?.escolhe === "eu";
+    return (
+      <ScreenShell title={tituloTela} accent="magenta" onBack={() => setConfirmarAbandono(true)}>
+        <div className="sim-config">
+          <h3>{t("Match · jogo {0}", [(s?.encerrados ?? 0) + 1])}</h3>
+          {s && <p className="sim-placar">{t("Placar: você {0} x {1} {2}", [s.placar.eu, s.placar.op, rotulo])}</p>}
+          {s?.encerrada ? (
+            <>
+              <p>{s.vencedor === "eu" ? t("{0} abandonou a match. Você venceu!", [rotulo]) : t("A match terminou.")}</p>
+              <button className="ghost-btn sim-duelar" onClick={novaPartida}>
+                {t("Nova partida")}
+              </button>
+            </>
+          ) : side.enviado ? (
+            <p className="sim-pensando" role="status">
+              {t("Aguardando o oponente terminar o side…")}
+            </p>
+          ) : (
+            <>
+              {original.side.length > 0 ? (
+                <SideDeck original={original} deck={side.deck} byId={byId} onChange={(deck) => setSide({ ...side, deck })} />
+              ) : (
+                <p className="tags-note">{t("O seu deck não tem Side Deck: ele segue igual no próximo jogo.")}</p>
+              )}
+              {escolheEu ? (
+                <fieldset className="sim-campo">
+                  <legend className="field-label">{t("Quem começa este jogo (você escolhe)")}</legend>
+                  <div className="sim-niveis">
+                    <button className={`ghost-btn ${side.primeiro === "eu" ? "sim-ativo" : ""}`} onClick={() => setSide({ ...side, primeiro: "eu" })} aria-pressed={side.primeiro === "eu"}>
+                      {t("Eu começo")}
+                    </button>
+                    <button className={`ghost-btn ${side.primeiro === "op" ? "sim-ativo" : ""}`} onClick={() => setSide({ ...side, primeiro: "op" })} aria-pressed={side.primeiro === "op"}>
+                      {t("{0} começa", [rotulo])}
+                    </button>
+                  </div>
+                </fieldset>
+              ) : (
+                <small className="tags-note">{matchIA ? t("A IA escolhe quem começa este jogo: ela começa.") : t("{0} escolhe quem começa este jogo.", [rotulo])}</small>
+              )}
+              <button className="ghost-btn sim-duelar" disabled={!sideValido(original, side.deck) || (escolheEu && !side.primeiro)} onClick={() => void prontoSide()}>
+                {t("Pronto")}
+              </button>
+            </>
+          )}
+          {!s?.encerrada &&
+            (confirmarAbandono ? (
+              <div className="sim-campo" role="alertdialog" aria-label={t("Abandonar match")}>
+                <p>{t("Abandonar a match? {0} vence.", [rotulo])}</p>
+                <div className="sim-niveis">
+                  <button
+                    className="danger-btn"
+                    onClick={() => {
+                      abandonar();
+                      novaPartida();
+                    }}
+                    autoFocus
+                  >
+                    {t("Abandonar match")}
+                  </button>
+                  <button className="ghost-btn" onClick={() => setConfirmarAbandono(false)}>
+                    {t("Continuar na match")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button className="ghost-btn" onClick={() => setConfirmarAbandono(true)}>
+                {t("Abandonar match")}
+              </button>
+            ))}
+          {erro && (
+            <p className="conta-erro" role="alert">
+              {erro}
+            </p>
+          )}
+        </div>
+      </ScreenShell>
+    );
+  }
+
   if (etapa === "mao" && sala && conta) {
     const jaDei = minhaMao(sala, conta.id) !== null;
     const meuDeck = sala.criador === conta.id ? sala.deck_criador : sala.deck_convidado;
@@ -1308,6 +1587,7 @@ export default function Simulador({
       <ScreenShell title={tituloTela} accent="magenta" onBack={onBack}>
         <div className="sim-config">
           <h3>{t("Sala criada")}</h3>
+          {sala.match && <p className="tags-note">{t("Match (melhor de 3): vence quem ganhar 2 jogos.")}</p>}
           <p>{t("Mande o link ou o código para o seu oponente. O duelo começa assim que ele entrar com o deck dele.")}</p>
           <label className="sim-campo">
             <span className="field-label">{t("Link da sala")}</span>
@@ -1376,6 +1656,24 @@ export default function Simulador({
                 </div>
               </section>
             )}
+            {!convite && !testeCombo && !treino && (
+              <fieldset className="sim-campo">
+                <legend className="field-label">{t("Formato")}</legend>
+                <div className="sim-niveis">
+                  <button className={`ghost-btn ${!melhorDe3 ? "sim-ativo" : ""}`} onClick={() => setCfg({ ...cfg, melhorDe: 1 })} aria-pressed={!melhorDe3}>
+                    {t("Duelo único")}
+                  </button>
+                  <button className={`ghost-btn ${melhorDe3 ? "sim-ativo" : ""}`} onClick={() => setCfg({ ...cfg, melhorDe: 3 })} aria-pressed={melhorDe3}>
+                    {t("Match (melhor de 3)")}
+                  </button>
+                </div>
+                <small className="tags-note">
+                  {melhorDe3
+                    ? t("Vence quem ganhar 2 jogos. Antes do jogo 2 e do jogo 3 você pode trocar cartas com o Side Deck, e quem perdeu o jogo anterior escolhe quem começa.")
+                    : t("Um duelo só.")}
+                </small>
+              </fieldset>
+            )}
             {!amigo && opcoes.length > 0 && (
               <>
                 <fieldset className="sim-campo">
@@ -1401,7 +1699,7 @@ export default function Simulador({
                     </div>
                   </fieldset>
                 )}
-                <button className="sim-duelar-grande" onClick={iniciar} disabled={etapa === "carregando"}>
+                <button className="sim-duelar-grande" onClick={() => void iniciar()} disabled={etapa === "carregando"}>
                   {etapa === "carregando" ? progresso || t("Preparando…") : t("Duelar")}
                 </button>
                 {conta?.admin && !testeCombo && !treino && (
@@ -1442,6 +1740,7 @@ export default function Simulador({
               <p>
                 <strong>{t("Convite de {0}", [convite.criador])}</strong> — {t("escolha o seu deck e entre no duelo.")}
               </p>
+              {convite.duelo.match && <p className="tags-note">{t("É uma match (melhor de 3): o Side Deck do seu deck vale para as trocas entre os jogos.")}</p>}
               <label className="sim-campo">
                 <span className="field-label">{t("Seu deck")}</span>
                 <select value={meu?.valor} onChange={(e) => setCfg({ ...cfg, meu: e.target.value })}>
@@ -1478,7 +1777,7 @@ export default function Simulador({
                   ))}
                 </select>
               </label>
-              {opcaoEscolherMao(t("Antes do duelo, cada um escolhe as cartas da própria mão e clica em Pronto."))}
+              {!melhorDe3 && opcaoEscolherMao(t("Antes do duelo, cada um escolhe as cartas da própria mão e clica em Pronto."))}
               <button className="ghost-btn sim-duelar" onClick={() => void criarSala()} disabled={carregando || servidorPvp === false}>
                 {carregando ? progresso || t("Preparando…") : t("Criar sala")}
               </button>
@@ -1523,13 +1822,13 @@ export default function Simulador({
                       </option>
                     ))}
                   </select>
-                  {!testeCombo && (
+                  {!testeCombo && !melhorDe3 && (
                     <button className="ghost-btn sim-btn-mao" disabled={!premium} onClick={() => setJanelaMao(true)} title={premium ? t("Escolha a sua mão inicial e a da IA") : t("Recurso Premium.")}>
                       {t("Escolher Cartas na Mão")}
                     </button>
                   )}
                 </div>
-                {!testeCombo && (
+                {!testeCombo && !melhorDe3 && (
                   <small className="tags-note">
                     {!premium
                       ? t("Escolher Cartas na Mão: recurso Premium.")
@@ -2114,12 +2413,14 @@ export default function Simulador({
       ? (desistencia && !quadro.fim ? (desistencia.quem === "eu" ? t("Você desistiu.") + " " : t("{0} desistiu ou saiu.", [rotuloOp]) + " ") : "") +
         (vencedorFim === eu ? t("Você venceu!") : vencedorFim === op ? t("{0} venceu.", [rotuloOp]) : t("Fim do duelo."))
       : null;
+  // match: o placar com o jogo que acabou de terminar
+  const fimMatch = situacaoMatch(fimTexto ? (vencedorFim === eu ? "eu" : vencedorFim === op ? "op" : null) : undefined);
 
   return (
     <ScreenShell
       title={revisao ? t("Revisão da partida") : tituloTela}
       accent="magenta"
-      onBack={() => (revisao ? sairRevisao() : fimTexto ? onBack() : setSair(true))}
+      onBack={() => (revisao ? sairRevisao() : fimTexto && !(fimMatch && !fimMatch.encerrada) ? onBack() : setSair(true))}
       plain
       actions={
         <div className="sim-topo">
@@ -2330,10 +2631,31 @@ export default function Simulador({
           ) : fimTexto ? (
             <div className="sim-fim" role="status">
               <strong>{fimTexto}</strong>
+              {fimMatch && (
+                <p className="sim-placar">
+                  {fimMatch.atualizando
+                    ? t("Atualizando o placar da match…")
+                    : t("Match: você {0} x {1} {2}", [fimMatch.placar.eu, fimMatch.placar.op, rotuloOp])}
+                  {fimMatch.vencedor === "eu" && <strong> · {t("Você venceu a match!")}</strong>}
+                  {fimMatch.vencedor === "op" && <strong> · {t("{0} venceu a match.", [rotuloOp])}</strong>}
+                  {fimMatch.encerrada && !fimMatch.vencedor && <strong> · {t("A match terminou.")}</strong>}
+                </p>
+              )}
               <div className="sim-niveis">
-                <button className="ghost-btn" onClick={novaPartida}>
-                  {t("Nova partida")}
-                </button>
+                {fimMatch && !fimMatch.encerrada ? (
+                  <>
+                    <button className="ghost-btn" onClick={proximoJogo} disabled={fimMatch.atualizando} autoFocus>
+                      {t("Próximo jogo")}
+                    </button>
+                    <button className="ghost-btn" onClick={() => setConfirmarDesistir(true)}>
+                      {t("Abandonar match")}
+                    </button>
+                  </>
+                ) : (
+                  <button className="ghost-btn" onClick={novaPartida}>
+                    {t("Nova partida")}
+                  </button>
+                )}
                 {aprendido && (
                   <button className="ghost-btn" onClick={() => void abrirRevisao({ partida: aprendido.partida, humano: aprendido.humano, nivel: "normal", historico: aprendido.historico }, rotuloOp)}>
                     {t("Revisar a partida")}
@@ -2478,14 +2800,27 @@ export default function Simulador({
         {confirmarDesistir && (
           <div className="tj-menu-fundo" onClick={() => setConfirmarDesistir(false)}>
             <div className="tj-lista sim-sair" role="dialog" aria-label={t("Desistir")} onClick={(e) => e.stopPropagation()}>
-              <h4>{t("Desistir do duelo?")}</h4>
-              <p>{t("{0} vence o duelo.", [rotuloOp])}</p>
+              <h4>{fimTexto ? t("Abandonar a match?") : fimMatch ? t("Desistir do jogo?") : t("Desistir do duelo?")}</h4>
+              <p>
+                {fimTexto
+                  ? t("{0} vence a match.", [rotuloOp])
+                  : fimMatch
+                    ? t("Desistir: {0} vence este jogo e a match continua. Abandonar: {0} vence a match.", [rotuloOp])
+                    : t("{0} vence o duelo.", [rotuloOp])}
+              </p>
               <div className="sim-niveis">
-                <button className="danger-btn" onClick={desistir} autoFocus>
-                  {t("Desistir")}
-                </button>
+                {!fimTexto && (
+                  <button className="danger-btn" onClick={desistir} autoFocus>
+                    {fimMatch ? t("Desistir do jogo") : t("Desistir")}
+                  </button>
+                )}
+                {fimMatch && !fimMatch.encerrada && (
+                  <button className="danger-btn" onClick={abandonar}>
+                    {t("Abandonar match")}
+                  </button>
+                )}
                 <button className="ghost-btn" onClick={() => setConfirmarDesistir(false)}>
-                  {t("Continuar duelando")}
+                  {fimTexto ? t("Continuar na match") : t("Continuar duelando")}
                 </button>
               </div>
             </div>
@@ -2496,12 +2831,13 @@ export default function Simulador({
           <div className="tj-menu-fundo" onClick={() => setSair(false)}>
             <div className="tj-lista sim-sair" role="dialog" aria-label={t("Sair do duelo")} onClick={(e) => e.stopPropagation()}>
               <h4>{t("Sair do duelo?")}</h4>
-              <p>{sala ? t("Sair conta como desistência: {0} vence.", [rotuloOp]) : t("O duelo em andamento será perdido.")}</p>
+              <p>{fimMatch && !fimMatch.encerrada ? t("Sair abandona a match: {0} vence.", [rotuloOp]) : sala ? t("Sair conta como desistência: {0} vence.", [rotuloOp]) : t("O duelo em andamento será perdido.")}</p>
               <div className="sim-niveis">
                 <button
                   className="danger-btn"
                   onClick={() => {
-                    if (!fimTexto) desistir();
+                    if (fimMatch && !fimMatch.encerrada) abandonar();
+                    else if (!fimTexto) desistir();
                     onBack();
                   }}
                   autoFocus

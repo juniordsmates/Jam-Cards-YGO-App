@@ -163,6 +163,23 @@ Tabuleiro sem regras, como o Solo Mode do Duelingbook ([src/screens/TesteJogo.ts
   - o app cria (ou atualiza) o deck temporário **"<arquétipo> Temporário"** com as cartas da linha: sem mínimo, com máximo de 60 e 15 e a banlist normal;
   - **Executar combo** monta a mão da linha e mostra no topo da tela o passo atual, com **‹ Anterior / Próximo ›**.
 
+## Guia de Deck: decks acrescentados e "Buscar novos decks"
+
+- Os decks do guia ([src/screens/GuiaDeck.tsx](src/screens/GuiaDeck.tsx)) são os do metagame da camada (`metaTcg`) e, depois deles, os que um administrador acrescentou.
+- A tabela `guias_deck` ([20261112010000_guias_deck.sql](supabase/migrations/20261112010000_guias_deck.sql); cliente em [src/db/guiasDeck.ts](src/db/guiasDeck.ts)) guarda:
+  - a deck list, de onde sai o núcleo;
+  - os textos em cada idioma, no mesmo formato de [src/data/guias.ts](src/data/guias.ts), que continua tendo prioridade;
+  - as referências da comunidade.
+  - Todos leem; só administradores (`sou_admin()`) mudam.
+- **Administrador:**
+  - **+ Acrescentar deck**, no fim da lista, e **Editar deck** / **Apagar deck**, no topo do deck: [src/components/FormGuiaDeck.tsx](src/components/FormGuiaDeck.tsx).
+  - **Buscar novos decks**, ao lado do idioma: [src/components/BuscaDecks.tsx](src/components/BuscaDecks.tsx).
+- **Buscar novos decks:**
+  - A IA configurada pelo administrador pesquisa só nos sites de [src/data/referencias.ts](src/data/referencias.ts). Ela procura referências novas para os decks do guia e decks competitivos que ainda faltam (`buscarDecksComIA`, em [src/db/ia.ts](src/db/ia.ts)).
+  - Precisa de pesquisa na web: Claude, ou OpenRouter com `:online`.
+  - Endereços fora desses sites são descartados.
+  - Nada é salvo sem o administrador revisar e marcar.
+
 ## Simulador (duelo com regras contra a IA)
 
 Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-wasm](https://github.com/n1xx1/ocgcore-wasm)) com os dados (BabelCDB) e os scripts das cartas (CardScripts) do [Project Ignis](https://github.com/ProjectIgnis). Custos, condições, cadeias, "uma vez por turno" e procedimentos de Invocação valem como no jogo.
@@ -178,6 +195,15 @@ Duelo com as regras do jogo: o motor é o do EDOPro (`ocgcore`, via [ocgcore-was
   - Quem cai volta ao duelo abrindo o link: o duelo é refeito pelas respostas salvas.
   - **Desistir** (ou sair) dá a vitória ao oponente, que vê o aviso na hora.
   - Limite: o duelo inteiro fica nos dois aparelhos (quem souber abrir as ferramentas do navegador consegue ver a mão do outro). Serve para partidas entre amigos, não para competição; não vale pontos no Rank.
+- **Formato: duelo único ou match (melhor de 3)**, contra a IA ou contra um amigo. Segue as regras de torneio, com a lógica em [src/sim/match.ts](src/sim/match.ts):
+  - vence quem ganhar 2 jogos;
+  - antes do jogo 2 e do jogo 3, cada um pode trocar cartas do Main ou do Extra com o Side Deck ([src/components/SideDeck.tsx](src/components/SideDeck.tsx)), carta por carta, e Main, Extra e Side continuam do mesmo tamanho;
+  - o perdedor do jogo anterior escolhe quem começa; um empate não conta, e escolhe de novo quem escolheu da última vez;
+  - desistir perde só o jogo; **Abandonar match** (ou sair da tela) dá a match ao oponente.
+  - Contra a IA, tudo fica no aparelho. A IA não troca o side (os decklists de torneio não têm Side) e, quando escolhe, começa.
+  - Contra um amigo, a tabela `matches` guarda os decks originais (com o Side), o placar e o preparo do próximo jogo. Cada jogo é uma sala normal em `duelos` (colunas `match` e `jogo`).
+  - O banco confere a troca de side (`deck_sideado_valido`), conta o placar ao encerrar o jogo e cria a sala do próximo jogo quando os dois mandaram o deck (`preparar_jogo`): migração [20261112000000_matches.sql](supabase/migrations/20261112000000_matches.sql).
+  - Na match, "Escolher Cartas na Mão" fica desligado.
 - **Motor:** roda num Worker ([src/sim/worker.ts](src/sim/worker.ts)), para a IA pensar sem travar a tela.
   - [src/sim/regras.ts](src/sim/regras.ts): abre o motor com o pacote e cria o duelo;
   - [src/sim/sessao.ts](src/sim/sessao.ts): conduz o duelo, monta o estado e o registro;

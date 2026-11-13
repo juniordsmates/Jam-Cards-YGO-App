@@ -5,6 +5,9 @@ import CardSelos from "../components/CardSelos";
 import { ComboCard } from "../components/ComboSearch";
 import { openConta } from "../components/Conta";
 import { GUIAS_ESCRITOS, type Idioma } from "../data/guias";
+import FormGuiaDeck from "../components/FormGuiaDeck";
+import BuscaDecks from "../components/BuscaDecks";
+import { apagarGuiaDeck, arquetipoDaLista, listarGuiasDeck, type GuiaDeckBanco } from "../db/guiasDeck";
 import { apagarArtigo, enviarArtigo, listarArtigos, moderarArtigo, type Artigo, type TipoArtigo } from "../db/artigos";
 import { combosDoArquetipo, type ComboBase } from "../db/baseCombos";
 import { initCardDb, useCardDb } from "../db/cardStore";
@@ -57,6 +60,15 @@ const T = {
     extra: "Extra Deck",
     side: "Side Deck",
     listas: "Listas campeãs",
+    acrescentado: "acrescentado",
+    acrescentadoNota: "Deck acrescentado por um administrador: sem dados de torneio do TCG nos últimos 6 meses. O núcleo vem da deck list cadastrada.",
+    referencias: "Referências da comunidade",
+    referenciasExpl: "Páginas sobre o deck nos sites que o app usa como fonte, revisadas por um administrador.",
+    buscarNovos: "Buscar novos decks",
+    acrescentarDeck: "+ Acrescentar deck",
+    editarDeck: "Editar deck",
+    apagarDeck: "Apagar deck",
+    apagarConfirma: (a: string) => `Apagar "${a}" do guia (com os textos e as referências)?`,
     starters: "Cartas que começam combos sozinhas",
     startersExpl: (n: number) => `Calculado pelo motor de regras com ${n} linhas deste deck: quantas linhas cada carta abre sozinha na mão.`,
     pontosResumo: "Onde o deck costuma ser parado",
@@ -129,6 +141,15 @@ const T = {
     extra: "Extra Deck",
     side: "Side Deck",
     listas: "Winning lists",
+    acrescentado: "added",
+    acrescentadoNota: "Deck added by an administrator: no TCG tournament data from the last 6 months. The core comes from the registered decklist.",
+    referencias: "Community references",
+    referenciasExpl: "Pages about the deck on the sites the app uses as sources, reviewed by an administrator.",
+    buscarNovos: "Search for new decks",
+    acrescentarDeck: "+ Add deck",
+    editarDeck: "Edit deck",
+    apagarDeck: "Delete deck",
+    apagarConfirma: (a: string) => `Delete "${a}" from the guide (with its texts and references)?`,
     starters: "Cards that start combos on their own",
     startersExpl: (n: number) => `Calculated by the rules engine from ${n} lines of this deck: how many lines each card opens alone in hand.`,
     pontosResumo: "Where the deck usually gets stopped",
@@ -201,6 +222,15 @@ const T = {
     extra: "Deck Extra",
     side: "Side Deck",
     listas: "Listas ganadoras",
+    acrescentado: "añadido",
+    acrescentadoNota: "Deck añadido por un administrador: sin datos de torneo del TCG de los últimos 6 meses. El núcleo sale de la decklist registrada.",
+    referencias: "Referencias de la comunidad",
+    referenciasExpl: "Páginas sobre el deck en los sitios que la app usa como fuente, revisadas por un administrador.",
+    buscarNovos: "Buscar nuevos decks",
+    acrescentarDeck: "+ Añadir deck",
+    editarDeck: "Editar deck",
+    apagarDeck: "Borrar deck",
+    apagarConfirma: (a: string) => `¿Borrar "${a}" de la guía (con los textos y las referencias)?`,
     starters: "Cartas que inician combos solas",
     startersExpl: (n: number) => `Calculado por el motor de reglas con ${n} líneas de este deck: cuántas líneas abre cada carta sola en la mano.`,
     pontosResumo: "Dónde suelen parar al deck",
@@ -287,7 +317,31 @@ export default function GuiaDeck({
   const t = T[idioma];
   const meta = db.extras?.metaTcg;
   const [escolhido, setEscolhido] = useState<string | null>(inicial?.arquetipo ?? null);
-  const deck: ArquetipoMeta | undefined = meta?.arquetipos.find((a) => a.arquetipo.toLowerCase() === escolhido?.toLowerCase()) ?? meta?.arquetipos[0];
+  // decks acrescentados pelos administradores e referências da comunidade (tabela guias_deck)
+  const [guiasBanco, setGuiasBanco] = useState<GuiaDeckBanco[]>([]);
+  useEffect(() => {
+    if (!supabaseReady()) return;
+    let vivo = true;
+    listarGuiasDeck()
+      .then((l) => vivo && setGuiasBanco(l))
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
+  // painel no lugar do conteúdo (administrador): acrescentar/editar deck ou buscar novos decks
+  const [painel, setPainel] = useState<{ tipo: "form"; guia?: GuiaDeckBanco } | { tipo: "busca" } | null>(null);
+  const [erroAdmin, setErroAdmin] = useState("");
+  const mesmoNome = (a: string, b?: string | null) => a.toLowerCase() === b?.toLowerCase();
+  // os decks do meta e, depois deles, os acrescentados que não estão no meta
+  const arquetipos = useMemo(() => {
+    const doMeta = meta?.arquetipos ?? [];
+    const extras = guiasBanco.filter((g) => !doMeta.some((a) => mesmoNome(a.arquetipo, g.arquetipo)));
+    return [...doMeta, ...extras.map(arquetipoDaLista)];
+  }, [meta, guiasBanco]);
+  const acrescentado = (a: string) => !meta?.arquetipos.some((x) => mesmoNome(x.arquetipo, a));
+  const deck: ArquetipoMeta | undefined = arquetipos.find((a) => mesmoNome(a.arquetipo, escolhido)) ?? arquetipos[0];
+  const banco = guiasBanco.find((g) => mesmoNome(g.arquetipo, deck?.arquetipo));
   const [aba, setAba] = useState<Aba>(() => (["iniciais", "avancadas", "combos", "interacoes", "artigos"].includes(inicial?.aba ?? "") ? (inicial!.aba as Aba) : "iniciais"));
   // o endereço mostra o deck e a aba (para copiar e para o voltar do navegador)
   useEffect(() => {
@@ -346,8 +400,30 @@ export default function GuiaDeck({
 
   const linhas = useMemo(() => (deck ? linhasDoArquetipo(db.extras?.combos, deck.arquetipo) : []), [db.extras?.combos, deck]);
   const interacoes = useMemo(() => calcularInteracoes(linhas, ctxRespostas), [linhas, ctxRespostas]);
+  // texto escrito: o do app (src/data/guias.ts) e, sem ele, o que um administrador cadastrou
   const escrito = GUIAS_ESCRITOS.find((g) => g.arquetipo === deck?.arquetipo);
-  const texto = escrito?.textos[idioma];
+  const doBanco = banco?.textos[idioma];
+  const texto = escrito?.textos[idioma] ?? (doBanco && (doBanco.resumo || doBanco.iniciais.length || doBanco.avancadas.length) ? doBanco : undefined);
+  const revisado = escrito?.revisado ?? banco?.revisado ?? "";
+  const temEscrito = (a: string) => GUIAS_ESCRITOS.some((g) => g.arquetipo === a) || guiasBanco.some((g) => mesmoNome(g.arquetipo, a) && Object.keys(g.textos).length > 0);
+
+  /** Administrador: apaga o deck acrescentado (ou as referências guardadas de um deck do meta) */
+  const apagarDoBanco = async (g: GuiaDeckBanco) => {
+    if (!window.confirm(t.apagarConfirma(g.arquetipo))) return;
+    setErroAdmin("");
+    try {
+      await apagarGuiaDeck(g.arquetipo);
+      setGuiasBanco((l) => l.filter((x) => x.arquetipo !== g.arquetipo));
+    } catch (e) {
+      setErroAdmin(e instanceof Error ? e.message : String(e));
+    }
+  };
+  /** Decks salvos pelo formulário ou pela busca entram na lista na hora */
+  const aoSalvar = (salvos: GuiaDeckBanco[]) => {
+    setGuiasBanco((l) => [...l.filter((x) => !salvos.some((s) => mesmoNome(s.arquetipo, x.arquetipo))), ...salvos].sort((a, b) => a.arquetipo.localeCompare(b.arquetipo)));
+    setPainel(null);
+    if (salvos.length === 1) setEscolhido(salvos[0].arquetipo);
+  };
 
   const nomeArquetipo = (a: string) => {
     const pt = idioma === "pt" ? db.archetypePt.get(a) : undefined;
@@ -515,12 +591,19 @@ export default function GuiaDeck({
       onBack={onBack}
       plain
       actions={
-        <div className="format-switch gd-idiomas" role="radiogroup" aria-label={tr("Idioma / Language")}>
-          {IDIOMAS.map((x) => (
-            <button key={x.id} role="radio" aria-checked={idioma === x.id} className={idioma === x.id ? "active" : ""} onClick={() => escolherIdioma(x.id)}>
-              {x.label}
+        <div className="gd-acoes-topo">
+          <div className="format-switch gd-idiomas" role="radiogroup" aria-label={tr("Idioma / Language")}>
+            {IDIOMAS.map((x) => (
+              <button key={x.id} role="radio" aria-checked={idioma === x.id} className={idioma === x.id ? "active" : ""} onClick={() => escolherIdioma(x.id)}>
+                {x.label}
+              </button>
+            ))}
+          </div>
+          {conta?.admin && ready && (
+            <button className={`ghost-btn ${painel?.tipo === "busca" ? "active" : ""}`} onClick={() => setPainel(painel?.tipo === "busca" ? null : { tipo: "busca" })}>
+              {t.buscarNovos}
             </button>
-          ))}
+          )}
         </div>
       }
     >
@@ -529,32 +612,75 @@ export default function GuiaDeck({
           <span className="spinner" />
           <p>{db.step ?? "…"}</p>
         </div>
-      ) : !meta || !deck ? (
+      ) : !deck && !painel ? (
         <div className="combos-empty">
           <p>{t.semDados}</p>
+          {conta?.admin && (
+            <button className="ghost-btn" onClick={() => setPainel({ tipo: "form" })}>
+              {t.acrescentarDeck}
+            </button>
+          )}
         </div>
       ) : (
         <div className="guia-deck">
-          <Lateral como="nav" className="gd-lista" aria-label={t.titulo} titulo={tr("Decks do meta")} fecharCom={deck.arquetipo}>
-            <p className="tags-note">{t.base(meta.decks, atualizado)}</p>
-            {meta.arquetipos.map((a, i) => (
-              <button key={a.arquetipo} className={a.arquetipo === deck.arquetipo ? "active" : ""} onClick={() => setEscolhido(a.arquetipo)}>
+          <Lateral como="nav" className="gd-lista" aria-label={t.titulo} titulo={tr("Decks do meta")} fecharCom={deck?.arquetipo}>
+            {meta && <p className="tags-note">{t.base(meta.decks, atualizado)}</p>}
+            {arquetipos.map((a, i) => (
+              <button
+                key={a.arquetipo}
+                className={a.arquetipo === deck?.arquetipo && !painel ? "active" : ""}
+                onClick={() => {
+                  setPainel(null);
+                  setEscolhido(a.arquetipo);
+                }}
+              >
                 <span className="gd-pos">{i + 1}</span>
                 <span className="gd-nome">
                   {nomeArquetipo(a.arquetipo)}
-                  {GUIAS_ESCRITOS.some((g) => g.arquetipo === a.arquetipo) && <span className="gd-escrito" title={t.abas.iniciais}>✎</span>}
+                  {temEscrito(a.arquetipo) && <span className="gd-escrito" title={t.abas.iniciais}>✎</span>}
                 </span>
-                <span className="gd-pct" title={`${a.pct6m}% ${t.pct6m} · ${a.pct2m}% ${t.pct2m}`}>
-                  {a.pct6m}% <small className={`gd-tend ${tendencia(a) === "▲" ? "sobe" : tendencia(a) === "▼" ? "desce" : ""}`}>{tendencia(a)}</small>
-                </span>
+                {acrescentado(a.arquetipo) ? (
+                  <small className="gd-pct">{t.acrescentado}</small>
+                ) : (
+                  <span className="gd-pct" title={`${a.pct6m}% ${t.pct6m} · ${a.pct2m}% ${t.pct2m}`}>
+                    {a.pct6m}% <small className={`gd-tend ${tendencia(a) === "▲" ? "sobe" : tendencia(a) === "▼" ? "desce" : ""}`}>{tendencia(a)}</small>
+                  </span>
+                )}
               </button>
             ))}
+            {conta?.admin && (
+              <button className={painel?.tipo === "form" && !painel.guia ? "active" : ""} onClick={() => setPainel({ tipo: "form" })}>
+                <span className="gd-nome">{t.acrescentarDeck}</span>
+              </button>
+            )}
           </Lateral>
 
           <div className="gd-conteudo" ref={conteudo}>
+            {painel?.tipo === "form" ? (
+              <FormGuiaDeck key={painel.guia?.arquetipo ?? "novo"} inicial={painel.guia} onSalvo={(g) => aoSalvar([g])} onCancelar={() => setPainel(null)} />
+            ) : painel?.tipo === "busca" ? (
+              <BuscaDecks existentes={arquetipos.map((a) => a.arquetipo)} guias={guiasBanco} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />
+            ) : !deck ? null : (
+              <>
             <header className="gd-topo">
               <h3>{nomeArquetipo(deck.arquetipo)}</h3>
               {deck && <BotaoLink rota={{ tela: "guia", arquetipo: deck.arquetipo, aba }} className="gd-link" />}
+              {conta?.admin && (
+                <div className="gd-admin">
+                  <button className="link-btn" onClick={() => setPainel({ tipo: "form", guia: banco ?? { arquetipo: deck.arquetipo, lista: null, textos: {}, referencias: [], revisado: "" } })}>
+                    {t.editarDeck}
+                  </button>
+                  {banco && (
+                    <button className="link-btn" onClick={() => void apagarDoBanco(banco)}>
+                      {t.apagarDeck}
+                    </button>
+                  )}
+                  {erroAdmin && <span className="db-warning">{erroAdmin}</span>}
+                </div>
+              )}
+              {acrescentado(deck.arquetipo) ? (
+                <p className="tags-note">{t.acrescentadoNota}</p>
+              ) : (
               <div className="gd-numeros">
                 <span>
                   <strong>{deck.pct6m}%</strong> {t.pct6m}
@@ -566,6 +692,7 @@ export default function GuiaDeck({
                   <strong>{deck.vitorias}</strong> {t.vitorias}
                 </span>
               </div>
+              )}
               {deck.nomes.length > 1 && (
                 <p className="tags-note">
                   {t.nomes}: {deck.nomes.slice(1).join(" · ")}
@@ -591,7 +718,7 @@ export default function GuiaDeck({
                   <>
                     <p className="gd-resumo">{rico(texto.resumo)}</p>
                     {blocos(texto.iniciais)}
-                    <p className="tags-note">{t.revisado(escrito!.revisado)}</p>
+                    {revisado && <p className="tags-note">{t.revisado(revisado)}</p>}
                   </>
                 ) : (
                   <p className="db-warning">{t.semGuia}</p>
@@ -618,20 +745,42 @@ export default function GuiaDeck({
                     </ul>
                   </div>
                 )}
-                <div className="gd-bloco">
-                  <h4>{t.listas}</h4>
-                  <ul>
-                    {deck.exemplos.map((x) => (
-                      <li key={x.deckNum}>
-                        <a href={x.url} target="_blank" rel="noreferrer">
-                          {x.nome}
-                        </a>{" "}
-                        · {x.torneio} · {x.colocacao}
-                        {x.jogadores ? ` (${x.jogadores})` : ""} · <small>{x.quando}</small>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {deck.exemplos.length > 0 && (
+                  <div className="gd-bloco">
+                    <h4>{t.listas}</h4>
+                    <ul>
+                      {deck.exemplos.map((x) => (
+                        <li key={x.deckNum}>
+                          <a href={x.url} target="_blank" rel="noreferrer">
+                            {x.nome}
+                          </a>{" "}
+                          · {x.torneio} · {x.colocacao}
+                          {x.jogadores ? ` (${x.jogadores})` : ""} · <small>{x.quando}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {!!banco?.referencias.length && (
+                  <div className="gd-bloco">
+                    <h4>{t.referencias}</h4>
+                    <p className="tags-note">{t.referenciasExpl}</p>
+                    <ul className="gd-referencias">
+                      {banco.referencias.map((r) => (
+                        <li key={r.url}>
+                          <a href={r.url} target="_blank" rel="noreferrer">
+                            {r.titulo}
+                          </a>{" "}
+                          <small>
+                            · {r.site} · {r.idioma.toUpperCase()}
+                            {r.encontrado_em ? ` · ${r.encontrado_em}` : ""}
+                          </small>
+                          {r.resumo && <p className="tags-note">{r.resumo}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </section>
             )}
 
@@ -908,6 +1057,8 @@ export default function GuiaDeck({
                     </form>
                   ))}
               </section>
+            )}
+              </>
             )}
           </div>
         </div>

@@ -245,6 +245,14 @@ export const CAPITULOS: Capitulo[] = [
           t("**Artigos de Jogadores**: táticas e ideias escritas por jogadores. Com login, **Enviar um artigo**; ele aparece depois da aprovação do administrador. Dá para citar cartas com [[Nome da carta]]."),
         ],
       },
+      {
+        titulo: t("Decks acrescentados e referências"),
+        itens: [
+          t("Depois dos decks do meta vêm os **acrescentados** por um administrador: o núcleo sai da deck list cadastrada, sem dados de torneio."),
+          t("**Referências da comunidade** (em Ideias Iniciais): páginas sobre o deck nos sites que o app usa como fonte, revisadas por um administrador."),
+          t("Administrador: **+ Acrescentar deck** no fim da lista, **Editar deck** e **Apagar deck** no topo, e **Buscar novos decks** ao lado do idioma, em que a IA configurada procura referências novas e decks que faltam."),
+        ],
+      },
     ],
     exemplo: {
       titulo: t("Exemplo: preparar-se contra o deck mais jogado"),
