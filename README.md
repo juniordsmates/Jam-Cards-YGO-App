@@ -38,7 +38,8 @@ O instalador de cada sistema precisa ser gerado nesse sistema (ou via CI, como G
 ## Site (versão web)
 
 - Endereço: https://jam-cards-ygo-app.juniordsmates.workers.dev/ (constante `SITE` em [src/rotas.ts](src/rotas.ts), usada nos links copiados no app de computador).
-- Fica no Cloudflare (Workers com arquivos estáticos, [wrangler.jsonc](wrangler.jsonc)). Cada push no `main` dispara o build (`npm run build`) e o deploy (`npx wrangler deploy`), que publica `dist/`.
+- Fica no Cloudflare (Workers com arquivos estáticos, [wrangler.jsonc](wrangler.jsonc)). O Cloudflare observa o branch `site`: cada push nele dispara o build (`npm run build`) e o deploy (`npx wrangler deploy`), que publica `dist/`. Pushes no `main` **não** publicam o site.
+- Publicar no site (só quando o dono do projeto pede): `git push origin main:site`.
 - O endereço antigo, https://juniordsmates.github.io/Jam-Cards-YGO/, só redireciona para o novo e mantém a rota depois do `#` ([site-antigo/index.html](site-antigo/index.html)). O job `site` de [.github/workflows/versao.yml](.github/workflows/versao.yml) publica esse redirecionamento no branch `gh-pages` do Jam-Cards-YGO.
 - Para usar um domínio próprio: em Workers & Pages → `jam-cards-ygo-app` → Settings → Domains & Routes → Add → Custom domain (o domínio precisa estar na conta do Cloudflare). Depois, troque `SITE`, o endereço em `site-antigo/index.html` e o da raiz `juniordsmates.github.io`.
 - O Supabase precisa aceitar o endereço do site: em Authentication → URL Configuration, coloque o endereço em **Site URL** e em **Redirect URLs** (o link de "Esqueci a senha" volta para ele).
@@ -51,6 +52,7 @@ Versão atual: **1.0.23 Alpha** (número em `package.json`, `src-tauri/tauri.con
 | --- | --- |
 | `main` | desenvolvimento: tudo é feito aqui |
 | `release` | versão de distribuição (hoje 1.0.23): só recebe as mudanças da `main` **quando o dono do projeto pede**; cada push nela gera os instaladores |
+| `site` | site publicado no Cloudflare: só recebe a `main` **quando o dono do projeto pede** ("Publicar no Site?"); cada push nele publica o site |
 
 O arquivo [Notas de Atualização](Notas%20de%20Atualiza%C3%A7%C3%A3o) está **desativado**: o que estiver nele não é aplicado ao projeto.
 
