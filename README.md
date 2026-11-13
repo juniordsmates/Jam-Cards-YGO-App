@@ -35,6 +35,14 @@ npx tauri icon public/app-icon.svg   # gera os ícones em src-tauri/icons (uma v
 
 O instalador de cada sistema precisa ser gerado nesse sistema (ou via CI, como GitHub Actions).
 
+## Site (versão web)
+
+- Endereço: https://jam-cards-ygo-app.juniordsmates.workers.dev/ (constante `SITE` em [src/rotas.ts](src/rotas.ts), usada nos links copiados no app de computador).
+- Fica no Cloudflare (Workers com arquivos estáticos, [wrangler.jsonc](wrangler.jsonc)). Cada push no `main` dispara o build (`npm run build`) e o deploy (`npx wrangler deploy`), que publica `dist/`.
+- O endereço antigo, https://juniordsmates.github.io/Jam-Cards-YGO/, só redireciona para o novo e mantém a rota depois do `#` ([site-antigo/index.html](site-antigo/index.html)). O job `site` de [.github/workflows/versao.yml](.github/workflows/versao.yml) publica esse redirecionamento no branch `gh-pages` do Jam-Cards-YGO.
+- Para usar um domínio próprio: em Workers & Pages → `jam-cards-ygo-app` → Settings → Domains & Routes → Add → Custom domain (o domínio precisa estar na conta do Cloudflare). Depois, troque `SITE`, o endereço em `site-antigo/index.html` e o da raiz `juniordsmates.github.io`.
+- O Supabase precisa aceitar o endereço do site: em Authentication → URL Configuration, coloque o endereço em **Site URL** e em **Redirect URLs** (o link de "Esqueci a senha" volta para ele).
+
 ## Versões e branches
 
 Versão atual: **1.0.23 Alpha** (número em `package.json`, `src-tauri/tauri.conf.json` e `src-tauri/Cargo.toml`; canal em [src/version.ts](src/version.ts) e na Action).

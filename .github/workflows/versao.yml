@@ -84,33 +84,25 @@ jobs:
           prerelease: true
           args: --target universal-apple-darwin --bundles dmg
 
-  # Site (versão web do app) no GitHub Pages do repositório público Jam-Cards-YGO (branch gh-pages):
-  # https://juniordsmates.github.io/Jam-Cards-YGO/ — publica só depois que a chave SITE_DEPLOY_KEY
-  # (deploy key com escrita no Jam-Cards-YGO) for cadastrada nos segredos deste repositório
+  # Endereço antigo do site no GitHub Pages do repositório público Jam-Cards-YGO (branch gh-pages):
+  # https://juniordsmates.github.io/Jam-Cards-YGO/ só redireciona para o site no Cloudflare, que se
+  # publica sozinho a cada push no main (wrangler.jsonc). Publica só com a chave SITE_DEPLOY_KEY
+  # (deploy key com escrita no Jam-Cards-YGO) cadastrada nos segredos deste repositório.
   site:
     runs-on: ubuntu-latest
     env:
       TEM_CHAVE_SITE: ${{ secrets.SITE_DEPLOY_KEY != '' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Montar o site
-        run: npm run build
-        env:
-          SITE_BASE: /Jam-Cards-YGO/
-      - name: Publicar no GitHub Pages
+      - name: Publicar o redirecionamento no GitHub Pages
         if: env.TEM_CHAVE_SITE == 'true'
         uses: peaceiris/actions-gh-pages@v4
         with:
           deploy_key: ${{ secrets.SITE_DEPLOY_KEY }}
           external_repository: juniordsmates/Jam-Cards-YGO
           publish_branch: gh-pages
-          publish_dir: dist
-          commit_message: "Site da versão web (${{ github.sha }})"
+          publish_dir: site-antigo
+          commit_message: "Redirecionamento para o site no Cloudflare (${{ github.sha }})"
 
   # Copia os instaladores do Release para Install/<versão>/ na main, para achar tudo pela página do projeto
   pasta-install:

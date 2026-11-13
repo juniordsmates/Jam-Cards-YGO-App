@@ -16,10 +16,11 @@ import { isDesktop } from "./platform";
 //   #/simulador                             Simulador (duelo contra a IA)
 //   #/duelo/<id>                            sala de uma partida 1x1 do Simulador
 //   #/replay/<código>                       replay compartilhado do Simulador (vale por 10 dias)
-// O "#" funciona no GitHub Pages sem configurar o servidor. No app de computador, o link copiado é
-// o do site (abre em qualquer navegador).
+// O "#" funciona em qualquer hospedagem sem configurar o servidor. No app de computador, o link
+// copiado é o do site (abre em qualquer navegador). O site fica no Cloudflare (wrangler.jsonc); o
+// endereço antigo do GitHub Pages só redireciona para ele (site-antigo/).
 
-export const SITE = "https://juniordsmates.github.io/Jam-Cards-YGO/";
+export const SITE = "https://jam-cards-ygo-app.juniordsmates.workers.dev/";
 
 export type Rota =
   | { tela: "menu" }
