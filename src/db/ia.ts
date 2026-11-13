@@ -377,6 +377,26 @@ export const temPesquisaWeb = (cfg: ConfigIA) => cfg.provedor === "anthropic" ||
 
 // ---------------------------------------------------------------- Claude (Anthropic)
 
+/**
+ * Traduz um erro da API da Anthropic numa mensagem clara (o SDK devolve o JSON cru da API, por
+ * exemplo quando a conta da chave fica sem créditos). Outros erros passam como estão.
+ */
+function erroDoClaude(e: unknown, sdk: typeof Anthropic): unknown {
+  if (e instanceof sdk.APIConnectionError) return new Error(t("Sem conexão com a IA da Anthropic. Confira a internet e tente de novo."));
+  if (!(e instanceof sdk.APIError)) return e;
+  const corpo = (e.error as { error?: { type?: string; message?: string } } | undefined)?.error;
+  const tipo = corpo?.type;
+  const mensagem = corpo?.message;
+  if (tipo === "billing_error" || /credit balance/i.test(mensagem ?? "")) {
+    return new Error(t("Sua conta da Anthropic está sem créditos. Recarregue em console.anthropic.com → Plans & Billing e tente de novo."));
+  }
+  if (e.status === 401 || tipo === "authentication_error") return new Error(t("Chave da Anthropic inválida. Confira em Minha conta → IAs."));
+  if (e.status === 403 || tipo === "permission_error") return new Error(t("Esta chave da Anthropic não tem acesso a este modelo."));
+  if (e.status === 429 || tipo === "rate_limit_error") return new Error(t("Limite de uso da Anthropic atingido. Espere um pouco e tente de novo."));
+  if (e.status === 529 || tipo === "overloaded_error") return new Error(t("A IA da Anthropic está sobrecarregada. Tente de novo em alguns minutos."));
+  return new Error(t("Erro da IA (HTTP {0}): {1}", [e.status ?? "?", mensagem ?? t("sem detalhes")]));
+}
+
 async function rodarComClaude<T>(cfg: ConfigIA, tarefa: Tarefa<T>): Promise<FimTarefa<T>> {
   // o SDK só é carregado quando alguém busca com IA; a chave é do próprio usuário e fica só
   // neste dispositivo, então chamar a API direto do app é intencional
@@ -405,7 +425,10 @@ async function rodarComClaude<T>(cfg: ConfigIA, tarefa: Tarefa<T>): Promise<FimT
         tools,
         messages,
       })
-      .finalMessage();
+      .finalMessage()
+      .catch((e: unknown) => {
+        throw erroDoClaude(e, AnthropicClient);
+      });
 
     if (response.stop_reason === "refusal") throw new Error(tarefa.erroRecusa);
     messages.push({ role: "assistant", content: response.content });
@@ -673,7 +696,11 @@ export async function conversarComIA(cfg: ConfigIA, mensagens: MensagemChat[], c
     // a chave é do próprio usuário e fica só neste dispositivo (mesmo caso do Combo Search)
     const { default: AnthropicClient } = await import("@anthropic-ai/sdk");
     const client = new AnthropicClient({ apiKey: cfg.chave, dangerouslyAllowBrowser: true });
-    const r = await client.messages.create({ model: cfg.modelo, max_tokens: 2000, system: sistemaChat(contexto), messages: mensagens });
+    const r = await client.messages
+      .create({ model: cfg.modelo, max_tokens: 2000, system: sistemaChat(contexto), messages: mensagens })
+      .catch((e: unknown) => {
+        throw erroDoClaude(e, AnthropicClient);
+      });
     if (r.stop_reason === "refusal") throw new Error(t("A IA recusou responder."));
     return r.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
   }
