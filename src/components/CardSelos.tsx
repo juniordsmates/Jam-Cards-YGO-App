@@ -25,7 +25,7 @@ export function PapeisDaCarta({ card }: { card: Card }) {
 /**
  * Indicações sobre a imagem da carta, como na Buscar Carta: no canto de cima, a banlist do formato
  * (Proibida, Limitada, Semi-Limitada ou Não lançada); embaixo, as siglas da classificação
- * (Hand trap, Starter, Extender, Board breaker, Floodgate, Staple).
+ * (Hand trap, Starter, Extender, Board breaker, Floodgate, Staple, Combo Garnets).
  */
 export default function CardSelos({ card, formato }: { card: Card; formato: GameFormat }) {
   useCategoriasManuais();

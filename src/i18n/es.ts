@@ -3039,4 +3039,6 @@ export const ES: Record<string, string> = {
   "No Deck": "En el Deck",
   "Probabilidades Avançadas": "Probabilidades Avanzadas",
   "{0}+": "{0}+",
+  "Combo Garnets": "Combo Garnets",
+  "Chance de abrir ao menos 1 a 5 Starters, Extenders, Hand Traps, Board Breakers, Floodgates e Combo Garnets": "Probabilidad de abrir al menos 1 a 5 Starters, Extenders, Hand Traps, Board Breakers, Floodgates y Combo Garnets",
 };
