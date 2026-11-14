@@ -421,6 +421,8 @@ export default function Simulador({
     decisoes?: DecisaoIA[];
     /** nome do lado de baixo, quando não é "Você" (IA x IA) */
     jogador?: string;
+    /** revisar com a mesma visão que o jogador tinha: as cartas escondidas do oponente continuam escondidas */
+    esconderOp?: boolean;
   } | null>(null);
   // revisão: reprodução automática (decisão a decisão) e a lista com todas as decisões, não só as jogadas
   const [reproduzindo, setReproduzindo] = useState(false);
@@ -1980,6 +1982,8 @@ export default function Simulador({
   const rotuloOp = sala ? (nomeOp ?? t("Oponente")) : t("IA");
   const nomeOponente = revisao ? revisao.oponente : rotuloOp;
   const meuNome = revisao?.recebido?.jogador ?? revisao?.jogador ?? (conta?.usuario || t("Você"));
+  // cartas escondidas do oponente: no duelo, sempre; na revisão, só com "Esconder as cartas do oponente"
+  const ocultarOp = !revisao || !!revisao.esconderOp;
   const est = quadro.estado;
   const meuLado = est.lados[eu];
   const lado2 = est.lados[op];
@@ -2075,7 +2079,7 @@ export default function Simulador({
         onClick={() => livre && !marcada && escolherZona(livre)}
         data-zona={k}
       >
-        {c && carta(c, k, !revisao && p === op && virada(c.pos) && !c.pub, location === L.MZONE)}
+        {c && carta(c, k, ocultarOp && p === op && virada(c.pos) && !c.pub, location === L.MZONE)}
       </div>
     );
   };
@@ -2090,7 +2094,7 @@ export default function Simulador({
     const temEscolha = cartas.some((_, i) => escolhiveis.has(chave(p, location, i)));
     const titulo = `${p === op ? t("Oponente — ") : ""}${tipo === "deck" ? t("Deck") : tipo === "extra" ? t("Extra Deck") : tipo === "cemiterio" ? t("Cemitério") : t("Banidas")}`;
     // Extra Deck do oponente: só as cartas com a face para cima (Pêndulos) ficam visíveis
-    const oculta = (c: CartaSim) => !revisao && p === op && !c.pub && ((tipo === "extra" && !(c.pos & 1)) || (tipo === "banido" && virada(c.pos)));
+    const oculta = (c: CartaSim) => ocultarOp && p === op && !c.pub && ((tipo === "extra" && !(c.pos & 1)) || (tipo === "banido" && virada(c.pos)));
     const topo = tipo === "extra" ? null : cartas[cartas.length - 1];
     return (
       <div
@@ -2176,7 +2180,10 @@ export default function Simulador({
           <button className="ghost-btn" onClick={() => { const i = turnoDe((m?.turno ?? 0) + 1); ir(i < 0 ? ultimo : i); }} title={t("Próximo turno")}>⏩</button>
           <button className="ghost-btn" onClick={() => ir(ultimo)} title={t("Fim")}>⏭</button>
         </div>
-        <small className="tags-note">{t("Na revisão, as cartas escondidas dos dois lados ficam visíveis.")}</small>
+        <label className="sim-janelas" title={t("Revisar com a mesma visão que você tinha no duelo: julgar uma jogada sabendo a mão do oponente engana")}>
+          <input type="checkbox" checked={!!r.esconderOp} onChange={(e) => setRevisao((v) => (v ? { ...v, esconderOp: e.target.checked } : v))} /> {t("Esconder as cartas do oponente (mão e viradas para baixo)")}
+        </label>
+        <small className="tags-note">{r.esconderOp ? t("Você vê só o que via no duelo.") : t("Na revisão, as cartas escondidas dos dois lados ficam visíveis.")}</small>
         {r.decisoes && (
           <div className="sim-decisoes">
             <div className="sim-niveis">
@@ -2511,7 +2518,7 @@ export default function Simulador({
             <div className="tj-mao tj-mao-op" aria-label={t("Mão do oponente")} data-mao={op}>
               {lado2.mao.map((c, i) => (
                 <div key={i} className={`tj-mao-carta ${i >= lado2.mao.length - comprando[op] ? "sim-comprada sim-comprada-op" : ""}`} style={{ animationDelay: `${Math.max(0, i - (lado2.mao.length - comprando[op])) * 150}ms` }}>
-                  {carta(c, chave(op, L.HAND, i), !revisao && !c.pub)}
+                  {carta(c, chave(op, L.HAND, i), ocultarOp && !c.pub)}
                 </div>
               ))}
             </div>

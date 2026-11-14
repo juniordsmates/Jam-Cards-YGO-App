@@ -3041,4 +3041,7 @@ export const ES: Record<string, string> = {
   "{0}+": "{0}+",
   "Brick": "Brick",
   "Chance de abrir ao menos 1 a 5 Starters, Extenders, Hand Traps, Board Breakers, Floodgates e Bricks": "Probabilidad de abrir al menos 1 a 5 Starters, Extenders, Hand Traps, Board Breakers, Floodgates y Bricks",
+  "Esconder as cartas do oponente (mão e viradas para baixo)": "Ocultar las cartas del oponente (mano y boca abajo)",
+  "Revisar com a mesma visão que você tinha no duelo: julgar uma jogada sabendo a mão do oponente engana": "Revisar con la misma visión que tenías en el duelo: juzgar una jugada sabiendo la mano del oponente engaña",
+  "Você vê só o que via no duelo.": "Ves solo lo que veías en el duelo.",
 };

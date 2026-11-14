@@ -61,6 +61,10 @@ const COPIA_FINAL = 1;
 const VALOR_EFEITO = 0.8;
 /** Magia/Armadilha baixada vale 2 (possível interrupção); a que não pode ser ativada com o campo de agora, isto */
 const BAIXADA_MORTA = 0.5;
+/** campo que fecha o duelo na Battle Phase deste turno (ATK suficiente para zerar os PV do oponente) */
+const LETAL = 30;
+/** dano possível na Battle Phase que não fecha o duelo: metade do peso dos PV (o oponente ainda pode responder) */
+const PESO_DANO = 0.5;
 
 // código, posição, ATK, DEF e matérias
 const QUERY = (1 | 2 | 256 | 512 | 65536) as never;
@@ -185,7 +189,7 @@ export class IA {
    */
   motivo = "";
   /** como o plano do turno foi escolhido (para o motivo de cada lance dele) */
-  private planoInfo: { nota: number; base: number; tentativas: number; origem: "linha" | "gulosa" | "sorteio"; mao?: number[] } | null = null;
+  private planoInfo: { nota: number; base: number; tentativas: number; origem: "linha" | "gulosa" | "sorteio"; mao?: number[]; letal?: boolean } | null = null;
   private plano: { resps: OcgResponse[]; i: number } | null = null;
   private tentativa = 0;
   /** alvo escolhido para o ataque em andamento */
@@ -282,7 +286,7 @@ export class IA {
                 : info.origem === "gulosa"
                   ? "a sequência mais direta (cada passo com a jogada de maior peso)"
                   : `a melhor de ${info.tentativas} sequências testadas`
-            }; deixa o campo com nota ${info.nota.toFixed(1)}, contra ${info.base.toFixed(1)} sem jogar.`
+            }; ${info.letal ? "deixa ATK suficiente para fechar o duelo na Battle Phase" : `deixa o campo com nota ${info.nota.toFixed(1)}, contra ${info.base.toFixed(1)} sem jogar`}.`
           : "Plano do turno.";
         this.plano.i++;
         if (this.plano.i >= this.plano.resps.length) this.plano = null;
@@ -862,7 +866,36 @@ export class IA {
     // o motor manda os PV sem sinal: abaixo de 0 vira um número enorme
     const lp = (p: number) => ((campo.players[p] as unknown as { lp?: number }).lp ?? 8000) | 0;
     n += (lp(this.eu) - lp(op)) / 4000;
+    // "ganhar quando dá": com Battle Phase neste turno, o dano que os monstros em Posição de Ataque causam
+    if (this.podeAtacar) {
+      const dano = this.danoPossivel(q(this.eu, L.MZONE), q(op, L.MZONE));
+      n += dano >= lp(op) ? LETAL : (PESO_DANO * dano) / 4000;
+    }
     return n;
+  }
+
+  /** a Battle Phase deste turno pode acontecer (no primeiro turno do duelo, não) */
+  private podeAtacar = false;
+
+  /**
+   * Dano que os monstros em Posição de Ataque causam na Battle Phase: cada monstro do oponente é vencido
+   * pelo atacante mais fraco que o destrói (virado para baixo: só com ATK alto); os que sobram atacam direto
+   */
+  private danoPossivel(meus: { pos: number; atk: number }[], deles: { pos: number; atk: number; def: number }[]) {
+    const atacantes = meus.filter((m) => m.pos & 1).map((m) => m.atk).sort((a, b) => a - b);
+    let dano = 0;
+    // os mais difíceis de vencer primeiro
+    const alvos = deles
+      .map((m) => (m.pos & 0xa ? { precisa: 2000, dano: 0 } : m.pos & 1 ? { precisa: m.atk + 1, dano: -m.atk } : { precisa: m.def + 1, dano: -Infinity }))
+      .sort((a, b) => b.precisa - a.precisa);
+    for (const a of alvos) {
+      const i = atacantes.findIndex((x) => x >= a.precisa);
+      if (i < 0) return dano; // um monstro que nenhum atacante vence: não há caminho para o ataque direto
+      const atk = atacantes.splice(i, 1)[0];
+      // vencer um monstro em Posição de Ataque causa a diferença; em defesa ou virado para baixo, nada
+      if (a.dano > -Infinity && a.dano !== 0) dano += atk + a.dano;
+    }
+    return dano + atacantes.reduce((s2, x) => s2 + x, 0);
   }
 
   /** Uma tentativa do turno: escolhas sorteadas até a IA passar de fase */
@@ -973,9 +1006,11 @@ export class IA {
 
   private planejar(s: Sessao) {
     const { passos, campo } = this.cartasDasLinhas(s);
+    const turno = s.momento().turno;
+    // antes da nota de base: as duas notas contam o dano da Battle Phase do mesmo jeito
+    this.podeAtacar = turno > 1;
     const base = this.nota(s.motor, s.duel, campo, passos);
     const inicio = performance.now();
-    const turno = s.momento().turno;
     const tempo = turno === this.turnoPlanejado ? TEMPO[this.nivel] / 2 : TEMPO[this.nivel];
     this.turnoPlanejado = turno;
     let melhor: { resps: OcgResponse[]; nota: number; origem: "linha" | "gulosa" | "sorteio"; mao?: number[] } | null = null;
@@ -994,6 +1029,6 @@ export class IA {
     }
     // só joga se a sequência deixa o campo melhor do que passar a vez
     this.plano = melhor && melhor.nota > base && melhor.resps.length ? { resps: melhor.resps, i: 0 } : null;
-    this.planoInfo = melhor ? { nota: melhor.nota, base, tentativas, origem: melhor.origem, mao: melhor.mao } : null;
+    this.planoInfo = melhor ? { nota: melhor.nota, base, tentativas, origem: melhor.origem, mao: melhor.mao, letal: this.podeAtacar && melhor.nota - base >= LETAL / 2 } : null;
   }
 }
