@@ -197,16 +197,32 @@ export default function TesteJogo({
   const usadas = useRef(new Map<string, number>());
   const [criando, setCriando] = useState<{ titulo: string; obs: string; compartilhar: boolean; arquetipos: string[] } | null>(null);
   const [gravacao, setGravacao] = useState<{ tipo: "ok" | "erro" | "gravando"; texto: string } | null>(null);
+  // passos já anotados, contados na hora (vários passos podem entrar no mesmo clique, como no Executar)
+  const nAnotados = useRef(0);
   const recomecarAnotacao = (novo: Tabuleiro) => {
+    nAnotados.current = 0;
     setAnotados([]);
     setCriados([]);
     setMaoInicial(novo.mao);
     usadas.current = new Map();
     setGravacao(null);
   };
+  /**
+   * Mão inicial do combo: a mão no início do passo 1. Antes do primeiro passo, arrumar a mão (comprar,
+   * trazer do Deck, devolver ao Deck) não vira passo; ela fica registrada quando o passo 1 acontece.
+   */
+  const maoDoPasso1 = anotados.length ? maoInicial : t.mao;
+  const arrumandoMao = (p: Passo) =>
+    p.t === "compra" || (p.t === "move" && ((p.para === "mao" && (p.de === "deck" || p.de === "extra")) || (p.de === "mao" && (p.para === "deck" || p.para === "extra"))));
   /** `virada`: Magia/Armadilha baixada que acabou de ser virada (ativação da carta) */
   const anotar = (p: Passo | null, c?: CartaJogo, opts: { virada?: boolean } = {}) => {
     if (!p) return;
+    if (nAnotados.current === 0) {
+      if (arrumandoMao(p)) return;
+      // passo 1: a mão de agora (antes desta jogada) é a mão inicial do combo
+      setMaoInicial(t.mao);
+    }
+    nAnotados.current++;
     setAnotados((ps) => anotarPasso(ps, p));
     setCriados((ps) => anotarPasso(ps, p));
     // tokens não contam como cópias de cartas do deck
@@ -232,13 +248,13 @@ export default function TesteJogo({
   };
   const nomeId = (id: number) => (byId.get(id) ? displayName(byId.get(id)!) : id === TOKEN_GENERICO ? "Token" : `#${id}`);
   const tituloSugerido = () => {
-    const arq = arquetiposDe(maoInicial.map((c) => byId.get(c.id)).filter((c): c is Card => !!c))[0];
-    return `${arq ? `${arq}: ` : ""}${maoInicial.map((c) => nomeId(c.id)).join(" + ")}`.slice(0, 120);
+    const arq = arquetiposDe(maoDoPasso1.map((c) => byId.get(c.id)).filter((c): c is Card => !!c))[0];
+    return `${arq ? `${arq}: ` : ""}${maoDoPasso1.map((c) => nomeId(c.id)).join(" + ")}`.slice(0, 120);
   };
   /** Cópias de cada carta usadas no combo: a mão inicial e toda carta que entrou num passo */
   const copiasUsadas = () => {
     const porUid = new Map(usadas.current);
-    for (const c of maoInicial) porUid.set(c.uid, c.id);
+    for (const c of maoDoPasso1) porUid.set(c.uid, c.id);
     const m = new Map<number, number>();
     for (const id of porUid.values()) m.set(id, (m.get(id) ?? 0) + 1);
     return m;
@@ -254,7 +270,7 @@ export default function TesteJogo({
     setGravacao({ tipo: "gravando", texto: tr("Criando o combo…") });
     const autorNome = conta.usuario || conta.email.split("@")[0];
     const dadosCombo = {
-      iniciais: maoInicial.map((c) => c.id),
+      iniciais: maoDoPasso1.map((c) => c.id),
       arquetipos: criando.arquetipos,
       dados: { passos: anotados, passosOriginais: ordemParaGravar(anotados, criados), campo: campoDoTabuleiro(t), copias: Object.fromEntries(copias), teste: true, ...(combo?.fontes?.length ? { fontes: combo.fontes } : {}) },
     };
@@ -576,6 +592,7 @@ export default function TesteJogo({
     setHistorico((h) => h.slice(0, -1));
     setT(antes.t);
     setAnotados(antes.anotados);
+    nAnotados.current = antes.anotados.length;
     setCriados(antes.criados);
     usadas.current = antes.usadas;
     setIndicacoes(antes.indicacoes);
@@ -1433,10 +1450,17 @@ export default function TesteJogo({
                 <button className="ghost-btn" onClick={() => setCriando(null)} aria-label={tr("Fechar")}>✕</button>
               </div>
               <p className="tj-criar-mao">
-                <span className="field-label">{tr("Mão inicial")}</span> {maoInicial.map((c) => nomeId(c.id)).join(" + ") || "—"}
+                <span className="field-label">{tr("Mão inicial")}</span> {maoDoPasso1.map((c) => nomeId(c.id)).join(" + ") || "—"}
               </p>
               {anotados.length ? (
-                <PassosOrdenaveis className="tj-criar-passos" passos={anotados} originais={criados} onChange={setAnotados} render={textoPasso} />
+                <PassosOrdenaveis className="tj-criar-passos" passos={anotados}
+                  originais={criados}
+                  onChange={(ps) => {
+                    setAnotados(ps);
+                    nAnotados.current = ps.length;
+                  }}
+                  render={textoPasso}
+                />
               ) : (
                 <p className="db-warning">{tr("Nenhum passo ainda: jogue a partir da mão inicial (invocar, ativar, mover…) e volte aqui.")}</p>
               )}
