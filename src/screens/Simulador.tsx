@@ -27,7 +27,7 @@ import { APP_VERSION } from "../version";
 import { LOCALE, t } from "../i18n";
 import { ClienteSim, obterPacote } from "../sim/cliente";
 import { zonasLivres } from "../sim/opcoes";
-import type { DecisaoIA, LinhaIA, NivelIA } from "../sim/ia";
+import type { DecisaoIA, DeckEsperado, LinhaIA, NivelIA } from "../sim/ia";
 import type { Aprendizado, CartaSim, ConfigSessao, EventoSim, Momento, PedidoSim, Quadro } from "../sim/sessao";
 import { apagarReplay, compartilharReplay, obterReplay } from "../db/replays";
 import { aprenderValores, exportarReplay, guardarAprendizado, guardarReplay, importarReplay, lerValoresAprendidos, listarAprendizado, marcarCompartilhado, REPLAYS_GRATIS, REPLAYS_PREMIUM, type DueloGuardado, type RotulosReplay } from "../sim/aprendizado";
@@ -355,6 +355,23 @@ export default function Simulador({
   // Modo de Treino: guia de combo (botão "Combos"), como no Teste de Jogo
   const [guia, setGuia] = useState<EstadoGuia | null>(null);
   const [escolhendoCombo, setEscolhendoCombo] = useState(false);
+  // decks de torneio para a IA ler o do oponente (Meta Call): cartas que identificam cada um (as do
+  // motor do deck, sem hand traps e staples) e as hand traps que ele costuma jogar no Main ou no Side
+  const metaDecks = useMemo((): DeckEsperado[] => {
+    const meta = db.extras?.metaTcg;
+    if (!meta) return [];
+    const canonId = (id: number) => byId.get(id)?.id ?? id;
+    const generica = (id: number) => !!byId.get(id)?.tags?.some((t) => t === "hand-trap" || t === "staple");
+    return [...meta.arquetipos]
+      .sort((a, b) => b.pct2m - a.pct2m)
+      .slice(0, 30)
+      .map((a) => ({
+        arquetipo: a.arquetipo,
+        cartas: [...a.nucleo.main, ...a.nucleo.extra].filter((c) => c.pct >= 0.6 && !generica(c.id)).map((c) => canonId(c.id)),
+        respostas: [...a.nucleo.main, ...a.nucleo.side].filter((c) => c.pct >= 0.3 && byId.get(c.id)?.tags?.includes("hand-trap")).map((c) => canonId(c.id)),
+      }))
+      .filter((d) => d.cartas.length >= 3);
+  }, [db.extras?.metaTcg, byId]);
   const combosDeck = useMemo(
     () => (treino ? combosDoDeck(db.extras?.combos, (meu?.deck.main ?? []).map((id) => byId.get(id)?.id ?? id)) : []),
     [treino, db.extras?.combos, meu?.deck.main, byId],
@@ -572,7 +589,7 @@ export default function Simulador({
       rotulosRef.current = { eu: conta?.usuario || t("Você"), oponente: t("IA"), meuDeck: meu.nome, deckOponente: doIA.nome };
       // o que as análises dos duelos anteriores ensinaram sobre o valor das cartas
       const aprendidos = await lerValoresAprendidos().catch(() => ({}));
-      c.iniciar({ partida, humano, nivel: cfg.nivel, linhas: doIA.linhas, aprendidos, roteiro: comboIA ? testeCombo!.combo.passos : undefined, janelas: cfg.todasJanelas ? "todas" : "acao" });
+      c.iniciar({ partida, humano, nivel: cfg.nivel, linhas: doIA.linhas, aprendidos, metaDecks, roteiro: comboIA ? testeCombo!.combo.passos : undefined, janelas: cfg.todasJanelas ? "todas" : "acao" });
     } catch (e) {
       falhou(e);
     }
@@ -923,7 +940,7 @@ export default function Simulador({
       const nivel: NivelIA = cfg.nivel === "passiva" ? "normal" : cfg.nivel;
       const aprendidos = await lerValoresAprendidos().catch(() => ({}));
       setProgresso(t("As duas IAs estão duelando (pode levar alguns minutos)…"));
-      const { aprendizado } = await c.iaxia({ partida, humano, nivel, linhas: doIA.linhas, aprendidos, iaNoHumano: { nivel, linhas: meu.linhas, aprendidos }, ateTurno: 20, janelas: "todas" });
+      const { aprendizado } = await c.iaxia({ partida, humano, nivel, linhas: doIA.linhas, aprendidos, metaDecks, iaNoHumano: { nivel, linhas: meu.linhas, aprendidos }, ateTurno: 20, janelas: "todas" });
       const rotulos = { eu: t("IA ({0})", [meu.nome]), oponente: t("IA ({0})", [doIA.nome]), meuDeck: meu.nome, deckOponente: doIA.nome };
       // fica nos replays, com o motivo de cada decisão (o Exportar leva tudo)
       await guardarAprendizado(aprendizado, versaoMotor.current, APP_VERSION, limiteReplays, rotulos).catch(() => {});

@@ -3,7 +3,7 @@
 // assim que a IA testa jogadas (src/sim/ia.ts). Roda no Worker; a tela recebe só Quadros.
 import { cardMatchesOpcode, OcgHintType, OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
 import { ehComando, executarComando, TIPO, TIPOS_EXTRA, type ComandoFicha, type Historico, type Jogada, type Motor, type Partida } from "./regras";
-import { descreverResposta, IA, type DecisaoIA, type LinhaIA, type NivelIA } from "./ia";
+import { descreverResposta, IA, type DecisaoIA, type DeckEsperado, type LinhaIA, type NivelIA } from "./ia";
 import { passosDoLog, type Passo } from "./passos";
 import type { CampoFinal, Passo as PassoCombo } from "../db/motor";
 
@@ -201,6 +201,8 @@ export interface ConfigSessao {
   exigidas?: number[];
   /** valor extra de cartas em campo aprendido nas análises dos duelos da IA (id → pontos) */
   aprendidos?: Record<number, number>;
+  /** decks de torneio: a IA deduz o do oponente pelas cartas que ele revela */
+  metaDecks?: DeckEsperado[];
   /** análise do duelo: uma IA joga também pelo jogador (com o deck dele) */
   iaNoHumano?: { nivel: NivelIA; linhas?: LinhaIA[]; aprendidos?: Record<number, number> };
   /** análise do duelo: para de jogar quando o duelo passa deste turno */
@@ -264,8 +266,8 @@ export class Sessao {
     readonly motor: Motor,
     readonly cfg: ConfigSessao,
   ) {
-    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, { roteiro: cfg.roteiro, exigidas: cfg.exigidas, aprendidos: cfg.aprendidos, emDefesa: cfg.iaEmDefesa });
-    this.iaHumano = cfg.iaNoHumano ? new IA(cfg.iaNoHumano.nivel, cfg.humano, cfg.iaNoHumano.linhas ?? [], motor, { aprendidos: cfg.iaNoHumano.aprendidos }) : null;
+    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, { roteiro: cfg.roteiro, exigidas: cfg.exigidas, aprendidos: cfg.aprendidos, emDefesa: cfg.iaEmDefesa, metaDecks: cfg.metaDecks });
+    this.iaHumano = cfg.iaNoHumano ? new IA(cfg.iaNoHumano.nivel, cfg.humano, cfg.iaNoHumano.linhas ?? [], motor, { aprendidos: cfg.iaNoHumano.aprendidos, metaDecks: cfg.metaDecks }) : null;
     this.pendentes = [...(cfg.historico ?? [])];
     this.duel = motor.novoDuelo(cfg.partida);
   }

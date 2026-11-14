@@ -22,7 +22,21 @@ export interface OpcoesIA {
   aprendidos?: Record<number, number>;
   /** prefere a Posição de Defesa ao Invocar (análise do duelo: jogar mais seguro) */
   emDefesa?: boolean;
+  /** decks de torneio, para a IA deduzir o do oponente pelas cartas que ele revela */
+  metaDecks?: DeckEsperado[];
 }
+
+/** Um deck de torneio: as cartas que o identificam e as respostas (hand traps) que ele costuma jogar */
+export interface DeckEsperado {
+  arquetipo: string;
+  cartas: number[];
+  respostas: number[];
+}
+
+/** cartas reveladas que batem com um deck para a IA considerar que é ele */
+const MIN_IDENTIFICA = 2;
+/** quanto vale menos uma linha de combo por resposta do deck do oponente que a para na primeira metade */
+const EXPOSTA = 1.5;
 
 /** tempo de planejamento do turno (ms); a Fácil joga uma tentativa só */
 const TEMPO: Record<NivelIA, number> = { passiva: 0, facil: 0, normal: 2000, dificil: 5000 };
@@ -189,7 +203,16 @@ export class IA {
    */
   motivo = "";
   /** como o plano do turno foi escolhido (para o motivo de cada lance dele) */
-  private planoInfo: { nota: number; base: number; tentativas: number; origem: "linha" | "gulosa" | "sorteio"; mao?: number[]; letal?: boolean } | null = null;
+  private planoInfo: {
+    nota: number;
+    base: number;
+    tentativas: number;
+    origem: "linha" | "gulosa" | "sorteio";
+    mao?: number[];
+    letal?: boolean;
+    /** deck do oponente deduzido e as respostas dele que acertavam as linhas conhecidas */
+    leitura?: { arquetipo: string; evitadas: number[] };
+  } | null = null;
   private plano: { resps: OcgResponse[]; i: number } | null = null;
   private tentativa = 0;
   /** alvo escolhido para o ataque em andamento */
@@ -220,6 +243,39 @@ export class IA {
     this.exigidas = opcoes.exigidas ?? [];
     this.aprendidos = opcoes.aprendidos ?? {};
     this.emDefesa = !!opcoes.emDefesa;
+    this.metaDecks = opcoes.metaDecks ?? [];
+  }
+
+  private readonly metaDecks: DeckEsperado[];
+  /** cartas que o oponente já revelou (ativou, Invocou, mandou ao Cemitério ou baniu com a face para cima) */
+  private readonly vistasOp = new Set<number>();
+
+  /**
+   * "Ler o deck do oponente" (aula 1 do PRRJ): pelo que ele revelou, o deck de torneio mais provável e
+   * as respostas que esse deck costuma jogar. Sem cartas suficientes para identificar, null.
+   */
+  private deckDoOponente(s: Sessao): { arquetipo: string; respostas: Set<number> } | null {
+    if (!this.metaDecks.length) return null;
+    const motor = s.motor;
+    const op = 1 - this.eu;
+    // o que está à vista agora: Cemitério, banidas e campo com a face para cima
+    for (const loc of [L.GRAVE, L.REMOVED, L.MZONE, L.SZONE])
+      for (const c of motor.core.duelQueryLocation(s.duel, { flags: 3 as never, controller: op as 0, location: loc }))
+        if (c?.code && !(((c.position as number) ?? 0) & 0xa)) this.vistasOp.add(this.canonico(motor, c.code as number));
+    let melhor: { d: DeckEsperado; n: number } | null = null;
+    for (const d of this.metaDecks) {
+      const n = d.cartas.filter((c) => this.vistasOp.has(c)).length;
+      if (n >= MIN_IDENTIFICA && (!melhor || n > melhor.n)) melhor = { d, n };
+    }
+    return melhor ? { arquetipo: melhor.d.arquetipo, respostas: new Set(melhor.d.respostas) } : null;
+  }
+
+  /** respostas do deck do oponente que param a linha na primeira metade dela (quanto antes, pior) */
+  private exposicao(l: LinhaIA, respostas: Set<number>): number[] {
+    const metade = Math.ceil(l.passos.length / 2);
+    const acertam = new Set<number>();
+    for (const p of l.passos.slice(0, metade)) for (const r of p.resp ?? []) if (respostas.has(r)) acertam.add(r);
+    return [...acertam];
   }
 
   private readonly emDefesa: boolean;
@@ -262,6 +318,7 @@ export class IA {
 
   private escolher(d: OcgMessage, s: Sessao, repetida: boolean): OcgResponse {
     const motor = s.motor;
+    if (s.ultimaAcao && s.ultimaAcao.p !== this.eu) this.vistasOp.add(this.canonico(motor, s.ultimaAcao.code));
     const nome = (code: number | undefined) => (code ? motor.nome(code) : "");
     const ops = opcoesDe(d, motor.tipo);
     if (!repetida) this.tentativa = 0;
@@ -286,7 +343,11 @@ export class IA {
                 : info.origem === "gulosa"
                   ? "a sequência mais direta (cada passo com a jogada de maior peso)"
                   : `a melhor de ${info.tentativas} sequências testadas`
-            }; ${info.letal ? "deixa ATK suficiente para fechar o duelo na Battle Phase" : `deixa o campo com nota ${info.nota.toFixed(1)}, contra ${info.base.toFixed(1)} sem jogar`}.`
+            }; ${info.letal ? "deixa ATK suficiente para fechar o duelo na Battle Phase" : `deixa o campo com nota ${info.nota.toFixed(1)}, contra ${info.base.toFixed(1)} sem jogar`}.${
+              info.leitura
+                ? ` Pelas cartas reveladas, o oponente deve jogar ${info.leitura.arquetipo}${info.leitura.evitadas.length ? `; linhas expostas a ${info.leitura.evitadas.slice(0, 3).map(nome).join(", ")} valem menos` : ""}.`
+                : ""
+            }`
           : "Plano do turno.";
         this.plano.i++;
         if (this.plano.i >= this.plano.resps.length) this.plano = null;
@@ -1015,9 +1076,16 @@ export class IA {
     this.turnoPlanejado = turno;
     let melhor: { resps: OcgResponse[]; nota: number; origem: "linha" | "gulosa" | "sorteio"; mao?: number[] } | null = null;
     // linhas inteiras primeiro: cada linha conhecida que passa pelas cartas que a IA tem, seguida pelo roteiro
+    // deck do oponente lido pelas cartas reveladas: linhas expostas às respostas dele valem menos
+    const leitura = this.deckDoOponente(s);
+    let evitadas: number[] = [];
     for (const l of this.linhasPossiveis(s)) {
       const r = this.tentar(s, passos, campo, true, l.passos);
-      if (r && (!melhor || r.nota > melhor.nota)) melhor = { ...r, origem: "linha", mao: l.mao };
+      if (!r) continue;
+      const expostas = leitura ? this.exposicao(l, leitura.respostas) : [];
+      const nota = r.nota - EXPOSTA * expostas.length;
+      if (!melhor || nota > melhor.nota) melhor = { ...r, nota, origem: "linha", mao: l.mao };
+      for (const x of expostas) if (!evitadas.includes(x)) evitadas.push(x);
     }
     let tentativas = 0;
     for (let n = 0; n < MAX_TENTATIVAS; n++) {
@@ -1029,6 +1097,8 @@ export class IA {
     }
     // só joga se a sequência deixa o campo melhor do que passar a vez
     this.plano = melhor && melhor.nota > base && melhor.resps.length ? { resps: melhor.resps, i: 0 } : null;
-    this.planoInfo = melhor ? { nota: melhor.nota, base, tentativas, origem: melhor.origem, mao: melhor.mao, letal: this.podeAtacar && melhor.nota - base >= LETAL / 2 } : null;
+    this.planoInfo = melhor
+      ? { nota: melhor.nota, base, tentativas, origem: melhor.origem, mao: melhor.mao, letal: this.podeAtacar && melhor.nota - base >= LETAL / 2, ...(leitura ? { leitura: { arquetipo: leitura.arquetipo, evitadas } } : {}) }
+      : null;
   }
 }
