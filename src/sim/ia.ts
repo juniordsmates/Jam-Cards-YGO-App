@@ -727,7 +727,7 @@ export class IA {
     if (tipo & TIPO.MONSTRO)
       v = Math.max(0, (dados!.attack as number) ?? 0) / 1000 + (tipo & TIPOS_EXTRA ? 2 : 0) + VALOR_EFEITO * motor.valorEmCampo(c.code) + (this.extra[k] ?? 0) + (tipo & TIPO.EFEITO ? 0.05 : 0);
     else if (baixada) v = 2;
-    else v = 1 + (tipo & PERMANENTES ? 1 + VALOR_EFEITO * motor.valorEmCampo(c.code) : 0);
+    else v = 1 + (tipo & PERMANENTES ? 1 + VALOR_EFEITO * motor.valorEmCampo(c.code) : 0) + (this.extra[k] ?? 0);
     if (campo) v += 1;
     if (linha.has(k)) v += 1.5;
     if (campo && e.cadeia.some((x) => x.code === c.code && x.controller === c.controller)) {
@@ -934,9 +934,9 @@ export class IA {
     for (const c of magias) {
       if (c.pos & 0xa) {
         const viva = vivas.has(c.sequence);
-        n += viva ? 2 + VALOR_EFEITO * motor.valorAoAtivar(c.code) : BAIXADA_MORTA;
+        n += viva ? 2 + VALOR_EFEITO * motor.valorAoAtivar(c.code) + (this.extra[this.canonico(motor, c.code)] ?? 0) : BAIXADA_MORTA;
         if (viva && motor.valorAoAtivar(c.code) > 0) interrupcoes++;
-      } else n += 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
+      } else n += 1 + VALOR_EFEITO * motor.valorEmCampo(c.code) + (this.extra[this.canonico(motor, c.code)] ?? 0);
       if (alvo.has(this.canonico(motor, c.code))) n += 2;
     }
     const mao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND });
