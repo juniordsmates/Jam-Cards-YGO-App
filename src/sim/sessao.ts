@@ -6,6 +6,7 @@ import { ehComando, executarComando, TIPO, TIPOS_EXTRA, type ComandoFicha, type 
 import { descreverResposta, IA, type DecisaoIA, type DeckEsperado, type LinhaIA, type NivelIA } from "./ia";
 import { passosDoLog, type Passo } from "./passos";
 import type { CampoFinal, Passo as PassoCombo } from "../db/motor";
+import type { ConhecimentoIA } from "../db/overlay";
 
 export interface CartaSim {
   code: number;
@@ -203,6 +204,8 @@ export interface ConfigSessao {
   aprendidos?: Record<number, number>;
   /** decks de torneio: a IA deduz o do oponente pelas cartas que ele revela */
   metaDecks?: DeckEsperado[];
+  /** lições do Centuryum (camada): valor das cartas e jogadas a responder sempre, por deck do oponente */
+  conhecimento?: ConhecimentoIA;
   /** análise do duelo: uma IA joga também pelo jogador (com o deck dele) */
   iaNoHumano?: { nivel: NivelIA; linhas?: LinhaIA[]; aprendidos?: Record<number, number> };
   /** análise do duelo: para de jogar quando o duelo passa deste turno */
@@ -266,8 +269,8 @@ export class Sessao {
     readonly motor: Motor,
     readonly cfg: ConfigSessao,
   ) {
-    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, { roteiro: cfg.roteiro, exigidas: cfg.exigidas, aprendidos: cfg.aprendidos, emDefesa: cfg.iaEmDefesa, metaDecks: cfg.metaDecks });
-    this.iaHumano = cfg.iaNoHumano ? new IA(cfg.iaNoHumano.nivel, cfg.humano, cfg.iaNoHumano.linhas ?? [], motor, { aprendidos: cfg.iaNoHumano.aprendidos, metaDecks: cfg.metaDecks }) : null;
+    this.ia = cfg.remoto ? null : new IA(cfg.nivel, (1 - cfg.humano) as 0 | 1, cfg.linhas ?? [], motor, { roteiro: cfg.roteiro, exigidas: cfg.exigidas, aprendidos: cfg.aprendidos, emDefesa: cfg.iaEmDefesa, metaDecks: cfg.metaDecks, conhecimento: cfg.conhecimento });
+    this.iaHumano = cfg.iaNoHumano ? new IA(cfg.iaNoHumano.nivel, cfg.humano, cfg.iaNoHumano.linhas ?? [], motor, { aprendidos: cfg.iaNoHumano.aprendidos, metaDecks: cfg.metaDecks, conhecimento: cfg.conhecimento }) : null;
     this.pendentes = [...(cfg.historico ?? [])];
     this.duel = motor.novoDuelo(cfg.partida);
   }

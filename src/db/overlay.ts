@@ -50,6 +50,20 @@ export interface Overlay {
   respondedores?: Record<string, string[]>;
   /** metagame do TCG (6 meses de decklists de torneio): base do Guia de Deck */
   metaTcg?: MetaTcg;
+  /** conhecimento da IA de duelos tirado das lições do Centuryum (vídeos de jogadores) */
+  ia?: ConhecimentoIA;
+}
+
+/**
+ * Conhecimento da IA de duelos (lições do Centuryum), por deck do oponente: a chave é o arquétipo como
+ * no metaTcg, ou "*" para qualquer deck. Chega pela camada, sem versão nova do app.
+ */
+export interface ConhecimentoIA {
+  atualizadoEm: string;
+  /** pontos somados ao valor da carta (id) em campo, na mão como interrupção e como alvo */
+  valor: Record<string, Record<string, number>>;
+  /** cartas do oponente (ids) a cuja ativação a IA sempre responde, sem o sorteio do nível */
+  responderSempre: Record<string, number[]>;
 }
 
 /** Carta do núcleo de um deck: em que fração das listas aparece e com quantas cópias, em média */
