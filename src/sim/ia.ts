@@ -5,6 +5,7 @@
 // no turno do oponente e escolhas fora do plano seguem regras simples.
 import { cardMatchesOpcode, OcgHintType, OcgLocation as L, OcgMessageType as T, OcgPhase, OcgResponseType as R, type OcgDuelHandle, type OcgMessage, type OcgResponse } from "ocgcore-wasm";
 import type { LinhaCombo, Passo } from "../db/motor";
+import type { ConhecimentoIA } from "../db/overlay";
 import { reproduzir, TIPO, TIPOS_EXTRA, type Jogada, type Motor } from "./regras";
 import { opcoesDe, type Opcao, type RefCarta } from "./opcoes";
 import { Roteiro } from "./roteiro";
@@ -24,6 +25,8 @@ export interface OpcoesIA {
   emDefesa?: boolean;
   /** decks de torneio, para a IA deduzir o do oponente pelas cartas que ele revela */
   metaDecks?: DeckEsperado[];
+  /** lições do Centuryum (camada): valor das cartas e jogadas a responder sempre, por deck do oponente */
+  conhecimento?: ConhecimentoIA;
 }
 
 /** Um deck de torneio: as cartas que o identificam e as respostas (hand traps) que ele costuma jogar */
@@ -230,6 +233,14 @@ export class IA {
   private readonly exigidas: number[];
   /** valor extra de cartas em campo, aprendido nas análises dos duelos (id → pontos) */
   private readonly aprendidos: Record<number, number>;
+  /** lições do Centuryum (camada) */
+  private readonly conhecimento: ConhecimentoIA | undefined;
+  /** valor extra de cada carta (id → pontos): duelos analisados + lições para qualquer deck + lições contra o deck lido do oponente */
+  private extra: Record<number, number> = {};
+  /** cartas do oponente a que a IA sempre responde (lições do Centuryum), para o deck lido dele */
+  private responderSempre = new Set<number>();
+  /** arquétipo lido do oponente na última decisão (undefined: ainda não leu) */
+  private arquetipoOp: string | null | undefined = undefined;
 
   constructor(
     readonly nivel: NivelIA,
@@ -244,6 +255,28 @@ export class IA {
     this.aprendidos = opcoes.aprendidos ?? {};
     this.emDefesa = !!opcoes.emDefesa;
     this.metaDecks = opcoes.metaDecks ?? [];
+    this.conhecimento = opcoes.conhecimento;
+    this.aplicarConhecimento(null);
+  }
+
+  /** Junta o valor extra e as respostas obrigatórias das lições para qualquer deck e, lido o deck do oponente, para ele */
+  private aplicarConhecimento(arquetipo: string | null) {
+    this.arquetipoOp = arquetipo;
+    const k = this.conhecimento;
+    const chaves = arquetipo ? ["*", arquetipo] : ["*"];
+    this.extra = { ...this.aprendidos };
+    this.responderSempre = new Set();
+    for (const chave of chaves) {
+      for (const [id, v] of Object.entries(k?.valor[chave] ?? {})) this.extra[Number(id)] = (this.extra[Number(id)] ?? 0) + v;
+      for (const id of k?.responderSempre[chave] ?? []) this.responderSempre.add(id);
+    }
+  }
+
+  /** Relê o deck do oponente; se mudou, aplica as lições contra o novo deck */
+  private lerOponente(s: Sessao) {
+    if (!this.conhecimento) return;
+    const arquetipo = this.deckDoOponente(s)?.arquetipo ?? null;
+    if (arquetipo !== this.arquetipoOp) this.aplicarConhecimento(arquetipo);
   }
 
   private readonly metaDecks: DeckEsperado[];
@@ -319,6 +352,7 @@ export class IA {
   private escolher(d: OcgMessage, s: Sessao, repetida: boolean): OcgResponse {
     const motor = s.motor;
     if (s.ultimaAcao && s.ultimaAcao.p !== this.eu) this.vistasOp.add(this.canonico(motor, s.ultimaAcao.code));
+    this.lerOponente(s);
     const nome = (code: number | undefined) => (code ? motor.nome(code) : "");
     const ops = opcoesDe(d, motor.tipo);
     if (!repetida) this.tentativa = 0;
@@ -423,6 +457,11 @@ export class IA {
         const ultima = s.ultimaAcao;
         // responde às jogadas do oponente com a chance do nível; no próprio turno, ativa os gatilhos
         if (ultima && ultima.p !== this.eu) {
+          // jogada que as lições do Centuryum mandam parar sempre (ex.: a que começa um OTK do deck dele)
+          if (this.responderSempre.has(this.canonico(motor, ultima.code))) {
+            this.motivo = `Responde sempre a ${nome(ultima.code)} (lição de jogadores: deixar essa jogada resolver costuma perder o duelo) com ${nome(ativar.acao?.code)}.`;
+            return ativar.resp;
+          }
           const responde = Math.random() < RESPONDE[this.nivel];
           this.motivo = responde
             ? `Responde à jogada do oponente (${nome(ultima.code)}) com ${nome(ativar.acao?.code)}.`
@@ -686,9 +725,9 @@ export class IA {
     const k = this.canonico(motor, c.code);
     let v: number;
     if (tipo & TIPO.MONSTRO)
-      v = Math.max(0, (dados!.attack as number) ?? 0) / 1000 + (tipo & TIPOS_EXTRA ? 2 : 0) + VALOR_EFEITO * motor.valorEmCampo(c.code) + (this.aprendidos[k] ?? 0) + (tipo & TIPO.EFEITO ? 0.05 : 0);
+      v = Math.max(0, (dados!.attack as number) ?? 0) / 1000 + (tipo & TIPOS_EXTRA ? 2 : 0) + VALOR_EFEITO * motor.valorEmCampo(c.code) + (this.extra[k] ?? 0) + (tipo & TIPO.EFEITO ? 0.05 : 0);
     else if (baixada) v = 2;
-    else v = 1 + (tipo & PERMANENTES ? 1 + VALOR_EFEITO * motor.valorEmCampo(c.code) : 0);
+    else v = 1 + (tipo & PERMANENTES ? 1 + VALOR_EFEITO * motor.valorEmCampo(c.code) : 0) + (this.extra[k] ?? 0);
     if (campo) v += 1;
     if (linha.has(k)) v += 1.5;
     if (campo && e.cadeia.some((x) => x.code === c.code && x.controller === c.controller)) {
@@ -881,8 +920,8 @@ export class IA {
       // um monstro do Extra Deck (o "chefe" de um combo) vale mais que os corpos que viraram matéria dele;
       // interrupção de mão em campo é só um corpo: o ATK dela (ex.: Nibiru) não compensa tirá-la da mão
       n += motor.tipo(m.code) & TIPOS_EXTRA ? EXTRA + (0.6 * m.atk) / 1000 : 1.5 + (this.guardar(motor, m.code, linha) ? 0 : (0.6 * m.atk) / 1000);
-      // o que ela faz em campo (lido do script: interrupção, remoção, proteção) e o que os duelos ensinaram
-      if (!(m.pos & 0xa)) n += VALOR_EFEITO * motor.valorEmCampo(m.code) + (this.aprendidos[this.canonico(motor, m.code)] ?? 0);
+      // o que ela faz em campo (lido do script: interrupção, remoção, proteção) e o que os duelos e as lições ensinaram
+      if (!(m.pos & 0xa)) n += VALOR_EFEITO * motor.valorEmCampo(m.code) + (this.extra[this.canonico(motor, m.code)] ?? 0);
       if (alvo.has(this.canonico(motor, m.code))) n += 2;
     }
     // interrupções prontas para o turno do oponente (monstro com Efeito Rápido que tira cartas, baixada
@@ -895,16 +934,17 @@ export class IA {
     for (const c of magias) {
       if (c.pos & 0xa) {
         const viva = vivas.has(c.sequence);
-        n += viva ? 2 + VALOR_EFEITO * motor.valorAoAtivar(c.code) : BAIXADA_MORTA;
+        n += viva ? 2 + VALOR_EFEITO * motor.valorAoAtivar(c.code) + (this.extra[this.canonico(motor, c.code)] ?? 0) : BAIXADA_MORTA;
         if (viva && motor.valorAoAtivar(c.code) > 0) interrupcoes++;
-      } else n += 1 + VALOR_EFEITO * motor.valorEmCampo(c.code);
+      } else n += 1 + VALOR_EFEITO * motor.valorEmCampo(c.code) + (this.extra[this.canonico(motor, c.code)] ?? 0);
       if (alvo.has(this.canonico(motor, c.code))) n += 2;
     }
     const mao = motor.core.duelQueryLocation(duel, { flags: 1 as never, controller: this.eu, location: L.HAND });
     n += 0.7 * mao.length;
     for (const c of mao)
       if (c?.code && this.guardar(motor, c.code as number, linha)) {
-        n += VALOR_INTERRUPCAO;
+        // a lição pode mudar o valor da interrupção contra o deck lido (ex.: Nibiru vale menos contra Dragon Link)
+        n += VALOR_INTERRUPCAO + (this.extra[this.canonico(motor, c.code as number)] ?? 0);
         interrupcoes++;
       }
     n -= SOBRA_INTERRUPCAO * Math.max(0, interrupcoes - 3);

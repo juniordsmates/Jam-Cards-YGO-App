@@ -589,7 +589,7 @@ export default function Simulador({
       rotulosRef.current = { eu: conta?.usuario || t("Você"), oponente: t("IA"), meuDeck: meu.nome, deckOponente: doIA.nome };
       // o que as análises dos duelos anteriores ensinaram sobre o valor das cartas
       const aprendidos = await lerValoresAprendidos().catch(() => ({}));
-      c.iniciar({ partida, humano, nivel: cfg.nivel, linhas: doIA.linhas, aprendidos, metaDecks, roteiro: comboIA ? testeCombo!.combo.passos : undefined, janelas: cfg.todasJanelas ? "todas" : "acao" });
+      c.iniciar({ partida, humano, nivel: cfg.nivel, linhas: doIA.linhas, aprendidos, metaDecks, conhecimento: db.extras?.ia, roteiro: comboIA ? testeCombo!.combo.passos : undefined, janelas: cfg.todasJanelas ? "todas" : "acao" });
     } catch (e) {
       falhou(e);
     }
@@ -940,7 +940,7 @@ export default function Simulador({
       const nivel: NivelIA = cfg.nivel === "passiva" ? "normal" : cfg.nivel;
       const aprendidos = await lerValoresAprendidos().catch(() => ({}));
       setProgresso(t("As duas IAs estão duelando (pode levar alguns minutos)…"));
-      const { aprendizado } = await c.iaxia({ partida, humano, nivel, linhas: doIA.linhas, aprendidos, metaDecks, iaNoHumano: { nivel, linhas: meu.linhas, aprendidos }, ateTurno: 20, janelas: "todas" });
+      const { aprendizado } = await c.iaxia({ partida, humano, nivel, linhas: doIA.linhas, aprendidos, metaDecks, conhecimento: db.extras?.ia, iaNoHumano: { nivel, linhas: meu.linhas, aprendidos }, ateTurno: 20, janelas: "todas" });
       const rotulos = { eu: t("IA ({0})", [meu.nome]), oponente: t("IA ({0})", [doIA.nome]), meuDeck: meu.nome, deckOponente: doIA.nome };
       // fica nos replays, com o motivo de cada decisão (o Exportar leva tudo)
       await guardarAprendizado(aprendizado, versaoMotor.current, APP_VERSION, limiteReplays, rotulos).catch(() => {});
