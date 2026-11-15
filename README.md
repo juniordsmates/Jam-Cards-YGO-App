@@ -9,6 +9,72 @@ App de busca de cartas e montagem de decks de Yu-Gi-Oh! que roda na **web**, no 
 - **Frontend:** React 18 + TypeScript + Vite
 - **Desktop:** Tauri 2 (Rust + WebView do sistema)
 
+## Os 4 pilares do app (regra principal)
+
+Toda mudança no Jam Cards - YGO! parte destes quatro pilares. Antes de criar ou alterar qualquer coisa,
+pergunte a qual pilar ela serve e se ela deixa esse pilar mais forte.
+
+1. **Buscar e assimilar cartas.** A busca de cartas, os Combos e a Comunidade existem para que qualquer
+   pessoa entenda um arquétipo do zero. Quem não sabe nada de Witchcrafter digita "witchcrafter" na busca
+   e vê as cartas principais, as interações, as respostas e as formas de buscar cada peça; na Comunidade,
+   vê o panorama do deck: cartas principais, combos mais favoritados (e por isso os mais recomendados),
+   ideias e artigos. Tudo o que mexe nessas telas precisa servir a esse objetivo.
+2. **Simulador com IA: aprender e assimilar.** O Simulador é para praticar, e enquanto se pratica, tudo o
+   que acontece nos duelos é aprendido e assimilado pela IA do Simulador e pelo Centuryum, o motor de
+   aprendizado do app. A coleta não é uma opção a ligar ou desligar: ela precisa estar prevista nos
+   Termos de Uso e na Política de Privacidade, aceitos no cadastro, e nunca leva nomes, só cartas e jogadas.
+3. **Preparação e aulas.** O app oferece treinos manuais e montagem de decks para criar, testar e
+   aprender sobre o jogo, as cartas e os arquétipos.
+4. **Fácil de aprender e de usar.** Tudo precisa ser explicitamente fácil de entender e de executar,
+   para quem está começando e para quem já joga.
+
+<details>
+<summary><strong>The app's 4 pillars (main rule)</strong> — English</summary>
+
+Every change to Jam Cards - YGO! starts from these four pillars. Before building or changing anything, ask
+which pillar it serves and whether it makes that pillar stronger.
+
+1. **Find and understand cards.** Card search, Combos and the Community exist so that anyone can learn an
+   archetype from scratch. Someone who knows nothing about Witchcrafter types "witchcrafter" in the search
+   and sees the key cards, interactions, answers and ways to search each piece; in the Community they get
+   the deck's big picture: key cards, the most favorited (and therefore most recommended) combos, ideas
+   and articles. Everything that touches these screens must serve this goal.
+2. **AI Simulator: learn and assimilate.** The Simulator is for practice, and while you practice,
+   everything that happens in your duels is learned and assimilated by the Simulator's AI and by
+   Centuryum, the app's learning engine. Collection is not a setting to switch on or off: it must be
+   stated in the Terms of Use and the Privacy Policy accepted at sign-up, and it never carries names, only
+   cards and plays.
+3. **Preparation and lessons.** The app offers manual training and deck building to create, test and
+   learn about the game, its cards and archetypes.
+4. **Easy to learn and use.** Everything must be explicitly easy to understand and to do, for beginners
+   and experienced players alike.
+
+</details>
+
+<details>
+<summary><strong>Los 4 pilares de la app (regla principal)</strong> — Español</summary>
+
+Todo cambio en Jam Cards - YGO! parte de estos cuatro pilares. Antes de crear o cambiar algo, pregúntate a
+qué pilar sirve y si fortalece ese pilar.
+
+1. **Buscar y asimilar cartas.** La búsqueda de cartas, los Combos y la Comunidad existen para que
+   cualquiera entienda un arquetipo desde cero. Quien no sabe nada de Witchcrafter escribe "witchcrafter"
+   en la búsqueda y ve las cartas principales, las interacciones, las respuestas y las formas de buscar
+   cada pieza; en la Comunidad ve el panorama del deck: cartas principales, combos más marcados como
+   favoritos (y por eso los más recomendados), ideas y artículos. Todo lo que toque estas pantallas debe
+   servir a ese objetivo.
+2. **Simulador con IA: aprender y asimilar.** El Simulador es para practicar, y mientras se practica,
+   todo lo que pasa en los duelos lo aprenden y asimilan la IA del Simulador y Centuryum, el motor de
+   aprendizaje de la app. La recolección no es una opción para activar o desactivar: debe estar prevista
+   en los Términos de Uso y la Política de Privacidad aceptados en el registro, y nunca lleva nombres,
+   solo cartas y jugadas.
+3. **Preparación y clases.** La app ofrece entrenamientos manuales y armado de decks para crear, probar y
+   aprender sobre el juego, las cartas y los arquetipos.
+4. **Fácil de aprender y de usar.** Todo tiene que ser explícitamente fácil de entender y de hacer, para
+   quien empieza y para quien ya juega.
+
+</details>
+
 ## Pré-requisitos
 
 | Ferramenta | macOS | Windows |
