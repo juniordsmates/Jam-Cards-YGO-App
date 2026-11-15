@@ -38,8 +38,23 @@ export interface DeckEsperado {
 
 /** cartas reveladas que batem com um deck para a IA considerar que é ele */
 const MIN_IDENTIFICA = 2;
+/**
+ * deck do oponente com mais cartas que isto: lista menos padrão, menos confiança na lista de torneio; a
+ * leitura pede uma carta revelada a mais (aula 5 do PRRJ, 07:52)
+ */
+const DECK_PADRAO = 40;
+/**
+ * cópias de uma carta num deck: com todas à vista (Cemitério, banidas, campo), o oponente não tem mais
+ * aquela resposta e as linhas expostas a ela deixam de valer menos (aula 12 do PRRJ, 59:56)
+ */
+const MAX_COPIAS = 3;
 /** quanto vale menos uma linha de combo por resposta do deck do oponente que a para na primeira metade */
 const EXPOSTA = 1.5;
+/**
+ * o mesmo, para uma interrupção de mão que o oponente buscou ou revelou e ainda não usou (mão conhecida,
+ * aula 9 do PRRJ, 54:11): ele tem a carta com certeza, então pesa o dobro
+ */
+const EXPOSTA_CONHECIDA = 2 * EXPOSTA;
 
 /** tempo de planejamento do turno (ms); a Fácil joga uma tentativa só */
 const TEMPO: Record<NivelIA, number> = { passiva: 0, facil: 0, normal: 2000, dificil: 5000 };
@@ -213,8 +228,8 @@ export class IA {
     origem: "linha" | "gulosa" | "sorteio";
     mao?: number[];
     letal?: boolean;
-    /** deck do oponente deduzido e as respostas dele que acertavam as linhas conhecidas */
-    leitura?: { arquetipo: string; evitadas: number[] };
+    /** deck do oponente deduzido, interrupções de mão que ele buscou ou revelou e as respostas dele que acertavam as linhas conhecidas */
+    leitura?: { arquetipo?: string; evitadas: number[]; conhecidas: number[] };
   } | null = null;
   private plano: { resps: OcgResponse[]; i: number } | null = null;
   private tentativa = 0;
@@ -282,25 +297,46 @@ export class IA {
   private readonly metaDecks: DeckEsperado[];
   /** cartas que o oponente já revelou (ativou, Invocou, mandou ao Cemitério ou baniu com a face para cima) */
   private readonly vistasOp = new Set<number>();
+  /**
+   * Mão conhecida do oponente (aula 9 do PRRJ): cartas que ele buscou do Deck ou revelou da mão, até
+   * saírem da mão (id do motor → cópias). Só o que um jogador veria; a compra normal fica de fora.
+   */
+  private readonly maoConhecidaOp = new Map<number, number>();
 
   /**
    * "Ler o deck do oponente" (aula 1 do PRRJ): pelo que ele revelou, o deck de torneio mais provável e
-   * as respostas que esse deck costuma jogar. Sem cartas suficientes para identificar, null.
+   * as respostas que esse deck costuma jogar, sem as que ele já gastou todas as cópias. Sem cartas
+   * suficientes para identificar, null.
    */
   private deckDoOponente(s: Sessao): { arquetipo: string; respostas: Set<number> } | null {
     if (!this.metaDecks.length) return null;
     const motor = s.motor;
     const op = 1 - this.eu;
-    // o que está à vista agora: Cemitério, banidas e campo com a face para cima
+    // o que está à vista agora: Cemitério, banidas e campo com a face para cima (e quantas cópias de cada)
+    const publicas = new Map<number, number>();
     for (const loc of [L.GRAVE, L.REMOVED, L.MZONE, L.SZONE])
       for (const c of motor.core.duelQueryLocation(s.duel, { flags: 3 as never, controller: op as 0, location: loc }))
-        if (c?.code && !(((c.position as number) ?? 0) & 0xa)) this.vistasOp.add(this.canonico(motor, c.code as number));
+        if (c?.code && !(((c.position as number) ?? 0) & 0xa)) {
+          const k = this.canonico(motor, c.code as number);
+          this.vistasOp.add(k);
+          publicas.set(k, (publicas.get(k) ?? 0) + 1);
+        }
+    const minimo = MIN_IDENTIFICA + (s.partida.decks[op].main.length > DECK_PADRAO ? 1 : 0);
     let melhor: { d: DeckEsperado; n: number } | null = null;
     for (const d of this.metaDecks) {
       const n = d.cartas.filter((c) => this.vistasOp.has(c)).length;
-      if (n >= MIN_IDENTIFICA && (!melhor || n > melhor.n)) melhor = { d, n };
+      if (n >= minimo && (!melhor || n > melhor.n)) melhor = { d, n };
     }
-    return melhor ? { arquetipo: melhor.d.arquetipo, respostas: new Set(melhor.d.respostas) } : null;
+    return melhor ? { arquetipo: melhor.d.arquetipo, respostas: new Set(melhor.d.respostas.filter((r) => (publicas.get(r) ?? 0) < MAX_COPIAS)) } : null;
+  }
+
+  /** Interrupções de mão que o oponente tem com certeza (mão conhecida); esquece tudo se ele tiver menos cartas na mão que isso */
+  private interrupcoesConhecidas(s: Sessao): Set<number> {
+    const motor = s.motor;
+    const naMao = motor.core.duelQueryCount(s.duel, (1 - this.eu) as 0, L.HAND);
+    // uma carta conhecida saiu da mão sem a IA ver qual (ex.: voltou ao Deck): não dá para saber quais sobraram
+    if ([...this.maoConhecidaOp.values()].reduce((a, b) => a + b, 0) > naMao) this.maoConhecidaOp.clear();
+    return new Set([...this.maoConhecidaOp.keys()].filter((c) => motor.interrompeDaMao(c)).map((c) => this.canonico(motor, c)));
   }
 
   /** respostas do deck do oponente que param a linha na primeira metade dela (quanto antes, pior) */
@@ -318,9 +354,29 @@ export class IA {
     return this.nota(motor, duel, new Set(), new Set());
   }
 
-  /** Mensagens do motor (o roteiro acompanha o que a IA já fez do combo) */
+  /** Mensagens do motor (o roteiro acompanha o que a IA já fez do combo; a mão conhecida do oponente acompanha as buscas dele) */
   ler(log: OcgMessage[]) {
     this.roteiro?.ler(log);
+    const op = 1 - this.eu;
+    const mao = this.maoConhecidaOp;
+    for (const m of log) {
+      if (m.type === T.MOVE && m.card) {
+        // busca (Deck para a mão fora da compra): a carta adicionada é mostrada ao oponente
+        if (m.from.location === L.DECK && m.to.location === L.HAND && m.to.controller === op) mao.set(m.card, (mao.get(m.card) ?? 0) + 1);
+        // saiu da mão para um lugar à vista: deixa de ser conhecida (para um lugar escondido, interrupcoesConhecidas confere pela contagem)
+        const visivel = m.to.location & (L.GRAVE | L.REMOVED | L.ONFIELD) && !(((m.to as { position?: number }).position ?? 0) & 0xa);
+        if (m.from.location === L.HAND && m.from.controller === op && visivel && mao.has(m.card)) {
+          const n = mao.get(m.card)! - 1;
+          if (n > 0) mao.set(m.card, n);
+          else mao.delete(m.card);
+        }
+      } else if (m.type === T.CONFIRM_CARDS) {
+        // cartas reveladas da mão: conta pelo menos as cópias mostradas
+        const vistas = new Map<number, number>();
+        for (const c of m.cards) if (c.code && c.controller === op && c.location === L.HAND) vistas.set(c.code, (vistas.get(c.code) ?? 0) + 1);
+        for (const [c, n] of vistas) mao.set(c, Math.max(mao.get(c) ?? 0, n));
+      }
+    }
   }
 
   /** A última resposta da IA não valia (RETRY): a próxima tentativa usa outra opção */
@@ -379,7 +435,13 @@ export class IA {
                   : `a melhor de ${info.tentativas} sequências testadas`
             }; ${info.letal ? "deixa ATK suficiente para fechar o duelo na Battle Phase" : `deixa o campo com nota ${info.nota.toFixed(1)}, contra ${info.base.toFixed(1)} sem jogar`}.${
               info.leitura
-                ? ` Pelas cartas reveladas, o oponente deve jogar ${info.leitura.arquetipo}${info.leitura.evitadas.length ? `; linhas expostas a ${info.leitura.evitadas.slice(0, 3).map(nome).join(", ")} valem menos` : ""}.`
+                ? ` ${[
+                    info.leitura.arquetipo ? `Pelas cartas reveladas, o oponente deve jogar ${info.leitura.arquetipo}` : "",
+                    info.leitura.conhecidas.length ? `o oponente buscou ou revelou ${info.leitura.conhecidas.slice(0, 3).map(nome).join(", ")}` : "",
+                  ]
+                    .filter(Boolean)
+                    .join("; ")
+                    .replace(/^o /, "O ")}${info.leitura.evitadas.length ? `; linhas expostas a ${info.leitura.evitadas.slice(0, 3).map(nome).join(", ")} valem menos` : ""}.`
                 : ""
             }`
           : "Plano do turno.";
@@ -1118,12 +1180,15 @@ export class IA {
     // linhas inteiras primeiro: cada linha conhecida que passa pelas cartas que a IA tem, seguida pelo roteiro
     // deck do oponente lido pelas cartas reveladas: linhas expostas às respostas dele valem menos
     const leitura = this.deckDoOponente(s);
+    // mais as interrupções de mão que ele buscou ou revelou (essas pesam o dobro: ele tem a carta)
+    const conhecidas = this.interrupcoesConhecidas(s);
+    const respostas = new Set([...(leitura?.respostas ?? []), ...conhecidas]);
     let evitadas: number[] = [];
     for (const l of this.linhasPossiveis(s)) {
       const r = this.tentar(s, passos, campo, true, l.passos);
       if (!r) continue;
-      const expostas = leitura ? this.exposicao(l, leitura.respostas) : [];
-      const nota = r.nota - EXPOSTA * expostas.length;
+      const expostas = respostas.size ? this.exposicao(l, respostas) : [];
+      const nota = r.nota - expostas.reduce((p, x) => p + (conhecidas.has(x) ? EXPOSTA_CONHECIDA : EXPOSTA), 0);
       if (!melhor || nota > melhor.nota) melhor = { ...r, nota, origem: "linha", mao: l.mao };
       for (const x of expostas) if (!evitadas.includes(x)) evitadas.push(x);
     }
@@ -1138,7 +1203,15 @@ export class IA {
     // só joga se a sequência deixa o campo melhor do que passar a vez
     this.plano = melhor && melhor.nota > base && melhor.resps.length ? { resps: melhor.resps, i: 0 } : null;
     this.planoInfo = melhor
-      ? { nota: melhor.nota, base, tentativas, origem: melhor.origem, mao: melhor.mao, letal: this.podeAtacar && melhor.nota - base >= LETAL / 2, ...(leitura ? { leitura: { arquetipo: leitura.arquetipo, evitadas } } : {}) }
+      ? {
+          nota: melhor.nota,
+          base,
+          tentativas,
+          origem: melhor.origem,
+          mao: melhor.mao,
+          letal: this.podeAtacar && melhor.nota - base >= LETAL / 2,
+          ...(leitura || conhecidas.size ? { leitura: { arquetipo: leitura?.arquetipo, evitadas, conhecidas: [...conhecidas] } } : {}),
+        }
       : null;
   }
 }
