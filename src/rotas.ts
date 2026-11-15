@@ -5,9 +5,9 @@ import { isDesktop } from "./platform";
 //   #/carta/14558127                      painel da Ash Blossom na busca
 //   #/combo/<id>                          um Combo da Comunidade
 //   #/combos/mao/42493140,15005145        Combos com essa mão inicial
-//   #/guia/Kewl%20Tune/combos             Guia de Deck do Kewl Tune, aba Combos
 //   #/meta-call/TCG/Kewl%20Tune:17,Elfnote:12
-//   #/comunidade/Kewl%20Tune                aba Comunidade do arquétipo
+//   #/comunidade/Kewl%20Tune/combos         Comunidade do Kewl Tune, aba Combos do guia (os links
+//                                           antigos #/guia/<deck>/<aba> abrem aqui)
 //   #/rank                                  Rank dos duelistas
 //   #/conquistas                            Conquistas
 //   #/eventos  #/eventos/compartilhar      Eventos (resultados de torneio) e o envio
@@ -26,7 +26,6 @@ export type Rota =
   | { tela: "menu" }
   | { tela: "search"; carta?: number }
   | { tela: "combos"; combo?: string; mao?: number[] }
-  | { tela: "guia"; arquetipo?: string; aba?: string }
   | { tela: "metacall"; formato?: "TCG" | "OCG"; decks?: Record<string, number> }
   | { tela: "deck" }
   | { tela: "teste" }
@@ -39,14 +38,15 @@ export type Rota =
   | { tela: "meuscombos" }
   | { tela: "simulador"; duelo?: string; replay?: string }
   | { tela: "treino" }
-  | { tela: "comunidade"; arquetipo?: string };
+  | { tela: "comunidade"; arquetipo?: string; aba?: string };
 
 const NOMES: Record<string, Rota["tela"]> = {
   busca: "search",
   carta: "search",
   combos: "combos",
   combo: "combos",
-  guia: "guia",
+  // o Guia de Deck passou para a Comunidade: os links antigos (#/guia/<deck>/<aba>) abrem lá
+  guia: "comunidade",
   "meta-call": "metacall",
   editor: "deck",
   teste: "teste",
@@ -88,10 +88,8 @@ export function lerRota(hash = window.location.hash): Rota {
     case "combos":
       if (nome === "combo" && a && /^[0-9a-f-]{36}$/i.test(a)) return { tela, combo: a };
       return a === "mao" && ids(b).length ? { tela, mao: ids(b).slice(0, 10) } : { tela };
-    case "guia":
-      return { tela, arquetipo: dec(a), aba: dec(b) };
     case "comunidade":
-      return { tela, arquetipo: dec(a) };
+      return { tela, arquetipo: dec(a), aba: dec(b) };
     case "simulador":
       if (nome === "replay" && a && /^[0-9a-f]{8}$/i.test(a)) return { tela, replay: a.toLowerCase() };
       return nome === "duelo" && a && /^[0-9a-f-]{36}$/i.test(a) ? { tela, duelo: a.toLowerCase() } : { tela };
@@ -126,8 +124,6 @@ export function hashDa(r: Rota): string {
       return r.carta ? `#/carta/${r.carta}` : "#/busca";
     case "combos":
       return r.combo ? `#/combo/${r.combo}` : r.mao?.length ? `#/combos/mao/${r.mao.join(",")}` : "#/combos";
-    case "guia":
-      return r.arquetipo ? `#/guia/${enc(r.arquetipo)}${r.aba ? `/${enc(r.aba)}` : ""}` : "#/guia";
     case "metacall": {
       const decks = Object.entries(r.decks ?? {}).filter(([, p]) => p > 0);
       return decks.length || r.formato
@@ -135,7 +131,7 @@ export function hashDa(r: Rota): string {
         : "#/meta-call";
     }
     case "comunidade":
-      return r.arquetipo ? `#/comunidade/${enc(r.arquetipo)}` : "#/comunidade";
+      return r.arquetipo ? `#/comunidade/${enc(r.arquetipo)}${r.aba ? `/${enc(r.aba)}` : ""}` : "#/comunidade";
     case "eventos":
       return r.resultado ? `#/evento/${r.resultado}` : r.aba ? `#/eventos/${r.aba}` : "#/eventos";
     case "deck":

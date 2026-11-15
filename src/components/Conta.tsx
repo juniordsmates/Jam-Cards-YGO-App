@@ -881,7 +881,7 @@ function VisaoGeral() {
               </li>
             )}
             <li>
-              <strong>{fmt(contrib.artigosAprovados)}</strong> {t("artigo(s) publicado(s) no Guia de Deck")}
+              <strong>{fmt(contrib.artigosAprovados)}</strong> {t("artigo(s) publicado(s) na Comunidade")}
               {contrib.artigosPendentes > 0 && <small className="tags-note"> {t("· {0} aguardando aprovação", [contrib.artigosPendentes])}</small>}
             </li>
           </ul>

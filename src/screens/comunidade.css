@@ -1,4 +1,5 @@
-/* Comunidade (arquétipos à esquerda, ranking + combos + guia à direita) e Rank dos duelistas */
+/* Comunidade (arquétipos à esquerda; à direita o guia do arquétipo e, no canto, o top de quem
+   compartilha combos) e Rank dos duelistas */
 
 .comunidade {
   flex: 1;
@@ -78,27 +79,63 @@
   white-space: nowrap;
 }
 
+/* título e ações à esquerda; o top de combos compartilhados, compacto, no canto direito */
+.cm-cabecalho {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 30%);
+  gap: 14px;
+  align-items: start;
+}
+
+.cm-rank-mini {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--magenta) 6%, transparent);
+  font-size: 0.78rem;
+}
+
+.cm-rank-mini h3 {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  color: var(--magenta);
+}
+
+.cm-rank-mini ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cm-rank-mini li {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.cm-rank-mini .rank-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-rank-mini p {
+  margin: 0;
+}
+
 .cm-cabecalho h2 {
   margin: 0 0 4px;
   font-family: var(--font-display);
   color: var(--magenta);
 }
 
-.cm-bloco {
-  margin-top: 18px;
-}
-
-.cm-bloco h3,
 .rank h3 {
   margin: 0 0 8px;
   font-size: 1rem;
-}
-
-.cm-topicos {
-  margin: 6px 0 10px;
-  padding-left: 18px;
-  font-size: 0.86rem;
-  color: var(--text-dim);
 }
 
 .cm-acoes {
@@ -201,6 +238,11 @@
 @media (max-width: 760px) {
   /* a lista de arquétipos vira gaveta (Lateral); o conteúdo fica com a largura toda */
   .comunidade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* no celular, o top de combos vai para baixo do título */
+  .cm-cabecalho {
     grid-template-columns: minmax(0, 1fr);
   }
 

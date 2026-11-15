@@ -20,7 +20,7 @@ const IGNORAR = [/\/i18n(\/|\.ts)/, /\/data\/guias(Passos)?\.ts$/, /\/db\/ygopro
 // declarações (por arquivo) que não são texto de tela: prompts de IA, dicionários próprios, valores gravados
 const DECL_IGNORADAS = {
   "db/ia.ts": ["systemPrompt", "pedido", "infoCarta", "executar", "PEDIDO_VIDEO", "validarRegistro", "converter", "FERRAMENTAS", "TOOLS", "IDIOMA_RESPOSTA", "sistemaChat", "REFERENCIA", "FERRAMENTAS_DECKS", "sistemaDecks", "validarDecks", "buscarDecksComIA"],
-  "screens/GuiaDeck.tsx": ["T", "IDIOMAS", "TIPOS_RESPOSTA"],
+  "components/GuiaDoDeck.tsx": ["T", "IDIOMAS", "TIPOS_RESPOSTA"],
   "db/colecao.ts": ["IDIOMAS", "lerListaMYP"],
   "db/effects.ts": ["units", "classify", "splitPsct", "sentences", "cleanCondition", "applyHardOpt"],
   "db/relations.ts": ["parseQuery", "buildRelations", "targetFollowUp", "descriptorAround", "relationType", "summonMethod", "archetypeNamesPt", "RACES", "ATTRIBUTES", "MONSTER_TYPES"],

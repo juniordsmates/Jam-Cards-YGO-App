@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { BookIcon, CollectionIcon, ComboIcon, DeckIcon, DuelIcon, EventIcon, ExitIcon, HeartIcon, HelpIcon, PeopleIcon, SearchIcon, TargetIcon, TrophyIcon } from "../icons";
+import { CollectionIcon, ComboIcon, DeckIcon, DuelIcon, EventIcon, ExitIcon, HeartIcon, HelpIcon, PeopleIcon, SearchIcon, TargetIcon, TrophyIcon } from "../icons";
 import { isDesktop } from "../platform";
 import { BUILD_LABEL, VERSION_LABEL } from "../version";
 import { useConta } from "../db/conta";
@@ -18,8 +18,6 @@ type Props = {
   active: boolean;
   onSearch: () => void;
   onCombos: () => void;
-  /** Guia de Deck: os decks do meta, com ideias, combos e interações */
-  onGuia: () => void;
   /** Meta Call: decks esperados no torneio → cartas boas contra eles */
   onMetaCall: () => void;
   onDeck: () => void;
@@ -35,7 +33,7 @@ type Props = {
   onDesejos: () => void;
   /** Meus Combos: combos salvos pelo jogador */
   onMeusCombos: () => void;
-  /** Comunidade: por arquétipo, quem mais compartilha, combos e guia */
+  /** Comunidade: por arquétipo, o guia (ideias, combos, interações, artigos) e quem mais compartilha */
   onComunidade: () => void;
   /** Rank: duelistas com mais pontos */
   onRank: () => void;
@@ -56,7 +54,7 @@ type Item = {
   action: () => void;
 };
 
-export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCall, onDeck, onTeste, onSimulador, onTreino, onColecao, onDesejos, onMeusCombos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
+export default function MainMenu({ active, onSearch, onCombos, onMetaCall, onDeck, onTeste, onSimulador, onTreino, onColecao, onDesejos, onMeusCombos, onComunidade, onRank, onEventos, onManual, onExit, onConta }: Props) {
   const conta = useConta();
   const tema = useTema();
   const B = (label: string, hint: string, icon: Item["icon"], accent: Item["accent"], action: () => void): Item => ({ label, hint, icon, accent, action });
@@ -66,9 +64,8 @@ export default function MainMenu({ active, onSearch, onCombos, onGuia, onMetaCal
       titulo: t("Explorar"),
       itens: [
         B(t("Buscar Carta"), t("Encontre qualquer carta"), <SearchIcon />, "cyan", onSearch),
-        B(t("Comunidade"), t("Por arquétipo: quem mais compartilha, combos e guia"), <PeopleIcon />, "cyan", onComunidade),
+        B(t("Comunidade"), t("Por arquétipo: ideias, combos, interações, artigos e quem mais compartilha"), <PeopleIcon />, "cyan", onComunidade),
         B(t("Combos"), t("Mão inicial e Combo Search"), <ComboIcon />, "cyan", onCombos),
-        B(t("Guia de Deck"), t("Decks do meta: ideias, combos e interações"), <BookIcon />, "cyan", onGuia),
         B(t("Meta Call"), t("Decks esperados no torneio → cartas contra eles"), <TargetIcon />, "cyan", onMetaCall),
       ],
     },

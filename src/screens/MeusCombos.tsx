@@ -90,7 +90,7 @@ export default function MeusCombos({ onBack, onTestar }: { onBack: () => void; o
         ) : !itens.length ? (
           <div className="combos-empty">
             <p>{t("Nenhum combo salvo ainda.")}</p>
-            <small>{t("Use ☆ Salvar em qualquer combo (Combos, Guia de Deck, Comunidade) para guardá-lo aqui.")}</small>
+            <small>{t("Use ☆ Salvar em qualquer combo (Combos, Comunidade) para guardá-lo aqui.")}</small>
           </div>
         ) : (
           <>

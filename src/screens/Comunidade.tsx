@@ -1,25 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ScreenShell from "./ScreenShell";
-import CardPreview from "../components/CardPreview";
-import { ComboCard } from "../components/ComboSearch";
 import BotaoLink from "../components/BotaoLink";
 import Lateral from "../components/Lateral";
-import { GUIAS_ESCRITOS, type Idioma } from "../data/guias";
-import { combosDoArquetipo, type ComboBase } from "../db/baseCombos";
+import GuiaDoDeck, { type Aba } from "../components/GuiaDoDeck";
 import { initCardDb, useCardDb } from "../db/cardStore";
 import { interacoesPorArquetipo, rankingDoArquetipo, type Duelista, type InteracoesArquetipo, type Leitura } from "../db/conquistas";
-import { linhasDoArquetipo } from "../db/guiaDeck";
+import type { DeckTemporario } from "../db/decks";
 import { normalize } from "../db/search";
 import { supabaseReady } from "../db/supabase";
-import { displayName, type Card } from "../db/types";
 import { conquistar } from "../db/minhasConquistas";
 import type { Rota } from "../rotas";
+import type { ComboTeste } from "./TesteJogo";
 import { IDIOMA, t, LOCALE } from "../i18n";
 import "./comunidade.css";
 
-// Comunidade: escolha um arquétipo (os mesmos da busca de cartas; os do meta do TCG primeiro) e
-// veja quem mais compartilhou combos dele, os Combos da Comunidade com a tag do arquétipo e o
-// resumo do Guia de Deck. A tag vem de "Arquétipos vinculados", ao compartilhar o combo.
+// Comunidade: escolha um arquétipo (os mesmos da busca de cartas; os do meta do TCG primeiro) e veja o
+// guia dele (Ideias Iniciais, Ideias Avançadas, Combos, Interações e Artigos de Jogadores; antes era a
+// tela Guia de Deck) e, no canto, quem mais compartilhou combos dele. A tag do arquétipo nos Combos da
+// Comunidade vem de "Arquétipos vinculados", ao compartilhar o combo.
 
 // até 5 comunidades favoritas, guardadas neste aparelho; aparecem no topo da lista
 const FAVORITAS = "comunidade-favoritas";
@@ -44,20 +42,22 @@ export default function Comunidade({
   onBack,
   inicial,
   onRota,
-  onGuia,
+  onTestar,
 }: {
   onBack: () => void;
-  /** link compartilhado: #/comunidade/<arquétipo> */
-  inicial?: { arquetipo?: string };
+  /** link compartilhado: #/comunidade/<arquétipo>/<aba do guia> (e os antigos #/guia/…) */
+  inicial?: { arquetipo?: string; aba?: string };
   onRota?: (r: Rota) => void;
-  /** abre o Guia de Deck do arquétipo, na aba indicada */
-  onGuia: (arquetipo: string, aba: "iniciais" | "combos") => void;
+  /** "Testar" uma linha de combo do guia */
+  onTestar?: (deck: DeckTemporario, combo: ComboTeste) => void;
 }) {
   const db = useCardDb();
   useEffect(() => void initCardDb(), []);
   const meta = db.extras?.metaTcg;
   const [busca, setBusca] = useState("");
   const [escolhido, setEscolhido] = useState<string | null>(inicial?.arquetipo ?? null);
+  // aba do guia (vale ao trocar de arquétipo)
+  const [aba, setAba] = useState<string | undefined>(inicial?.aba);
 
   // interações da comunidade por arquétipo (combos compartilhados e artigos aprovados)
   const [interacoes, setInteracoes] = useState<Map<string, InteracoesArquetipo>>(new Map());
@@ -124,48 +124,24 @@ export default function Comunidade({
   }, [busca, grupos, db.archetypePt]);
   const encontrados = filtrados.reduce((s, g) => s + g.itens.length, 0);
   const arquetipo = escolhido ?? lista[0] ?? null;
-  const daMeta = meta?.arquetipos.find((a) => a.arquetipo.toLowerCase() === arquetipo?.toLowerCase());
 
   useEffect(() => {
-    if (arquetipo) onRota?.({ tela: "comunidade", arquetipo });
-  }, [arquetipo]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (arquetipo) onRota?.({ tela: "comunidade", arquetipo, ...(aba ? { aba } : {}) });
+  }, [arquetipo, aba]); // eslint-disable-line react-hooks/exhaustive-deps
   // conquista "Entrando na Comunidade": abriu um arquétipo (escolhido na lista ou pelo link)
   useEffect(() => {
     if (escolhido) conquistar("entrando_comunidade");
   }, [escolhido]);
 
-  // ranking e combos do arquétipo
+  // quem mais compartilhou combos do arquétipo
   const [ranking, setRanking] = useState<Leitura<Duelista[]> | null>(null);
-  const [combos, setCombos] = useState<{ status: "carregando" | "ok" | "erro"; lista: ComboBase[]; erro?: string }>({ status: "carregando", lista: [] });
   useEffect(() => {
     if (!arquetipo || !supabaseReady()) return;
     let vivo = true;
     setRanking(null);
-    setCombos({ status: "carregando", lista: [] });
     void rankingDoArquetipo(arquetipo).then((r) => vivo && setRanking(r));
-    combosDoArquetipo(arquetipo, 30)
-      .then((l) => vivo && setCombos({ status: "ok", lista: l }))
-      .catch((e) => vivo && setCombos({ status: "erro", lista: [], erro: e instanceof Error ? e.message : String(e) }));
     return () => void (vivo = false);
   }, [arquetipo]);
-
-  const byId = useMemo(() => new Map(db.cards.map((c) => [c.id, c])), [db.cards]);
-  const byName = useMemo(() => new Map(db.cards.map((c) => [c.name, c])), [db.cards]);
-  const linhasApp = useMemo(() => (arquetipo ? linhasDoArquetipo(db.extras?.combos, arquetipo) : []), [db.extras?.combos, arquetipo]);
-  const escrito = GUIAS_ESCRITOS.find((g) => g.arquetipo.toLowerCase() === arquetipo?.toLowerCase());
-  const texto = escrito?.textos[IDIOMA as Idioma];
-  // texto do guia sem a marcação ([[Carta]] vira o nome no idioma do app; **negrito** vira texto)
-  const simples = (s: string) => s.replace(/\[\[([^\]]+)\]\]/g, (_, n: string) => (byName.get(n) ? displayName(byName.get(n)!) : n)).replace(/\*\*([^*]+)\*\*/g, "$1");
-
-  // prévia de carta ao passar o mouse (a mesma das outras telas)
-  const [hover, setHover] = useState<{ card: Card; rect: DOMRect } | null>(null);
-  const hoverTimer = useRef<number>();
-  const onHover = useCallback((card: Card | null, el?: HTMLElement) => {
-    window.clearTimeout(hoverTimer.current);
-    if (!card || !el) return setHover(null);
-    hoverTimer.current = window.setTimeout(() => setHover({ card, rect: el.getBoundingClientRect() }), 300);
-  }, []);
-  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
 
   return (
     <ScreenShell title={t("Comunidade")} accent="magenta" onBack={onBack} plain>
@@ -204,96 +180,52 @@ export default function Comunidade({
           ) : (
             <>
               <header className="cm-cabecalho">
-                <h2>{nome(arquetipo)}</h2>
-                <div className="cm-acoes">
-                  <BotaoLink rota={{ tela: "comunidade", arquetipo }} />
-                  <button
-                    className="ghost-btn cm-favoritar"
-                    aria-pressed={ehFavorita(arquetipo)}
-                    disabled={!ehFavorita(arquetipo) && favoritas.length >= MAX_FAVORITAS}
-                    title={!ehFavorita(arquetipo) && favoritas.length >= MAX_FAVORITAS ? t("Você já tem 5 favoritas: tire uma para acrescentar outra.") : undefined}
-                    onClick={() => alternarFavorita(arquetipo)}
-                  >
-                    {ehFavorita(arquetipo) ? t("★ Favorita") : t("☆ Favoritar")}
-                  </button>
+                <div className="cm-titulo">
+                  <h2>{nome(arquetipo)}</h2>
+                  <div className="cm-acoes">
+                    <BotaoLink rota={{ tela: "comunidade", arquetipo, ...(aba ? { aba } : {}) }} />
+                    <button
+                      className="ghost-btn cm-favoritar"
+                      aria-pressed={ehFavorita(arquetipo)}
+                      disabled={!ehFavorita(arquetipo) && favoritas.length >= MAX_FAVORITAS}
+                      title={!ehFavorita(arquetipo) && favoritas.length >= MAX_FAVORITAS ? t("Você já tem 5 favoritas: tire uma para acrescentar outra.") : undefined}
+                      onClick={() => alternarFavorita(arquetipo)}
+                    >
+                      {ehFavorita(arquetipo) ? t("★ Favorita") : t("☆ Favoritar")}
+                    </button>
+                  </div>
                 </div>
-                {daMeta && <p className="tags-note">{t("{0}% dos decks do TCG nos últimos 2 meses · {1}% em 6 meses", [daMeta.pct2m, daMeta.pct6m])}</p>}
+
+                {/* top de quem compartilhou combos: compacto, no canto direito */}
+                <aside className="cm-rank-mini" aria-label={t("Quem mais compartilha combos de {0}", [arquetipo])}>
+                  <h3>{t("Top de combos compartilhados")}</h3>
+                  {!supabaseReady() ? (
+                    <p className="tags-note">{t("Contas ainda não configuradas neste app.")}</p>
+                  ) : !ranking ? (
+                    <p className="tags-note">{t("Carregando…")}</p>
+                  ) : !ranking.ok ? (
+                    <p className="db-warning">{ranking.indisponivel ? t("O Rank ainda não está ativo neste servidor (falta aplicar a atualização do banco das conquistas).") : ranking.erro}</p>
+                  ) : !ranking.dados.length ? (
+                    <p className="tags-note">{t("Ninguém compartilhou combos deste arquétipo ainda.")}</p>
+                  ) : (
+                    <ol>
+                      {ranking.dados.slice(0, 5).map((d, i) => (
+                        <li key={d.usuario_id} title={t("{0} combo(s) · {1} pts", [d.combos_compartilhados, d.pontos])}>
+                          <span className="rank-pos">{["🥇", "🥈", "🥉"][i] ?? `${i + 1}º`}</span>
+                          <span className="rank-nome">@{d.usuario}</span>
+                          <span className="rank-combos">{d.combos_compartilhados}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </aside>
               </header>
 
-              <section className="cm-bloco">
-                <h3>{t("Quem mais compartilha combos de {0}", [arquetipo])}</h3>
-                {!supabaseReady() ? (
-                  <p className="tags-note">{t("Contas ainda não configuradas neste app.")}</p>
-                ) : !ranking ? (
-                  <p className="tags-note">{t("Carregando…")}</p>
-                ) : !ranking.ok ? (
-                  <p className="db-warning">{ranking.indisponivel ? t("O Rank ainda não está ativo neste servidor (falta aplicar a atualização do banco das conquistas).") : ranking.erro}</p>
-                ) : !ranking.dados.length ? (
-                  <p className="tags-note">{t("Ninguém compartilhou combos deste arquétipo ainda.")}</p>
-                ) : (
-                  <ol className="rank-tabela rank-tabela-curta">
-                    {ranking.dados.map((d, i) => (
-                      <li key={d.usuario_id}>
-                        <span className="rank-pos">{["🥇", "🥈", "🥉"][i] ?? `${i + 1}º`}</span>
-                        <span className="rank-nome">@{d.usuario}</span>
-                        <span className="rank-combos">{t("{0} combo(s)", [d.combos_compartilhados])}</span>
-                        <span className="rank-pts">{t("{0} pts", [d.pontos])}</span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </section>
-
-              <section className="cm-bloco">
-                <h3>{t("Combos")}</h3>
-                <p className="tags-note">
-                  {t("Combos da Comunidade com a tag do arquétipo (vinculada ao compartilhar).")}{" "}
-                  {linhasApp.length > 0 && t("O App também calculou {0} linha(s) com decklists de torneio.", [linhasApp.length])}
-                </p>
-                {linhasApp.length > 0 && daMeta && (
-                  <button className="ghost-btn" onClick={() => onGuia(arquetipo, "combos")}>
-                    {t("Ver as linhas do App no Guia de Deck")} →
-                  </button>
-                )}
-                {combos.status === "carregando" && supabaseReady() && <p className="tags-note">{t("Carregando…")}</p>}
-                {combos.status === "erro" && <p className="db-warning">{combos.erro}</p>}
-                {combos.status === "ok" && !combos.lista.length && <p className="tags-note">{t("Ainda não há Combos da Comunidade com este arquétipo.")}</p>}
-                {combos.lista.map((c) => (
-                  <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={new Set()} format="TCG" />
-                ))}
-              </section>
-
-              <section className="cm-bloco">
-                <h3>{t("Guia de Deck")}</h3>
-                {!daMeta ? (
-                  <p className="tags-note">{t("Este arquétipo não está entre os decks do meta do TCG; ainda não tem Guia de Deck.")}</p>
-                ) : (
-                  <>
-                    {texto ? (
-                      <>
-                        <p>{simples(texto.resumo)}</p>
-                        <ul className="cm-topicos">
-                          {[...texto.iniciais, ...texto.avancadas].map((b) => (
-                            <li key={b.titulo}>{b.titulo}</li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : (
-                      <p className="tags-note">{t("Ainda não há texto escrito para este deck; o guia mostra o núcleo, as listas de torneio, os combos e as interações.")}</p>
-                    )}
-                    <div className="cm-acoes">
-                      <button className="ghost-btn" onClick={() => onGuia(arquetipo, "iniciais")}>
-                        {t("Abrir o Guia de Deck")} →
-                      </button>
-                    </div>
-                  </>
-                )}
-              </section>
+              <GuiaDoDeck key={arquetipo} arquetipo={arquetipo} abaInicial={aba} onAba={(a: Aba) => setAba(a)} onEscolher={setEscolhido} onTestar={onTestar} />
             </>
           )}
         </div>
       </div>
-      {hover && <CardPreview card={hover.card} anchor={hover.rect} />}
     </ScreenShell>
   );
 }

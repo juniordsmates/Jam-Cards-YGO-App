@@ -3047,4 +3047,11 @@ export const ES: Record<string, string> = {
   "Esconder as cartas do oponente (mão e viradas para baixo)": "Ocultar las cartas del oponente (mano y boca abajo)",
   "Revisar com a mesma visão que você tinha no duelo: julgar uma jogada sabendo a mão do oponente engana": "Revisar con la misma visión que tenías en el duelo: juzgar una jugada sabiendo la mano del oponente engaña",
   "Você vê só o que via no duelo.": "Ves solo lo que veías en el duelo.",
+  "Criar o guia deste deck": "Crear la guía de este deck",
+  "Este arquétipo não está entre os decks do meta do TCG e ainda não tem guia (ideias, combos calculados, interações e artigos).": "Este arquetipo no está entre los decks del meta del TCG y aún no tiene guía (ideas, combos calculados, interacciones y artículos).",
+  "Por arquétipo: ideias, combos, interações, artigos e quem mais compartilha": "Por arquetipo: ideas, combos, interacciones, artículos y quién más comparte",
+  "Top de combos compartilhados": "Top de combos compartidos",
+  "{0} combo(s) · {1} pts": "{0} combo(s) · {1} pts",
+  "Use ☆ Salvar em qualquer combo (Combos, Comunidade) para guardá-lo aqui.": "Usa ☆ Guardar en cualquier combo (Combos, Comunidad) para guardarlo aquí.",
+  "artigo(s) publicado(s) na Comunidade": "artículo(s) publicado(s) en la Comunidad",
 };

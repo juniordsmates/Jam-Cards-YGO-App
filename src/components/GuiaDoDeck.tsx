@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import ScreenShell from "./ScreenShell";
-import CardPreview from "../components/CardPreview";
-import CardSelos from "../components/CardSelos";
-import { ComboCard } from "../components/ComboSearch";
-import { openConta } from "../components/Conta";
+import CardPreview from "./CardPreview";
+import CardSelos from "./CardSelos";
+import { ComboCard } from "./ComboSearch";
+import { openConta } from "./Conta";
 import { GUIAS_ESCRITOS, type Idioma } from "../data/guias";
-import FormGuiaDeck from "../components/FormGuiaDeck";
-import BuscaDecks from "../components/BuscaDecks";
+import FormGuiaDeck from "./FormGuiaDeck";
+import BuscaDecks from "./BuscaDecks";
 import { apagarGuiaDeck, arquetipoDaLista, listarGuiasDeck, type GuiaDeckBanco } from "../db/guiasDeck";
 import { apagarArtigo, enviarArtigo, listarArtigos, moderarArtigo, type Artigo, type TipoArtigo } from "../db/artigos";
 import { combosDoArquetipo, type ComboBase } from "../db/baseCombos";
@@ -20,17 +19,17 @@ import type { ArquetipoMeta, CartaNucleo } from "../db/overlay";
 import { ordenarRespostas, useContextoRespostas } from "../db/respostas";
 import { supabaseReady } from "../db/supabase";
 import { displayName, type Card } from "../db/types";
-import type { ComboTeste } from "./TesteJogo";
+import type { ComboTeste } from "../screens/TesteJogo";
 import "./guia-deck.css";
-import BotaoLink from "../components/BotaoLink";
-import type { Rota } from "../rotas";
 import { IDIOMA, t as tr, LOCALE } from "../i18n";
-import Lateral from "../components/Lateral";
 
-// Guia de Deck: os arquétipos do topo do meta do TCG (6 meses de decklists de torneio), cada um com
-// Ideias Iniciais, Ideias Avançadas, Combos, Interações e Artigos de Jogadores, em 3 idiomas.
+// Guia de um deck, na aba Comunidade (antes era a tela Guia de Deck): para os arquétipos do meta do TCG
+// (6 meses de decklists de torneio) e os acrescentados pelos administradores, Ideias Iniciais, Ideias
+// Avançadas, Combos, Interações e Artigos de Jogadores, em 3 idiomas. O arquétipo vem da lista da
+// Comunidade; sem guia, mostra os Combos da Comunidade do arquétipo.
 
-type Aba = "iniciais" | "avancadas" | "combos" | "interacoes" | "artigos";
+export type Aba = "iniciais" | "avancadas" | "combos" | "interacoes" | "artigos";
+export const ABAS: Aba[] = ["iniciais", "avancadas", "combos", "interacoes", "artigos"];
 const IDIOMAS: { id: Idioma; label: string }[] = [
   { id: "pt", label: "Português" },
   { id: "en", label: "English" },
@@ -297,18 +296,22 @@ const TAGS_INTERRUPCAO = ["hand-trap", "negacao", "omni-negate", "board-breaker"
 
 const LIMITE_LINHAS = 12;
 
-export default function GuiaDeck({
-  onBack,
+export default function GuiaDoDeck({
+  arquetipo,
+  abaInicial,
+  onAba,
+  onEscolher,
   onTestar,
-  inicial,
-  onRota,
 }: {
-  onBack: () => void;
+  /** arquétipo escolhido na lista da Comunidade */
+  arquetipo: string;
+  /** link compartilhado: a aba (#/comunidade/<arquétipo>/<aba>) */
+  abaInicial?: string;
+  /** o endereço acompanha a aba aberta */
+  onAba?: (aba: Aba) => void;
+  /** um deck acrescentado pelo administrador passa a ser o escolhido */
+  onEscolher?: (arquetipo: string) => void;
   onTestar?: (deck: DeckTemporario, combo: ComboTeste) => void;
-  /** link compartilhado: deck e aba (#/guia/<arquétipo>/<aba>) */
-  inicial?: { arquetipo?: string; aba?: string };
-  /** o endereço acompanha o deck e a aba abertos */
-  onRota?: (r: Rota) => void;
 }) {
   const db = useCardDb();
   const conta = useConta();
@@ -316,7 +319,6 @@ export default function GuiaDeck({
   const [idioma, escolherIdioma] = useState<Idioma>(IDIOMA);
   const t = T[idioma];
   const meta = db.extras?.metaTcg;
-  const [escolhido, setEscolhido] = useState<string | null>(inicial?.arquetipo ?? null);
   // decks acrescentados pelos administradores e referências da comunidade (tabela guias_deck)
   const [guiasBanco, setGuiasBanco] = useState<GuiaDeckBanco[]>([]);
   useEffect(() => {
@@ -340,20 +342,15 @@ export default function GuiaDeck({
     return [...doMeta, ...extras.map(arquetipoDaLista)];
   }, [meta, guiasBanco]);
   const acrescentado = (a: string) => !meta?.arquetipos.some((x) => mesmoNome(x.arquetipo, a));
-  const deck: ArquetipoMeta | undefined = arquetipos.find((a) => mesmoNome(a.arquetipo, escolhido)) ?? arquetipos[0];
+  const deck: ArquetipoMeta | undefined = arquetipos.find((a) => mesmoNome(a.arquetipo, arquetipo));
   const banco = guiasBanco.find((g) => mesmoNome(g.arquetipo, deck?.arquetipo));
-  const [aba, setAba] = useState<Aba>(() => (["iniciais", "avancadas", "combos", "interacoes", "artigos"].includes(inicial?.aba ?? "") ? (inicial!.aba as Aba) : "iniciais"));
-  // o endereço mostra o deck e a aba (para copiar e para o voltar do navegador)
+  const [aba, setAba] = useState<Aba>(() => (ABAS.includes(abaInicial as Aba) ? (abaInicial as Aba) : "iniciais"));
+  // o endereço mostra a aba (para copiar e para o voltar do navegador)
   useEffect(() => {
-    if (deck) onRota?.({ tela: "guia", arquetipo: deck.arquetipo, aba });
-  }, [deck?.arquetipo, aba]); // eslint-disable-line react-hooks/exhaustive-deps
-  const conteudo = useRef<HTMLDivElement>(null);
+    onAba?.(aba);
+  }, [aba]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => void initCardDb(), []);
-  // (chaves: no Chromium novo scrollTo devolve uma Promise, e o efeito não pode devolver nada além de função)
-  useEffect(() => {
-    conteudo.current?.scrollTo({ top: 0 });
-  }, [deck?.arquetipo, aba]);
 
   const byId = useMemo(() => new Map(db.cards.map((c) => [c.id, c])), [db.cards]);
   const byName = useMemo(() => new Map(db.cards.map((c) => [c.name, c])), [db.cards]);
@@ -405,7 +402,6 @@ export default function GuiaDeck({
   const doBanco = banco?.textos[idioma];
   const texto = escrito?.textos[idioma] ?? (doBanco && (doBanco.resumo || doBanco.iniciais.length || doBanco.avancadas.length) ? doBanco : undefined);
   const revisado = escrito?.revisado ?? banco?.revisado ?? "";
-  const temEscrito = (a: string) => GUIAS_ESCRITOS.some((g) => g.arquetipo === a) || guiasBanco.some((g) => mesmoNome(g.arquetipo, a) && Object.keys(g.textos).length > 0);
 
   /** Administrador: apaga o deck acrescentado (ou as referências guardadas de um deck do meta) */
   const apagarDoBanco = async (g: GuiaDeckBanco) => {
@@ -422,7 +418,7 @@ export default function GuiaDeck({
   const aoSalvar = (salvos: GuiaDeckBanco[]) => {
     setGuiasBanco((l) => [...l.filter((x) => !salvos.some((s) => mesmoNome(s.arquetipo, x.arquetipo))), ...salvos].sort((a, b) => a.arquetipo.localeCompare(b.arquetipo)));
     setPainel(null);
-    if (salvos.length === 1) setEscolhido(salvos[0].arquetipo);
+    if (salvos.length === 1) onEscolher?.(salvos[0].arquetipo);
   };
 
   const nomeArquetipo = (a: string) => {
@@ -518,15 +514,16 @@ export default function GuiaDeck({
 
   const [comunidade, setComunidade] = useState<ComboBase[]>([]);
   useEffect(() => {
-    if (aba !== "combos" || !deck || !supabaseReady()) return;
+    if ((deck && aba !== "combos") || !supabaseReady()) return;
     let vivo = true;
-    combosDoArquetipo(deck.arquetipo)
+    setComunidade([]);
+    combosDoArquetipo(deck?.arquetipo ?? arquetipo)
       .then((l) => vivo && setComunidade(l))
       .catch(() => vivo && setComunidade([]));
     return () => {
       vivo = false;
     };
-  }, [aba, deck]);
+  }, [aba, deck, arquetipo]);
 
   const [artigos, setArtigos] = useState<Artigo[]>([]);
   const [erroArtigos, setErroArtigos] = useState("");
@@ -582,89 +579,62 @@ export default function GuiaDeck({
   // ---------------------------------------------------------------- tela
 
   const ready = db.status === "ready";
-  const atualizado = meta ? new Date(meta.atualizadoEm).toLocaleDateString(idioma === "pt" ? LOCALE : idioma) : "";
+  if (!ready)
+    return (
+      <div className="db-loading">
+        <span className="spinner" />
+        <p>{db.step ?? "…"}</p>
+      </div>
+    );
 
   return (
-    <ScreenShell
-      title={t.titulo}
-      accent="cyan"
-      onBack={onBack}
-      plain
-      actions={
-        <div className="gd-acoes-topo">
-          <div className="format-switch gd-idiomas" role="radiogroup" aria-label={tr("Idioma / Language")}>
-            {IDIOMAS.map((x) => (
-              <button key={x.id} role="radio" aria-checked={idioma === x.id} className={idioma === x.id ? "active" : ""} onClick={() => escolherIdioma(x.id)}>
-                {x.label}
-              </button>
-            ))}
-          </div>
-          {conta?.admin && ready && (
+    <section className="gd-guia" aria-label={t.titulo}>
+      {/* idioma do texto do guia e, para o administrador, acrescentar ou buscar decks */}
+      <div className="gd-barra-guia">
+        <div className="format-switch gd-idiomas" role="radiogroup" aria-label={tr("Idioma / Language")}>
+          {IDIOMAS.map((x) => (
+            <button key={x.id} role="radio" aria-checked={idioma === x.id} className={idioma === x.id ? "active" : ""} onClick={() => escolherIdioma(x.id)}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+        {conta?.admin && (
+          <>
+            <button className={`ghost-btn ${painel?.tipo === "form" && !painel.guia ? "active" : ""}`} onClick={() => setPainel(painel?.tipo === "form" && !painel.guia ? null : { tipo: "form" })}>
+              {t.acrescentarDeck}
+            </button>
             <button className={`ghost-btn ${painel?.tipo === "busca" ? "active" : ""}`} onClick={() => setPainel(painel?.tipo === "busca" ? null : { tipo: "busca" })}>
               {t.buscarNovos}
             </button>
-          )}
-        </div>
-      }
-    >
-      {!ready ? (
-        <div className="db-loading">
-          <span className="spinner" />
-          <p>{db.step ?? "…"}</p>
-        </div>
-      ) : !deck && !painel ? (
-        <div className="combos-empty">
-          <p>{t.semDados}</p>
+          </>
+        )}
+      </div>
+      {painel?.tipo === "form" ? (
+        <FormGuiaDeck key={painel.guia?.arquetipo ?? "novo"} inicial={painel.guia} onSalvo={(g) => aoSalvar([g])} onCancelar={() => setPainel(null)} />
+      ) : painel?.tipo === "busca" ? (
+        <BuscaDecks existentes={arquetipos.map((a) => a.arquetipo)} guias={guiasBanco} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />
+      ) : !deck ? (
+        <>
+          <p className="tags-note">{tr("Este arquétipo não está entre os decks do meta do TCG e ainda não tem guia (ideias, combos calculados, interações e artigos).")}</p>
           {conta?.admin && (
-            <button className="ghost-btn" onClick={() => setPainel({ tipo: "form" })}>
-              {t.acrescentarDeck}
+            <button className="link-btn" onClick={() => setPainel({ tipo: "form", guia: { arquetipo, lista: null, textos: {}, referencias: [], revisado: "" } })}>
+              {tr("Criar o guia deste deck")}
             </button>
           )}
-        </div>
+          {supabaseReady() && (
+            <div className="gd-bloco">
+              <h4>{t.comunidade}</h4>
+              {comunidade.length ? (
+                comunidade.map((c) => <ComboCard key={c.id} combo={c} byId={byId} onHover={onHover} highlight={new Set()} format="TCG" />)
+              ) : (
+                <p className="tags-note">{t.semComunidade}</p>
+              )}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="guia-deck">
-          <Lateral como="nav" className="gd-lista" aria-label={t.titulo} titulo={tr("Decks do meta")} fecharCom={deck?.arquetipo}>
-            {meta && <p className="tags-note">{t.base(meta.decks, atualizado)}</p>}
-            {arquetipos.map((a, i) => (
-              <button
-                key={a.arquetipo}
-                className={a.arquetipo === deck?.arquetipo && !painel ? "active" : ""}
-                onClick={() => {
-                  setPainel(null);
-                  setEscolhido(a.arquetipo);
-                }}
-              >
-                <span className="gd-pos">{i + 1}</span>
-                <span className="gd-nome">
-                  {nomeArquetipo(a.arquetipo)}
-                  {temEscrito(a.arquetipo) && <span className="gd-escrito" title={t.abas.iniciais}>✎</span>}
-                </span>
-                {acrescentado(a.arquetipo) ? (
-                  <small className="gd-pct">{t.acrescentado}</small>
-                ) : (
-                  <span className="gd-pct" title={`${a.pct6m}% ${t.pct6m} · ${a.pct2m}% ${t.pct2m}`}>
-                    {a.pct6m}% <small className={`gd-tend ${tendencia(a) === "▲" ? "sobe" : tendencia(a) === "▼" ? "desce" : ""}`}>{tendencia(a)}</small>
-                  </span>
-                )}
-              </button>
-            ))}
-            {conta?.admin && (
-              <button className={painel?.tipo === "form" && !painel.guia ? "active" : ""} onClick={() => setPainel({ tipo: "form" })}>
-                <span className="gd-nome">{t.acrescentarDeck}</span>
-              </button>
-            )}
-          </Lateral>
-
-          <div className="gd-conteudo" ref={conteudo}>
-            {painel?.tipo === "form" ? (
-              <FormGuiaDeck key={painel.guia?.arquetipo ?? "novo"} inicial={painel.guia} onSalvo={(g) => aoSalvar([g])} onCancelar={() => setPainel(null)} />
-            ) : painel?.tipo === "busca" ? (
-              <BuscaDecks existentes={arquetipos.map((a) => a.arquetipo)} guias={guiasBanco} onSalvo={aoSalvar} onFechar={() => setPainel(null)} />
-            ) : !deck ? null : (
-              <>
+        <>
             <header className="gd-topo">
-              <h3>{nomeArquetipo(deck.arquetipo)}</h3>
-              {deck && <BotaoLink rota={{ tela: "guia", arquetipo: deck.arquetipo, aba }} className="gd-link" />}
               {conta?.admin && (
                 <div className="gd-admin">
                   <button className="link-btn" onClick={() => setPainel({ tipo: "form", guia: banco ?? { arquetipo: deck.arquetipo, lista: null, textos: {}, referencias: [], revisado: "" } })}>
@@ -686,11 +656,12 @@ export default function GuiaDeck({
                   <strong>{deck.pct6m}%</strong> {t.pct6m}
                 </span>
                 <span>
-                  <strong>{deck.pct2m}%</strong> {t.pct2m}
+                  <strong>{deck.pct2m}%</strong> {t.pct2m} <small className={`gd-tend ${tendencia(deck) === "▲" ? "sobe" : tendencia(deck) === "▼" ? "desce" : ""}`}>{tendencia(deck)}</small>
                 </span>
                 <span>
                   <strong>{deck.vitorias}</strong> {t.vitorias}
                 </span>
+                {meta && <small className="tags-note">{t.base(meta.decks, new Date(meta.atualizadoEm).toLocaleDateString(idioma === "pt" ? LOCALE : idioma))}</small>}
               </div>
               )}
               {deck.nomes.length > 1 && (
@@ -1058,12 +1029,9 @@ export default function GuiaDeck({
                   ))}
               </section>
             )}
-              </>
-            )}
-          </div>
-        </div>
+        </>
       )}
       {hover && <CardPreview card={hover.card} anchor={hover.rect} />}
-    </ScreenShell>
+    </section>
   );
 }

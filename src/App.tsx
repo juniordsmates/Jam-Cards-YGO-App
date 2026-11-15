@@ -4,7 +4,6 @@ import CardSearch from "./screens/CardSearch";
 import Combos from "./screens/Combos";
 import Colecao from "./screens/Colecao";
 import Manual from "./screens/Manual";
-import GuiaDeck from "./screens/GuiaDeck";
 import MetaCall from "./screens/MetaCall";
 import Rank from "./screens/Rank";
 import Conquistas from "./screens/Conquistas";
@@ -33,13 +32,13 @@ import type { Card } from "./db/types";
 import { escreverRota, lerRota, type Rota } from "./rotas";
 import { t } from "./i18n";
 
-export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "guia" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos" | "meuscombos" | "simulador" | "treino";
+export type Screen = "menu" | "search" | "combos" | "deck" | "colecao" | "manual" | "metacall" | "rank" | "conquistas" | "eventos" | "comunidade" | "desejos" | "meuscombos" | "simulador" | "treino";
 
 /** Tela do app para uma rota do endereço (o Teste de Jogo abre o Editor de Deck já testando) */
 const telaDa = (r: Rota): Screen => (r.tela === "teste" ? "deck" : r.tela);
 
 export default function App() {
-  // rota do endereço: tela e o que abrir nela (carta, combo, deck do guia, seleção do Meta Call)
+  // rota do endereço: tela e o que abrir nela (carta, combo, deck da Comunidade, seleção do Meta Call)
   const [rota, setRota] = useState<Rota>(lerRota);
   const [screen, setScreen] = useState<Screen>(() => telaDa(rota));
   // Combos aberta pela busca: volta para a busca e já abre com a carta na mão
@@ -47,8 +46,6 @@ export default function App() {
   // Editor de Deck aberto direto no Teste de Jogo (menu principal ou atalho de um combo)
   const [deckInicial, setDeckInicial] = useState<EditorInicial>(() => (rota.tela === "teste" ? { testar: true } : {}));
   const [deckFrom, setDeckFrom] = useState<Screen>("menu");
-  // Guia de Deck aberto pela Comunidade: o voltar retorna para ela
-  const [guiaFrom, setGuiaFrom] = useState<Screen>("menu");
   // "Testar" de um combo: o pop-up das formas de teste e, contra a IA, o teste levado ao Simulador
   const [testando, setTestando] = useState<{ deck: DeckTemporario; combo: ComboTeste; from: Screen } | null>(null);
   const [testeCombo, setTesteCombo] = useState<{ teste: TesteCombo; from: Screen } | null>(null);
@@ -184,7 +181,6 @@ export default function App() {
           onRank={() => setScreen("rank")}
           onEventos={() => setScreen("eventos")}
           onManual={() => setScreen("manual")}
-          onGuia={() => setScreen("guia")}
           onMetaCall={() => setScreen("metacall")}
           onExit={() => setConfirmingExit(true)}
           onConta={() => openConta()}
@@ -231,25 +227,7 @@ export default function App() {
           inicial={rota.tela === "comunidade" ? rota : undefined}
           onRota={aoRota}
           onBack={() => setScreen("menu")}
-          onGuia={(arquetipo, aba) => {
-            // abre o Guia já no deck e na aba; o voltar do Guia retorna para a Comunidade
-            const r: Rota = { tela: "guia", arquetipo, aba };
-            setRota(r);
-            escreverRota(r);
-            setGuiaFrom("comunidade");
-            setScreen("guia");
-          }}
-        />
-      )}
-      {screen === "guia" && (
-        <GuiaDeck
-          inicial={rota.tela === "guia" ? rota : undefined}
-          onRota={aoRota}
-          onBack={() => {
-            setScreen(guiaFrom);
-            setGuiaFrom("menu");
-          }}
-          onTestar={testar("guia")}
+          onTestar={testar("comunidade")}
         />
       )}
       {screen === "simulador" && (
