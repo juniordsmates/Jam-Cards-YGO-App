@@ -2468,6 +2468,9 @@ export const EN: Record<string, string> = {
   "Passe o mouse sobre uma carta para ver os detalhes. Cartas com contorno brilhante têm ações: clique nelas.": "Hover over a card to see its details. Cards with a glowing outline have actions: click them.",
   "Passiva": "Passive",
   "Pausar em todas as janelas de resposta": "Pause at every response window",
+  "Ajudar a IA a aprender com meus duelos": "Help the AI learn from my duels",
+  "Ligado e com a conta logada: no fim de cada duelo, o app envia ao Centuryum (a IA do Jam Cards) o que o duelo ensinou — linhas de combo, respostas e a Análise da IA. Vão só cartas e jogadas, sem nomes. Na partida 1x1, nada do oponente vai junto. O que a IA aprende volta para todos os jogadores.":
+    "On and signed in: at the end of each duel, the app sends Centuryum (the Jam Cards AI) what the duel taught — combo lines, responses and the AI Analysis. Only cards and plays are sent, no names. In 1v1 matches, nothing from your opponent is sent. What the AI learns comes back to every player.",
   "Pedra": "Rock",
   "Pedra, papel ou tesoura?": "Rock, paper or scissors?",
   "Planeja mais e responde sempre que pode": "Plans longer and responds whenever it can",

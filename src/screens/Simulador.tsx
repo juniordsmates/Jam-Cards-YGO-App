@@ -31,6 +31,7 @@ import type { DecisaoIA, DeckEsperado, LinhaIA, NivelIA } from "../sim/ia";
 import type { Aprendizado, CartaSim, ConfigSessao, EventoSim, Momento, PedidoSim, Quadro } from "../sim/sessao";
 import { apagarReplay, compartilharReplay, obterReplay } from "../db/replays";
 import { aprenderValores, exportarReplay, guardarAprendizado, guardarReplay, importarReplay, lerValoresAprendidos, listarAprendizado, marcarCompartilhado, REPLAYS_GRATIS, REPLAYS_PREMIUM, type DueloGuardado, type RotulosReplay } from "../sim/aprendizado";
+import { enviarAoCenturyum, envioDoDuelo } from "../db/centuryum";
 import type { AnaliseDuelo, FatoDuelo } from "../sim/analise";
 import { temPremium } from "../db/conta";
 import { isDesktop } from "../platform";
@@ -180,6 +181,8 @@ interface Config {
   escolherMao?: boolean;
   /** duelo único (1) ou match, melhor de 3 (3) */
   melhorDe?: 1 | 3;
+  /** "Ajudar a IA a aprender": envia ao Centuryum o que os duelos ensinam (src/db/centuryum.ts) */
+  ajudarIA?: boolean;
 }
 function lerConfig(): Partial<Config> {
   try {
@@ -306,6 +309,7 @@ export default function Simulador({
     escolherMao: salvo.escolherMao,
     modo: salvo.modo ?? "ia",
     melhorDe: salvo.melhorDe ?? 1,
+    ajudarIA: salvo.ajudarIA,
   }));
   // match (melhor de 3): fora do teste de combo e do Modo de Treino
   const melhorDe3 = cfg.melhorDe === 3 && !testeCombo && !treino;
@@ -862,6 +866,7 @@ export default function Simulador({
   function registrarAprendizado(a: Aprendizado) {
     setAprendido(a);
     void guardarAprendizado(a, versaoMotor.current, APP_VERSION, limiteReplays, rotulosRef.current).catch(() => {});
+    if (cfg.ajudarIA && a.historico.length) void enviarAoCenturyum("duelo", envioDoDuelo(a), versaoMotor.current, APP_VERSION);
   }
 
   // ---------- revisão e "?" ----------
@@ -879,6 +884,7 @@ export default function Simulador({
       const linhas = (db.extras?.combos?.linhas ?? []).filter((l) => l.mao.every((x) => ids.has(x)));
       const dados = await c.analisar({ partida: d.partida, humano: d.humano, historico: d.historico, linhas, aprendidos: await lerValoresAprendidos().catch(() => ({})) });
       await aprenderValores(dados.aprender).catch(() => {});
+      if (cfg.ajudarIA && Object.keys(dados.aprender).length) void enviarAoCenturyum("analise", { pontos: dados.aprender }, versaoMotor.current, APP_VERSION);
       setAnalise({ chave, status: "ok", dados });
     } catch (e) {
       setAnalise({ chave, status: "erro", erro: e instanceof Error ? e.message : String(e) });
@@ -944,6 +950,7 @@ export default function Simulador({
       const rotulos = { eu: t("IA ({0})", [meu.nome]), oponente: t("IA ({0})", [doIA.nome]), meuDeck: meu.nome, deckOponente: doIA.nome };
       // fica nos replays, com o motivo de cada decisão (o Exportar leva tudo)
       await guardarAprendizado(aprendizado, versaoMotor.current, APP_VERSION, limiteReplays, rotulos).catch(() => {});
+      if (cfg.ajudarIA) void enviarAoCenturyum("duelo", envioDoDuelo(aprendizado, true), versaoMotor.current, APP_VERSION);
       await abrirRevisao({ partida, humano, nivel, historico: aprendizado.historico }, rotulos.oponente, undefined, { decisoes: aprendizado.decisoes, jogador: rotulos.eu });
     } catch (e) {
       falhou(e);
@@ -2714,6 +2721,23 @@ export default function Simulador({
               }}
             />
             {t("Pausar em todas as janelas de resposta")}
+          </label>
+          )}
+          {!revisao && (
+          <label
+            className="sim-janelas"
+            title={t("Ligado e com a conta logada: no fim de cada duelo, o app envia ao Centuryum (a IA do Jam Cards) o que o duelo ensinou — linhas de combo, respostas e a Análise da IA. Vão só cartas e jogadas, sem nomes. Na partida 1x1, nada do oponente vai junto. O que a IA aprende volta para todos os jogadores.")}
+          >
+            <input
+              type="checkbox"
+              checked={!!cfg.ajudarIA}
+              onChange={(e) => {
+                const novo = { ...cfg, ajudarIA: e.target.checked };
+                setCfg(novo);
+                gravarConfig({ ...novo, meu: meu?.valor ?? novo.meu, ia: doIA?.valor ?? novo.ia });
+              }}
+            />
+            {t("Ajudar a IA a aprender com meus duelos")}
           </label>
           )}
 

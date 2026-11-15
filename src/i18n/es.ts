@@ -2468,6 +2468,9 @@ export const ES: Record<string, string> = {
   "Passe o mouse sobre uma carta para ver os detalhes. Cartas com contorno brilhante têm ações: clique nelas.": "Pasa el ratón sobre una carta para ver los detalles. Las cartas con contorno brillante tienen acciones: haz clic en ellas.",
   "Passiva": "Pasiva",
   "Pausar em todas as janelas de resposta": "Pausar en todas las ventanas de respuesta",
+  "Ajudar a IA a aprender com meus duelos": "Ayudar a la IA a aprender con mis duelos",
+  "Ligado e com a conta logada: no fim de cada duelo, o app envia ao Centuryum (a IA do Jam Cards) o que o duelo ensinou — linhas de combo, respostas e a Análise da IA. Vão só cartas e jogadas, sem nomes. Na partida 1x1, nada do oponente vai junto. O que a IA aprende volta para todos os jogadores.":
+    "Activado y con la sesión iniciada: al final de cada duelo, la app envía a Centuryum (la IA de Jam Cards) lo que el duelo enseñó: líneas de combo, respuestas y el Análisis de la IA. Solo se envían cartas y jugadas, sin nombres. En las partidas 1 contra 1, no se envía nada del oponente. Lo que la IA aprende vuelve a todos los jugadores.",
   "Pedra": "Piedra",
   "Pedra, papel ou tesoura?": "¿Piedra, papel o tijera?",
   "Planeja mais e responde sempre que pode": "Planea más y responde siempre que puede",
